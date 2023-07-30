@@ -1,0 +1,211 @@
+function createTop(name: string, size: integer, format: string="[P] - [V]") :: strings:
+	set {_indices::*} to all indices of {%{_name}%::*}
+	set {_index} to 1
+	if {_size} = 0:
+		return ""
+	if {_size} < 0:
+		set {_reversed} to true
+		set {_size} to ({_size} * (-1))
+	loop {_indices::*}:
+		if {%{_name}%::%loop-value%} = number or timespan or date:
+			set {_values::%{_index}%} to {%{_name}%::%loop-value%}
+			set {_indexes::%{_index}%} to "%loop-value%"
+			add 1 to {_index}
+	if {_size} > (size of {_indexes::*}):
+		set {_size} to (size of {_indexes::*})
+	loop {_size} times:
+		loop {_values::*}:
+			if {_max} is not set:
+				set {_max} to loop-value-2
+				set {_index} to loop-index
+			else:
+				if {_reversed} is not true:
+					if loop-value-2 > {_max}:
+						set {_max} to loop-value-2
+						set {_index} to loop-index
+				else:
+					if loop-value-2 < {_max}:
+						set {_max} to loop-value-2
+						set {_index} to loop-index
+		set {_var} to {_format}
+		replace "[VALUE]" and "[V]" with "%{_max}%" in {_var}
+		replace "[INDEX]" and "[I]" with "%loop-number%" in {_var}
+		replace "[PLAYER]" and "[P]" with ({_indexes::%{_index}%} in strict proper case) in {_var}
+		add {_var} to {_return::*}
+		delete {_indexes::%{_index}%}, {_values::%{_index}%}, {_max} and {_index}
+	return {_return::*}
+	
+import:
+	it.unimi.dsi.fastutil.ints.IntArrayList
+
+function HideEntity(e: entities, p: player):
+	loop {_e::*}:
+		add entity id of loop-value to {_id::*}
+	set {_packet} to new play_server_entity_destroy packet
+	set field 0 of {_packet} to new IntArrayList({_id::*} as primitive int array)
+	send {_p::*} packet {_packet}
+
+function Leaderboard(m: number, v: text):
+	if {_m} = 1:
+		set {_x} to location(-1173, 63.5, -1832, world "world")
+	if {_m} = 2:
+		set {_x} to location(-1173, 63.5, -1828, world "world")
+	set {_num} to 0
+	set {_pos} to 0.25
+	loop 12 times:
+		spawn 1 armor stand at block above {_x}
+		add nbt compound from "{Invisible:1}" to nbt of last spawned armor stand
+		add nbt compound from "{NoGravity:1}" to nbt of last spawned armor stand
+		add nbt compound from "{NoBasePlate:1b,ShowArms:1b,Pose:{LeftLeg:[0f,0f,338f],RightLeg:[0f,0f,24f]}}" to nbt of last spawned armor stand
+		if loop-number is 1:
+			if {_v} = "mobskilled":
+				set the display name of last spawned armor stand to "&b----- TOP KILLS-----"
+			if {_v} = "deaths":
+				set the display name of last spawned armor stand to "&b----- TOP DEATHS -----"
+		else if loop-number is 12:
+			kill last spawned armor stand
+			loop all players:
+				if createTop("%{_v}%", 2000, "[P]") contains loop-player's name:
+					set {_oo::*} to createTop("%{_v}%", 2000, "[P]")
+					loop {_oo::*}:
+						if loop-value-3 = loop-player's name:
+							set {_r} to loop-index
+							if {_r} is set:
+								#spawn 1 armor stand at block above {_x}
+								#add nbt compound from "{Invisible:1}" to nbt of last spawned armor stand
+								#add nbt compound from "{NoGravity:1}" to nbt of last spawned armor stand
+								#add nbt compound from "{NoBasePlate:1b,ShowArms:1b,Pose:{LeftLeg:[0f,0f,338f],RightLeg:[0f,0f,24f]}}" to nbt of last spawned armor stand
+								if loop-value-3 is online:
+									display hologram "&7%{_r}%. &f%loop-value-3% &7- %{%{_v}%::%loop-value-3%}%" at block above {_x} to loop-value-3 for 1 minute
+								set the display name of last spawned armor stand to "&7%{_r}%. &f%loop-value-3% &7- %{%{_v}%::%loop-value-3%}%"
+								#set {_xc} to y-coordinate of last spawned armor stand
+								#set {_y} to x-coordinate of last spawned armor stand
+								#set {_z} to z-coordinate of last spawned armor stand
+								#teleport the last spawned armor stand to location({_y}, {_xc}, {_z}, world "world")
+								#add last spawned armor stand to {leaderboard::*}
+								#loop all players where [input is not loop-player-1]:
+								#	HideEntity(last spawned armor stand, loop-player-2)
+		else:
+			set {_nazw} to {_num}th element of createTop("%{_v}%", 2000, "[P]")
+			set the display name of last spawned armor stand to "&7%{_num}%. &b%{_nazw}% &7- %{%{_v}%::%{_nazw}%}%"
+		set {_xc} to y-coordinate of last spawned armor stand
+		set {_xc} to {_xc} + {_pos}
+		remove 0.25 from {_pos}
+		set {_y} to x-coordinate of last spawned armor stand
+		set {_z} to z-coordinate of last spawned armor stand
+		teleport the last spawned armor stand to location({_y}, {_xc}, {_z}, world "world")
+		add last spawned armor stand to {leaderboard::*}
+		add 1 to {_num}
+		wait 3 ticks
+#&e ##13 &7> &fnick &7(&aliczba&7)
+function hologramCreate(loc: location, n: text):
+	spawn 1 armor stand at {_loc}
+	add nbt compound from "{Invisible:1}" to nbt of last spawned armor stand
+	add nbt compound from "{NoGravity:1}" to nbt of last spawned armor stand
+	add nbt compound from "{NoBasePlate:1b,ShowArms:1b,Pose:{LeftLeg:[0f,0f,338f],RightLeg:[0f,0f,24f]}}" to nbt of last spawned armor stand
+	set the display name of last spawned armor stand to "%{_n}%"
+	add last spawned armor stand to {leaderboard::*}
+	
+function hologramStandard(loc: location, n:text):
+	spawn 1 armor stand at {_loc}
+	add nbt compound from "{Invisible:1}" to nbt of last spawned armor stand
+	add nbt compound from "{NoGravity:1}" to nbt of last spawned armor stand
+	add nbt compound from "{NoBasePlate:1b,ShowArms:1b,Pose:{LeftLeg:[0f,0f,338f],RightLeg:[0f,0f,24f]}}" to nbt of last spawned armor stand
+	set the display name of last spawned armor stand to "%{_n}%"
+	add last spawned armor stand to {standard::*}
+
+on skript load:
+	clear {-onetime}
+	#set {_loc} to location(-1207.5, 60, -1824.5, world "world")
+	#hologramStandard({_loc}, "<##78aae3>Team Aqua")
+	#set {_loc} to location(-1207.5, 60, -1805.5, world "world")
+	#hologramStandard({_loc}, "<##be6ee0>Team Poison")
+on join:
+	if amount of online players = 1:
+		if {-onetime} is not set:
+			set {-onetime} to true
+			set {_loc} to location(-1176, 64, -1829.5, world "world")
+			hologramStandard({_loc}, "   &fTOP   ")
+			set {_loc} to location(-1178, 64.5, -1841.5, world "world")
+			hologramStandard({_loc}, "   &4CE&CN&6TR&EE   ")
+			set {_loc} to location(-1180, 64, -1829.5, world "world")
+			hologramStandard({_loc}, "   &fDAILY REWARD   ")
+			set {_loc} to location(-1178, 66, -1802, world "world")
+			hologramStandard({_loc}, "   &fEVENTS   ")
+			set {_loc} to location(-1169, 66, -1815, world "world")
+			hologramStandard({_loc}, "   &fLAUNDRY   ")
+			set {_loc} to location(-1183, 66, -1815, world "world")
+			hologramStandard({_loc}, "   &fTEAMS   ")
+			set {_loc} to location(-1184, 64, -1832, world "world")
+			hologramStandard({_loc}, "     &e&l?     ")
+			set {_loc} to location(-1184, 63.75, -1832, world "world")
+			hologramStandard({_loc}, "&eClick on the item,")
+			set {_loc} to location(-1184, 63.5, -1832, world "world")
+			hologramStandard({_loc}, "&eto claim your reward.")
+			set {_loc} to location(-1184, 63.25, -1832, world "world")
+			hologramStandard({_loc}, "&eMissing a day will not")
+			set {_loc} to location(-1184, 63, -1832, world "world")
+			hologramStandard({_loc}, "&ereset the reward count.")
+			while amount of online players > 0:
+				loop {leaderboard::*}:
+					kill loop-value
+					remove loop-value from {leaderboard::*}
+					wait 1 tick
+				kill {leaderboard::*}
+				clear {leaderboard::*}
+				Leaderboard(1, "mobskilled")
+				Leaderboard(2, "deaths")
+				set {_i} to 1st element of createTop("mobskilled", 3, "[P]")
+				set {_i2} to 1st element of createTop("deaths", 3, "[P]")
+				if {first::mobskilled} is not {_i}:
+					loop {-leadnpc::*}:
+						if size of {-leadnpc::*} > 1:
+							remove citizen loop-value
+							remove loop-value from {-leadnpc::*}
+							stop loop
+					set {first::mobskilled} to {_i}
+					set {_loc} to location(-1174.5, 63.5, -1832.5, world "world")
+					create a citizen named "%{_i}%" at {_loc}
+					set {_c1} to last created citizen
+					give npc {_c1} the look close trait
+					add last created citizen to {-leadnpc::*}
+				if {first::deaths} is not {_i2}:
+					loop {-leadnpc::*}:
+						if size of {-leadnpc::*} > 1:
+							remove citizen loop-value
+							remove loop-value from {-leadnpc::*}
+							stop loop
+					set {first::deaths} to {_i2}
+					set {_loc2} to location(-1174.5, 63.5, -1826.5, world "world")
+					create a citizen named "%{_i2}%" at {_loc2}
+					set {_c1} to last created citizen
+					give npc {_c1} the look close trait
+					add last created citizen to {-leadnpc::*}
+				wait 1 minute
+on leave:
+	if amount of online players = 1:
+		kill {leaderboard::*}
+command /topka [<text>]:
+	description: Pokazuje topkę graczy w danej dziedzinie.
+	aliases: /top
+	trigger:
+		if arg-1 = "deaths" or "smierci":
+			if {language::%player%} = "English":
+				send "&7	&8&l*	&6TOP DEATHS	&8&l*	&7" to player
+			else:
+				send "&7	&8&l*	&6TOP ŚMIERCI	&8&l*	&7" to player
+				send createTop("smierci", 5, "&7[I] &6[P] &7- [V]") to player
+		if arg-1 = "kills" or "zabojstwa":
+			if {language::%player%} = "English":
+				send "&7	&8&l*	&6TOP KILLS	&8&l*	&7" to player
+			else:
+				send "&7	&8&l*	&6TOP ZABÓJSTWA	&8&l*	&7" to player
+				send createTop("mobskilled", 5, "&7[I] &6[P] &7- [V]") to player
+		if arg-1 = "poziom" or "level" or "lvl":
+			if {language::%player%} = "English":
+				send "&7	&8&l*	&6TOP LEVELS	&8&l*	&7" to player
+			else:
+				send "&7	&8&l*	&6TOP POZIOMY	&8&l*	&7" to player
+				send createTop("poziom", 5, "&7[I] &6[P] &7- [V]") to player
+on tab complete of "topka":
+	set tab completions for position 1 to "smierci", "deaths", "zabojstwa", "kills", "poziom", "level", "lvl"

@@ -1,0 +1,114 @@
+variables:
+	{stardust::%player%} = 0
+	{dziennylimit::stardust::%player%} = 0
+on rightclick on a player:
+	if clicked player's name = "Cornelia":
+		send "&fUNDER CONSTRUCTION, CHECK BACK IN A COUPLE DAYS!" to player
+		play sound "block.glass.break" with volume 1 and pitch 2 to player
+		stop
+		set {_s} to "%{stardust}'s name%u"
+		if {dialog::cornelia::%player%} is not set:
+			send "&8[<##f346d1>NPC&8] &8<<##f346d1>Cornelia&8> &fWitaj! Czy życzysz sobie wymienić swój interplanetarny %{stardust}'s name% &fna nieco bardziej fizyczną formę?" to player
+			play sound "entity.villager.yes" with volume 4 and pitch 1 to player
+			set {dialog::cornelia::%player%} to 1
+			stop
+		if {dialog::cornelia::%player%} = 1:
+			send "&8[<##f346d1>NPC&8] &8<<##f346d1>Cornelia&8> &fWspaniale! Za opłatą jednego dowolnego kamienia szlachetnego mogę dziś wymienić jeszcze <##f3d846>%{dziennylimit::stardust::%player%}% &ftwojego %{_s}%&f." to player
+			play sound "entity.villager.yes" with volume 4 and pitch 1 to player
+			wait 0.5 seconds
+			play sound "block.note_block.pling" with volume 4 and pitch 2 to player
+			send "" to player
+			send formatted "                                   <command:/stardust zaplac><tooltip:&fZapłać kamieniem szlachetnym>&a[Zapłać kamieniem szlachetnym]                                   " to player
+			send "" to player
+			stop
+		if {dialog::cornelia::%player%} = 2:
+			send "&8[<##f346d1>NPC&8] &8<<##f346d1>Cornelia&8> &fŚwietnie! Wybierz teraz ilość %{_s}% &fdo wypłaty." to player
+			play sound "entity.villager.yes" with volume 4 and pitch 1 to player
+			wait 0.5 seconds
+			play sound "block.note_block.pling" with volume 4 and pitch 2 to player
+			send "" to player
+			send formatted "                                   <command:/stardust ilosc><tooltip:&fWybierz ilość Stardustu do wymiany>&a[Wybierz ilość Stardustu do wymiany]                                   " to player
+			send "" to player
+			stop
+		if {dialog::cornelia::%player%} = 3:
+			send "&8[<##f346d1>NPC&8] &8<<##f346d1>Cornelia&8> &fOto <##f3d846>%{wyplaconost::%player%}% &ftwojego %{_s}%&f. Dziękuję za wymianę, oraz zapraszam ponownie." to player
+			play sound "entity.villager.celebrate" with volume 4 and pitch 1 at player
+			play sound "block.brewing_stand.brew" with volume 4 and pitch 1 at player
+			add {wyplaconost::%player%} to {wyplaconystardust::%player%}
+			give {wyplaconost::%player%} of {stardust} to player
+			clear {wyplaconost::%player%}
+			clear {dialog::cornelia::%player%}
+			set {_v} to 0.7
+			loop 3 times:
+				play sound "block.amethyst_block.hit" with volume 4 and pitch {_v} at player
+				add 0.4 to {_v}
+				wait 0.2 seconds
+			stop
+		
+command /stardust [<text>] [<number>]:
+	description: Wymienia twój stardust. Działa tylko u Cornelii.
+	trigger:
+		if arg-1 is "wymiana":
+			if {stardust::%player%} > 0:
+				broadcast "b"
+			else:
+				send "%{stardust}'s name% &c>>> Nie posiadasz żadnego Stardustu." to player
+				play sound "block.chest.close" with volume 4 and pitch 0 to player
+		if arg-1 is "zaplac":
+			set {_x} to 0
+			set metadata tag "twojekamienie" of player to chest inventory with 6 rows named "Wybierz kamień szlachetny"
+			loop all items in the inventory of player:
+				if {kamieniesz::*} contains 1 of loop-value:
+					set slot {_x} of (metadata tag "twojekamienie" of player) to 1 of loop-value
+					add 1 to {_x}			
+			if {_x} = 0:
+				send "%{stardust}'s name% &c>>> Nie posiadasz żadnych kamieni szlachetnych w ekwipunku." to player
+				play sound "block.chest.close" with volume 4 and pitch 0 to player
+				stop
+			wait 3 ticks
+			open (metadata tag "twojekamienie" of player) to player		
+		if arg-1 is "ilosc":
+			if {stardust::%player%} > 0:
+				send "%{stardust}'s name% &a>>> Wybierz ilość Stardustu do wypłaty wpisując dowolną liczbę na czacie. Pamiętaj że możesz na ten moment wymienić możesz go jeszcze &f%{dziennylimit::stardust::%player%}%&a." to player
+				play sound "entity.player.levelup" with volume 4 and pitch 1 at player
+				set {stardustwyplata::%player%} to true
+			else:
+				send "%{stardust}'s name% &c>>> Nie posiadasz żadnego Stardustu." to player
+				play sound "block.chest.close" with volume 4 and pitch 0 to player
+on inventory click:
+	if player's current inventory is (metadata tag "twojekamienie" of player):
+		cancel event
+		set {_x} to clicked slot's name
+		remove 1 of clicked slot from player's inventory
+		teleport the player to player's location
+		send "%{stardust}'s name% &a>>> Zapłaciłeś/-aś jednym %{_x}%em &aCornelii." to player
+		play sound "entity.player.levelup" with volume 4 and pitch 2 to player
+		set {dialog::cornelia::%player%} to 2
+on inventory close:
+	if player's current inventory is (metadata tag "twojekamienie" of player):
+		clear (metadata tag "twojekamienie" of player)
+on chat:
+	if {stardustwyplata::%player%} is true:
+		set {_z} to message
+		set {_x} to {_z} parsed as integer
+		if {_x} is an integer:
+			if {_x} > 0:
+				cancel event
+				if {_x} is not bigger than {dziennylimit::stardust::%player%}:
+					remove {_x} from {stardust::%player%}
+					remove {_x} from {dziennylimit::stardust::%player%}
+					clear {stardustwyplata::%player%}
+					send "%{stardust}'s name% &a>>> Wypłacono &f%{_x}% &aStardustu. Kliknij ponownie na Cornelię, by go odebrać." to player
+					play sound "entity.villager.celebrate" with volume 4 and pitch 1 to player
+					set {wyplaconost::%player%} to {_x}
+					set {dialog::cornelia::%player%} to 3
+				else:
+					send "%{stardust}'s name% &c>>> Liczba musi być mniejsza niż twój dzienny limit wynoszący &f%{dziennylimit::stardust::%player%}%&c." to player
+					play sound "block.chest.close" with volume 4 and pitch 0 to player
+			else:
+				send "%{stardust}'s name% &c>>> Liczba musi wynosić więcej niż 0." to player
+				play sound "block.chest.close" with volume 4 and pitch 0 to player
+		else:
+			cancel event
+			send "%{stardust}'s name% &c>>> Wiadomość musi być liczbą." to player
+			play sound "block.chest.close" with volume 4 and pitch 0 to player

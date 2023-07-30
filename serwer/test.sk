@@ -1,0 +1,656 @@
+every 1 hour:
+	set {_x} to block at location(-1234, 81, -1839, world "world")
+	loop all players:
+		display hologram "<##e64937>Stelarna Skrzynka" at block above {_x} to loop-player for 1 hour
+	loop 2880 times:
+		draw 15 of dust_color_transition using dustTransition(red, white, 1) at location of {_x} with offset vector(0.6, 0.3, 0.6)
+		wait 0.8 second
+command /partci:
+	trigger:
+		set {_x} to block at location(-1234.5, 80.5, -1839.5, world "world")
+		set {_y} to 0
+		loop 1000 times:
+			loop 120 times:
+				set {_v} to vector 1, 0, 1
+				rotate {_v} around y-axis by {_y}
+				add 4 to {_y}
+				draw 1 of dust using dustOption(red, 1) at {_x} ~ {_v}
+				wait 1 tick
+command /daj12 [<player>]:
+	trigger:
+		#loop 10 times:
+		#	spawn 1 zombie at player
+		#	set max health of last spawned zombie to 200
+		#	heal last spawned zombie
+		#	set helmet of last spawned zombie to magenta stained glass
+		#	set {mob::%last spawned zombie%} to true
+		#set {_x} to "pehrek" parsed as player
+		#loop all blocks in radius 100 around {_x}:
+		#	if loop-block is barrel:
+		#		loop all items in the inventory of loop-block:
+		#			broadcast loop-value-2
+		#			wait 1 tick
+		#broadcast uuid of target entity
+		#set {_x} to "9f4a2d79-828c-21be-a3c6-df116f91f2e0" parsed as entity
+		#set {_r} to block at location(1108, 63, -2675, world "world")
+		#set metadata tag "enderchest" of player to chest inventory with 3 rows named {nameenderchest::5::nishikoru}
+		#loop 27 times:
+		#	set slot (loop-number - 1) of metadata tag "enderchest" of player to {enderchest::5::%loop-number%::nishikoru}
+		#open metadata tag "enderchest" of player to player
+		#set {agnesstop} to true
+		#wait 5 seconds
+		#clear {agnesstop}
+		#set {_id} to line 18 of lore of {karta::Wuuzurd}
+		#set {expkarta::%{_id}%} to "MAX"
+		#remove 2 from {poziomkarta::%{_id}%}
+		#add 12100 to {expkartaabovelimit::%{_id}%}
+		#remove 7 from {mistrzostwo::%{_id}%}
+		#remove 7 from {pospiech::%{_id}%}
+		#remove 7 from {obrazenia::%{_id}%}
+		#loop all items in the inventory of arg-1:
+		#	if name of loop-item contains "Ghazan":
+		#		set line 2 of lore of loop-item to "&7Level: <##b03228>60 &7| &7Exp: <##b03228>MAX"
+		#set {agnesstop} to true
+		#loop all entities in radius 200 around arg-1:
+		#	if {mob::%loop-entity%} is true:
+		#		#set loop-entity's max health to 20000
+		#		#heal loop-entity
+		#		#set loop-entity's health to 13711.71
+		#		broadcast health of loop-entity
+		send "" to player
+on mine:
+	if enchant level of player's tool > 5:
+		enchant player's tool with "efficiency 5" parsed as enchantment type
+on load:
+	Agnes()
+
+function Agnes():
+	set {_x} to "9f4a2d79-828c-21be-a3c6-df116f91f2e0" parsed as entity
+	equip citizen 6512 with a diamond pickaxe
+	execute console command "npc select 6512"
+	while {_x} is alive:
+		loop all blocks in radius 4 around {_x}:
+			if y-coordinate of loop-block > y-coordinate of {_x}:
+				if loop-block is stone:
+					if y-coordinate of loop-block = (y-coordinate of {_x} + 0.5):
+						set {_xc} to x-coordinate of loop-block
+						set {_yc} to y-coordinate of loop-block
+						set {_zc} to z-coordinate of loop-block
+						#if {_x}'s horizontal facing is north:
+						#	remove 1 from {_zc}
+						#if {_x}'s horizontal facing is east:
+						#	add 1 to {_xc}
+						#if {_x}'s horizontal facing is west:
+						#	remove 1 from {_xc}
+						#if {_x}'s horizontal facing is south:
+						#	add 1 to {_zc}
+						#execute console command "npc pathto %{_xc}% %{_yc}-1% %{_zc}%"
+						move citizen 6512 to location of loop-block at speed 1
+					make citizen 6512 look at loop-block
+					set {_block} to true
+					wait 2 ticks
+					make {_x} break loop-block
+					stop loop
+				if loop-block is dirt or gravel:
+					make citizen 6512 look at loop-block
+					set {_block} to true
+					make {_x} break loop-block
+					stop loop
+		#set {_xc} to (rounded down x-coordinate of block in front of {_x})
+		#set {_yc} to (rounded down y-coordinate of block in front of {_x})
+		#set {_zc} to (rounded down z-coordinate of block in front of {_x})
+		#execute console command "npc pathto %{_xc}% %{_yc}% %{_zc}%"
+		if block under block in front of {_x} is not air:
+			if block under block in front of {_x} is not solid:
+				make {_x} swing their main hand
+				set block at block under block in front of {_x} to cobblestone
+				remove 1 cobblestone from {_x}
+		PlaceTorch({_x})
+		if {_x} is alive:
+			if {engagedc::%{_x}%} is set:
+				if cooldown "spectrallightning%{_x}%" is finished:
+					create cooldown "spectrallightning%{_x}%" for 20 seconds
+					AgnesLightning({_x})
+		stop loop if {agnesstop} is true
+		if {_block} is set:
+			wait 1 second
+		else:
+			wait 3 seconds
+function PlaceTorch(e: entity):
+	chance of 2%:
+		if block at {_e} is air:
+			if block west of block at {_e} is not torch:
+				if block east of block at {_e} is not torch:
+					if block north of block at {_e} is not torch:
+						if block south of block at {_e} is not torch:
+							if block under {_e} is stone:
+								set block at {_e} to torch
+								make {_e} swing their hand
+function AgnesLightning(e: entity):
+	loop 10 times:
+		if {_e} is alive:
+			execute console command "npc sneak"
+			AgnesCynder({_e})
+			wait 0.5 seconds
+			execute console command "npc sneak"
+			wait 1 second
+function AgnesCynder(e: entity):
+	play sound "entity.lightning_bolt.thunder" with volume 5 and pitch 2 at {_e}
+	loop all entities in radius 10 around {_e}:
+		if {mob::%loop-entity%} is true:
+			add loop-entity to {_targs::*}
+	set {_dmg} to (1 + {obrazenia::%{_e}%}/400 + {uniwersalnosc::%{_e}%}/1200)
+	loop {_targs::*}:
+		set {lastdmgcause::%loop-value%} to "<##7430ab>Widmowe Błyskawice"
+		set {lastdmgcauseEN::%loop-value%} to "<##7430ab>Spectral Lightning"
+		set loop-value's last damage cause to sweep attack
+		set {lastdmgcauselore::%loop-value%::*} to "&8Umiejętność" and "&fInstant cast" and "&7Cooldown: &f20 sekund" and "&7Użycie: &fPPM" and "<##7430ab>Razi pobliskich wrogów w zasięgu &f10 <##7430ab>kratek serią" and "<##7430ab>błyskawic, zadając &f1 <##7430ab>obrażeń na błyskawicę." and "<##7430ab>Cynder może powtórzyć tę umiejętność maksymalnie" and "&f10 <##7430ab>razy zanim wejdzie na cooldown."
+		set {lastdmgcauseloreEN::%loop-value%::*} to "&8Ability" and "&fInstant cast" and "&7Cooldown: &f20 seconds" and "&7Use: &fRNB" and "<##7430ab>Shocks enemies in radius of &f10 <##7430ab>blocks" and "<##7430ab>with bolts of lightning, dealing &f1 <##7430ab>damage per lightning." and "<##7430ab>Cynder can repeat this ability up to" and "&f10 <##7430ab>times before it goes on cooldown."
+		make {_e} damage loop-value by 2*({_dmg})
+	loop random number between 3 and 5 times:
+		set {_counter} to 1
+		loop random number between 1 and 4 times:
+			set {_loc%{_counter}%} to location of block at {_e}'s head
+			increase {_counter} by 1
+			loop 10 times:
+				loop 10 times:
+					play 2 black dust with speed 0 at {_loc1}
+					play 1 purple dust with speed 0 at {_loc1}
+					increase x-coordinate of {_loc1} by random number between random number between 0 and -0.32 and random number between 0 and 0.40
+					increase y-coordinate of {_loc1} by random number between random number between 0 and -0.19 and random number between 0 and 0.15
+					increase z-coordinate of {_loc1} by random number between random number between 0 and -0.32 and random number between 0 and 0.40
+					
+#on load:
+#	Agnes()
+#on death:
+#	if attacker is a player:
+#		if attacker's name contains "agnes":
+#			clear {agnesstop}
+#			Agnes()
+		#make {_x} pathfind to {_r} at speed 1
+		#make {_x} break target block
+command /daj11 [<text>] [<number>]:
+	trigger:
+		#drop 1 {stardust} at ("limenatte" parsed as player)
+		#add " " to lore of player's tool
+		#add "&7Upgraded: &8(&f&l✮✮✮✮✮&8)" to lore of player's tool
+		#stop
+		#loop all entities in radius 20 around the player:
+		#	if loop-entity is a skeleton:
+		#		kill loop-entity
+		#add "Vaporeon" to {kolekcja::karty::%player%::*}
+		#clear {heartofec::%arg-1%}
+		#clear {magnitalk::%arg-1%}
+		#stop
+		#add 2 to {itemlevelheart::%arg-1%}
+		#add 2 to {itemlevelheart::Wuuzurd}
+		#loop all players in radius 10 around the player:
+		#	if name of loop-player = "agnes":
+		#		apply levitation 1 without particles to loop-player for 1 second
+		#loop 27 times:
+		#	send {enderchest::%arg-2%::%loop-number%::%arg-1%} to player
+		send "s"
+		stop
+		#clear {magnitalk::%player%}
+		#set {heartlevel::%player%} to 0
+		#loop {traits::Vaporeon::*}:
+		#	if {trait::Vaporeon::%loop-value%::%player%} < 4:
+		#		set {_trait} to "%loop-value%"
+		#		if {trait::Vaporeon::%loop-value%::%player%} is not set:
+		#			set {_color} to "<##00ff00>%{_trait}%" 		#RANK 1
+		#		add 1 to {trait::Vaporeon::%loop-value%::%player%}
+		#		send "&8[&6Earthcraft&8] &6Odblokowano trait: &f%{%{_trait}%}% %{_color}%&6! &6(<##7cafbf>Vaporeon&6)" to player
+		#		play sound "entity.player.levelup" with volume 5 and pitch 1.2 at player
+		#loop all offline players:
+		#	set {dziennylimit::stardust::%loop-offline player%} to {poziom::%loop-offline player%}
+		#	if {dailyready::%loop-offline player%} = true:
+		#		set {dailystreak::%loop-offline player%} to 0
+		#	else:
+		#		set {dailyready::%loop-offline player%} to true
+		#		if {dailynagroda::%loop-offline player%} < 7:
+		#			add 1 to {dailynagroda::%loop-offline player%}
+		#		else:
+		#			set {dailynagroda::%loop-offline player%} to 1
+		#	set {dresetwiad::%loop-offline player%} to true
+		#clear {trait::Vaporeon::Cascade::%player%}
+		
+		#loop all offline players:
+		#	if {dailystreak::%loop-offline player%} is set:
+		#		if {dailystreak::%loop-offline player%} is not 0:
+		#			add 1 to {dailynagroda::%loop-offline player%}
+		
+		#wait 2 seconds
+		#clear {poziommob::*}
+		#wait 2 seconds
+		#		
+		#		
+		##loop {mob::*}
+		#
+		#
+		#stop
+		#loop {expyield::*}:
+		#	broadcast loop-value
+		#	if {_loo} = 5:
+		#		stop
+		#{mob::%{_e}%}
+		#give black shulker box to arg-1
+		#ive 1 diamond shovel of unbreaking 500 and efficiency 5 named "<##4096b3>Łopata do Spleefa" with lore "&8Eventy" and "&7Wykopuje blok śniegu, oraz" and "&7zapewnia jedną śnieżkę za każdy blok." to player
+		#give 1 leather boots of unbreaking 300 named "<##52302e>Buty do Spleefa" with lore "&8Eventy" and "&7Buty przeznczone do gry w spleefa." to player
+		#give 1 leather boots of unbreaking 300 named "<##52302e>Buty do TNT Run" with lore "&8Eventy" and "&7Buty przeznczone do gry w TNT run." to player
+		#give 1 end stone bricks of unbreaking 25 named "<##c9b783>Kostka do Grania w Kolorki" with lore "&8Eventy" and "&7Kostka losuje kolorek, następnie" and "&7wyświetlając wiadomość na czacie." to player
+		#clear {walka}
+		#loop all players:
+		#	loop all items in the inventory of loop-player:
+		#		if loop-player contains diamond shovel:
+		#			if line 1 of lore of loop-item = "&8Eventy":
+		#				remove loop-item from player
+		#				send ":)" to loop-player
+		#		if loop-item = leather boots:
+		#			if line 1 of lore of loop-item = "&8Eventy":
+		#				remove loop-item from player
+		#				send ":)" to loop-player
+		#clear {engagedc::%arg-1%}
+		#stop
+		#loop all blocks in radius 200 around 
+		#add nbt from "{NoAI:1}" to nbt of target entity
+		#set {magni::%target player%} to true
+		#set {trait::Vaporeon::Heavy Bubbles::%arg-1%} to 1
+		#loop all offline players:
+		#	remove {kolekcja::karty::%loop-offline player%::*} from {nagrodalvl::karta::%loop-offline player%}
+		#set {losowekarty::%arg-1%::1} to  cyan glass pane named "<##7cafbf>Vaporeon" with lore "<##7cafbf>Vaporeon &7is a versatile healer able to manipulate water%nl%&7and use it to heal and shield allies.%nl%&7His powerful healing cooldown reverses%nl%&7all shields, both allies' and enemies', to healing%nl%&7making him incredible at burst healing his targets." with nbt from "{CustomModelData:5}"
+		#set {_x} to {traits::%{kartaname::%arg-1%}%::3}
+		#if {trait::%{kartaname::%arg-1%}%::%{_x}%::%arg-1%} = 1:
+		#	set {_color} to "<##00ff00>%{_x}%"
+		#if {trait::%{kartaname::%arg-1%}%::%{_x}%::%arg-1%} = 2:
+		#	set {_color} to "<##0070dd>%{_x}%"
+		#if {trait::%{kartaname::%arg-1%}%::%{_x}%::%arg-1%} = 3:
+		#	set {_color} to "<##a335ee>%{_x}%"
+		#if {trait::%{kartaname::%arg-1%}%::%{_x}%::%arg-1%} = 4:
+		#	set {_color} to "<##ff8000>%{_x}%"
+		#set line 8 of lore of arg-1's chestplate to "&f%{%{_x}%}% %{_color}%"
+		#set {_id} to line 18 of lore of {karta::%arg-1%}
+		#broadcast {trait::%{_id}%::1}
+		#add "Ghazan" to {kolekcja::karty::%arg-1%::*}
+		#loop 12 times:
+		#	broadcast {hearttrait::%arg-1%::%loop-number%} and loop-number
+		#clear {engagedc::%arg-1%}
+		#loop 27 times:
+		#	send {enderchest::5::%loop-number%::%arg-1%} to player
+		broadcast (3/1.058 rounded to 1 decimal place)
+		stop
+		set {_azerite} to 10400
+		loop ({heartlevel::%arg-1%}-14) times:
+			set {_azerite} to ({_azerite}*1.3)/50
+			set {_rawnumber} to rounded down {_azerite}
+			set {_number} to {_azerite} - {_rawnumber}
+			if {_number} > 0.45:
+				set {_azerite} to (rounded up {_azerite})*50
+			else:
+				set {_azerite} to (rounded down {_azerite})*50
+		broadcast {_azerite}
+		broadcast {heartlevel::Wuuzurd}
+		#give arg-1 magma cream named "<##b03228>Lava Surge" with lore "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &fnone%nl%&7Use: &fPassive%nl%<##b03228>Your Molten Lava damage has a &f%{_chance}%%%%nl%<##b03228>chance to grant you Lava Burst and cause%nl%<##b03228>your next Lava Burst to be instant." with nbt from "{CustomModelData:1}"
+		#give arg-1 red dye named "<##b03228>Lava Burst" with lore "&8Ability%nl%&f%{_casttime}% second cast%nl%&7Cooldown: &f%{_cdd}% seconds%nl%&7Use: &fRMB%nl%<##b03228>Hurls molten lava at the target, dealing%nl%&f%{_damage}% <##ff4d00>Lava <##b03228>damage.%nl%<##b03228>Lava Burst will always critically strike%nl%<##b03228>if the target is in Molten Lava." with nbt from "{CustomModelData:5}"
+		#give arg-1 orange dye named "<##b03228>Molten Lava" with lore "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdd}% seconds%nl%&7Use: &fRMB%nl%<##b03228>Turns target terrain into molten lava.%nl%<##b03228>Enemies standing in Molten Lava receive &f%{_damage}%%nl%<##ff4d00>Lava <##b03228>damage every &f%{_wait}%<##b03228>." with nbt from "{CustomModelData:8}"
+		#give arg-1 blaze powder named "<##b03228>Rain of Lava" with lore "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdd}%%nl%&7Use: &fRMB%nl%<##b03228>Ghazan creates a display of his skill,%nl%<##b03228>throwing himself in the air and continously%nl%<##b03228>firing Lava Burst at nearby enemies for &f%{_wait}% seconds<##b03228>." with nbt from "{CustomModelData:4}"
+		#if {_x} = "Glaceon":
+		#	set {_trait} to "Flash Freeze"
+		#	set {_color} to "<##4bbfe2>%{_x}%"
+		#if {_x} = "Vaporeon":
+		#	set {_trait} to "Bound Molecules"
+		#	set {_color} to "<##7cafbf>%{_x}%"
+		#if {_x} = "Umbreon":
+		#	set {_trait} to "Shadow Cloak"
+		#	set {_color} to "<##1a1a1a>%{_x}%"
+		#send "<##7aa7f5>&8[<##7aa7f5>NPC&8] &8<<##7aa7f5>Magni&8> <##7aa7f5>&o*Magni infuses your <##e8ce81>&oHeart of Earthcraft <##7aa7f5>&owith %{_trait}%.*" to arg-1
+		#if {trait::%{_x}%::%{_trait}%::%arg-1%} is not set:
+		#	if {trait::%{_x}%::%{_trait}%::%arg-1%} is not set:
+		#		set {_color2} to "<##00ff00>%{_trait}%" 		#RANK 1
+		#	add 1 to {trait::%{_x}%::%{_trait}%::%arg-1%}
+		#	if {language::%arg-1%} = "English":
+		#		send "&8[&6Earthcraft&8] &6Unlocked trait: &f%{%{_trait}%}% %{_color2}%&6! &6(%{_color}%&6)" to arg-1
+		#	else:
+		#		send "&8[&6Earthcraft&8] &6Odblokowano trait: &f%{%{_trait}%}% %{_color2}%&6)" to arg-1
+		#	play sound "entity.arg-1.levelup" with volume 5 and pitch 1.2 at arg-1
+		#set {_id} to line 18 of lore of {karta::%arg-1%}
+		#remove 12 from {dostepnestaty::%{_id}%}
+		#set line 15 of lore of arg-1's chestplate to "&7- Unlocked at Heart Level 54"
+		#clear {hearttrait::%arg-1%::8}
+		stop
+		#broadcast max health of arg-1
+		#loop all offline players:
+		#	set {_id} to line 18 of lore of {karta::%loop-offline player%}
+		#	clear {dostepnestaty::%{_id}%}
+		#	loop {poziomkarta::%{_id}%} times:
+		#		add 1 + (rounded down (loop-number/10)) to {dostepnestaty::%{_id}%}
+		#stop
+		#set {_x} to "Glaceon"
+		#set {_trait} to "Flash Freeze"
+		#set {_color} to "<##4bbfe2>%{_x}%"
+		#clear {trait::%{_x}%::%{_trait}%::%arg-1%}
+		#send "<##7aa7f5>&8[<##7aa7f5>NPC&8] &8<<##7aa7f5>Magni&8> <##7aa7f5>&o*Magni infuses your <##e8ce81>&oHeart of Earthcraft <##7aa7f5>&owith %{_trait}%.*" to arg-1
+		#if {trait::%{_x}%::%{_trait}%::%arg-1%} is not set:
+		#	if {trait::%{_x}%::%{_trait}%::%arg-1%} is not set:
+		#		set {_color2} to "<##00ff00>%{_trait}%" 		#RANK 1
+		#	add 1 to {trait::%{_x}%::%{_trait}%::%arg-1%}
+		#	if {language::%arg-1%} = "English":
+		#		send "&8[&6Earthcraft&8] &6Unlocked trait: &f%{%{_trait}%}% %{_color2}%&6! &6(%{_color}%&6)" to arg-1
+		#	else:
+		#		send "&8[&6Earthcraft&8] &6Odblokowano trait: &f%{%{_trait}%}% %{_color2}%&6)" to arg-1
+		#	play sound "entity.arg-1.levelup" with volume 5 and pitch 1.2 at arg-1
+		#stop
+					
+		#loop all entities in radius 200 around arg-1:
+		#	if loop-entity is an zombified piglin:
+		#		if {mob::%loop-entity%} is not true:
+		#			kill loop-entity
+		#
+		#clear {mob::%{_e}%}
+		#clear {mobdmg::%{_e}%}
+		#clear {poziommob::%{_e}%}
+		#stop
+		
+		#if {language::%arg-1%} = "English":
+		#	#set {_booster} to a random element of {boosteryEN::*}
+		#	set {_booster} to {boostersecretwondersEN}
+		#	drop {_booster} at arg-1
+		#	play sound "block.lava.pop" with volume 3 and pitch 1 at arg-1
+		#	send "<##f0cc9e> Daily Reward>>> &fClaimed %{_booster}'s name%&f! Wróć kolejnego dnia po następną niespodziankę!" to arg-1
+		#else:
+		#	#set {_booster} to a random element of {boostery::*}
+		#	set {_booster} to {boostersecretwonders}
+		#	drop {_booster} at arg-1
+		#	play sound "block.lava.pop" with volume 3 and pitch 1 at arg-1
+		#	send "<##f0cc9e> Dzienna Nagroda >>> &fOdebrano %{_booster}'s name%&f! Wróć kolejnego dnia po następną niespodziankę!" to arg-1
+		stop
+		set {_block} to block 2 blocks east of block at location(-1185.5, 63.5, -1829.5, world "world")
+		spawn 1 armor stand at {_block}
+		add nbt from "{Invisible:1}" to nbt of last spawned armor stand
+		add nbt from "{NoGravity:1}" to nbt of last spawned armor stand
+		add nbt from "{NoBasePlate:1b,ShowArms:1b,Pose:{LeftLeg:[0f,0f,338f],RightLeg:[0f,0f,24f]}}" to nbt of last spawned armor stand
+		set the display name of last spawned armor stand to "&5Random Booster"
+		set {_x} to y-coordinate of last spawned armor stand
+		set {_x} to {_x} - 2
+		set {_y} to x-coordinate of last spawned armor stand
+		set {_z} to z-coordinate of last spawned armor stand
+		teleport the last spawned armor stand to location({_y}, {_x}, {_z}, world "world")
+		spawn 1 armor stand at {_block}
+		set helmet of last spawned armor stand to glass pane
+		add nbt from "{Invisible:1}" to nbt of last spawned armor stand
+		add nbt from "{NoGravity:1}" to nbt of last spawned armor stand
+		add nbt from "{NoBasePlate:1b,ShowArms:1b,Pose:{LeftLeg:[0f,0f,338f],RightLeg:[0f,0f,24f]}}" to nbt of last spawned armor stand
+		add nbt from "{Rotation:[0.0f,0.0f], Pose:{Head:[0.0f,90.0f,0.0f]}}" to nbt of last spawned armor stand
+		set {_x} to y-coordinate of last spawned armor stand
+		set {_x} to {_x} - 1.25
+		set {_y} to x-coordinate of last spawned armor stand - 0.4
+		set {_z} to z-coordinate of last spawned armor stand
+		teleport the last spawned armor stand to location({_y}, {_x}, {_z}, world "world")
+		set {_stand} to last spawned armor stand
+		spawn 1 armor stand at {_block}
+		add nbt from "{Invisible:1}" to nbt of last spawned armor stand
+		add nbt from "{NoGravity:1}" to nbt of last spawned armor stand
+		add nbt from "{NoBasePlate:1b,ShowArms:1b,Pose:{LeftLeg:[0f,0f,338f],RightLeg:[0f,0f,24f]}}" to nbt of last spawned armor stand
+		set the display name of last spawned armor stand to "<##00ff2a><Click to open>"
+		set {_x} to y-coordinate of last spawned armor stand
+		set {_x} to {_x} - 2.25
+		set {_y} to x-coordinate of last spawned armor stand
+		set {_z} to z-coordinate of last spawned armor stand
+		teleport the last spawned armor stand to location({_y}, {_x}, {_z}, world "world")
+		
+ 		
+		
+		#broadcast type of player's tool
+		#set {_karta} to {umbreonstarterEN}
+		#set {_y} to data()
+		#set {_id} to random 8 char string from charset `0-9` `a-z`
+		#add "&8Id: %{_id}%" to lore of {_karta}
+		#add "&8Dropped: %{_y}%" to lore of {_karta}
+		#give {_karta} to arg-1
+		
+		#set {_x} to "glow ink sac" parsed as item
+		#give arg-1 {_x} named "<##1a1a1a>End Game" with lore "&8Umiejętność%nl%&fInstant cast%nl%&7Cooldown: &f10 minut%nl%&7Użycie: &fPPM%nl%<##1a1a1a>Umbreon wykańcza wszystkich przeciwników%nl%<##1a1a1a>poniżej &f25%% <##1a1a1a>zdrowia w ogromnym zasięgu.%nl%<##1a1a1a>Wszyscy przeciwnicy w zasięgu zostają zostają oślepieni%nl%<##1a1a1a>na &f10 sekund<##1a1a1a>." with nbt from "{CustomModelData:1}"
+		#give arg-1 {_x} named "<##1a1a1a>End Game" with lore "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &f10 minutes%nl%&7Use: &fRMB%nl%<##1a1a1a>Umbreon executes all enemies below%nl%<##1a1a1a>&f25%% <##1a1a1a>health in an enormous radius.%nl%<##1a1a1a>All enemies in range are blinded for &f10 seconds<##1a1a1a>." with nbt from "{CustomModelData:1}"
+		
+		#set {language::Shiryou} to "English"
+		
+		#loop all living entities in radius 20 around the player:
+		#	teleport loop-entity to location(3496006.5, 176, 2258, world "world")
+		#remove 1 note block from arg-1
+		#give {skrzynkaEN} to arg-1
+		#set {_loc} to location(-996.611, 36, -1940.505, world "world")
+		#teleport arg-1 to {_loc}
+		
+		#loop all players:
+		#	execute player command "spawnpoint %loop-player%"
+		#stop
+		#set {_karta} to {glaceonstarterEN}
+		#set {_y} to data()
+		#set {_id} to random 8 char string from charset `0-9` `a-z`
+		#add "&8Id: %{_id}%" to lore of {_karta}
+		#add "&8Wydropiono: %{_y}%" to lore of {_karta}
+		#give {_karta} to arg-1
+		
+		#set {_x} to "Pehrek" parsed as player
+		#loop all entities in radius 5 around {_x}:
+		#	if loop-entity is not a player:
+		#		set {mob::%loop-entity%} to true
+		
+		
+		#set {_list::*} to "" and "" and " " and "" and ""
+		#loop all players in radius 10 around the player:
+		#	if loop-player is not player:
+		#		set {_t} to a random element of {_list::*}
+		#		remove {_t} from {_list::*}
+		#		set {ikonkakarta::%loop-player%} to {_t}
+		#		set {kartacolor::%loop-player%} to "&f"
+		#execute console command "npc select 5903"
+		#execute console command "npc vulnerable"
+		#execute console command "trait add sentinel"
+		#execute console command "sentinel addtarget zombie"
+		#wait 1 tick
+		#execute console command "npc select 5905"
+		#execute console command "npc vulnerable"
+		#execute console command "trait add sentinel"
+		#execute console command "sentinel addtarget zombie"
+		#wait 1 tick
+		#execute console command "npc select 5906"
+		#execute console command "npc vulnerable"
+		#execute console command "trait add sentinel"
+		#execute console command "sentinel addtarget zombie"
+		#wait 1 tick
+		#execute console command "npc select 5907"
+		#execute console command "npc vulnerable"
+		#execute console command "trait add sentinel"
+		#execute console command "sentinel addtarget zombie"
+		#broadcast createTop("healed", 5, "[P]")
+		stop
+		#set {_r} to "limenatte" parsed as player
+		#spawn 1 bat at {_r}
+		#set {_b} to last spawned bat
+		#set {_u} to uuid of {_b}
+		#execute console command "/disguuid %{_u}% boat"
+		#while {_b} is alive:
+		#	set {_c} to a random integer between 0 and 2
+		#	play sound "entity.cat.purreow" with volume 5 and pitch {_c} at {_r}
+		#	wait 5 seconds
+		#clear {kliknieteazeritequest::%player%::*}
+		#clear {heartofec::%player%}
+		#clear {engagedc::%player%}
+		#clear {azerite::%player%}
+		#set {azeritequest::%player%} to true
+		#clear {stun::%player%}
+		#clear {magnitalk::%player%}
+		#if {heartlevel::%player%} = 86:
+		#HeartLevelup(player, 199)
+		#	set {heartlevel::%player%} to 1
+		#HeartLevelup(player, 400)
+		#HeartLevelup(player, 500)
+		#HeartLevelup(player, 600)
+		#HeartLevelup(player, 650)
+		#HeartLevelup(player, 750)
+		#HeartLevelup(player, 3000)
+		send player toast "&6Test" with icon glowing diamond pickaxe and frame goal
+		stop
+		add "Delphox" to {kolekcja::karty::%player%::*}
+		#send player title "&f <##e8ce81>Heart of Earthcraft" with subtitle "     <##00ff00>Power Increased <##00ff00>to Level 1" for 4 seconds with 1 second fade in and 1 second fade out
+		stop
+		set {_loc} to location(-1207.5, 60, -1824.5, world "world")
+		hologramStandard({_loc}, "<##78aae3>Team Aqua")
+		set {_loc} to location(-1207.5, 60, -1805.5, world "world")
+		hologramStandard({_loc}, "<##be6ee0>Team Poison")
+		#spawn 1 zombie at player
+		#set {mob::%last spawned zombie%} to true
+		#set helmet of last spawned zombie to light blue glass pane
+		#stop
+		loop all entities in radius 20 around the player:
+			if {mob::%loop-entity%} is true:
+				teleport loop-entity to location(3496006, 180, 2258, world "world")
+			#set {_id} to line 18 of lore of {karta::%player%}
+			#set {poziomkarta::%{_id}%} to 24
+			#set {_h} to 3
+			#loop 10 times:
+			#	set {raregem::%{_id}%::%{_h}%} to true
+			#	add 1 to {_h}
+		#spawn 1 bat at player
+		#apply invisibility 1 without particles to last spawned bat for 10 hours
+		#silence last spawned bat
+		#set {_u} to uuid of last spawned bat
+		#execute console command "/disguuid %{_u}% testtest"
+		#set {_bat} to last spawned bat
+		#while {_bat} is alive:
+		#	set {_p} to a random number between 0 and 2
+		#	play sound "entity.cat.purreow" with volume 5 and pitch {_p} at {_bat}
+		#	wait 5 seconds
+		#set line 5 of lore of player's tool to "&fJakość: &e★★★"
+		#spawn 1 skeleton at player
+		#set {mob::%last spawned skeleton%} to true
+		#set max health of last spawned skeleton to 25
+		#heal last spawned skeleton
+		#set the name of last spawned skeleton to "straszny szkielet"
+		
+command /test:
+	trigger:
+		create a citizen named "Radek" at location 1 metre above player's head
+		set {_x} to last created citizen
+		give npc {_x} the look close trait
+		set {_r} to last spawned entity
+		set max health of {_x} to 50
+		execute console command "npc select %{_x}%"
+		execute console command "trait sentinel"
+		execute console command "sentinel realistic true"
+		execute console command "sentinel damage 2"
+		#execute console command "sentinel addtarget players"
+		execute console command "sentinel addtarget mobs"
+		execute console command "sentinel attackrate 0.5"
+		execute console command "sentinel addavoid player:%player%"
+		#execute console command "sentinel guard %player%"
+		execute console command "sentinel speed 0.75"
+		execute console command "sentinel reach 6"
+		execute console command "npc skin --url https://i.imgur.com/J97iK7z.png"
+		wait 3 seconds
+		set {_x} to target of player
+		set {ikonkakarta::%{_x}%} to ""
+		#drawComplexSpiral particle "redstone", center player, id "%player%", rainbowMode true, clockwise true, scan true, radius 0.5, density 20, height 30, effectMod 0.2, start 20, visibleRange 30
+		#wait 10 seconds
+		#broadcast "%{naszyjnikstat3::%line 17 of lore of player's held item%}%"
+		#broadcast "%{naszyjnikstat2::%line 17 of lore of player's held item%}%"
+		#broadcast "%{naszyjnikstat1::%line 17 of lore of player's held item%}%"
+		#set {_dur} to 2
+		#set {startowakarta::%player%} to false
+		#set {_x} to name of {szafir}
+		#broadcast "%nbt compound of player's tool%"
+		#set {_x} to target block
+		broadcast "%{bursztyny::limenatte}%"
+		#set {_y} to stone named "&7Kamień" with lore "&7Częstotliwość wypadania
+		#give lapis lazuli named {_x} with lore "&8Kamień Szlachetny" and "&7Częstotliwość wypadania: &f0.3%%" and "&7[&e&l✰&8&l✰✰&7]" with nbt compound from "{CustomModelData:2}" to player
+		#give fishing rod named "<##8f6a51>Stara Wędka" with lore "&8Narzędzie" and "&7Stara, prawie zepsuta wędka." and "&7Pozwala na łowienie ryb." and "&7Max. Punkty Użytku: %{_dur}%" and "&7Punkty Użytku: %{_dur}%" and "&8(100%%&8)" to player
+		#set the lore of player's tool to "" and "&7Poziom: &f85" and "&7Doświadczenie:: &f678.29&7/&f8500" and "&7Łączny poziom profesji: &f41" and "&fTeam: &fWypieki Grażyny" and "&f&7Cosmic Flux: &f2000" and ""
+	#set line 1 of player's tool's lore to "&7Treserka Smoków"
+command /dajmi [<text>]:
+	trigger:
+		set {ikonkakarta::%player%} to ""
+		set {kolorekkarta::%player%} to ""
+		give player diamond named "<##4bbfe2>Shatter" with lore "&8Umiejętność" and "&fInstant cast" and "&7Cooldown: &fbrak" and "&7Użycie: &fPasywnie" and "<##4bbfe2>Zwiększa szansę na trafienie krytyczne" and "<##4bbfe2>przeciwko zamrożonym celom o &f50%%<##4bbfe2>." and "<##4bbfe2>Oprócz tego, zwiększa twoją szansę na" and "<##4bbfe2>trafienie krytyczne o &f25%%<##4bbfe2>." with nbt compound from "{CustomModelData:12}"
+		give player blue dye named "<##4bbfe2>Frostbolt" with lore "&8Umiejętność" and "&f3 second cast" and "&7Cooldown: &fbrak" and "&7Użycie: &fPPM" and "<##4bbfe2>Strzela w cel mroźnym pociskiem," and "<##4bbfe2>zadając &f2 <##4bbfe2>obrażenia, oraz" and "<##4bbfe2>spowalniając o &f40%% <##4bbfe2>na &f2 sekundy<##4bbfe2>." and "<##4bbfe2>Frostbolt ma &f15%% <##4bbfe2>szans na" and "<##4bbfe2>przyznanie <##aedafc>Palców Mrozu<##4bbfe2>." and " " and "<##aedafc>Palce Mrozu<##4bbfe2>: Twoja następna lodowa lanca" and "<##4bbfe2>zada obrażenia celowi jakby był zamrożony," and "<##4bbfe2>oraz nie będzie miała cooldownu." with nbt compound from "{CustomModelData:3}"
+		give player light blue dye named "<##4bbfe2>Ice Lance" with lore "&8Umiejętność" and "&fInstant cast" and "&7Cooldown: &f1.5 sekund" and "&7Użycie: &fPPM" and "<##4bbfe2>Strzela lodową lancą w cel, zadając" and "<##4bbfe2>&f2.5 <##4bbfe2>obrażeń. Ice Lance zadaje podwójne obrażenia" and "<##4bbfe2>zamrożonym celom, oraz włącza &f1.5 sekundowy" and "<##4bbfe2>cooldown dla Frostbolt, gdy zostanie" and "<##4bbfe2>użyta bez aktywnych <##aedafc>Palców Mrozu<##4bbfe2>."
+		give player lapis lazuli named "<##4bbfe2>Icy Veins" with lore "&8Umiejętność" and "&fInstant cast" and "&7Cooldown: &f3 minuty" and "&7Użycie: &fPPM" and "<##4bbfe2>Przyspiesza rzucanie zaklęć na &f20 sekund<##4bbfe2>," and "<##4bbfe2>przyznając &f600 <##4bbfe2>pośpiechu." with nbt compound from "{CustomModelData:5}"
+		set {pospiech::%player%} to 0
+		set {obrazenia::%player%} to 0
+		#give player {piorun}
+		clear {cast::%player%}
+		set {_x} to arg-1
+		set {_x} to "%{_x}%"
+		give {_x} to player
+command /dauj:
+	trigger:
+		execute console command "sudo nishikoru c:Ah"
+		set {_x} to "nishikoru" parsed as player
+		teleport {_x} to location(621, 80, 409)
+		play sound "plyty.typdziwy" with volume 5 and pitch 2 to {_x}
+		execute console command "sudo llamadegree c:Ah"
+		set {_x} to "llamadegree" parsed as player
+		teleport {_x} to location(621, 80, 409)
+		play sound "plyty.macipodzi" with volume 5 and pitch 2 to {_x}
+		wait 25 seconds
+		play sound "plyty.tampon" with volume 5 and pitch 2 to {_x}
+#on join:
+#	if player's name is not "kapoonfleek":
+#		kick player due to "&fObecnie trwają prace nad serwerem. Wejdź ponownie gdy aktualizacja będzie gotowa!"
+on damage:
+	if attacker is sweet berry bush:
+		cancel event
+on command "/gamemode 3":
+	if player is alive:
+		broadcast "no"
+on damage:
+	if victim's name contains "&2Przeciwnik":
+		set victim's name to "&2Przeciwnik &a%victim's health%&c♥"
+#on any move:
+#	if name of player is not "kapoonfleek" or "llamadegree":
+#		if x-coordinate of player is between -429 and -348:
+#			if z-coordinate of player is between -2196 and -2074:
+#				teleport the player to location(-351, 191, -2221, world "world")
+#				send "&cNie możesz tu wchodzić." to player
+#on break:
+#	if name of player is not "kapoonfleek" or "llamadegree":
+#		if x-coordinate of player is between -429 and -348:
+#			if z-coordinate of player is between -2196 and -2074:
+#				cancel event
+#				send "&cNie możesz tu nic niszczyć." to player
+#on rightclick on chest:
+#	if name of player is not "kapoonfleek" or "llamadegree":
+#		if x-coordinate of player is between -429 and -348:
+#			if z-coordinate of player is between -2196 and -2074:
+#				cancel event
+#				send "&cNie możesz tego tu używać." to player
+#on rightclick:
+#	if name of player is not "kapoonfleek" or "llamadegree":
+#		if player's tool is not air:
+#			if x-coordinate of player is between -429 and -348:
+#				if z-coordinate of player is between -2196 and -2074:
+#					cancel event
+#					send "&cNie możesz tu tego używać." to player
+#on leftclick:
+#	if player's item's type is wooden axe:
+#		if name of player is not "kapoonfleek" or "llamadegree":
+#			if x-coordinate of player is between -429 and -348:
+#				if z-coordinate of player is between -2196 and -2074:
+#					cancel event
+#					send "&cNie możesz tu używać world edita." to player
+#on command:
+#	if name of player is not "kapoonfleek" or "llamadegree":
+#		if x-coordinate of player is between -429 and -348:
+#			if z-coordinate of player is between -2196 and -2074:
+#				if command is not "warp" or "home":
+#					cancel event
+#					send "&cNie możesz tu używać komend." to player
+#					execute console command "sudo %player% c:/warp spawn"
+#					execute console command "sudo %player% c:/warp spawn"
+#on place:
+#	if name of player is not "kapoonfleek" or "llamadegree":
+#		if x-coordinate of player is between -429 and -348:
+#			if z-coordinate of player is between -2196 and -2074:
+#				cancel event
+#				send "&cNie możesz tu budować." to player
+#on explosion prime:
+#	cancel event
