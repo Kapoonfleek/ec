@@ -1,0 +1,141 @@
+variables:
+	{moznauzyc::%player%} = true
+	{ladunki::%player%} = 10
+	
+	
+on rightclick:
+	if player's tool's name contains "Cynder":
+		set {_id} to line 17 of lore of player's tool
+		set {karta::%player%} to {_id}
+		set {zdrowie::%player%} to {zdrowie::%{_id}%}
+		set {obrazenia::%player%} to {obrazenia::%{_id}%}
+		set {wytrzymalosc::%player%} to {wytrzymalosc::%{_id}%}
+		set {mobilnosc::%player%} to {mobilnosc::%{_id}%}
+		set {uzytecznosc::%player%} to {uzytecznosc::%{_id}%}
+		set {kontrolatlumu::%player%} to {kontrolatlumu::%{_id}%}
+		set {uniwersalnosc::%player%} to {uniwersalnosc::%{_id}%}
+		set {mistrzostwo::%player%} to {mistrzostwo::%{_id}%}
+		set {cioskrytyczny::%player%} to {cioskrytyczny::%{_id}%}
+		set {pospiech::%player%} to {pospiech::%{_id}%}
+		set {unik::%player%} to {unik::%{_id}%}
+		give player purple dye named "<##7430ab>Widmowe Błyskawice" with lore "&8Umiejętność" and "&fInstant cast" and "&7Cooldown: &f9 sekund" and "&7Użycie: &fPPM" and "<##7430ab>Razi pobliskich wrogów w zasięgu &f10 <##7430ab>kratek serią" and "<##7430ab>błyskawic, zadając &f1 <##7430ab>obrażeń na błyskawicę." and "<##7430ab>Cynder może powtórzyć tę umiejętność maksymalnie" and "&f10 <##7430ab>razy zanim wejdzie na cooldown." with nbt "{CustomModelData:2}"
+
+on entity knockback:
+	if {lastdamagecause::%event-entity%} = "<##7430ab>Widmowe Błyskawice":
+		cancel event
+on rightclick:
+	if player's tool's name is "<##7430ab>Widmowe Błyskawice":
+		set {_crch} to ({cioskrytyczny::%player%}/600)*100
+		set {_mistr2} to 0 + ({mistrzostwo::%player%}/7.5)
+		set {_cd} to 9 - ({pospiech::%player%}/170)
+		set {cdwidmoweblyskawice::%player%} to "%{_cd}% seconds" parsed as timespan
+		set {widmoweblyskawice::cooldown::%player%} to difference between {widmoweblyskawice::use::%player%} and now
+		if {widmoweblyskawice::cooldown::%player%} is less than {cdwidmoweblyskawice::%player%}:
+			set {widmoweblyskawicetekst::%player%} to "%difference between {cdwidmoweblyskawice::%player%} and {widmoweblyskawice::cooldown::%player%}%"
+			replace all " seconds" and "seconds" in {widmoweblyskawicetekst::%player%} with " sekund"
+			send "<##7430ab>Musisz odczekać &f%{widmoweblyskawicetekst::%player%}%<##7430ab>, aby użyć tej umiejętności." to player
+			stop
+		if {ladunki::%player%} = 0:
+			set {widmoweblyskawice::use::%player%} to now
+			set the cooldown of player's held item for player to 9 seconds
+			set {ladunki::%player%} to 10
+			stop
+		else:
+			if {ladunki::%player%} is bigger than or equal to 1:
+				if {mode::%player%} = "pve":
+					set {cdwdmgc::%player%} to 0.5 seconds
+					set {wdmgc::cooldown::%player%} to difference between {wdmgc::use::%player%} and now
+					if {wdmgc::cooldown::%player%} is less than {cdwdmgc::%player%}:
+						set {wdmgctekst::%player%} to "%difference between {cdwdmgc::%player%} and {wdmgc::cooldown::%player%}%"
+						replace all " seconds" and "seconds" in {wdmgctekst::%player%} with " sekund"
+						stop
+					set {wdmgc::use::%player%} to now
+					set the cooldown of player's held item for player to 0.5 seconds
+					remove 1 from {ladunki::%player%}
+					play sound "entity.lightning_bolt.thunder" with volume 5 and pitch 2 at player
+					set {_targs::*} to all living entities in radius 10 of player where [input is not a player]
+					set {_dmg} to (1 + {obrazenia::%player%}/400 + {uniwersalnosc::%player%}/1200)
+					loop {_targs::*}:
+						chance of {_crch}%:
+							set {_dmg} to (1 + {obrazenia::%player%}/400 + {uniwersalnosc::%player%}/1200) * 2
+							set {critdmg::%loop-value%} to true
+						set {lastdamagecause::%loop-value%} to "<##7430ab>Widmowe Błyskawice"
+						set loop-value's last damage cause to attack
+						set {lastdamagecauselore::%loop-value%::*} to player's tool's lore
+						make player damage loop-value by 2*({_dmg})
+					loop random number between 3 and 5 times:
+						set {_counter} to 1
+						loop random number between 1 and 4 times:
+							set {_loc%{_counter}%} to location of block at player's head
+							increase {_counter} by 1
+							loop 10 times:
+								loop 10 times:
+									play 2 black dust with speed 0 at {_loc1}
+									play 1 purple dust with speed 0 at {_loc1}
+									increase x-coordinate of {_loc1} by random number between random number between 0 and -0.32 and random number between 0 and 0.40
+									increase y-coordinate of {_loc1} by random number between random number between 0 and -0.19 and random number between 0 and 0.15
+									increase z-coordinate of {_loc1} by random number between random number between 0 and -0.32 and random number between 0 and 0.40
+					if {_mistr2} > 0:
+						chance of {_mistr2}%:
+							wait 1 second
+							set {_targs::*} to all living entities in radius 10 of player where [input is not a player]
+							set {_dmg} to (1 + {obrazenia::%player%}/400 + {uniwersalnosc::%player%}/1200)
+							loop {_targs::*}:
+								chance of {_crch}%:
+									set {_dmg} to (1 + {obrazenia::%player%}/400 + {uniwersalnosc::%player%}/1200) * 2
+									set {critdmg::%loop-value%} to true
+								set {lastdamagecause::%loop-value%} to "<##7430ab>Widmowe Błyskawice"
+								set loop-value's last damage cause to attack
+								set {lastdamagecauselore::%loop-value%::*} to player's tool's lore
+								make player damage loop-value by 2*({_dmg})
+							loop random number between 3 and 5 times:
+								set {_counter} to 1
+								loop random number between 1 and 4 times:
+									set {_loc%{_counter}%} to location of block 1 meter in front of player's head
+									increase {_counter} by 1
+									loop 10 times:
+										loop 10 times:
+											play 2 black dust with speed 0 at {_loc1}
+											play 1 purple dust with speed 0 at {_loc1}
+											increase x-coordinate of {_loc1} by random number between random number between 0 and -0.32 and random number between 0 and 0.40
+											increase y-coordinate of {_loc1} by random number between random number between 0 and -0.19 and random number between 0 and 0.15
+											increase z-coordinate of {_loc1} by random number between random number between 0 and -0.32 and random number between 0 and 0.40
+#Forced push player on ground without delay ticks. Tested on 1.12.2 SkReflect
+function ForcedGroundPlayerAMC(p: player, d: number):
+    set {_e} to last spawned entity
+    set {_v} to vector 0, -100, 0
+    set {_p}'s velocity to {_v}
+    {_p}.getHandle().B_()
+    set {_loc} to location of {_e}
+    push {_p} forward with speed {_d}
+on rightclick:
+	if player's tool is black dye:
+		#set {_l} to location of block 5 infront of player
+		#set yaw of {_l} to yaw of player
+		#push player (direction from player to {_l}) at speed 0.75
+		create a citizen named "agnes" at location 1 metre above player's head
+		set {_x} to last created citizen
+		give npc {_x} the look close trait
+		execute console command "npc select %{_x}%"
+		execute console command "trait sentinel"
+		execute console command "sentinel realistic true"
+		execute console command "sentinel damage 2"
+		execute console command "sentinel addtarget players"
+		execute console command "sentinel addtarget mobs"
+		execute console command "sentinel attackrate 0.5"
+		execute console command "sentinel addavoid player:%player%"
+		execute console command "sentinel guard %player%"
+		execute console command "sentinel speed 0.75"
+		execute console command "sentinel reach 6"
+		loop all entities in radius 30 around the player:
+			if loop-entity's name contains "agnes":
+				wait 3 seconds
+				teleport loop-entity to player
+		spawn 1 zombie at player
+		set {_f} to uuid of last spawned zombie
+		execute console command "/disguuid %{_f}% player %player% setDisguiseName &f&r%player's name%"
+		wait 10 seconds
+		execute console command "sentinel kill"
+		remove citizen {_x}
+		broadcast "A"
+		#ForcedGroundPlayerAMC(player, 6)

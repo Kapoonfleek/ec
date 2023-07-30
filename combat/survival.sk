@@ -1,0 +1,169 @@
+on load:
+	set {passivemobs::*} to "allay", "axolotl", "bat", "cat", "chicken", "cod", "cow", "donkey", "fox", "frog", "glow squid", "horse", "mooshroom", "mule", "ocelot", "parrot", "pig", "pufferfish", "rabbit", "salmon", "sheep", "skeleton horse", "snow golem", "squid", "strider", "tadpole", "tropical fish", "turtle", "villager" and "wandering trader"
+	set {passivemobsdespawn::*} to {passivemobs::*} and "bee" and "dolphin" and "goat" and "llama" and "trader llama" and "polar bear" and "panda" and "wolf"
+#on spawn:
+#	if event-entity is alive:
+#		if event-entity is a living entity:
+#			if event-entity is not a player:
+#				if event-entity is a mob:
+#					if {passivemobs::*} does not contain "%type of event-entity%":
+#						if event-entity is a skeleton:
+#							set max health of event-entity to 10
+#						else if event-entity is a blaze:
+#							set max health of event-entity to 10
+#						else if event-entity is a zombie:
+#							set max health of event-entity to 10
+#						else if event-entity is a cave spider:
+#							set max health of event-entity to 6
+#						else if event-entity is a spider:
+#							set max health of event-entity to 8
+#						set {_health} to max health of event-entity
+#						loop all players in radius 100 around event-entity:
+#							if loop-player is online:
+#								add loop-player to {_players::*}
+#						set {_player} to a random element of {_players::*}
+#						set {_id} to line 18 of lore of {karta::%{_player}%}
+#						if {statyheart::%{_player}%} is set:
+#							set {_statplayer} to (3*{statyheart::%{_player}%}) + {healthheart::%{_player}%}
+#						set {_healthmultiplier} to {_health}/10
+#						add ({stattotal::%{kartaname::%{_player}%}%::%{_id}%}/6) to {_health}
+#						add ({_statplayer}/5) to {_health}
+#						if {hearttrait::%{_player}%::*} is set:
+#							loop {hearttrait::%{_player}%::*}:
+#								if loop-value contains "<##00ff00>":
+#									add 1 to {_traity}
+#								else if loop-value contains "<##0070dd>":
+#									add 2 to {_traity}
+#								else if loop-value contains "<##a335ee>":
+#									add 3 to {_traity}
+#								else if loop-value contains "<##ff8000>":
+#									add 4 to {_traity}
+#							add {_traity}*7 to {_health}
+#						set {_multiplier} to 1 + ({poziomkarta::%{_id}%}/100)
+#						set {_health} to ({_health}*{_multiplier})*{_healthmultiplier}
+#						if event-entity is an ender dragon:
+#							set {_health} to 30000
+#						set event-entity's max health to {_health}
+#						heal event-entity
+#						if event-entity is an ender dragon:
+#							set {expyield::%event-entity%} to 10000
+#						else:
+#							set {expyield::%event-entity%} to (rounded up 0.2*{_health})
+#						set {poziommob::%event-entity%} to {poziomkarta::%{_id}%}
+#						if event-entity is not an ender dragon:
+#							set {mobdmg::%event-entity%} to (1 + ({stattotal::%{kartaname::%{_player}%}%::%{_id}%}/150) + ({_statplayer}/100))*{_multiplier}
+#						set {mob::%event-entity%} to true
+#						set {_e} to event-entity
+#						if {passivemobsdespawn::*} does not contain "%type of {_e}%":
+#							ClearIfNotAlive({_e})
+#
+function ClearIfNotAlive(e: entity):
+	if {_e} is not a warden:
+		if {_e} is not an ender dragon:
+			wait 15 minutes
+			clear {expyield::%{_e}%}
+			clear {mob::%{_e}%}
+			clear {asyst::%{_e}%::*}
+			clear {mobdmg::%{_e}%}
+			clear {poziommob::%{_e}%}
+			clear {expyield::%{_e}%}
+			clear {mob::%{_e}%}
+			clear {asyst::%{_e}%::*}
+			clear {mobdmg::%{_e}%}
+			clear {poziommob::%{_e}%}
+			set {_e}'s max health to 0
+			heal {_e}
+			damage {_e} by 1
+			set {_uuid} to uuid of {_e}
+			kill ({_uuid} parsed as entity)
+		
+on despawn:
+	if {mob::%event-entity%} is set:
+		clear {mob::%event-entity%}	
+		clear {expyield::%event-entity%}
+		clear {mobdmg::%event-entity%}
+		clear {poziommob::%event-entity%}
+		
+function cardLevelup(p: player, xp: number, e: entity) :: number:
+	set {_id} to line 18 of lore of {karta::%{_p}%}
+	if {poziomkarta::%{_id}%} > {poziommob::%{_e}%}:
+		set {_dif} to ({poziomkarta::%{_id}%}-{poziommob::%{_e}%})
+	if {_dif} is set:
+		if {_dif} < 20:
+			set {_xp} to {_xp}*(1-(0.05*{_dif}))
+		else:
+			set {_xp} to 0
+	if {poziomkarta::%{_id}%} < {maxpoziomkarta::%{_id}%}:
+		add {_xp} to {expkarta::%{_id}%}
+	else:
+		add {_xp} to {expkartaabovelimit::%{_id}%}
+	add {_xp}*0.4 to {exp::%{_p}%}
+	UpdateScoreboard({_p})
+	if {expkarta::%{_id}%} >= (100*{poziomkarta::%{_id}%}):
+		remove (100*{poziomkarta::%{_id}%}) from {expkarta::%{_id}%}
+		add 1 to {poziomkarta::%{_id}%}
+		add 1 to {poziomykarty::%{_p}%}
+		add 1 + (rounded down ({poziomkarta::%{_id}%}/10)) to {dostepnestaty::%{_id}%}
+		if {language::%{_p}%} = "English":
+			send "&eYour card advanced to Level %{poziomkarta::%{_id}%}%!" to {_p}
+		else:
+			send "&eTwoja karta awansowała do Poziomu %{poziomkarta::%{_id}%}%!" to {_p}
+	loop all items in the inventory of {_p}:
+		if line 18 of lore of loop-item = {_id}:
+			if {language::%{_p}%} = "English":
+				if {poziomkarta::%{_id}%} = {maxpoziomkarta::%{_id}%}:
+					set line 2 of lore of loop-item to "&7Level: %{kartacolor::%{_p}%}%%{poziomkarta::%{_id}%}% &7| &7Exp: %{kartacolor::%{_p}%}%MAX"
+				else:
+					set line 2 of lore of loop-item to "&7Level: %{kartacolor::%{_p}%}%%{poziomkarta::%{_id}%}% &7| &7Exp: %{kartacolor::%{_p}%}%%{expkarta::%{_id}%}%"
+			else:
+				if {poziomkarta::%{_id}%} = {maxpoziomkarta::%{_id}%}:
+					set line 2 of lore of loop-item to "&7Poziom: %{kartacolor::%{_p}%}%%{poziomkarta::%{_id}%}% &7| &7Exp: %{kartacolor::%{_p}%}%MAX"
+				else:
+					set line 2 of lore of loop-item to "&7Poziom: %{kartacolor::%{_p}%}%%{poziomkarta::%{_id}%}% &7| &7Exp: %{kartacolor::%{_p}%}%%{expkarta::%{_id}%}%"
+	loop {asyst::%{_e}%::*}:
+		set {_player} to loop-value parsed as player
+		if {_player} is not {_p}:
+			set {_id} to line 18 of lore of {karta::%{_player}%}
+			if {poziomkarta::%{_id}%} > {poziommob::%{_e}%}:
+				set {_dif} to ({poziomkarta::%{_id}%}-{poziommob::%{_e}%})
+			if {_dif} is set:
+				if {_dif} < 20:
+					if {_e} is an ender dragon:
+						set {_exp} to 10000
+						add {_exp}*0.1 to {exp::%{_player}%}
+					else:
+						set {_exp} to ({_xp}*(1-(0.05*{_dif})))*0.3
+				else:
+					set {_exp} to 0
+			if {poziomkarta::%{_id}%} < {maxpoziomkarta::%{_id}%}:
+				add {_exp} to {expkarta::%{_id}%}
+			else:
+				add {_xp} to {expkartaabovelimit::%{_id}%}
+			add {_exp}*0.4 to {exp::%{_player}%}
+			UpdateScoreboard({_player})
+			if {expkarta::%{_id}%} >= (100*{poziomkarta::%{_id}%}):
+				remove (100*{poziomkarta::%{_id}%}) from {expkarta::%{_id}%}
+				add 1 to {poziomkarta::%{_id}%}
+				add 1 to {poziomykarty::%{_player}%}
+				add 1 + (rounded down ({poziomkarta::%{_id}%}/10)) to {dostepnestaty::%{_id}%}
+				if {language::%{_player}%} = "English":
+					send "&eYour card advanced to Level %{poziomkarta::%{_id}%}%!" to {_player}
+				else:
+					send "&eTwoja karta awansowała do Poziomu %{poziomkarta::%{_id}%}%!" to {_player}
+			loop all items in the inventory of {_player}:
+				if line 18 of lore of loop-item = {_id}:
+					if {language::%{_player}%} = "English":
+						if {poziomkarta::%{_id}%} = {maxpoziomkarta::%{_id}%}:
+							set line 2 of lore of loop-item to "&7Level: %{kartacolor::%{_player}%}%%{poziomkarta::%{_id}%}% &7| &7Exp: %{kartacolor::%{_player}%}%MAX"
+						else:
+							set line 2 of lore of loop-item to "&7Level: %{kartacolor::%{_player}%}%%{poziomkarta::%{_id}%}% &7| &7Exp: %{kartacolor::%{_player}%}%%{expkarta::%{_id}%}%"
+					else:
+						if {poziomkarta::%{_id}%} = {maxpoziomkarta::%{_id}%}:
+							set line 2 of lore of loop-item to "&7Poziom: %{kartacolor::%{_player}%}%%{poziomkarta::%{_id}%}% &7| &7Exp: %{kartacolor::%{_player}%}%MAX"
+						else:
+							set line 2 of lore of loop-item to "&7Poziom: %{kartacolor::%{_player}%}%%{poziomkarta::%{_id}%}% &7| &7Exp: %{kartacolor::%{_player}%}%%{expkarta::%{_id}%}%"
+		clear {_id}
+		clear {_player}
+		clear {_exp}
+		
+	return {_xp}

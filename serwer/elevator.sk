@@ -1,0 +1,60 @@
+options:
+	elevatorItem: smooth stone # The item to use as an elevator
+	elevatorItemName: "&aElevator" # The item name for the elevator
+	elevatorReceived: "&aYou've received an elevator." # This messages appears when you receive an elevator
+	elevatorPlaced: "&aYou've placed an elevator." # This messages appears when you place an elevator
+	elevatorRemoved: "&aYou've removed an elevator." # This messages appears when you remove an elevator
+	elevatorUPmessageActivated: true # Set to true if you want to activate the messages when you go up a floor
+	elevatorDOWNmessageActivated: true # Set to true if you want to activate the messages when you go down a floor
+	elevatorUPmessage: "&dAscended a level." # This message appears when you go up a floor
+	elevatorDOWNmessage: "&dDescended a level." # This message appears when you go down a floor
+	elevatorSearchLimit: 256 # How many blocks the loop search until he finds a elevator
+
+command /elevator:
+	trigger:
+		give 1 {@elevatorItem} named {@elevatorItemName} to player
+		message {@elevatorReceived}
+
+command /elevatorhelp:
+    trigger:
+        message "&6Jak używać wind"
+        message "&11. &fIdź na smooth stone"
+        message "&12. &fPopatrz się w górę lub dół, zależnie od tego, czy chcesz iść w górę czy dół"
+        message "&13. &fZacznij się skradać"
+        message "&6Powinno teraz Ciebie przenieść w górę lub dół. Jeżeli to nie zadziałało, skontaktuj się z ownerem servera"
+
+on place:
+	if player is holding a {@elevatorItem} named {@elevatorItemName}:
+		add location of event-block to {elevators::*}
+		message {@elevatorPlaced}
+
+on break:
+	if {elevators::*} contains location of event-block:
+		remove location of event-block from {elevators::*}
+		message {@elevatorRemoved}
+
+on sneak toggle:
+	player is not sneaking
+	if {elevators::*} contains location of block below player:
+		if player's pitch is less than 0:
+			set {_up} to true
+			set {_n} to 2
+		else:
+			set {_up} to false
+			set {_n} to 4
+		loop {@elevatorSearchLimit} times:
+			if {_up} is true:
+				if {elevators::*} contains location of block {_n} above player:
+					set {_loc} to {_n} + 1
+					teleport player to location {_loc} above player
+					if {@elevatorUPmessageActivated} is true:
+						message {@elevatorUPmessage}
+					stop
+			else:
+				if {elevators::*} contains location of block {_n} below player:
+					set {_loc} to {_n} - 1
+					teleport player to location {_loc} below player
+					if {@elevatorDOWNmessageActivated} is true:
+						message {@elevatorDOWNmessage}
+					stop
+			set {_n} to {_n} + 1

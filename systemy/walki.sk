@@ -1,0 +1,960 @@
+on heal:
+	if event-entity is player:
+		set the player's tablist name to "&8[<##7c7cff>&l%{poziom::%player%}%<##9494ff>&l⭐&8] &f%player% &a%player's health%&c❤"
+		add heal amount to {healtakentotal::%player%}
+		if heal reason is unknown:
+			set {_id} to line 18 of lore of {karta::%player%}
+			if {_id} is set:
+				add heal amount to {healtakencard::%{_id}%}
+
+on death:
+	if {lavaburststacks::%attacker%::%victim%} is set:
+		clear {lavaburststacks::%attacker%::%victim%}
+	if victim is a player:
+		set {_id} to line 18 of lore of {karta::%victim%}
+		add 1 to {deaths::%victim%}
+		add 1 to {deaths::%{kartaname::%victim%}%::%{_id}%}
+	else:
+		clear {element::%victim%}
+	if attacker is a player:
+		if {mob::%victim%} is set:
+			set {_id} to line 18 of lore of {karta::%attacker%}
+			add 1 to {mobskilled::%attacker%}
+			add 1 to {mobskilled::%{kartaname::%attacker%}%::%{_id}%}
+	show flash at victim
+	if {miod::%victim%} is set:
+		set {miod::%victim%} to 0
+	if victim is a player:
+		clear {exec::%victim%}
+	if {mob::%victim%} is true:
+		if attacker is a player:
+			if {poziom::%attacker%} >= 40:
+				TraitMob(attacker)
+				if victim is a warden:
+					HeartLevelup(attacker, 750)
+					loop {asyst::%victim%::*}:
+						if loop-value is not uuid of attacker:
+							set {_r} to (loop-value parsed as player)
+							HeartLevelup({_r}, 750)
+				if victim is an ender dragon:
+					HeartLevelup(attacker, 3000)
+					loop {asyst::%victim%::*}:
+						if loop-value is not uuid of attacker:
+							set {_r} to (loop-value parsed as player)
+							HeartLevelup({_r}, 3000)
+			#if display name of victim is not set:
+			add 1 to {%victim%::%attacker%}
+			#else:
+				#set {_unc} to uncolored name of victim
+				#add 1 to {%{_unc}%::%attacker%}
+			set {_id} to line 18 of lore of {karta::%attacker%}
+			add 1 to {kills::%{kartaname::%attacker%}%::%{_id}%::%{lastdmgcause::%victim%}%}
+			if {expyield::%victim%} is set:
+				wait 1 tick
+				set {_lloc} to block above victim
+				set {_xp} to cardLevelup(attacker, {expyield::%victim%}, victim)
+				display hologram "<##37eb34>+%{_xp}% XP" at {_lloc} to attacker for 2.5 seconds
+				set {_xpasysta} to (rounded up 0.3*{expyield::%victim%})
+				if {asyst::%victim%::*} is set:
+					loop {asyst::%victim%::*}:
+						set {_player} to loop-value parsed as player
+						if {_player} is not attacker:
+							add 1 to {asysty::%{_player}%}
+							add 1 to {asysta::%victim%::%{_player}%}
+							display hologram "<##37eb34>+%{_xpasysta}% XP" at {_lloc} to {_player} for 2.5 seconds
+		clear {expyield::%victim%}
+		clear {asyst::%victim%::*}
+		clear {poziommob::%victim%}
+		clear {mobdmg::%victim%}
+		clear {mob::%victim%}
+on death:
+	if damage cause is attack:
+		set death message to ""
+		set {_data} to data()
+		if {lastdmgcause::%victim%} is not set:
+			#if attacker's tool is air:
+				#set {lastdmgcause::%victim%} to "&fatak"
+			#else:
+			set {lastdmgcause::%victim%} to attacker's tool
+			if {lastdmgcause::%victim%} = air:
+				set {lastdmgcause::%victim%} to "atak"
+			if {lastdmgcauselore::%victim%} is not set:
+				set {lastdmgcauselore::%victim%} to " "
+		if {lastdmgcauseEN::%victim%} is not set:
+			set {lastdmgcauseEN::%victim%} to attacker's tool
+			if {lastdmgcauseEN::%victim%} = air:
+				set {lastdmgcauseEN::%victim%} to "attack"
+			if {lastdmgcauseloreEN::%victim%} is not set:
+				set {lastdmgcauseloreEN::%victim%} to " "
+		if victim's name is set:
+			#usuwanie hp przeciwnika z wiadomości
+			set {_name} to victim's name
+			if display name of victim contains "&c♥":
+				set {_name::*} to name of victim split at " "
+				loop {_name::*}:
+					add 1 to {_l}
+				clear {_name::%{_l}%}
+				set {_name} to join {_name::*} by " "
+				#HP MOBÓW MINECRAFTOWYCH
+				if {_name} is not set:
+					set {_name} to victim
+			loop all players:
+				if {language::%loop-player%} = "English":
+					send formatted "%{_name}% &fwas slain by %attacker% &fusing <tooltip:%{lastdmgcauseloreEN::%victim%::*}%>%{lastdmgcauseEN::%victim%}%" to loop-player
+				else:
+					send formatted "%{_name}% &fzostał pokonany przez %attacker% &fza pomocą <tooltip:%{lastdmgcauselore::%victim%::*}%>%{lastdmgcause::%victim%}%" to loop-player
+			#execute console command "discord broadcast ##combat-log %now% | %uncolored victim's name% został pokonany przez %uncolored {_attacker}% za pomocą %uncolored {lastdmgcause::%victim%}%"
+			log "%{_data}% %uncolored victim's name% został pokonany przez %attacker% za pomocą %uncolored {lastdmgcause::%victim%}%" to "logi/combat/combat %{datatydzien}%-%{datatydzien2}%.log"
+		else:
+			loop all players:
+				if {language::%loop-player%} = "English":
+					send formatted "%victim% &fwas slain by %attacker% using <tooltip:%{lastdmgcauseloreEN::%victim%::*}%>%{lastdmgcauseEN::%victim%}%" to loop-player
+				else:
+					send formatted "%victim% &fzostał pokonany przez %attacker% za pomocą <tooltip:%{lastdmgcauselore::%victim%::*}%>%{lastdmgcause::%victim%}%" to loop-player
+			log "%{_data}% %victim% &fzostał pokonany przez %attacker% za pomocą %uncolored {lastdmgcause::%victim%}%" to "logi/combat/combat %{datatydzien}%-%{datatydzien2}%.log"
+			#execute console command "discord broadcast ##combat-log %now% | %victim% został pokonany przez %uncolored {_attacker}% za pomocą %uncolored {lastdmgcause::%victim%}%"
+	else if damage was caused by a projectile:
+		victim is player or a living entity:
+			set death message to ""
+				#if name of loop-player contains "kapoonfleek" or "nishikonechi":
+		if victim's name is set:
+			#usuwanie hp przeciwnika z wiadomości
+			set {_name} to victim's name
+			if display name of victim contains "&c♥":
+				set {_name::*} to name of victim split at " "
+				loop {_name::*}:
+					add 1 to {_l}
+				clear {_name::%{_l}%}
+				set {_name} to join {_name::*} by " "
+				#HP MOBÓW MINECRAFTOWYCH
+				if {_name} is not set:
+					set {_name} to victim
+			loop all players:
+				if {language::%loop-player%} = "English":
+					send formatted "%{_name}% &fwas slain by %attacker% &fusing <tooltip:%{lastdmgcauseloreEN::%victim%::*}%>%{lastdmgcauseEN::%victim%}%" to loop-player
+				else:
+					send formatted "%{_name}% &fzostał pokonany przez %attacker% &fza pomocą <tooltip:%{lastdmgcauselore::%victim%::*}%>%{lastdmgcause::%victim%}%" to loop-player
+				log "%{_data}% %victim% &fzostał pokonany przez %attacker's name% za pomocą %uncolored {lastdmgcause::%victim%}%" to "logi/combat/combat %{datatydzien}%-%{datatydzien2}%.log"
+		else:
+			loop all players:
+				if {language::%loop-player%} = "English":
+					send formatted "%victim% &fwas slain by %attacker% using <tooltip:%{lastdmgcauseloreEN::%victim%::*}%>%{lastdmgcauseEN::%victim%}%" to loop-player
+				else:
+					send formatted "%victim% &fzostał pokonany przez %attacker% za pomocą <tooltip:%{lastdmgcauselore::%victim%::*}%>%{lastdmgcause::%victim%}%" to loop-player
+			log "%{_data}% %victim% &fzostał pokonany przez %attacker% za pomocą %uncolored {lastdmgcause::%victim%}%" to "logi/combat/combat %{datatydzien}%-%{datatydzien2}%.log"
+	clear {lastdmgcause::%victim%}
+	clear {lastdmgcauselore::%victim%::*}
+	clear {lastdmgcauseEN::%victim%}
+	clear {lastdmgcauseloreEN::%victim%::*}
+	clear {circleofwater::%victim%}
+
+function Zywiol(a: entity, v: entity) :: text:
+	if {element::%{_a}%} = "Ogień" or "Fire":
+		if {element::%{_v}%} = "Ogień" or "Fire":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Woda" or "Water":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Smok" or "Dragon":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Lawa" or "Lava":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Lód" or "Ice":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Natura" or "Nature":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Metal":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Bestia" or "Beast":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Mechanika" or "Tech":
+			set {_damage} to "supereffective"
+	if {element::%{_a}%} = "Woda" or "Water":
+		if {element::%{_v}%} = "Ogień" or "Fire":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Woda" or "Water":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Ziemia" or "Earth":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Natura" or "Nature":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Bestia" or "Beast":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Lawa" or "Lava":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Mechanika" or "Tech":
+			set {_damage} to "supereffective"
+	if {element::%{_a}%} = "Ziemia" or "Earth":
+		if {element::%{_v}%} = "Ogień" or "Fire":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Powietrze" or "Air":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Trucizna" or "Poison":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Burza" or "Storm":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Natura" or "Nature":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Metal":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Smok" or "Dragon":
+			set {_damage} to "resist"
+	if {element::%{_a}%} = "Powietrze" or "Air":
+		if {element::%{_v}%} = "Ziemia" or "Earth":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Burza" or "Storm":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Metal":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Bestia" or "Beast":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Natura" or "Nature":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Walka" or "Fight":
+			set {_damage} to "supereffective"
+	if {element::%{_a}%} = "Trucizna" or "Poison":
+		if {element::%{_v}%} = "Ziemia" or "Earth":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Trucizna" or "Poison":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Metal":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Duch" or "Ghost":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Natura" or "Nature":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Woda" or "Water":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Bestia" or "Beast":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Mechanika" or "Tech":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Walka" or "Fight":
+			set {_damage} to "resist"
+	if {element::%{_a}%} = "Lód" or "Ice":
+		if {element::%{_v}%} = "Ogień" or "Fire":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Woda" or "Water":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Lód" or "Ice":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Bestia" or "Beast":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Astral":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Metal":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Lawa" or "Lava":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Mechanika" or "Tech":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Ziemia" or "Earth":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Powietrze" or "Air":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Natura" or "Nature":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Smok" or "Dragon":
+			set {_damage} to "supereffective"
+	if {element::%{_a}%} = "Burza" or "Storm":
+		if {element::%{_v}%} = "Smok" or "Dragon":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Ziemia" or "Earth":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Burza" or "Storm":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Powietrze" or "Air":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Woda" or "Water":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Światło" or "Light":
+			set {_damage} to "supereffective"
+	if {element::%{_a}%} = "Psychika" or "Psychic":
+		if {element::%{_v}%} = "Metal":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Psychika" or "Psychic":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Mrok" or "Dark":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Trucizna" or "Poison":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Magia" or "Magic":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Mechanika" or "Tech":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Walka" or "Fight":
+			set {_damage} to "supereffective"
+	if {element::%{_a}%} = "Natura" or "Nature":
+		if {element::%{_v}%} = "Ogień" or "Fire":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Woda" or "Water":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Ziemia" or "Earth":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Trucizna" or "Poison":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Powietrze" or "Air":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Smok" or "Dragon":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Metal":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Lawa" or "Lava":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Mechanika" or "Tech":
+			set {_damage} to "resist"
+	if {element::%{_a}%} = "Metal":
+		if {element::%{_v}%} = "Lód" or "Ice":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Baśń" or "Fairy":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Bestia" or "Beast":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Ogień" or "Fire":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Woda" or "Water":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Ziemia" or "Earth":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Metal":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Lawa" or "Lava":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Mechanika" or "Tech":
+			set {_damage} to "resist"
+	if {element::%{_a}%} = "Duch" or "Ghost":
+		if {element::%{_v}%} = "Psychika" or "Psychic":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Duch" or "Ghost":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Światło" or "Light":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Mrok" or "Dark":
+			set {_damage} to "resist"
+	if {element::%{_a}%} = "Smok" or "Dragon":
+		if {element::%{_v}%} = "Lawa" or "Lava":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Baśń" or "Fairy":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Smok" or "Dragon":
+			set {_damage} to "supereffective"
+	if {element::%{_a}%} = "Mrok" or "Dark":
+		if {element::%{_v}%} = "Psychika" or "Psychic":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Duch" or "Ghost":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Mrok" or "Dark":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Bestia" or "Beast":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Baśń" or "Fairy":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Światło" or "Light":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Walka" or "Fight":
+			set {_damage} to "resist"
+	if {element::%{_a}%} = "Baśń" or "Fairy":
+		if {element::%{_v}%} = "Smok" or "Dragon":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Mrok" or "Dark":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Walka" or "Fight":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Ogień" or "Fire":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Trucizna" or "Poison":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Metal":
+			set {_damage} to "resist"
+	if {element::%{_a}%} = "Światło" or "Light":
+		if {element::%{_v}%} = "Mrok" or "Dark":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Metal":
+			set {_damage} to "resist"
+	if {element::%{_a}%} = "Bestia" or "Beast":
+		if {element::%{_v}%} = "Ogień" or "Fire":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Powietrze" or "Air":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Metal":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Astral":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Magia" or "Magic":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Mechanika" or "Tech":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Walka" or "Fight":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Psychika" or "Psychic":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Natura" or "Nature":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Mrok" or "Dark":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Baśń" or "Fairy":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Bestia" or "Beast":
+			set {_damage} to "supereffective"
+	if {element::%{_a}%} = "Astral":
+		if {element::%{_v}%} = "Ziemia" or "Earth":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Mrok" or "Dark":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Astral":
+			set {_damage} to "supereffective"
+	if {element::%{_a}%} = "Lawa" or "Lava":
+		if {element::%{_v}%} = "Woda" or "Water":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Ogień" or "Fire":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Ziemia" or "Earth":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Lód" or "Ice":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Natura" or "Nature":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Bestia" or "Beast":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Mechanika" or "Tech":
+			set {_damage} to "supereffective"
+	if {element::%{_a}%} = "Magia" or "Magic":
+		if {element::%{_v}%} = "Natura" or "Nature":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Bestia" or "Beast":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Magia" or "Magic":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Walka" or "Fight":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Trucizna" or "Poison":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Psychika" or "Psychic":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Baśń" or "Fairy":
+			set {_damage} to "resist"
+	if {element::%{_a}%} = "Mechanika" or "Tech":
+		if {element::%{_v}%} = "Ogień" or "Fire":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Water" or "Woda":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Lawa" or "Lava":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Trucizna" or "Poison":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Natura" or "Nature":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Metal":
+			set {_damage} to "supereffective"
+	if {element::%{_a}%} = "Walka" or "Fight":
+		if {element::%{_v}%} = "Metal":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Lód" or "Ice":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Bestia" or "Beast":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Mrok" or "Dark":
+			set {_damage} to "supereffective"
+		if {element::%{_v}%} = "Trucizna" or "Poison":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Powietrze" or "Air":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Psychika" or "Psychic":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Duch" or "Ghost":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Baśń" or "Fairy":
+			set {_damage} to "resist"
+		if {element::%{_v}%} = "Magia" or "Magic":
+			set {_damage} to "resist"
+	return {_damage}
+on projectile hit:
+	if shooter is a skeleton:
+		delete event-projectile
+on join:
+	set scaled health of player to 10
+	if player's last damage cause is not set:
+		set player's last damage cause to attack
+on spawn:
+	set event-entity's last damage cause to attack
+on respawn:
+	if player's last damage cause is not set:
+		set player's last damage cause to attack
+on damage:
+	if "%victim's last damage cause%" is "unknown":
+		set victim's last damage cause to attack
+	if region at victim is set:
+		if damage cause is fall:
+			cancel event
+	else if damage cause is fall:
+		if {mob::%victim%} is true:
+			cancel event
+	if {asyst::%victim%::*} does not contain (uuid of attacker):
+		add (uuid of attacker) to {asyst::%victim%::*}
+	if victim is a player:
+		if region at victim is set:
+			if damage cause is contact:
+				cancel event
+		else:
+			if damage cause is contact:
+				if cooldown "damagecontact%victim%" is finished:
+					create cooldown "damagecontact%victim%" for 0.5 seconds
+				else:
+					cancel event
+	if damage cause is magma:
+		cancel event
+		set damage to 0	
+	if damage cause is fire:
+		if {mob::%victim%} is true:
+			cancel event
+	if damage cause is burn:
+		if {mob::%victim%} is true:
+			cancel event
+	if damage cause is lava:
+		if victim is not a player:
+			if victim is a living entity:
+				cancel event
+	if victim is a player:
+		set scaled health of victim to 10
+	if attacker is not a player:
+		if attacker is a living entity:
+			if {mob::%attacker%} is set:
+				if {mobdmg::%attacker%} is set:
+					set damage to (damage*{mobdmg::%attacker%})
+			if victim is a player:
+				if cooldown "attack%attacker%" is finished:
+					create cooldown "attack%attacker%" for 0.5 seconds
+					if projectile exists:
+						if name of attacker's tool is set:
+							set {lastdmgcause::%victim%} to name of attacker's tool
+							set {lastdmgcauseEN::%victim%} to name of attacker's tool
+						else:
+							set {lastdmgcause::%victim%} to "%attacker's held item%"
+							set {lastdmgcauseEN::%victim%} to "%attacker's held item%"
+				else:
+					cancel event
+	else:
+		if victim's last damage cause is attack:
+			if projectile does not exist:
+				if attacker's tool is any tool or any sword:
+					if cooldown "attack%attacker%" is finished:
+						create cooldown "attack%attacker%" for 0.5 seconds
+						if name of attacker's tool is set:
+							set {lastdmgcause::%victim%} to name of attacker's tool
+							set {lastdmgcauseEN::%victim%} to name of attacker's tool
+						else:
+							set {lastdmgcause::%victim%} to "%attacker's held item%"
+							set {lastdmgcauseEN::%victim%} to "%attacker's held item%"
+						if attacker's tool is enchanted:
+							add "&5Enchanty:" to {_lastdmg::*}
+						loop enchantments of attacker's tool:
+							add 1 to {_lpnmb}
+							set {_level} to "%enchantment level of loop-value%"
+							replace all "10" in {_level} with "X"
+							replace all "9" in {_level} with "IX"
+							replace all "8" in {_level} with "VIII"
+							replace all "7" in {_level} with "VII"
+							replace all "6" in {_level} with "VI"
+							replace all "5" in {_level} with "V"
+							replace all "4" in {_level} with "IV"
+							replace all "3" in {_level} with "III"
+							replace all "2" in {_level} with "II"
+							replace all "1" in {_level} with "I"
+							add "&7%enchantment of loop-value% %{_level}%" to {_lastdmg::*}
+						if lore of attacker's tool is set:
+							add " " to {_lastdmg::*}
+							add lore of attacker's tool to {_lastdmg::*}
+						set {lastdmgcauselore::%victim%::*} to join {_lastdmg::*} by nl
+						set {_lastdmg::1} to "&5Enchants:"
+						set {lastdmgcauseloreEN::%victim%::*} to join {_lastdmg::*} by nl
+					else:
+						cancel event
+				else:
+					cancel event
+			else:
+				if name of attacker's tool is set:
+					set {lastdmgcause::%victim%} to name of attacker's tool
+					set {lastdmgcauseEN::%victim%} to name of attacker's tool
+				else:
+					set {lastdmgcause::%victim%} to "%attacker's held item%"
+					set {lastdmgcauseEN::%victim%} to "%attacker's held item%"
+		if victim's last damage cause is sweep attack:
+			if attacker's tool is any sword:
+				if cooldown "attack%attacker%" is finished:
+					create cooldown "attack%attacker%" for 0.5 seconds
+					if name of attacker's tool is set:
+						set {lastdmgcause::%victim%} to name of attacker's tool
+						set {lastdmgcauseEN::%victim%} to name of attacker's tool
+					else:
+						set {lastdmgcause::%victim%} to "%attacker's held item%"
+						set {lastdmgcauseEN::%victim%} to "%attacker's held item%"
+					if attacker's tool is enchanted:
+						add "&5Enchanty:" to {_lastdmg::*}
+					loop enchantments of attacker's tool:
+						add 1 to {_lpnmb}
+						set {_level} to "%enchantment level of loop-value%"
+						replace all "10" in {_level} with "X"
+						replace all "9" in {_level} with "IX"
+						replace all "8" in {_level} with "VIII"
+						replace all "7" in {_level} with "VII"
+						replace all "6" in {_level} with "VI"
+						replace all "5" in {_level} with "V"
+						replace all "4" in {_level} with "IV"
+						replace all "3" in {_level} with "III"
+						replace all "2" in {_level} with "II"
+						replace all "1" in {_level} with "I"
+						add "&7%enchantment of loop-value% %{_level}%" to {_lastdmg::*}
+					if lore of attacker's tool is set:
+						add " " to {_lastdmg::*}
+						add lore of attacker's tool to {_lastdmg::*}
+					set {lastdmgcauselore::%victim%::*} to join {_lastdmg::*} by nl
+					set {_lastdmg::1} to "&5Enchants:"
+					set {lastdmgcauseloreEN::%victim%::*} to join {_lastdmg::*} by nl
+				else:
+					cancel event
+	#set damage to damage - (({wytrzymalosc::%victim%}/500)*damage)
+	if {tarczavar::%uuid of victim%} is true:
+		if damage > 0:
+			if {tarcza::%uuid of victim%} > 0:
+				set {_dmg} to damage
+				set {tarcza::%uuid of victim%} to {tarcza::%uuid of victim%} - {_dmg}
+				set {_caster::*} to {-tarczacaster::%uuid of victim%} split at "-"
+				set {_caster} to ({_caster::1} parsed as player)
+				set {_value} to {_caster::2} parsed as number
+				set {_id} to line 18 of lore of {karta::%{_caster}%}
+				if ({_value}-{_dmg}) > 0:
+					add ({_dmg}) to {healtotal::%{_caster}%}
+					add ({_dmg}) to {healcard::%{kartaname::%{_caster}%}%::%{_id}%}
+					add ({_dmg}) to {healcard::%{kartaname::%{_caster}%}%::%{_id}%::%{_caster::4}%}
+					add ({_dmg}) to {shieldtotal::%{_caster}%}
+					add ({_dmg}) to {shieldcard::%{kartaname::%{_caster}%}%::%{_id}%}
+					add ({_dmg}) to {shieldcard::%{kartaname::%{_caster}%}%::%{_id}%::%{_caster::4}%}
+					HealRefresh({_caster}, {_dmg})
+					remove {_dmg} from {_value}
+					set {-tarczacaster::%uuid of victim%} to "%{_caster}%-%{_value}%-%{_caster::3}%-%{_caster::4}%"
+				else:
+					add ({_value}) to {healtotal::%{_caster}%}
+					add ({_value}) to {healcard::%{kartaname::%{_caster}%}%::%{_id}%}
+					add ({_value}) to {healcard::%{kartaname::%%}%::%{_id}%::%{_caster::4}%}
+					add ({_value}) to {shieldtotal::%{_caster}%}
+					add ({_value}) to {shieldcard::%{kartaname::%{_caster}%}%::%{_id}%}
+					add ({_value}) to {shieldcard::%{kartaname::%%}%::%{_id}%::%{_caster::4}%}
+					HealRefresh({_caster}, {_value})
+					remove {_value} from {_value}
+					set {-tarczacaster::%uuid of victim%} to "%{_caster}%-%{_value}%-%{_caster::3}%-%{_caster::4}%"
+				if {tarcza::%uuid of victim%} > 0:
+					if {language::%victim%} = "English":
+						send action bar "<##d6dcff>TARCZA: %{tarcza::%uuid of victim%}%" to victim
+					else:
+						send action bar "<##d6dcff>SHIELD: %{tarcza::%uuid of victim%}%" to victim
+				else:
+					if {language::%victim%} = "English":
+						send action bar "<##d6dcff>SHIELD BROKEN" to victim
+					else:
+						send action bar "<##d6dcff>TARCZA ZNISZCZONA" to victim
+				set damage to 0
+				if {tarcza::%uuid of victim%} < 0:
+					set {_dmg} to 0 - {tarcza::%uuid of victim%}
+					make the attacker damage the victim by 2*{_dmg}
+					set {tarczavar::%uuid of victim%} to false
+					clear {-tarczacaster::%uuid of victim%}
+	#set damage to damage * ((600/(600+{wytrzymalosc::%victim%}))*(1800/(1800+{uniwersalnosc::%victim%})))
+	set {_idV} to line 18 of lore of {karta::%victim%}
+	set {_idA} to line 18 of lore of {karta::%attacker%}
+	set {_zywiol} to Zywiol(attacker, victim)
+	set {_damagered} to 1 + (({wytrzymalosc::%victim%}/30) + ({wytrzymalosc::%{_idV}%}/30) + ({uniwersalnosc::%victim%}/30) + ({uniwersalnosc::%{_idV}%}/30))/100
+	if {_zywiol} = "resist":
+		add 0.1 + (({zywiol::%victim%}/25) + ({zywiol::%{_idV}%}/25)/100) to {_damagered}
+	if {_zywiol} = "supereffective":
+		set damage to damage*((1.1 + (({zywiol::%victim%}/25) + ({zywiol::%{_idV}%}/25)/100)))
+	set damage to damage/{_damagered}
+	chance of ({unik::%{_idV}%}/50) + ({unik::%victim%}/50)%:
+		set damage to 0
+	if {shwdea::%victim%} is true:
+		if attacker is a player:
+			clear {shwdea::%victim%}
+			if damage is not bigger than or equal to victim's health:
+				set {_swd} to damage
+				set {lastdmgcause::attacker} to "<##ff8921>Shadow Word: Death"
+				set attacker's last damage cause to attack
+				set {lastdmgcauselore::%attacker%::*} to attacker's tool's lore
+				make the attacker damage the attacker by {_swd}*2
+	if victim is a player:
+		if health of victim < (max health of victim*0.3):
+			if {exec::%victim%} is not set:
+				set {exec::%victim%} to true
+				Heartbeat(victim)
+		if health of victim > (max health of victim*0.3):
+			clear {exec::%victim%}
+	#	#1.18 JAK COŚ SIĘ ZEPSUJE TO ZMIENIŁEM TU ŻEBY NIE DODAWAŁO DAMAGE KIEDY ZADAMY DAMAGE GDY PRZECIWNIK JEST NIEWRAŻLIWY
+	if damage is not 0:
+		if victim is not invulnerable:
+			if attacker is not victim:
+				if attacker is a player:
+					if {mob::%victim%} is true:
+						DamageBreakdown(attacker, victim, damage)
+						set {_health1} to victim's health
+						wait 1 tick
+						if {_health1} != victim's health:
+							if damage > {_health1}:
+								add ({_health1}) to {dmgdealt::%attacker%}
+							else:
+								add damage to {dmgdealt::%attacker%}
+							if name of victim does not contain "Target Dummy":
+								if damage > {_health1}:
+									add ({_health1}) to {damage::dealt::%{kartaname::%attacker%}%::%{_idA}%}
+								else:
+									add damage to {damage::dealt::%{kartaname::%attacker%}%::%{_idA}%}
+				else:
+					if victim is a player:
+						if {mob::%attacker%} is true:
+							set {_health1} to victim's health
+							wait 1 tick
+							if {_health1} != victim's health:
+								if name of attacker does not contain "Target Dummy":
+									if damage > health of victim:
+										add (damage - health of victim) to {damage::taken::%{kartaname::%victim%}%::%{_idV}%}
+									else:
+										add damage to {damage::taken::%{kartaname::%victim%}%::%{_idV}%}
+	wait 1 tick
+	if victim is a player:
+		set the victim's tablist name to "&8[<##7c7cff>&l%{poziom::%victim%}%<##9494ff>&l⭐&8] &f%victim% &a%victim's health%&c❤"
+	#if victim's name contains "<##ffa229>Dyniowy Zombie":
+		#wait 1 tick
+		#set the display name of victim to "<##ffa229>Dyniowy Zombie (%victim's health%/%victim's max health%)"
+	#if victim's name contains "<##74abc4>Podwodny Straszyciel":
+		#wait 1 tick
+		#set the display name of victim to "<##74abc4>Podwodny Straszyciel (%victim's health%/%victim's max health%)"
+	#if victim's name contains "<##bababa>Opętany Holo Zwierzak":
+		#wait 1 tick
+		#set the display name of victim to "<##bababa>Opętany Holo Zwierzak (%victim's health%/%victim's max health%)"
+	#if victim's name contains "<##fa7d7d>Imitacja Goshy":
+		#wait 1 tick
+		#set the display name of victim to "<##fa7d7d>Imitacja Goshy (%victim's health%/%victim's max health%)"
+	#if victim's name contains "<##ededed>Widmowy Wierzchowiec":
+		#wait 1 tick
+		#set the display name of victim to "<##ededed>Widmowy Wierzchowiec (%victim's health%/%victim's max health%)"
+	#if victim's name contains "<##2375e8>Naginacz Rzeczywistości":
+		#wait 1 tick
+		#set the display name of victim to "<##2375e8>Naginacz Rzeczywistości (%victim's health%/%victim's max health%)"
+	#if victim's name contains "&aTarget Dummy":
+	#	wait 1 tick
+	#	set the name of victim to "&aTarget Dummy &7[&c&l♥&a&l%((victim's health/victim's max health)/100)%%%&7]"
+	if {mob::%victim%} is true:
+		set {_name::*} to name of victim split at " "
+		#JEŚLI NIE CHCEMY, ŻEBY USTAWIAŁO SIĘ HP JAKO NAZWA MOBA MINECRAFTOWEGO, TO KOLEJNE 3 LINIJKI WYŁĄCZYĆ
+		if {_name::*} is not set:
+			set display name of victim to "&a[&c♥&a%((victim's health/victim's max health)*100)%%%&a]"
+			stop
+		loop {_name::*}:
+			add 1 to {_index}
+		set {_ara} to {_name::1}
+		replace all ")" in {_ara} with ""
+		set {_color2} to last color of {_ara}
+		set {_last} to last element of {_name::*}
+		set {_color} to last color of {_last}
+		set {_hp} to the text between '[' and ']' from "%{_last}%"
+		replace all "[" in {_last} with "%{_color}%["
+		replace all "]" in {_last} with "%{_color}%]"
+		replace all "%{_hp}%" in {_last} with "&c♥%{_color2}%%((victim's health/victim's max health)*100)%%%"
+		set {_name::%{_index}%} to {_last}
+		set the name of victim to join {_name::*} by " "
+	#if victim's name contains "<##a6a6a6>&lDalekosiężny Strzelec":
+	#	wait 1 tick
+	#	set {_n::*} to victim's name split at " "
+	#	set {_na} to first element of {_n::*}
+	#	set {_na2} to 2nd element of {_n::*}
+	#	set the display name of victim to "%{_na}% &3&lLVL&7) <##a6a6a6>&lDalekosiężny Strzelec &f(%victim's health%/%victim's max health%)"
+	#if victim's name contains "<##4c7ca1>&lPodstępna Kałamarnica":
+	#	wait 1 tick
+	#	set {_n::*} to victim's name split at " "
+	#	set {_na} to first element of {_n::*}
+	#	set {_na2} to 2nd element of {_n::*}
+	#	set the display name of victim to "%{_na}% &3&lLVL&7) <##4c7ca1>&lPodstępna Kałamarnica &f(%victim's health%/%victim's max health%)"
+	#if victim's name contains "<##446b38>&lCiernisty Zombie":
+	#	wait 1 tick
+	#	set {lastdmgcause::%attacker%} to "<##446b38>Ciernie"
+	#	set {lastdmgcauselore::%attacker%::*} to "&7Odbija 10%% otrzymywanych obrażeń"
+	#	make victim damage the attacker by 2*(0.1*damage)
+	#	play sound "enchant.thorns.hit" with volume 2 and pitch 1 at attacker
+	#	set {_n::*} to victim's name split at " "
+	#	set {_na} to first element of {_n::*}
+	#	set {_na2} to 2nd element of {_n::*}
+	#	set the display name of victim to "%{_na}% &3&lLVL&7) <##446b38>&lCiernisty Zombie &f(%victim's health%/%victim's max health%)"
+	#if victim's name contains "<##4c7ca1>&lMumia":
+	#	wait 1 tick
+	#	set {_n::*} to victim's name split at " "
+	#	set {_na} to first element of {_n::*}
+	#	set {_na2} to 2nd element of {_n::*}
+	#	set the display name of victim to "%{_na}% &3&lLVL&7) <##4c7ca1>&lMumia &f(%victim's health%/%victim's max health%)"
+	#if victim's name contains "<##c7aa5b>&lRuchomy Piasek":
+	#	wait 1 tick
+	#	set {_n::*} to victim's name split at " "
+	#	set {_na} to first element of {_n::*}
+	#	set {_na2} to 2nd element of {_n::*}
+	#	set the display name of victim to "%{_na}% &3&lLVL&7) <##c7aa5b>&lRuchomy Piasek &f(%victim's health%/%victim's max health%)"
+	#if victim's name contains "<##9221cc>Imprezowa":
+	#	remove attacker from {asyst::%victim%::*}
+	#	add uuid of attacker to {asyst::%victim%::*}
+	#	wait 1 tick
+	#	set {_n::*} to victim's name split at " "
+	#	set {_na} to first element of {_n::*}
+	#	set {_na2} to 2nd element of {_n::*}
+	#	set the display name of victim to "&a&l%{_na}% LVL<##006415>) <##9221cc>Imprezowa <##e44ecd>Imitacja <##ff66fe>Goshy <##006415>(&a%victim's health%/&a%victim's max health%<##006415>)"
+	#if victim's name contains "<##c3bc09>Wystrzałowa":
+	#	remove attacker from {asyst::%victim%::*}
+	#	add uuid of attacker to {asyst::%victim%::*}
+	#	wait 1 tick
+	#	set {_n::*} to victim's name split at " "
+	#	set {_na} to first element of {_n::*}
+	#	set {_na2} to 2nd element of {_n::*}
+	#	set the display name of victim to "&a&l%{_na}% LVL<##006415>) <##c3bc09>Wystrzałowa <##d8d122>Owca <##006415>(&a%victim's health%/&a%victim's max health%<##006415>)"
+	#if victim's name contains "<##8c929c>Ożywiony":
+	#	remove attacker from {asyst::%victim%::*}
+	#	add uuid of attacker to {asyst::%victim%::*}
+	#	wait 1 tick
+	#	set {_n::*} to victim's name split at " "
+	#	set {_na} to first element of {_n::*}
+	#	set {_na2} to 2nd element of {_n::*}
+	#	set the display name of victim to "&a&l%{_na}% LVL<##006415>) <##8c929c>Ożywiony Target Dummy <##006415>(&a%victim's health%/&a%victim's max health%<##006415>)"
+	#if victim's name contains "<##fc7703>Iluzjonista":
+	#	remove attacker from {asyst::%victim%::*}
+	#	add uuid of attacker to {asyst::%victim%::*}
+	#	wait 1 tick
+	#	set {_n::*} to victim's name split at " "
+	#	set {_na} to first element of {_n::*}
+	#	set {_na2} to 2nd element of {_n::*}
+	#	set the display name of victim to "&a&l%{_na}% LVL<##006415>) <##fc7703>Iluzjonista <##006415>(&a%victim's health%/&a%victim's max health%<##006415>)"
+	#if victim's name contains "<##e6e6e6>Głodna Lama":
+	#	remove attacker from {asyst::%victim%::*}
+	#	add uuid of attacker to {asyst::%victim%::*}
+	#	wait 1 tick
+	#	set {_n::*} to victim's name split at " "
+	#	set {_na} to first element of {_n::*}
+	#	set {_na2} to 2nd element of {_n::*}
+	#	set the display name of victim to "&a&l%{_na}% LVL<##006415>) <##e6e6e6>Głodna Lama <##006415>(&a%victim's health%/&a%victim's max health%<##006415>)"
+	#if {_wytrm} is set:
+	#	wait 5 seconds
+	#	set {wytrzymalosc::%victim%} to {_wytrm}
+on entity knockback:
+	if knockback attacker is a player:
+		if {lastdmgcause::%knockback victim%} = "<##6dec58>Tykwa":
+			cancel event
+		if {lastdmgcause::%knockback victim%} = "<##7430ab>Widmowe Błyskawice":
+			cancel event
+		if {lastdmgcause::%knockback victim%} = "<##eb7d34>Shadow Word: Pain":
+			cancel event
+		if {lastdmgcause::%knockback victim%} = "<##452266>Vampiric Touch":
+			cancel event 
+		if {lastdmgcause::%knockback victim%} = "<##452266>Shadowy Apparitions":
+			cancel event
+		if {firstknockback::%knockback victim%} = true:
+			cancel event
+			set {firstknockback::%knockback victim%} to false
+	if {lastdmgcause::%knockback victim%} = "<##446b38>Ciernie":
+		cancel event
+	if knockback victim's name contains "&aTarget Dummy":
+		cancel event
+function Heartbeat(p: entity):
+	while (max health of {_p})*0.3 > health of {_p}:
+		loop 2 times:
+			play sound "block.note_block.basedrum" with volume 5 and pitch 0 to {_p}
+			wait 0.4 seconds
+		wait 3 seconds
+on leave:
+	clear {exec::%player%}
+#on heal:
+#	if {walka} is true:
+#		if heal reason is satiated or regeneration:
+#			cancel event
+#		#if {ilumark::%player%} is true:
+#			#set heal amount to heal amount * 2
+#		loop all players:
+#			display hologram "<##baff8c>%heal amount% heal" at player to loop-player for 0.75 seconds
+#		wait 1 tick
+#		set player's tablist name to "&8[<##f75e5e>❤<##c8ff61>%player's health%&8] &f%player%"
+#		#wait 3 ticks
+#		#set player's tablist name to "&8[<##f75e5e>❤<##c8ff61>%player's health%&8] &f%player%"
+on respawn:
+	#if {walka} = true:
+		#set player's tablist name to "&8[<##f75e5e>❤<##c8ff61>%player's health%&8] &f%player% %{playerstatus::%player%}%"
+	#else:
+	#set player's tablist name to "&8[<##7c7cff>&l%{poziom::%player%}%<##9494ff>&l⭐&8] &f%player%"
+	set the player's tablist name to "&8[<##7c7cff>&l%{poziom::%player%}%<##9494ff>&l⭐&8] &f%player% &a%player's health%&c❤"
+on damage:
+	projectile exists:
+		if {tarczavar::%victim%} is true:
+			if {tarcza::%victim%} > 0:
+				set {_dmg} to damage
+				set {tarcza::%victim%} to {tarcza::%victim%} - {_dmg}
+				if {tarcza::%victim%} > 0:
+					send action bar "<##d6dcff>TARCZA: %{tarcza::%victim%}%" to victim
+				else:
+					send action bar "<##d6dcff>TARCZA ZNISZCZONA" to victim
+				set damage to 0
+				if {tarcza::%victim%} < 0:
+					set {_dmg} to 0 - {tarcza::%victim%}
+					make the attacker damage the victim by 2*{_dmg}
+					set {tarczavar::%victim%} to false
+	else if attacker is llama spit:
+		if {tarczavar::%victim%} is true:
+			if {tarcza::%victim%} > 0:
+				set {_dmg} to damage
+				set {tarcza::%victim%} to {tarcza::%victim%} - {_dmg}
+				if {tarcza::%victim%} > 0:
+					send action bar "<##d6dcff>TARCZA: %{tarcza::%victim%}%" to victim
+				else:
+					send action bar "<##d6dcff>TARCZA ZNISZCZONA" to victim
+				set damage to 0
+				if {tarcza::%victim%} < 0:
+					set {_dmg} to 0 - {tarcza::%victim%}
+					make the attacker damage the victim by 2*{_dmg}
+					set {tarczavar::%victim%} to false
+on any move:
+	if {walka} is true:
+		if {arena} = "arenaburzy":
+			block under player is yellow carpet:
+				push the player upwards at speed 1
+				push the player forwards at speed 1
+				play sound "minecraft:block.ladder.break" with volume 3 and pitch 1 at player
+				stop
+	
+#do on damage do pvp			
+#if {walka} is true:
+	#	if victim is a player:
+	#		if {ilumark::%victim%} is true:
+	#			set damage to damage * 1.25
+	#			set {ilumark::%victim%} to false
+	#		if {bumbleblastredukcjaobrazen::%victim%} is true:
+	#			set damage to damage * 0.9
+	#		#set damage to damage - (({wytrzymalosc::%victim%}/100)*damage)
+	#		if {critdmg::%victim%} is true:
+	#			set {critdmg::%victim%} to false
+	#			loop all players:
+	#				display hologram "<##ff9e42>%damage% DMG" at victim to loop-player for 0.75 seconds
+	#			wait 1 tick 
+	#			set victim's tablist name to "&8[<##f75e5e>❤<##c8ff61>%victim's health%&8] &f%victim%"
+	#		if {tarczavar::%victim%} = true:
+	#			loop all players:
+	#				display hologram "<##d6dcff>%damage% tarcza" at victim to loop-player for 0.75 seconds
+	#			wait 1 tick 
+	#			set victim's tablist name to "&8[<##f75e5e>❤<##c8ff61>%victim's health%&8] &f%victim%"
+	#		else:
+	#			loop all players:
+	#				display hologram "<##f5aef0>%damage% dmg" at victim to loop-player for 0.75 seconds
+	#			wait 1 tick 
+	#			set victim's tablist name to "&8[<##f75e5e>❤<##c8ff61>%victim's health%&8] &f%victim%"
+	#		if {un::%victim%} is true:
+	#			set {un::%victim%} to false
+	#			loop all players:
+	#				display hologram "<##7d90fa>UNIK" at victim to loop-player for 0.75 seconds
+	#			wait 1 tick 
+	#			set victim's tablist name to "&8[<##f75e5e>❤<##c8ff61>%victim's health%&8] &f%victim%"
+	#	if attacker is a player:
+	#		if victim is a player:
+	#			#add damage to {zadanydmg::%attacker%}
+	#			if {karta::%attacker%} = "Bumble Blast":
+	#				add damage to {bumbleblastzadanydmg::%attacker%}
+	#			if {karta::%attacker%} = "Pop Fizz":
+	#				add damage to {popfizzzadanydmg::%attacker%}
+	#			if {karta::%attacker%} = "Spotlight":
+	#				add damage to {spotlightzadanydmg::%attacker%}

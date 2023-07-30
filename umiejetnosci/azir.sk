@@ -1,0 +1,169 @@
+on rightclick:
+	if player's tool is stick named "Testmob NPC":
+		if player's name = "llamadegree":
+			#ODTWARZANIE Z TEMPLATE NPC
+			execute console command "npc select 5813"
+			execute console command "npc copy"
+			
+			#TWORZENIE NPC NA /WARP NPC
+			set {_loc} to location(3495989, 124, 2257, world "world")
+			loop all players in radius 3 around {_loc}:
+				if name of loop-player = "Sand Soldier":
+					if uuid of loop-player != "eb74eccc-a1ca-2e70-800b-9d56a8d78ddc":
+						set {_npc} to loop-player
+						set {_uuid} to uuid of {_npc}
+						stop loop
+			
+			#TELEPORTOWANIE GRACZA DO TARGET LOCATION
+			set {_targetloc} to block above target block of player
+			set {_x1} to x-coordinate of {_targetloc}
+			set {_y} to y-coordinate of {_targetloc}
+			set {_z} to z-coordinate of {_targetloc}
+			execute console command "npc moveto %{_x1}% %{_y}% %{_z}%"
+			
+			#ZNAJDYWANIE ID NPC
+			set {_num} to 5813
+			while {_znaleziono} is not true:
+				set {_citizen} to citizen {_num}
+				if uuid of {_citizen} = {_uuid}:
+					set {_znaleziono} to true
+				add 1 to {_num}
+			
+			#PRZYZNAWANIE KOLORKU DO DMG GRAPHA, USTAWIANIE VARIABLA NA NPC DO DESPAWNU
+			set {kolorekkarta::%{_npc}%} to ""
+			set {ikonkakarta::%{_npc}%} to ""
+			add {_npc} to {-zolnierze::%player%::*}
+			set {npc::%{_npc}%} to {_citizen}
+			spawn 1 armor stand at {_npc}
+			
+			#WŁAŚCICIEL POD NAZWĄ ŻOŁNIERZA
+			add nbt compound from "{Invisible:1}" to nbt of last spawned armor stand
+			add nbt compound from "{NoGravity:1}" to nbt of last spawned armor stand
+			add nbt compound from "{NoBasePlate:1b,ShowArms:1b,Pose:{LeftLeg:[0f,0f,338f],RightLeg:[0f,0f,24f]}}" to nbt of last spawned armor stand
+			set the display name of last spawned armor stand to "&e<%player%>"
+			set {_loc} to location of {_npc}
+			set y-coordinate of {_loc} to (y-coordinate of {_loc} - 0.4)
+			teleport the last spawned armor stand to {_loc}
+			set {-zolnierz::owner::%{_uuid}%} to last spawned armor stand
+			
+			#DŹWIĘK
+			
+			
+			#POLE ŻOŁNIERZA
+			while {_npc} is alive:
+				loop 180 times:
+					if {_npc} is on ground:
+						set {_v} to spherical vector radius 2, yaw loop-value * 15, pitch 0
+						show 1 yellow dust at {_npc} ~ {_v}
+				wait 1 second
+					
+	if player's tool is blaze rod:
+		if {-zolnierze::%player%::*} is set:
+			loop {-zolnierze::%player%::*}:
+				set {_targetblock} to target block of player
+				push loop-value in the direction of player with speed 2
+				set {conqueringsands::%uuid of loop-value%} to true
+			while {-zolnierze::%player%::*} is not on ground:
+				wait 1 tick
+			loop {-zolnierze::%player%::*}:
+				clear {conqueringsands::%uuid of loop-value%}
+				loop all entities in radius 5 around loop-value:
+					if loop-entity is not a player:
+						make player damage loop-entity by 2
+						
+		#stata prędkości ataku na azirze? (meta gem)
+
+on death:
+	if victim is player:
+		if {npc::%victim%} is set:
+			execute console command "npc remove %{npc::%victim%}%"
+			clear {npc::%victim%}
+			delete {-zolnierz::owner::%uuid of victim%}
+			clear {-zolnierz::owner::%uuid of victim%}
+		
+on command "/warp":
+	clear {-zolnierze::%player%::*}
+	clear {dmgdealt::*}
+	
+on leftclick:
+	if {-zolnierze::%player%::*} is set:
+		loop {-zolnierze::%player%::*}:
+			make loop-value swing their hand
+			loop all living entities in radius 3 around loop-value:
+				if loop-entity is not a player:
+					if loop-entity is not an armor stand:
+						set {_dmg} to 6
+						if {_uderzono::%loop-entity%} is true:
+							set {_dmg} to {_dmg}*0.33
+						make player damage loop-entity by {_dmg}
+						play sound "block.sand.place" with volume 5 and pitch 0.3 at loop-value-1
+						set {_uderzono::%loop-entity%} to true
+						wait 1 tick
+
+
+#loop all players in radius 3 around loop-value where [input is not player]:
+#if {-zolnierze::%player%::*} does not contain loop-player:
+on any move:
+	if {-zolnierze::%player%::*} is set:
+		set {_yaw} to player's yaw
+		set {_pitch} to player's pitch
+		loop {-zolnierze::%player%::*}:
+			set {_loc} to location of loop-value
+			set y-coordinate of {_loc} to (y-coordinate of {_loc} - 0.4)
+			teleport {-zolnierz::owner::%uuid of loop-value%} to {_loc}
+			wait 1 tick
+			if {conqueringsands::%uuid of loop-value%} is not true:
+				if loop-value is on ground:
+					set {_loc} to location of loop-value
+					set yaw of {_loc} to {_yaw}
+					set pitch of {_loc} to {_pitch}
+					teleport loop-value to {_loc}
+#5775
+#105c1304-15b5-28eb-8cb6-69c1d948d8fd
+#<##ffe07a>
+#RĘCZNE TWORZENIE
+#create a citizen named "Sand Soldier" at player
+#			set {_x} to last created citizen
+#			make citizen {_x} invulnerable
+#			set item of citizen {_x} to diamond sword
+#			set max health of {_x} to 50
+#			execute console command "npc select %{_x}%"
+#			execute console command "npc skin --url http://novask.in/6059933669.png" 
+#			execute console command "trait sentinel"
+#			execute console command "sentinel realistic true"
+#			execute console command "sentinel damage 2"
+#			#execute console command "sentinel addtarget players"
+#			execute console command "sentinel attackrate 0"
+#			execute console command "sentinel speed 0"
+#			execute console command "sentinel reach 0"
+#			loop 2 times:
+#				execute console command "npc collidable"
+#			wait 2 seconds
+
+#on rightclick:
+#	if player's tool is black dye:
+#	create a citizen named "agnes" at location 1 metre above player's head
+#	set {_x} to last created citizen
+#	give npc {_x} the look close trait
+#	execute console command "npc select %{_x}%"
+#	execute console command "trait sentinel"
+#	execute console command "sentinel realistic true"
+#	execute console command "sentinel damage 2"
+#	execute console command "sentinel addtarget players"
+#	execute console command "sentinel addtarget mobs"
+#	execute console command "sentinel attackrate 0.5"
+#	execute console command "sentinel addavoid player:%player%"
+#	execute console command "sentinel guard %player%"
+#	execute console command "sentinel speed 0.75"
+#	execute console command "sentinel reach 6"
+#	loop all entities in radius 30 around the player:
+#		if loop-entity's name contains "agnes":
+#			wait 3 seconds
+#			teleport loop-entity to player
+#	#spawn 1 zombie at player
+#	#set {_f} to uuid of last spawned zombie
+#	#execute console command "/disguuid %{_f}% player %player% setDisguiseName &f&r%player's name%"
+#	wait 10 seconds
+#	execute console command "sentinel kill"
+#	remove citizen {_x}
+#	broadcast "A"

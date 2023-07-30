@@ -1,0 +1,117 @@
+function data() :: string:
+	set {_t} to now formatted as "HH.mm.ss dd.MM.yyyy"
+	set {_l::*} to "%{_t}%" split at "."
+	set {_x} to first element of {_l::*}
+	set {_x} to {_x} parsed as number
+	add 2 to {_x}
+	set {_data} to "%{_x}%:%join {_l::2} and {_l::3} with ":"%.%join {_l::4} and {_l::5} with "."%"
+	return {_data}
+	
+at 10:00 in real world:
+	set {_x} to text from "https://worldtimeapi.org/api/timezone/Europe/Amsterdam"
+	if {_x} contains """day_of_week"":5":
+		set {tygodniowyreset} to true
+	set {dziennyreset} to true
+	kill {-leaderboard::*}
+	restart server
+
+at 09:55 in real world: 
+	broadcast "&aDzienny reset nastąpi za 5 min!"
+	wait 2 minutes
+	broadcast "&aDzienny reset nastąpi za 3 min!"
+	wait 2 minutes
+	broadcast "&aDzienny reset nastąpi za 1 min!"
+	wait 30 seconds
+	set {_s} to 30
+	loop 30 times:
+		if {_s} = 30, 20, 15, 10 or 5:
+			broadcast "&aDzienny reset nastąpi za %{_s}% sekund!"
+		else if {_s} < 6:
+			broadcast "&aDzienny reset nastąpi za %{_s}% sekund!"
+		remove 1 from {_s}
+		wait 1 second
+	
+on skript start:
+	if {dziennyreset} is true:
+		set {dziennyreset} to false
+		send "Dzienny reset nastąpił!" to console
+		set {_data} to data()
+		log "%{_data}% Dzienny reset nastąpił!" to "logi/serwer.log"
+		if {tygodniowyreset} is not true:
+			execute console command "discord broadcast ##earthcraft %{_data}% | Dzienny reset nastąpił!"
+		loop all offline players:
+			set {dziennylimit::stardust::%loop-offline player%} to {poziom::%loop-offline player%}
+			if {dailyready::%loop-offline player%} = true:
+				set {dailystreak::%loop-offline player%} to 0
+			else:
+				set {dailyready::%loop-offline player%} to true
+				if {dailynagroda::%loop-offline player%} < 7:
+					add 1 to {dailynagroda::%loop-offline player%}
+				else:
+					set {dailynagroda::%loop-offline player%} to 1
+			set {dresetwiad::%loop-offline player%} to true
+		execute console command "noinvincibility on"
+		Leaderboard(1, "mobskilled")
+	if {tygodniowyreset} is true:
+		set {tygodniowyreset} to false
+		send "Tygodniowy reset nastąpił!" to console
+		set {_data} to data()
+		log "%{_data}% Tygodniowy reset nastąpił!" to "logi/serwer.log"
+		execute console command "discord broadcast ##earthcraft %{_data}% | Tygodniowy reset nastąpił!"
+		loop all offline players:
+			set {tresetwiad::%loop-offline player%} to true
+			clear {zlecenia::%loop-offline player%::*}
+			clear {vaultnagroda::%loop-offline player%}
+		set {_datatydz::*} to {_data} split at " "
+		set {_datatydzien} to 2nd element of {_datatydz::*}
+		set {_char1} to char at 0 in {_datatydzien}
+		set {_char2} to char at 1 in {_datatydzien}
+		if {_char1} != "0":
+			set {_dzien} to "%{_char1}%%{_char2}%" parsed as number
+		else:
+			set {_dzien} to "%{_char2}%" parsed as number
+		add 7 to {_dzien}
+		set {datatydzien} to {_datatydzien}
+		set {_datadzien::*} to {_datatydzien} split at "."
+		set {_datadzien::1} to {_dzien}
+		set {_datadzien} to join {_datadzien::*} with "."
+		set {datatydzien2} to "%{_dzien}%.%{_datadzien}%"
+		
+	loop {leaderboard::*}:
+		kill loop-value
+		clear {leaderboard::*}
+			
+on skript stop:
+	loop {leaderboard::*}:
+		kill loop-value
+		clear {leaderboard::*}
+	loop {standard::*}:
+		kill loop-value
+	clear {standard::*}
+on join:
+	if {dresetwiad::%player%} = true:
+		set {dresetwiad::%player%} to false
+		wait 1.5 seconds
+		if {language::%player%} = "English":
+			send "&a=== Daily reset ===" to player
+			send "&aYour daily <##6518ba>S<##942cce>t<##a925d9>a<##f346d1>r<##f37646>d<##f38646>u<##f18d18>s<##f3d846>t &alimit has been reset!" to player
+			send "&aYour Daily Reward has been reset!" to player
+		else:
+			send "&a=== Dzienny reset nastąpił! ===" to player
+			send "&aTwój dzienny limit <##6518ba>S<##942cce>t<##a925d9>a<##f346d1>r<##f37646>d<##f38646>u<##f18d18>s<##f3d846>tu &azostal zresetowany!" to player
+			send "&aTwoja Dzienna Nagroda została zresetowana!" to player
+	if {tresetwiad::%player%} = true:
+		set {tresetwiad::%player%} to false
+		wait 1.5 seconds
+		if {language::%player%} = "English":
+			send "&d=== Weekly reset ===" to player
+			send "&dWeekly rewards are awaiting you in The Grand Vault!" to player
+			send "&dWork Orders have been reset!" to player
+			send "&dCard rotation in Stellar Chest has changed!" to player
+		else:
+			send "&d=== Tygodniowy reset nastąpił! ===" to player
+			send "&dNagrody czekają na ciebie w Wielkim Skarbcu!" to player
+			send "&dTwoje Zlecenia zostały zresetowane!" to player
+			send "&dRotacja Kart w Stelarnej Skrzynce się zmieniła!" to player
+	if player's name = "kapoonfleek" or "llamadegree":
+		execute player command "noinvincibility on"
