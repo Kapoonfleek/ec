@@ -1,1 +1,3 @@
-# ec
+# Earthcraft
+
+WIP
