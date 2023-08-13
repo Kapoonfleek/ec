@@ -14,7 +14,19 @@ on load:
 on rightclick on enchanting table:
     if {enchanterstable::%event-block%} is true:
         cancel event
-        send "nyi" to player
+        set metadata tag "enchant" of player to chest inventory with 6 rows named "Disenchant"
+        if {language::%player%} = "English":
+            set {_dise} to "&f&oClick to enchant Tool, Artifact or Relic."
+        else:
+            set {_dise} to "&f&oKliknij by zenchantować Narzędzie, Artefakt, lub Relikt."
+        set {_x} to 0
+        loop all items in the player's inventory:
+            if loop-item is a pickaxe:
+                set slot {_x} of (metadata tag "enchant" of player) to 1 of loop-item
+            if line 1 of loop-item contains "Relic" or "Artifact":
+                set slot {_x} of (metadata tag "enchant" of player) to 1 of loop-item                
+        wait 3 ticks
+        open (metadata tag "enchant" of player) to player
 on leftclick on enchanting table:
     if {enchanterstable::%event-block%} is true:
         cancel event
@@ -74,6 +86,34 @@ on inventory click:
                         drop {_dustamount} of {_carddust} at player
                     play sound "entity.player.levelup" with volume 3 and pitch 0 at player
                     play sound "block.glass.break"  with volume 3 and pitch 1.2 at player
+    if player's current inventory = (metadata tag "enchant" of player):
+        cancel event
+        if clicked slot is between 0 and 53:
+            if lore of item contains "&f&oClick to enchant Tool, Artifact or Relic." or "&f&oKliknij by zenchantować Narzędzie, Artefakt, lub Relikt.":
+                if clicked slot is not air:
+                    set {_x} to clicked slot
+                    set {_num} to clicked raw slot
+                    set {_en} to metadata tag "enchanttool" of player
+                    if {_x} is a pickaxe:
+                        set {_en} to chest inventory with 3 rows named "Enchant"
+                        set {_z} to 0
+                        set slot 11 of {_en} to clicked slot
+                        if {language::%player%}:
+                            set {_ehbook} to purple glass pane named "<##9f32cf>Enchanted Book" with lore "&7Click here to add an enchanted%nl%&7book."
+                        else:
+                            set {_ehbook} to purple glass pane named "<##9f32cf>Enchanted Book" with lore "&7Kliknij tutaj by dodać zaklętą%nl%&7książkę."
+                        set slot 14 of {_en} to {_ehbook}
+    if player's current inventory = (metadata tag "enchanttool" of player):
+        cancel event
+        if clicked slot is purple glass pane named "<##9f32cf>Enchanted Book":
+            set {_en} to metadata tag "enchantbooks" of player
+            set {_en} to chest inventory with 3 rows named "Enchanted Books"
+            set {_z} to 0
+            loop all items in the player's inventory:
+                if loop-item is an enchanted book:
+                    if line 1 of lore contains "Enchant":
+                        set slot {_z} of {_en} to 1 of loop-item
+            open {_en} to player
 on break of enchanting table:
     if {enchanterstable::%event-block%} is true:
         cancel event
