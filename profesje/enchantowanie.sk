@@ -24,7 +24,8 @@ on rightclick on enchanting table:
             if loop-item is a pickaxe:
                 set slot {_x} of (metadata tag "enchant" of player) to 1 of loop-item with lore (lore of loop-item) and {_dise}
             if line 1 of lore of loop-item contains "Relic" or "Artifact":
-                set slot {_x} of (metadata tag "enchant" of player) to 1 of loop-item with lore (lore of loop-item) and {_dise}           
+                set slot {_x} of (metadata tag "enchant" of player) to 1 of loop-item with lore (lore of loop-item) and {_dise}      
+            add 1 to {_x}     
         wait 3 ticks
         open (metadata tag "enchant" of player) to player
         play sound "minecraft:block.enchantment_table.use" with volume 4 and pitch 1 to player
@@ -103,7 +104,7 @@ on inventory click:
         cancel event
         if clicked slot is between 0 and 53:
             if lore of clicked slot contains "&f&oClick to enchant Tool, Artifact or Relic." or "&f&oKliknij by zenchantować Narzędzie, Artefakt, lub Relikt.":
-                set metadata value "enchanttool" of player to clicked slot
+                set metadata value "echtool" of player to clicked slot
                 if clicked slot is not air:
                     set {_x} to clicked slot
                     set {_num} to clicked raw slot
@@ -136,9 +137,9 @@ on inventory click:
         cancel event
         if clicked slot is between 0 and 53:
             if line 1 of lore of clicked slot contains "<##9f32cf>Pickaxe Enchant" or "<##9f32cf>Enchant Kilofu":
-                set {_tool} to metadata value "enchanttool" of player
-                set metadata value "enchantbook" of player to clicked slot
-                isPickaxe({_tool}, "%name of clicked slot%", player)
+                set {_tool} to metadata value "echtool" of player
+                set metadata value "enchbook" of player to clicked slot
+                isPickaxe({_tool}, name of clicked slot, player)
 function isPickaxe(t: item, t2: text, p: player):
     if {_t} is not a pickaxe:
         play sound "block.glass.break" with volume 3 and pitch 2 to {_p}
@@ -147,28 +148,27 @@ function isPickaxe(t: item, t2: text, p: player):
         else:
             send "&8[&6Earthcraft&8] &7Kliknięty przedmiot nie jest kilofem!" to {_p}
     else:
-        remove 1 of (metadata value "enchantbook" of player) from {_p}'s inventory
+        set {_it} to (metadata value "enchbook" of {_p})
+        remove 1 of {_it} from {_p}'s inventory
         set {_o::*} to {_t2} split at " "
-        if {_o::1} = "I":
+        if {_o::3} = "I":
             set {_xp} to 50*{bonusxp::ench::%{_p}%}
-        broadcast {_o::*1}
         if {language::%{_p}%} = "English":
             set {_dise} to "&f&oClick to enchant Tool, Artifact or Relic."
             set {_msg} to "&7Successfuly enchanted your pickaxe with &6%{_t2}%&7! (&6+%{_xp}% XP&7)"
         else:
             set {_dise} to "&f&oKliknij by zenchantować Narzędzie, Artefakt, lub Relikt."
             set {_msg} to "&7Pomyślnie zaklnięto kilof zaklęciem &6%{_t2}%&7! (&6+%{_xp}% XP&7)"
-        loop all items in the inventory of player:
+        loop all items in the inventory of {_p}:
             set {_e} to loop-item
             set {_d} to loop-item with lore (lore of loop-item) and {_dise}
             if {_t} = {_d}:
-                add " " to lore of loop-item
-                add "&7Enchant: &7%uncolored {_t2}%" to lore of loop-item
+                set lore of loop-item to "&7%uncolored {_t2}%" and (lore of loop-item)
                 stop loop
-        #add {_xp} to {exp::%{_p}%}
-        #add {_xp} to {exp::enchantowanie::%{_p}%}
+        add {_xp} to {exp::%{_p}%}
+        add {_xp} to {exp::enchantowanie::%{_p}%}
         send "&8[&6Earthcraft&8] %{_msg}%" to {_p}
-        play sound "block.enchantment_table.use" with volume 4 and pitch 1 at player
+        play sound "block.enchantment_table.use" with volume 4 and pitch 1 at {_p}
 on inventory close:
     if player's current inventory = metadata tag "disenchant" of player:
         if metadata value "disenchanted" of player is not 0:
