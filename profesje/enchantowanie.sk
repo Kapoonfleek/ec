@@ -103,6 +103,7 @@ on inventory click:
         cancel event
         if clicked slot is between 0 and 53:
             if lore of clicked slot contains "&f&oClick to enchant Tool, Artifact or Relic." or "&f&oKliknij by zenchantować Narzędzie, Artefakt, lub Relikt.":
+                set metadata value "enchanttool" of player to clicked slot
                 if clicked slot is not air:
                     set {_x} to clicked slot
                     set {_num} to clicked raw slot
@@ -131,6 +132,41 @@ on inventory click:
         open metadata tag "enchantbooks" of player to player
         play sound "item.book.page_turn" with volume 4 and pitch 1 to player
         stop
+    if player's current inventory = (metadata tag "enchantbooks" of player):
+        cancel event
+        if clicked slot is between 0 and 53:
+            if line 1 of lore of clicked slot contains "<##9f32cf>Pickaxe Enchant" or "<##9f32cf>Enchant Kilofu":
+                set {_tool} to metadata value "enchanttool" of player
+                isPickaxe({_tool,} "%name of clicked slot%", player)
+function isPickaxe(t: item, t2: text, p: player):
+    if {_t} is not a pickaxe:
+        play sound "block.glass.break" with volume 3 and pitch 2 to player
+        if {language::%player%} = "English":
+            send "&8[&6Earthcraft&8] &7Clicked item is not a pickaxe!" to player
+        else:
+            send "&8[&6Earthcraft&8] &7Kliknięty przedmiot nie jest kilofem!" to player
+    else:
+        remove 1 of clicked slot from {_p}'s inventory
+        set {_o::*} to {_t2} split at " "
+        if {_o::1} = "I":
+            set {_xp} to 50*{bonusxp::ench::%{_p}%}
+        broadcast {_o::*1}
+        if {language::%player%} = "English":
+            set {_dise} to "&f&oClick to enchant Tool, Artifact or Relic."
+            set {_msg} to "&7Successfuly enchanted your pickaxe with &6%{_t2}%&7! (&6+%{_xp}% XP&7)"
+        else:
+            set {_dise} to "&f&oKliknij by zenchantować Narzędzie, Artefakt, lub Relikt."
+            set {_msg} to "&7Pomyślnie zaklnięto kilof zaklęciem &6%{_t2}%&7! (&6+%{_xp}% XP&7)"
+        loop all items in the inventory of player:
+            set {_e} to loop-item
+            set {_d} to loop-item with lore (lore of loop-item) and {_dise}
+            if {_t} = {_d}:
+                add " " to lore of loop-item
+                add "&7Enchant: &7%uncolored {_t2}%" to lore of loop-item
+                stop loop
+        #add {_xp} to {exp::%{_p}%}
+        #add {_xp} to {exp::enchantowanie::%{_p}%}
+        send "&8[&6Earthcraft&8] %{_msg}%" to player
 on inventory close:
     if player's current inventory = metadata tag "disenchant" of player:
         if metadata value "disenchanted" of player is not 0:
@@ -142,6 +178,8 @@ on inventory close:
                 send "&8[&6Earthcraft&8] &7Pomyślnie zdisenchantowano &6%{_x}% &7kart i otrzymano &6%{_xp}% XP&7!" to player
             clear metadata value "disenchanted" of player
             clear metadata value "disenchantxp" of player
+    if player's current inventory = metadata tag "enchantbooks" of player:
+        clear metadata value "enchanttool" of player
 function EnchantowanieLevelUp(p: player):
     if {exp::enchantowanie::%{_p}%} >= ({poziomenchantowanie::%{_p}%}*150):
         remove (150*{poziomenchantowanie::%{_p}%}) from {exp::enchantowanie::%{_p}%}
