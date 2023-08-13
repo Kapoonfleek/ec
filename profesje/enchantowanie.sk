@@ -137,21 +137,22 @@ on inventory click:
         if clicked slot is between 0 and 53:
             if line 1 of lore of clicked slot contains "<##9f32cf>Pickaxe Enchant" or "<##9f32cf>Enchant Kilofu":
                 set {_tool} to metadata value "enchanttool" of player
-                isPickaxe({_tool,} "%name of clicked slot%", player)
+                set metadata value "enchantbook" of player to clicked slot
+                isPickaxe({_tool}, "%name of clicked slot%", player)
 function isPickaxe(t: item, t2: text, p: player):
     if {_t} is not a pickaxe:
-        play sound "block.glass.break" with volume 3 and pitch 2 to player
-        if {language::%player%} = "English":
-            send "&8[&6Earthcraft&8] &7Clicked item is not a pickaxe!" to player
+        play sound "block.glass.break" with volume 3 and pitch 2 to {_p}
+        if {language::%{_p}%} = "English":
+            send "&8[&6Earthcraft&8] &7Clicked item is not a pickaxe!" to {_p}
         else:
-            send "&8[&6Earthcraft&8] &7Kliknięty przedmiot nie jest kilofem!" to player
+            send "&8[&6Earthcraft&8] &7Kliknięty przedmiot nie jest kilofem!" to {_p}
     else:
-        remove 1 of clicked slot from {_p}'s inventory
+        remove 1 of (metadata value "enchantbook" of player) from {_p}'s inventory
         set {_o::*} to {_t2} split at " "
         if {_o::1} = "I":
             set {_xp} to 50*{bonusxp::ench::%{_p}%}
         broadcast {_o::*1}
-        if {language::%player%} = "English":
+        if {language::%{_p}%} = "English":
             set {_dise} to "&f&oClick to enchant Tool, Artifact or Relic."
             set {_msg} to "&7Successfuly enchanted your pickaxe with &6%{_t2}%&7! (&6+%{_xp}% XP&7)"
         else:
@@ -166,7 +167,8 @@ function isPickaxe(t: item, t2: text, p: player):
                 stop loop
         #add {_xp} to {exp::%{_p}%}
         #add {_xp} to {exp::enchantowanie::%{_p}%}
-        send "&8[&6Earthcraft&8] %{_msg}%" to player
+        send "&8[&6Earthcraft&8] %{_msg}%" to {_p}
+        play sound "block.enchantment_table.use" with volume 4 and pitch 1 at player
 on inventory close:
     if player's current inventory = metadata tag "disenchant" of player:
         if metadata value "disenchanted" of player is not 0:
@@ -180,6 +182,7 @@ on inventory close:
             clear metadata value "disenchantxp" of player
     if player's current inventory = metadata tag "enchantbooks" of player:
         clear metadata value "enchanttool" of player
+        clear metadata value "enchantbook" of player
 function EnchantowanieLevelUp(p: player):
     if {exp::enchantowanie::%{_p}%} >= ({poziomenchantowanie::%{_p}%}*150):
         remove (150*{poziomenchantowanie::%{_p}%}) from {exp::enchantowanie::%{_p}%}
