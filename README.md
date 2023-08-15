@@ -1,8 +1,8 @@
 # Earthcraft
 
-⭐ Current Version: 8.0.0
+⭐ Current Version: 8.1.0
 
 
-🏗️ 8.0.5 Update Status: TBA
+🏗️ 8.1.5 Update Status: TBA
 
-Update Plans: New event, New Booster, Openable Chests, New Playable Card
+Update Plans: New Playable Card
