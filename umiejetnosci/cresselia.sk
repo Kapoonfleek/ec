@@ -5,31 +5,30 @@ on rightclick:
 		loop all living entities in radius 60 around the player:
 			if loop-entity is not a player:
 				add loop-entity to {_enemies::*}
-			set {_duration} to now
-			while (difference between {_duration} and now) < 8 seconds:
-				set {_j} to a random element of {_enemies::*}
-				set {_x} to block below highest non-air block at {_j}
-				if {_x} is not set:
-					set {_x} to block 20 blocks above {_j}
-				else if y-coordinate of {_x} <= x-coordinate of block at {_j}:
-					set {_h} to a random integer between 15 and 20
-					set {_x} to block {_h} blocks above {_j}
-				#if (y-coordinate of {_x}) - (y-coordinate of {_j}) is not bigger than 20:
-				#	if (y-coordinate of player) is not bigger than or equal to (y-coordinate of {_x}):
-				#		set {_x} to block 4 blocks below highest non-air block at {_j}
-				#	else:
-				#		set {_x} to block 20 blocks above {_j}
-				#else:
-				#	set {_x} to block 20 blocks above {_j}
-				spawn a shulker bullet at {_x}
-				silence last spawned shulker bullet
-				push last spawned shulker bullet (vector from last spawned shulker bullet to {_j}) with speed 0.2
-				set metadata value "starshooter" of last spawned shulker bullet to player
-				add 1 to {_z}
-				#play sound "entity.firework_rocket.launch" with volume 2.3 and pitch -1 at last spawned shulker bullet
-				wait 1 second
-			else:
-				stop loop
+			if {_enemies::*} is set:
+				set {_duration} to now
+				while (difference between {_duration} and now) < 8 seconds:
+					set {_j} to a random element of {_enemies::*}
+					set {_x} to block below highest non-air block at {_j}
+					if {_x} is not set:
+						set {_x} to block 20 blocks above {_j}
+					else if y-coordinate of {_x} <= x-coordinate of block at {_j}:
+						set {_h} to a random integer between 15 and 20
+						set {_x} to block {_h} blocks above {_j}
+					#if (y-coordinate of {_x}) - (y-coordinate of {_j}) is not bigger than 20:
+					#	if (y-coordinate of player) is not bigger than or equal to (y-coordinate of {_x}):
+					#		set {_x} to block 4 blocks below highest non-air block at {_j}
+					#	else:
+					#		set {_x} to block 20 blocks above {_j}
+					#else:
+					#	set {_x} to block 20 blocks above {_j}
+					spawn a shulker bullet at {_x}
+					silence last spawned shulker bullet
+					push last spawned shulker bullet (vector from last spawned shulker bullet to {_j}) with speed 0.2
+					set metadata value "starshooter" of last spawned shulker bullet to player
+					add 1 to {_z}
+					#play sound "entity.firework_rocket.launch" with volume 2.3 and pitch -1 at last spawned shulker bullet
+					wait 1 second
 				#WSZYSCY LOSOWO
 on damage:
 	projectile exists:
@@ -48,7 +47,34 @@ on damage:
 			make {_starshooter} damage victim by 2*({_damage})
 			play sound "entity.generic.hurt" with volume 1.5 and pitch 1 at victim
 			clear metadata value "starshooter" of event-projectile
-			
+function ShootingStars(p: player):
+	while {engagedc::%{_p}%} is set:
+		if {_p} is alive:
+			chance of 12%:
+				set {_id} to line 18 of lore of {karta::%{_p}%}
+				set {_damage} to 0.8 + ({mistrzostwo::%{_p}%}/32) + ({mistrzostwo::%{_id}%}/32)
+				set {_crit} to 0 + ({crit::%{_p}%}/50) + ({crit::%{_id}%}/50)
+				loop all living entities in radius 50 around {_p}:
+					if {mob::%loop-entity%} is true:
+						set {_enti::*} to {_enti::*} and loop-entity
+				set {_target} to a random element of {_enti::*}
+				play sound "entity.firework_rocket.launch" with volume 4 and pitch 0 at {_target}
+				set {_t} to block 20 blocks above {_target}
+				set {_vec} to vector between {_t} and {_target}'s head
+				loop round(distance between {_locst} and {_target}) / 0.5 times:
+					set {_vec} to vector between {_locst} and {_target}'s head
+					set vector length of {_vec} to loop-value-2 * 0.5
+					draw 1 of dust using dustOption((rgb 168, 134, 240), 1) at {_locst} ~ {_vec}
+				set {_target}'s last damage cause to sweep attack
+				set {lastdmgcauseEN::%{_target}%} to "<##6a5e9e>Shooting Star"
+				set {lastdmgcause::%{_target}%} to "<##6a5e9e>Spadająca Gwiazda"
+				set {lastdmgcauselore::%{_target}%::*} to {_lore}
+				set {lastdmgcauseloreEN::%{_target}%::*} to {_loreEN}
+				chance of {_crit}%:
+					set {_damage} to {_damage}*2
+				make {_p} damage {_target} by {_damage}
+		stop if {engagedc::%{_p}%} is not set
+		wait 1 second
 on rightclick:
 	if player's tool is an iron ingot named "<##6a5e9e>Starsurge":
 		if {kartaname::%player%} = "Test Card":
@@ -57,14 +83,33 @@ on rightclick:
 				if {mob::%{_target}%} is true:
 					if {astralpower::%player%} >= 30:
 						set {_id} to line 18 of lore of {karta::%player%}
+						set {_x} to a random integer between 1 and 2
+						if {_x} = 2:
+							play sound "skill.cresselia.starsurgecast2" with volume 4 and pitch 1 at player
+						else:
+							play sound "skill.cresselia.starsurgecast" with volume 4 and pitch 1 at player
+						clear {_x}
 						remove 30 from {astralpower::%player%}
+						set {_crit} to 0 + ({crit::%{_p}%}/50) + ({crit::%{_id}%}/50)
+						set {_damage} to 4 + ({obrazenia::%{_p}%}/15) + ({obrazenia::%{_id}%}/15) + ({uniwersalnosc::%{_p}%}/45) + ({uniwersalnosc::%{_id}%}/45)
 						set {_loc} to player's location
 						set {_target}'s last damage cause to sweep attack
 						set {_pid} to random 8 char string from charset `0-9`
 						drawArc particle "blockcrack", material magenta concrete powder, center {_loc}, target location of {_target}, id "%{_pid}%", rainbowMode false, density 50, height 2, pitchMultiplier 1, visibleRange 30
-						set {lastdamagecause::%{_x}%} to "<##6a5e9e>Starsurge"
-						set {lastdamagecauselore::%{_x}%::*} to "&7..."
+						set {lastdmgcauseEN::%{_target}%} to "<##6a5e9e>Starsurge"
+						set {lastdmgcause::%{_target}%} to "<##6a5e9e>Gwiezdna Fala"
+						set {lastdmgcauselore::%{_target}%::*} to {_lore}
+						set {lastdmgcauseloreEN::%{_target}%::*} to {_loreEN}
+						chance of {_crit}%:
+							set {_damage} to {_damage}*2
 						make player damage {_target} by 2
+						set {_x} to a random integer between 1 and 3
+						if {_x} = 3:
+							play sound "skill.cresselia.starsurgeimpact3" with volume 4 and pitch 1 at {_target}
+						else if {_x} = 2:
+							play sound "skill.cresselia.starsurgeimpact2" with volume 4 and pitch 1 at {_target}
+						else if {_x} = 1:
+							play sound "skill.cresselia.starsurgeimpact" with volume 4 and pitch 1 at {_target}
 						wait 0.2 seconds
 						stopEffect "%{_pid}%"
 					else:
@@ -79,10 +124,11 @@ on rightclick:
 				send "&8[&6Earthcraft&8] &6Nie masz wybranej wymaganej karty, by móc użyć tej umiejętności." to player
 			play sound "block.glass.break" with volume 3 and pitch 0 to player
 	if player's tool is iron shovel:
-		set {_target} to target player
-		if uncolored {ostuzumka::%victim%} = "Płomienna Bariera":
-			remove 40 seconds from {plombariera::use::%victim%}
-		send "Innervate zmniejszył cooldown twojej umiejętności %{ostuzumka::%victim%}% &fo 40 sekund!" to {_target}
+		set {_target} to target player of player
+		if {_target} is set:
+			if uncolored {ostuzumka::%{_target}%} = "Płomienna Bariera":
+				remove 40 seconds from {plombariera::use::%{_target}%}
+			send "Innervate zmniejszył cooldown twojej umiejętności %{ostuzumka::%{_target}%}% &fo 40 sekund!" to {_target}
 			
 			
 #innervate - resetuje cd albo ->(zabiera sekundy) z przyjaznemu celu(skal. z użyt.)
