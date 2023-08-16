@@ -55,7 +55,7 @@ function ShootingStars(p: player):
 		if {_p} is alive:
 			chance of 12%:
 				ShootingStar({_p})
-		stop if {engagedc::%{_p}%} is not set
+		stop loop if {engagedc::%{_p}%} is not set
 		wait 1 second
 function ShootingStar(p: player):
 	set {_id} to line 18 of lore of {karta::%{_p}%}
@@ -72,6 +72,7 @@ function ShootingStar(p: player):
 			set {_v} to vector between {_l} and {_target}'s head
 			set vector length of {_v} to loop-value * 0.45
 			draw 1 of dust using dustOption((rgb 168, 134, 240), 1) at {_l} ~ {_v}
+			wait 1 tick
 		set {_target}'s last damage cause to sweep attack
 		set {lastdmgcauseEN::%{_target}%} to "<##6a5e9e>Shooting Star"
 		set {lastdmgcause::%{_target}%} to "<##6a5e9e>Spadająca Gwiazda"
@@ -88,9 +89,9 @@ function AstralPower(p: player):
 			if {astralpower::%{_p}%} < 100:
 				add 2 to {astralpower::%{_p}%}
 				stop if {engagedc::%{_p}%} is not set
-				wait 1 second
+		wait 1 second
 on rightclick:
-	if player's tool is an iron ingot named "<##6a5e9e>Starsurge":
+	if player's tool is magenta dye named "<##6a5e9e>Starsurge":
 		if {kartaname::%player%} = "Test Card":
 			if target of player is a living entity:
 				set {_target} to target of player
@@ -101,6 +102,7 @@ on rightclick:
 						remove 30 from {astralpower::%player%}
 						set {_crit} to 0 + ({crit::%{_p}%}/50) + ({crit::%{_id}%}/50)
 						set {_damage} to 6 + ({obrazenia::%{_p}%}/15) + ({obrazenia::%{_id}%}/15) + ({uniwersalnosc::%{_p}%}/45) + ({uniwersalnosc::%{_id}%}/45)
+						set {_starsurgebonus} to 1+(0.15*{starsurgecount::%{_target}%})
 						set {_loc} to player's location
 						set {_target}'s last damage cause to sweep attack
 						set {_pid} to random 8 char string from charset `0-9`
@@ -109,10 +111,20 @@ on rightclick:
 						set {lastdmgcause::%{_target}%} to "<##6a5e9e>Gwiezdna Fala"
 						set {lastdmgcauselore::%{_target}%::*} to {_lore}
 						set {lastdmgcauseloreEN::%{_target}%::*} to {_loreEN}
+						set {_damage} to {_damage}*{_starsurgebonus}
 						chance of {_crit}%:
 							set {_damage} to {_damage}*2
 						make player damage {_target} by {_damage}*2
 						play sound "skill.cresselia.starsurgeimpact" with volume 4 and pitch 1 at {_target}
+						if {starsurgestacks::%{_p}%::%{_target}%} is not set:
+							set {starsurgestacks::%{_p}%::%{_target}%} to 0
+						else:
+							if {starsurgestacks::%{_p}%::%{_target}%} < 2:
+								add 1 to {starsurgestacks::%{_p}%::%{_target}%}
+							set {czasstarsurge::%{_p}%::%{_target}%} to 30 seconds
+							if {starsurgebonus::%{_p}%::%{_target}%} is not set:
+								set {starsurgebonus::%{_p}%::%{_target}%} to true
+						StarsurgeBonus(player, {_target})
 						wait 0.2 seconds
 						stopEffect "%{_pid}%"
 					else:
@@ -133,7 +145,25 @@ on rightclick:
 			if uncolored {ostuzumka::%{_target}%} = "Płomienna Bariera":
 				remove 40 seconds from {plombariera::use::%{_target}%}
 			send "Innervate zmniejszył cooldown twojej umiejętności %{ostuzumka::%{_target}%}% &fo 40 sekund!" to {_target}
-			
+function StarsurgeBonus(p: player, t: entity):
+	if {starsurgebonus::%{_p}%::%{_target}%} is true:
+		set {starsurgebonus::%{_p}%::%{_target}%} to false
+		while {czasstarsurge::%{_p}%::%{_target}%} > 0 seconds:
+			if {_x} is alive:
+				remove 1 second from {czasstarsurge::%{_p}%::%{_target}%}
+				wait 1 second
+				if 0 seconds >= {czasstarsurge::%{_p}%::%{_target}%}:
+					clear {starsurgestacks::%{_p}%::%{_target}%}
+					clear {czasstarsurge::%{_p}%::%{_target}%}
+					clear {starsurgebonus::%{_p}%::%{_target}%}
+					stop loop
+			else:
+				clear {starsurgestacks::%{_p}%::%{_target}%}
+				stop loop
+on disconnect:
+	clear {starsurbonus::%player%}
+	clear {czasstarsur::%player%}
+	clear {starsurbonuscount::%player%}
 			
 #innervate - resetuje cd albo ->(zabiera sekundy) z przyjaznemu celu(skal. z użyt.)
 #starfall - to co na górze
