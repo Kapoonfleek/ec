@@ -564,13 +564,19 @@ on inventory click:
 						set {_rank1Main} to 6
 						set {_rank2Main} to 9
 						set {_rank3Main} to 12
+						set {_rank1Epic} to 63
+						set {_rank2Epic} to 91
+						set {_rank3Epic} to 130
 						set {_quality} to metadata value "gemquality" of player
 						if {_quality} contains "<##6b492e>★":
 							set {_rank} to {_rank1Main}
+							set {_rankEpic} to {_rank1Epic}
 						else if {_quality} contains "<##c2c2c2>★★":
 							set {_rank} to {_rank2Main}
+							set {_rankEpic} to {_rank2Epic}
 						else if {_quality} contains "&e★★★":
 							set {_rank} to {_rank3Main}
+							set {_rankEpic} to {_rank3Epic}
 						if {language::%player%} = "English":
 							set {_click} to " %nl%&fClick to craft an item%nl%&ffrom this category."
 							set {_crit} to "Critical Hit"
@@ -578,6 +584,7 @@ on inventory click:
 							set {_mastery} to "Mastery"
 							set {_vers} to "Versatility"
 							set {_text} to "Pick Gem Cut"
+							set {_textepic} to " %nl%&cRecipe not learned"
 						else:
 							set {_click} to " %nl%&fKliknij, by wytworzyć przedmiot%nl%&fz tej kategorii."
 							set {_crit} to "Cios Krytyczny"
@@ -585,6 +592,7 @@ on inventory click:
 							set {_mastery} to "Mistrzostwo"
 							set {_vers} to "Uniwersalność"
 							set {_text} to "Wybierz Rodzaj Gema"
+							set {_textepic} to " %nl%&cPrzepis nieznany"
 						set the name of player's current inventory to "%{_text}%"
 						set metadata tag "jewelcraft" of player to player's current inventory
 						set slot (integers between 0 and 26) of player's current inventory to air
@@ -598,6 +606,19 @@ on inventory click:
 							set slot 12 of player's current inventory to diamond named "<##0070dd>Camomerald" with lore {_click} with nbt from "{CustomModelData:13}"
 							set slot 14 of player's current inventory to diamond named "<##0070dd>Cynderite" with lore {_click} with nbt from "{CustomModelData:12}"
 							set slot 16 of player's current inventory to diamond named "<##0070dd>Echonite" with lore {_click} with nbt from "{CustomModelData:15}"
+						else if name of clicked slot contains "<##a335ee>":
+							set slot 10 of player's current inventory to diamond named "<##a335ee>Inscribed Illimited Diamond" with lore "<##ff7926>+%{_rankEpic}% %{_crit}%%nl% %nl%%{_quality}%%nl%%{_click}%" with nbt from "{CustomModelData:37}"
+							if {przepis::jubilerstwo::Inscribed Illimited Diamond::%player%} is not true:
+								add {_textepic} to lore of slot 10 of player's current inventory
+							set slot 12 of player's current inventory to diamond named "<##a335ee>Fierce Illimited Diamond" with lore "<##187a2f>+%{_rankEpic}% %{_haste}%%nl% %nl%%{_quality}%%nl%%{_click}%" with nbt from "{CustomModelData:38}"
+							if {przepis::jubilerstwo::Fierce Illimited Diamond::%player%} is not true:
+								add {_textepic} to lore of slot 12 of player's current inventory
+							set slot 14 of player's current inventory to diamond named "<##a335ee>Skillful Illimited Diamond" with lore "<##ff0d6e>+%{_rankEpic}% %{_mastery}%%nl% %nl%%{_quality}%%nl%%{_click}%" with nbt from "{CustomModelData:39}"
+							if {przepis::jubilerstwo::Skillful Illimited Diamond::%player%} is not true:
+								add {_textepic} to lore of slot 14 of player's current inventory
+							set slot 16 of player's current inventory to diamond named "<##a335ee>Resplendent Illimited Diamond" with lore "<##dbd7da>+%{_rankEpic}% %{_vers}%%nl% %nl%%{_quality}%%nl%%{_click}%" with nbt from "{CustomModelData:40}"
+							if {przepis::jubilerstwo::Resplendent Illimited Diamond::%player%} is not true:
+								add {_textepic} to lore of slot 16 of player's current inventory
 						play sound "block.anvil.place" with volume 3 and pitch 2 to player
 						stop
 				else if name of clicked slot contains "Delphoxite" or "Camomerald" or "Cynderite" or "Echonite":
@@ -871,7 +892,7 @@ on inventory click:
 									add {_click} to lore of slot 12 of player's current inventory
 								else:
 									add {_click2} to lore of slot 12 of player's current inventory
-								if {_r2amount} >= 3:
+								if {_r2amount} >= {_reag2amount}:
 									add {_click} to lore of slot 14 of player's current inventory
 								else:
 									add {_click2} to lore of slot 14 of player's current inventory
@@ -880,6 +901,68 @@ on inventory click:
 								else:
 									set slot 16 of player's current inventory to red glass pane named "%{_craft3}%" with lore "%{_craft4}%"
 								stop
+				else if name of clicked slot contains "Inscribed" or "Fierce" or "Skillful" or "Resplendent":
+					if name of clicked slot contains "<##a335ee>":
+						if line 8 of lore of clicked slot is not set:
+							if line 7 of lore of clicked slot does not contain "Reagents:" or "Składniki:":
+								if name of player's current inventory is not "Craft Gem" or "Stwórz Gem":
+									play sound "block.anvil.place" with volume 3 and pitch 2 to player
+									set {_gem} to clicked slot
+									delete line 7 of lore of {_gem}
+									delete line 6 of lore of {_gem}
+									delete line 5 of lore of {_gem}
+									delete line 4 of lore of {_gem}
+									set metadata value "gem" of player to {_gem}
+									if {language::%player%} = "English":
+										set {_click} to " %nl%&aYou have the required reagent."
+										set {_click2} to " %nl%&cYou don't have the required reagent."
+										set {_text} to "Craft Gem"
+										set {_text2} to "&7Reagents:%nl%"
+										set {_x} to "EN"
+										set {_craft} to "<##a335ee>Click to craft Gem"
+										set {_craft2} to "&7Click to craft %name of {_gem}%&7."
+										set {_craft3} to "&cInsufficient reagents"
+										set {_craft4} to "&7You do not have the required%nl%&7reagents to craft %name of {_gem}%&7."
+									else:
+										set {_click} to " %nl%&aPosiadasz wymagany składnik."
+										set {_click2} to " %nl%&cNie posiadasz wymaganego składniku."
+										set {_text} to "Stwórz Gem"
+										set {_text2} to "&7Składniki:%nl%"
+										set {_x} to ""
+										set {_craft} to "<##a335ee>Kliknij by stworzyć Gem"
+										set {_craft2} to "&fKliknij by stworzyć %name of {_gem}%&f."
+										set {_craft3} to "&cNiewystarczające składniki"
+										set {_craft4} to "&7Nie posiadasz wymaganych składników,%nl%&7by stworzyć %name of {_gem}%&7."
+									set {_quality} to metadata value "gemquality" of player
+									if {_quality} contains "<##6b492e>★":
+										set {_reag2amount} to 2
+									else if {_quality} contains "<##c2c2c2>★★":
+										set {_reag2amount} to 3
+									else if {_quality} contains "&e★★★":
+										set {_reag2amount} to 5
+									set {_reagent1} to {illimiteddiamond%{_x}%}
+									add " %nl%%metadata value "gemquality" of player%" to lore of {_reagent1}
+									set metadata value "reagent1" of player to 4 of {_reagent1}
+									set {_r1amount} to 0
+									loop all items in the inventory of player:
+										if name of loop-item = name of {_reagent1}:
+											if lore of loop-item contains lore of {_reagent1}:
+												add (item amount of loop-item) to {_r1amount}
+									set {_c} to last color of {_reagent2}'s name
+									set slot (integers between 0 and 26) of player's current inventory to air
+									set the name of player's current inventory to "%{_text}%"
+									set metadata tag "jewelcraft" of player to player's current inventory
+									set slot 10 of player's current inventory to {_gem} with lore (lore of {_gem}) and " %nl%%{_text2}% <##a335ee>%{_r1amount}%/4 %name of {_reagent1}%"
+									set slot 13 of player's current inventory to 4 of {_reagent1} with lore (lore of {_reagent1})
+									if {_r1amount} >= 4:
+										add {_click} to lore of slot 12 of player's current inventory
+									else:
+										add {_click2} to lore of slot 12 of player's current inventory
+									if {_r1amount} >= 4:
+										set slot 16 of player's current inventory to purple glass pane named "%{_craft}%" with lore "%{_craft2}%"
+									else:
+										set slot 16 of player's current inventory to red glass pane named "%{_craft3}%" with lore "%{_craft4}%"
+									stop
 				if name of clicked slot contains "Kliknij by stworzyć Gem" or "Click to craft Gem":
 					play sound "block.smithing_table.use" with volume 4 and pitch 0 at player
 					set {_gem} to metadata value "gem" of player
@@ -896,6 +979,8 @@ on inventory click:
 						set {_xa} to 30
 					else if name of clicked slot contains "<##0070dd>":
 						set {_xa} to 200
+					else if name of clicked slot contains "<##a335ee>":
+						set {_xa} to 800
 					chance of {multicraft::gem::%player%}%:
 						set {_loops} to 2
 						set {_multicraft} to metadata value "multicraft" of player
@@ -928,6 +1013,11 @@ on inventory close:
 					add 100*{_amount} to {_xp}
 				else if {_quality} contains "&e★★★":
 					add 500*{_amount} to {_xp}
+			else if {_gem}'s name contains "<##a335ee>":
+				if {_quality} contains "<##c2c2c2>★★":
+					add 400*{_amount} to {_xp}
+				else if {_quality} contains "&e★★★":
+					add 1200*{_amount} to {_xp}
 			set {_enmsg} to "&8[&6Earthcraft&8] &7You crafted &6%{_amount}% &7of &6%name of {_gem}%&7. (+&6%{_xp}% XP&7)"
 			set {_plmsg} to "&8[&6Earthcraft&8] &7Stworzyłeś &6%{_amount}% &6%name of {_gem}%&7. (+&6%{_xp}% XP&7)"
 			set {_multi} to metadata value "multicraft" of player
