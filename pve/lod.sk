@@ -33,6 +33,7 @@ on rightclick:
 		set {poziommob::%last spawned skeleton%} to {_moblevel}
 		set {mobexplod::%last spawned skeleton%} to true
 		execute console command "/disguuid %{_u}% blaze setDynamicName true setCustomNameVisible true"
+		set metadata value "summoned" of last spawned skeleton to 0
 		set {_ele} to last spawned skeleton
 		IceRings(last spawned skeleton)
 		wait 6 seconds
@@ -59,6 +60,7 @@ on rightclick:
 		set {element::%last spawned skeleton%} to "Ice"
 		set {poziommob::%last spawned skeleton%} to {_moblevel}
 		set {mobexplod::%last spawned skeleton%} to true
+		set metadata value "summoned" of last spawned skeleton to 0
 		execute console command "/disguuid %{_u}% snowman setDynamicName true setCustomNameVisible true"
 		set {_s} to last spawned skeleton
 		wait 3 seconds
@@ -134,6 +136,10 @@ on damage:
 				play sound "skill.fury_warrior.slash" with volume 3 and pitch 1 at attacker
 on skript stop:
 	clear {froststrikes::*}
+	loop all entities:
+		if loop-entity is a slime:
+			if loop-entity's name contains "Ice Cube":
+				kill loop-entity
 on shoot:
 	if name of shooter contains "Ice Elemental" or "Snow Bombarder" or "Snowman":
 		cancel event
@@ -257,7 +263,8 @@ function IceShardShoot(e: entity):
 	
 function IceCube(e: entity):
 	while {_e} is alive:
-		if {icecubesamount::%{_e}%} < 10 or {icecubesamount::%{_e}%} is not set:
+		set {_sum} to metadata value "summoned" of {_e}
+		if 9 > {_sum}:
 			loop all players in radius 20 of {_e}:
 				if {mob::%loop-player%} is not set:
 					if loop-player is online:
@@ -291,7 +298,8 @@ function IceCube(e: entity):
 					push last spawned slime (vector from {_e} to {_player}) with speed 2
 					play sound "block.glass.break" with volume 4 and pitch 0 at {_e}
 					IcyAura(last spawned slime)
-					add 1 to {icecubesamount::%{_e}%}
+					add 1 to {_sum}
+					set metadata value "summoned" of {_e} to {_sum}
 					set metadata value "summoner" of last spawned slime to {_e}
 					wait 1 second
 				else:
@@ -339,7 +347,8 @@ function Snowball(e: entity):
 
 function BuildSnowmen(e: entity):
 	while {_e} is alive:
-		if {snowmenamount::%{_e}%} < 10 or {snowmenamount::%{_e}%} is not set:
+		set {_sum} to metadata value "summoned" of {_e}
+		if 9 > {_sum}:
 			loop 2 times:
 				spawn 1 skeleton at {_e}
 				set {_s} to last spawned skeleton
@@ -352,7 +361,8 @@ function BuildSnowmen(e: entity):
 				set {mob::%{_s}%} to true
 				execute console command "/disguuid %{_u}% snowman setDynamicName true setCustomNameVisible true"
 				play sound "entity.snow_golem.hurt" with volume 1 and pitch 1.5 at {_e}
-				add 1 to {snowmenamount::%{_e}%}
+				add 1 to {_sum}
+				set metadata value "summoned" of {_e} to {_sum}
 				set metadata value "summoner" of last spawned skeleton to {_e}
 				wait 3 seconds
 				Snowball({_s})
