@@ -1,9 +1,43 @@
 on rightclick:
     if player's tool is emerald named "TEST":
         if player's name = "Pehrek":
-            spawn 1 zombie at player
+            #spawn 1 zombie at block above target block of player with nbt compound from "{NoAI:1b,Silent:1b}"
+            spawn 1 zombie at block above target block of player
             set the name of last spawned zombie to "XF"
-            add nbt from "{NoAi:1}" to entity-nbt of last spawned zombie
+            set {mob::%last spawned zombie%} to true
+            set {testentity::%last spawned zombie%} to true
+            #set metadata value "aggroed" of last spawned zombie to false
+            #AggroPlayers(last spawned zombie)
+            #set {_x} to last spawned zombie
+            #wait 10 seconds
+            #kill {_x}
+on entity target:
+    if target is a player:
+        if event-entity is a zombie:
+            set {_x} to nearest player in radius 4 around event-entity
+            if {_x} is set:
+                if {_x} does not have invisibility:
+                    set the target of event-entity to {_x}
+                else:
+                    cancel event
+            else:
+                cancel event
+
 on damage:
     if victim's name = "XF":
-        remove "{NoAi:1}" from nbt of victim
+        if attacker is a player:
+            if {-threat::%uuid of victim%::%uuid of attacker%} is not set:
+                set {-threat::%uuid of victim%::%uuid of attacker%} to 0
+            add damage to {-threat::%uuid of victim%::%uuid of attacker%}
+            set {_v} to (first element of createTop("-threat::%uuid of victim%", 5, "[P]")) parsed as player
+            set victim's target to {_v}
+
+#function AggroPlayers(e: entity):
+#    while metadata value "aggroed" of {_e} = false:
+#        set {_x} to nearest player in radius 4 around {_e}
+#        if {_x} is set:
+#            if {_x} does not have invisibility:
+#                delete (tag "NoAI" of nbt of {_e})
+#                clear metadata value "aggroed" of {_e}
+#                stop loop
+#        wait 1 seconds
