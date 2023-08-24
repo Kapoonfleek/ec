@@ -69,7 +69,7 @@ function AstralPower(p: player):
 		wait {_wait}
 on rightclick:
 	if player's tool is magenta dye:
-		if name of player's tool = "<##ff2c88>Starsurge":
+		if name of player's tool = "<##6a5e9e>Starsurge" or "<##6a5e9e>Gwiezdna Fala":
 			if {kartaname::%player%} = "Test Card":
 				if target of player is a living entity:
 					set {_target} to target of player
@@ -120,7 +120,7 @@ on rightclick:
 					send "&8[&6Earthcraft&8] &6Nie masz wybranej wymaganej karty, by móc użyć tej umiejętności." to player
 				play sound "block.glass.break" with volume 3 and pitch 0 to player
 	else if player's tool is purple dye:
-		if name of player's tool = "<##6a5e9e>Starfall":
+		if name of player's tool = "<##6a5e9e>Starfall" or "<##6a5e9e>Spadające Gwiazdy":
 			if {kartaname::%player%} = "Test Card":
 				if {astralpower::%player%} >= 50:
 					remove 50 from {astralpower::%player%}
@@ -161,30 +161,71 @@ on rightclick:
 				else:
 					send "&8[&6Earthcraft&8] &6Nie masz wybranej wymaganej karty, by móc użyć tej umiejętności." to player
 				play sound "block.glass.break" with volume 3 and pitch 0 to player
-	else if player's tool is iron shovel:
-		set {_target} to target player of player
-		if {_target} is set:
-			set {_lastusedability} to metadata value "lastusedability" of {_target}
-			set {_cdreduction} to 40 seconds
-			if {_lastusedability} = "Icy Veins" or "Lodowe Żyły":
-				remove {_cdreduction} from {icyveins::use::%{_target}%}
-				set {icyveins::cooldown::%{_target}%} to difference between {icyveins::use::%{_target}%} and now
-			else if {_lastusedability} = "Rain of Lava" or "Deszcz Lawy":
-				remove {_cdreduction} from cooldown "wildfire%{_target}%"
-			else if {_lastusedability} = "Molten Lava" or "Stopiona Lawa":
-				remove {_cdreduction} from cooldown "moltenlava%{_target}%"
-			else if {_lastusedability} = "Lava Burst" or "Wybuch Lawy":
-				remove {_cdreduction} from cooldown "lavaburst%{_target}%"
-			else if {_lastusedability} = "Reversal":
-				if cooldown "reversal%{_target}%" > {_cdreduction}:
-					remove {_cdreduction} from cooldown "reversal%{_target}%"
-				else:
-					set {_cdreduction} to cooldown "reversal%{_target}%"
-					remove cooldown "reversal%{_target}%" from cooldown "reversal%{_target}%"
-			if {language::%{_target}%} = "English":
-				send "<##6a5e9e>Innervate lowered the cooldown of your %{_lastusedability}% <##6a5e9e>by %{_cdreduction}% seconds!" to {_target}
+	else if player's tool is blue dye:
+		if name of player's tool = "<##6a5e9e>Innervate" or "<##6a5e9e>Gwiezdne Pobudzenie":
+			if {kartaname::%player%} = "Test Card":
+				if cooldown "innervate%player%" is finished:
+					set {_id} to line 18 of lore of {karta::%player%}
+					set {_pospiech} to 1 + (({pospiech::%player%}/25) + ({pospiech::%{_id}%}/25))/100
+					set {_cd} to "%120/{_pospiech}% seconds" parsed as timespan
+					set {_target} to target player of player
+					if {_target} is set:
+						create cooldown "innervate%player%" for {_cd}
+						set {_lastusedability} to metadata value "lastusedability" of {_target}
+						set {_cdreduction} to 40 seconds
+						if {_lastusedability} = "Icy Veins" or "Lodowe Żyły":
+							if {icyveins::use::%{_target}%} > {_cdreduction}:
+								remove {_cdreduction} from {icyveins::use::%{_target}%}
+								set {icyveins::cooldown::%{_target}%} to difference between {icyveins::use::%{_target}%} and now
+							else:
+								remove {icyveins::use::%{_target}%} from {icyveins::use::%{_target}%}
+								set {icyveins::cooldown::%{_target}%} to difference between {icyveins::use::%{_target}%} and now
+						else if {_lastusedability} = "Rain of Lava" or "Deszcz Lawy":
+							if cooldown "wildfire%{_target}%" > {_cdreduction}:
+								remove {_cdreduction} from cooldown "wildfire%{_target}%"
+							else:
+								set {_cdreduction} to cooldown "wildfire%{_target}%"
+								remove {_cdreduction} from cooldown "wildfire%{_target}%"
+						else:
+							set {_ability} to {_lastusedability} in lowercase
+							replace all " " in {_ability} with ""
+							if {_ability} = "stopionalawa":
+								set {_ability} to "moltenlava"
+							else if {_ability} = "wybuchlawy":
+								set {_ability} to "lavaburst"
+							else if {_ability} = "deszczlawy":
+								set {_ability} to "rainoflava"
+							else if {_ability} = "gwiezdnepobudzenie":
+								set {_ability} to "innervate"
+							else if {_ability} = "płomiennabariera":
+								set {_ability} to "flamebarrier"
+							else if {_ability} = "nocnecięcie":
+								set {_ability} to "nightslash"
+							else if {_ability} = "kulablaskuksiężyca":
+								set {_ability} to "moonlightorb"
+							if cooldown "%{_ability}%%{_target}%" > {_cdreduction}:
+								remove {_cdreduction} from cooldown "%{_ability}%%{_target}%"
+							else:
+								set {_cdreduction} to cooldown "%{_ability}%%{_target}%"
+								remove {_cdreduction} from cooldown "%{_ability}%%{_target}%"
+						if {language::%{_target}%} = "English":
+							send "<##6a5e9e>Innervate lowered the cooldown of your %{_lastusedability}% <##6a5e9e>by %{_cdreduction}% seconds!" to {_target}
+						else:
+							send "<##6a5e9e>Innervate zmniejszył cooldown %{_lastusedability}% <##6a5e9e>o %{_cdreduction}% sekund!" to {_target}
+				else: 
+					cancel event
+					if {tekstcd::%player%} = true:
+						set {_cdd} to cooldown "innervate%player%"
+						if {language::%player%} = "English":
+							send "<##6a5e9e>You must wait &f%{_cdd}%<##6a5e9e> to use this ability." to player
+						else:
+							send "<##6a5e9e>Musisz odczekać &f%{_cdd}%<##6a5e9e>, aby użyć tej umiejętności." to player
+					stop
 			else:
-				send "<##6a5e9e>Innervate zmniejszył cooldown %{_lastusedability}% <##6a5e9e>o %{_cdreduction}% sekund!" to {_target}
+				if {language::%player%} = "English":
+					send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to player
+				else:
+					send "&8[&6Earthcraft&8] &6Nie masz wybranej wymaganej karty, by móc użyć tej umiejętności." to player
 	else if line 1 of lore of player's tool = "&8Umiejętność" or "&8Ability":
 		set metadata value "lastusedability" of player to (uncolored name of player's tool)
 
