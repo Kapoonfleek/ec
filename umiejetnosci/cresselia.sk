@@ -10,7 +10,6 @@ on damage:
 			set {_damage} to 1 + ({obrazenia::%{_starshooter}%}/50) + ({obrazenia::%{_id}%}/50) + ({uniwersalnosc::%{_starshooter}%}/50) + ({uniwersalnosc::%{_id}%}/50)
 			set {_lore} to "&7..."
 			set {_loreEN} to "&7..."
-			set {_damage} to a random number between {_damage} and {_damage}*2
 			set {element::%{_starshooter}%} to "Astral"
 			set victim's last damage cause to sweep attack
 			set {lastdmgcause::%victim%} to "<##6a5e9e>Spadające Gwiazdy"
@@ -124,6 +123,7 @@ on rightclick:
 		if name of player's tool = "<##6a5e9e>Starfall":
 			if {kartaname::%player%} = "Test Card":
 				if {astralpower::%player%} >= 50:
+					remove 50 from {astralpower::%player%}
 					play sound "skill.cresselia.starfall" with volume 5 and pitch 1 at player
 					set {_pospiech} to 1 + (({pospiech::%player%}/25) + ({pospiech::%{_id}%}/25))/100
 					set {_wait} to "%1/{_pospiech}% seconds" parsed as timespan
@@ -143,7 +143,7 @@ on rightclick:
 								set {_x} to block {_h} blocks above {_j}
 							spawn a shulker bullet at {_x}
 							silence last spawned shulker bullet
-							push last spawned shulker bullet (vector from last spawned shulker bullet to {_j}) with speed 0.2
+							push last spawned shulker bullet (vector from last spawned shulker bullet to {_j}) with speed (0.2*{_pospiech})
 							set metadata value "starshooter" of last spawned shulker bullet to player
 							#play sound "entity.firework_rocket.launch" with volume 2.3 and pitch -1 at last spawned shulker bullet
 							wait {_wait}
@@ -164,9 +164,27 @@ on rightclick:
 	else if player's tool is iron shovel:
 		set {_target} to target player of player
 		if {_target} is set:
-			if uncolored {ostuzumka::%{_target}%} = "Płomienna Bariera":
-				remove 40 seconds from {plombariera::use::%{_target}%}
-			send "Innervate zmniejszył cooldown twojej umiejętności %{ostuzumka::%{_target}%}% &fo 40 sekund!" to {_target}
+			set {_lastusedability} to metadata value "lastusedability" of {_target}
+			set {_cdreduction} to 40 seconds
+			if {_lastusedability} = "Icy Veins" or "Lodowe Żyły":
+				remove {_cdreduction} from {icyveins::use::%{_target}%}
+				set {icyveins::cooldown::%{_target}%} to difference between {icyveins::use::%{_target}%} and now
+			else if {_lastusedability} = "Rain of Lava" or "Deszcz Lawy":
+				remove {_cdreduction} from cooldown "wildfire%{_target}%"
+			else if {_lastusedability} = "Molten Lava" or "Stopiona Lawa":
+				remove {_cdreduction} from cooldown "moltenlava%{_target}%"
+			else if {_lastusedability} = "Lava Burst" or "Wybuch Lawy":
+				remove {_cdreduction} from cooldown "lavaburst%{_target}%"
+			else if {_lastusedability} = "Reversal":
+				if cooldown "reversal%{_target}%" > {_cdreduction}:
+					remove {_cdreduction} from cooldown "reversal%{_target}%"
+				else:
+					set {_cdreduction} to cooldown "reversal%{_target}%"
+					remove cooldown "reversal%{_target}%" from cooldown "reversal%{_target}%"
+			if {language::%{_target}%} = "English":
+				send "<##6a5e9e>Innervate lowered the cooldown of your %{_lastusedability}% <##6a5e9e>by %{_cdreduction}% seconds!" to {_target}
+			else:
+				send "<##6a5e9e>Innervate zmniejszył cooldown %{_lastusedability}% <##6a5e9e>o %{_cdreduction}% sekund!" to {_target}
 	else if line 1 of lore of player's tool = "&8Umiejętność" or "&8Ability":
 		set metadata value "lastusedability" of player to (uncolored name of player's tool)
 
