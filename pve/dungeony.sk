@@ -1,7 +1,38 @@
 on rightclick on reinforced deepslate:
-    set {_tag} to tag "Keystone" of nbt of player's tool
-    if {_tag} is set:
-        set metadata value "dungeon" of player to true
+    if tag "custom;KeystoneHolder" of nbt of clicked block is set:
+        if {language::%player%} = "English":
+            set {_name} to "Insert Keystone"
+            set {_n} to "&fKeystone"
+            set {_l} to "&7&oClick here to insert a Keystone"
+            set {_n2} to "&9Click here to start Dungeon"
+            set {_l2} to "&7&oYou must insert a Keystone before%nl%&7&ocommencing the Dungeon."
+        else:
+            set {_name} to "Włóż Kamień Klucza"
+            set {_n} to "&fKamień Klucza"
+            set {_l} to "&7&oKliknij tutaj, by włożyć Kamień Klucza"
+            set {_n2} to "&9Kliknij tutaj, by zacząć Dungeon"
+            set {_l2} to "&7&oMusisz włożyć Kamień Klucza,%nl%&7&oby zacząć Dungeon."
+        set metadata tag "keystone" of player to chest inventory with 6 rows named {_name}
+        set slot 40 of (metadata tag "keystone" of player) to black glass pane named {_n} with lore {_l}
+        set slot 13 of (metadata tag "keystone" of player) to blue glass pane named {_n2} with lore {_l2}
+        open (metadata tag "keystone" of player) to player
+        play sound "block.grindstone.use" with volume 4 and pitch 0 to player
+on inventory click:
+    if player's current inventory = metadata value "keystone" of player:
+        cancel event
+        if clicked raw slot is 40:
+            if clicked slot is black glass pane:
+                loop all items in the player's inventory:
+                    set {_tag} to tag "Keystone" of nbt of loop-item
+                    if {_tag} is set:
+                        set slot 40 of player's current inventory to 1 of loop-item
+        if clicked raw slot is 13:
+            if clicked slot is blue glass pane:
+                if slot 40 of player's current inventory is not black glass pane:
+                    set metadata value "dungeon" of player to true
+                    teleport the player to player's location
+                    send "!" to player
+                    
 #Zrobić w worldguardzie zeby dodawalo permisje na wejscie na region dla graczy w dungeonie, reszta nei moze wejsc
 #Keystone with lore Dungeon Level 2 and Place within
 #Scoreboard DPS, bosses defeated, time elapsed time left, dungeon name and level
@@ -33,3 +64,9 @@ on death:
                 clear {-threat::%uuid of victim%::%uuid of attacker%}
                 if tag "custom;ECBoss" of nbt of victim is set:
                     send attacker title "&7&lCorrupted Wafflecopter defeated" with subtitle " " for 3 seconds with 0.5 second fade in and 0.5 second fade out
+
+command /setdungeon:
+    trigger:
+        if player's name = "Pehrek":
+            set {_custom} to tag "custom" of nbt compound of target block
+            set tag "KeystoneHolder" of {_custom} to "true"
