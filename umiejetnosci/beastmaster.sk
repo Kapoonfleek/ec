@@ -1,0 +1,132 @@
+on rightclick:
+	if player's tool is diamond shovel:
+		cancel event
+		clear {pets::%player%::*}
+		loop 2 times:
+			spawn 1 wolf at player
+			set {_x} to last spawned wolf
+			set {_uuid} to uuid of last spawned wolf
+			#tame {_x} to player
+			set {_custom} to tag "custom" of nbt compound of {_x}
+			set tag "Pet" of {_custom} to "true"
+			if loop-number is 1:
+				set the name of {_x} to "<##2dbdb6>Bestia"
+			if loop-number is 2:
+				set the name of {_x} to "<##bd2d88>Wierny Przyjaciel"
+			add {_uuid} to {pets::%player%::*}
+			set {owner::pet::%{_x}%} to player
+			set {_p} to potion effect of speed of tier 2 without particles for 5 seconds
+			add {_p} to potion effects of {_x}
+			set {_u} to uuid of {_x}
+								#execute console command "/disguuid %{_u}% fox"
+	if player's tool is diamond axe:
+		set {_target} to target of player
+		set {_p} to potion effect of speed of tier 5 without particles for 5 minutes
+		if {mob::%{_target}%} is true:
+			loop {pets::%player%::*}:
+				set {_e} to loop-value parsed as entity
+				reset target of {_e}
+				delete targeted entity of {_e}
+				remove speed from {_e}
+				set target of {_e} to {_target}
+				KillCommand(player, {_target}, {_e})
+				add {_p} to potion effects of {_e}
+			play sound "skill.beast_master.kill_command" with volume 4 and pitch 1 at player
+			#apply potion of speed of tier 5 without particles to {pets::%player%::*} for 5 minutes
+	if player's tool is netherite shovel:
+		cancel event
+		set {bestialwrath::%player%} to true
+		play sound "skill.beast_master.bestial_wrath" with volume 4 and pitch 1 at player
+		set {_l} to location of player
+		increase {_l}'s y-coordinate by 1
+		draw 15 of dust using dustOption(red, 1.2) at {_l} with offset vector(0.6, 0.3, 0.6)
+		loop {pets::%player%::*}:
+			set {_pet} to loop-value parsed as entity
+			execute console command "/disguuid %loop-value% wolf setAnger 1"
+			set {_l} to location of {_pet}
+			increase {_l}'s y-coordinate by 0.5
+			draw 15 of dust using dustOption(red, 1.2) at {_l} with offset vector(0.6, 0.3, 0.6)
+		wait 15 seconds
+		execute console command "/disguuid %uuid of {_pet}% wolf setAnger 0"
+		set {bestialwrath::%player%} to false
+		#while {bestialwrath::%player%} is true:
+		#	send action bar "<##bd402d>Bestial Wrath: &f
+
+on shoot:
+	if name of shooter's tool is "Cobra Shot":
+		cancel event
+		if {mob::%target of shooter%} is set:
+			set {_target} to target of shooter
+			play sound "skill.beast_master.cobra_shot_cast" with volume 4 and pitch 1 at shooter
+			set {_l} to location 0.3 blocks below shooter's head
+			set {_v} to vector between {_l} and {_target}'s head
+			loop round(distance between {_l} and {_target}) / 0.7 times:
+				set {_v} to vector between {_l} and {_target}'s head
+				set vector length of {_v} to loop-value * 0.7
+				drawDot count 1, particle "redstone", RGB 55, 204, 60, center {_l} ~ {_v}, rainbowMode false, visibleRange 32, pulseDelay 0, keepFor 5 ticks
+				wait 1 tick
+			if {_target} is a living entity:
+				play sound "skill.beast_master.cobra_shot_impact" with volume 4 and pitch 1 at {_target}
+				set {_damage} to 5
+				if {bestialwrath::%shooter%} is true:
+					set {_damage} to {_damage}*1.25
+				set {lastdmgcause::%{_target}%} to "<##3f853e>Cobra Shot"
+				make shooter damage {_target} by {_damage}
+
+function BestialWrathEnd(p: player):
+	wait 15 seconds
+	set {bestialwrath::%{_p}%} to false
+	loop {pets::%{_p}%::*}:
+		execute console command "/disguuid %{_uuid}% wolf setAnger 0"
+			
+on damage:
+	if attacker is a wolf:
+		if {owner::pet::%attacker%} is set:
+			set {_o} to {owner::pet::%attacker%}
+			if {pets::%{_o}%::*} contains attacker:
+				if cooldown "attack%attacker%" is finished:
+					create cooldown "attack%attacker%" for 3 seconds
+					set {_damage} to 1
+					if {bestialwrath::%{_o}%} is true:
+						set {_damage} to {_damage}*1.25
+					set damage to 0
+					set {lastdmgcause::%victim%} to "<##3f853e>Auto Attack (%attacker's name%<##3f853e>)"
+					wait 1 tick
+					make {_o} damage victim by {_damage}
+				else:
+					cancel event
+
+function KillCommand(p: player, e: entity, z: entity):
+	while distance between {_z} and {_e} > 2:
+		wait 2 ticks
+	set {_damage} to 10
+	if {bestialwrath::%{_p}%} is true:
+		set {_damage} to {_damage}*1.25
+	set {lastdmgcause::%{_e}%} to "<##bd402d>Kill Command (%{_z}'s name%<##bd402d>)"
+	make {_p} damage {_e} by 10
+	remove speed from {_z}
+
+on target:
+	if target entity is a wolf or a dog:
+		if event-entity is a zombie:
+			cancel event
+			
+on death:
+	if {owner::pet::%{_attacker}%} is set:
+		clear {owner::pet::%{_attacker}%}
+
+#bestial wrath - set angry of loop-value to true, czerwone particle wokół
+
+
+
+#set {_pid} to random 8 char string from charset `0-9`
+#drawLine particle redstone, RGB 55, 204, 60, center location of {_l}, target location of {_target}'s head, id "%{_pid}%", rainbowMode false, solid true, density 25, length 0, zigZag count 20, height 0, visibleRange 32, displacementXYZ 0, 1, 0, pulseDelay 3
+#wait 4 seconds
+#stopEffect "%{_pid}%"
+
+
+#spawn 1 bat at shooter
+#set the display name of last spawned bat to "Ta Pośpieszna"
+#set max health of last spawned bat to 20000
+#set {_u} to uuid of last spawned bat
+#execute console command "/disguuid %{_u}% player coolgirl_"
