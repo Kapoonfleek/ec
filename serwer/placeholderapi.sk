@@ -1,0 +1,108 @@
+on papi request for prefix "ec":
+    if the identifier is "playerlevel":
+        set the result to {poziom::%player%}
+    if the identifier is "playerexp":
+        set the result to {exp::%player%}
+    if the identifier is "color":
+        set the result to "%{kolorek::%player%}%"
+    if the identifier is "health":
+        set the result to player's health
+    if the identifier is "playername":
+        set the result to "&f%player's name%"
+    if the identifier is "card":
+        if line 19 of lore of {karta::%player%} contains "Id: ":
+            set {_id} to uncolored line 19 of lore of {karta::%player%}
+            replace all "Id: " in {_id} with ""
+            load yaml "plugins/Skript/playerdata/karty/%uncolored name of {karta::%player%}%/%{_id}%.yml" as "kartyPh-%player%"
+            set {_level} to yaml value "Card.Level" in "kartyPh-%player%"
+            unload yaml "kartyPh-%player%"
+            if {_level} is not set:
+                set the result to "-"
+            else:
+                set the result to "%{ikonkakarta::%player%}% %uncolored name of {karta::%player%}% (Level %{_level}%)"
+        else:
+            set the result to "-"
+    if the identifier is "party":
+        if player is in a party:
+            set the result to "&b[%name of party of player%] "
+        else:
+            set the result to ""
+    if the identifier is "date":
+        set {_data::*} to data() split at " "
+        set {_timeAMPM::*} to {_data::1} split at ":"
+        if ({_timeAMPM::1} parsed as number) >= 13:
+            set {_AorP} to "PM"
+        else:
+            set {_AorP} to "AM"
+        set {_timeAMPM} to "%{_timeAMPM::1}%:%{_timeAMPM::2}%"
+        set the result to "%{_data::1}% | %{_timeAMPM}% %{_AorP}%"
+    if the identifier is "health":
+        set the result to health of player
+    if the identifier is "tab":
+        set {_name} to name of party of player
+        if metadata value "ECEngaged" of player is set:
+            if {_name} is set:
+                set the result to "&8(%{kolorek::%player%}%&l%{poziom::%player%}%%{kolorek::%player%}%&l⭐&8) &r%player's name% &b[%{_name}%] &a%player's health%&c❤"
+            else:
+                set the result to "&8%{kolorek::%player%}%&l%{poziom::%player%}%%{kolorek::%player%}%&l⭐&8) &r%player's name% &a%player's health%&c❤"
+        else:
+            if {_name} is set:
+                set the result to "&8(%{kolorek::%player%}%&l%{poziom::%player%}%%{kolorek::%player%}%&l⭐&8) &r%player's name% &b[%{_name}%]"
+            else:
+                set the result to "&8(%{kolorek::%player%}%&l%{poziom::%player%}%%{kolorek::%player%}%&l⭐&8) &r%player's name%"
+    if the identifier is "rank":
+        if {rank::%player%} is set:
+            set {_rank} to {rank::%player%}
+        else:
+            set {_rank} to "&8[&7Player&8]"
+        set the result to {_rank}
+    if the identifier is "prefix":
+        set {_name} to name of party of player
+        if {_name} is set:
+            set the result to "&b[%{_name}%]&r "
+        else:
+            set the result to ""
+    if the identifier is "combat_1":
+        set the result to placeholderDamage(player, 1)
+    if the identifier is "combat_2":
+        set the result to placeholderDamage(player, 2)
+    if the identifier is "combat_3":
+        set the result to placeholderDamage(player, 3)
+    if the identifier is "combat_4":
+        set the result to placeholderDamage(player, 4)
+    if the identifier is "combat_5":
+        set the result to placeholderDamage(player, 5)
+    if the identifier is "stardust":
+        set the result to {stardust::%player%}
+    if the identifier is "cosmicflux":
+        set the result to {cosmicflux::%player%}
+
+function placeholderDamage(p: player, num: number) :: string:
+    if metadata value "ECEngaged" of {_p} is set:
+        set {_string} to ""
+        set {_stringNegative} to ""
+        set {_topDamage::*} to createTop("dmgdealt", 5, "[P]")
+        set {_player} to {_topDamage::%{_num}%}
+        if {dps::%{_player}%} > 0:
+            set {_damageValues::*} to createTop("dmgdealt", 5, "[V]")
+            set {_damageValue} to {_damageValues::%{_num}%}
+            set {_dps} to {dps::%{_player}%}
+            set {_text} to "%{_player}% %{_damageValue}% DMG | %{_dps}% DPS"
+            set {_length} to length of {_text}
+            set {_cardBackground} to "%last color of name of {karta::%{_p}%}%"
+            set {_split::*} to {_text} split at " "
+            #if size of {_split::*} > 4:
+            #    set {_length} to {_length} - 2
+            #loop (length of {_player}'s name) times:
+             #   set {_stringNegative} to "%{_stringNegative}%%{_cardBackground}%"
+            #loop rounded (length of {_player}'s name)*2.5 times:
+            #    set {_string} to "%{_string}%"
+            #set {_return} to "%{_num}%.%{ikonkakarta::%{_player}%}%&r%{_stringNegative}%&r%{_string}%%{_text}%"
+            set {_return} to "%{_num}%. %{ikonkakarta::%{_player}%}% %{_text}%"
+
+        else:
+            set {_return} to ""
+
+        return {_return}
+    else:
+        return ""
