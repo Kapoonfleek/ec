@@ -1,8 +1,8 @@
 # Earthcraft
 
-⭐ Current Version: 8.1.0
+⭐ Current Version: 8.2.0
 
 
-🏗️ 8.1.5 Update Status: TBA
+🏗️ 8.3.0 Update Status: TBA
 
-Update Plans: New Playable Card, Exp Area, Relic + Artifact functionality, Reforging, Relic Enchanting
+Update Plans: Island Expeditions, Alchemy and Enchanting, Upgraded HoE System, New Playable Card
