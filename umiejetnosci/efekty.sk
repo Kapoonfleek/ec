@@ -1,0 +1,175 @@
+function AbilityUse(p: player, spell: text):
+    #send "Ability Used" to {_p}
+    set metadata value "lastspell" of {_p} to {_spell}
+
+function CanUseAbility(p: player) :: boolean:
+    if metadata value "CannotUseAbilities" of {_p} is true:
+        set {_canUse} to false
+        if {language::%{_p}%} = "English":
+            send "&c&oYou can not use any abilities right now." to {_p}
+        else:
+            send "&c&oNie możesz teraz używać umiejętności." to {_p}
+        play sound "block.glass.break" with volume 3 and pitch 0 to {_p}
+    return {_canUse}
+
+function PermanentBuff(p: player):
+    #Glaceon
+    if tag "Talents;Row 1" of nbt of {karta::%{_p}%} = "Winter's Blessing":
+        set {haste::%{_p}%} to {haste::%{_p}%} + 12
+        set {haste::%{_p}%} to {haste::%{_p}%} * 1.1
+    if tag "Constellation;Frigid Winds" of nbt of {karta::%{_p}%} is set:
+        set {damage::%{_p}%} to {damage::%{_p}%} + (0.7*{crowdcontrol::%{_p}%})
+
+function LoreUpdate(p: player, lore: text, loreEN: text, textPL: text, textEN: text):
+    if {language::%{_p}%} = "English":
+        if name of {_p}'s tool does not contain {_textEN}:
+            replace all {_textPL} in {_p}'s tool's name with {_textEN}
+        set lore of {_p}'s tool to {_loreEN}
+    else:
+        if name of {_p}'s tool does not contain {_textPL}:
+            replace all {_textEN} in {_p}'s tool's name with {_textPL}
+        set lore of {_p}'s tool to {_lore}
+
+function GlobalCooldownSpells(p: player, abilities: texts, abilitiesItems: items, cd: timespan):
+    loop {_abilities::*}:
+        GlobalCooldown({_p}, loop-value, {_abilitiesItems::%loop-index%}, {_cd})
+
+function GlobalCooldown(p: player, name: text, item: item, cd: timespan):
+    loop all items in the inventory of {_p}:
+        if (type of loop-item) = (type of {_item}):
+            if uncolored name of loop-item = {_name}:
+                set the cooldown of loop-item for {_p} to {_cd}
+    wait {_cd}
+    wait 1 tick
+    loop all items in the inventory of {_p}:
+        if (type of loop-item) = (type of {_item}):
+            if uncolored name of loop-item = {_name}:
+                if cooldown "%{_name}%%{_p}%" is not finished:
+                    set {_duration} to cooldown "%{_name}%%{_p}%"
+                    set the cooldown of loop-item for {_p} to {_duration}
+
+function Target(p: player, length: number, passThrough: boolean) :: entity:
+    set {_x} to 0
+    set {_l} to 0
+    loop {_length} times:
+        add 1 to {_x}
+        add 0.25 to {_l}
+        set {_rg%{_x}%} to location {_l} meters infront of {_p}
+        set {_rg%{_x}%} to location 1.25 meters above {_rg%{_x}%}
+    set {_x} to 0
+    loop {_length} times:
+        add 1 to {_x}
+        loop entities in radius 1 around {_rg%{_x}%}:
+            if loop-entity is not {_p}:
+                if loop-entity is not a player:
+                    if loop-entity is not an armor stand:
+                        if loop-entity is a living entity:
+                            if loop-entity is not an arrow:
+                                if loop-entity is alive:
+                                    if tag "custom;ECMob" of nbt of loop-entity is set:
+                                        set {_entity} to loop-entity
+                                        return {_entity}
+                                        stop
+        if {_passThrough} is not true:
+            loop blocks in radius 0.5 around {_rg%{_x}%}:
+                if loop-block is solid:
+                    stop
+    return {_entity}
+
+function pathfind(e: entity, e2: entity):
+    while distance between {_e} and {_e2} > 3:
+        make {_e} pathfind to {_e2}
+        wait 5 ticks
+
+function amountOfDots(p: player, e: entity) :: number:
+    if metadata value "AmountOfDots%{_p}%" of {_e} is not set:
+        set {_x} to 0
+    else:
+        set {_x} to metadata value "AmountOfDots%{_p}%" of {_e}
+    set {_return} to 0.25 + {_x}*0.25
+    return {_return}
+
+function amountOfDotsSet(p: player, e: entity):
+    set {_dotsAmount} to metadata value "AmountOfDots%{_p}%" of {_e}
+    if {_dotsAmount} is not set:
+        set {_dotsAmount} to 0
+    add 1 to {_dotsAmount}
+    set metadata value "AmountOfDots%{_p}%" of {_e} to {_dotsAmount}
+
+function amountOfDotsSubtract(p: player, e: entity):
+    set {_dotsAmount} to metadata value "AmountOfDots%{_p}%" of {_e}
+    remove 1 from {_dotsAmount}
+    set metadata value "AmountOfDots%{_p}%" of {_e} to {_dotsAmount}
+    if metadata value "AmountOfDots%{_p}%" of {_e} <= 0:
+        clear metadata value "AmountOfDots%{_p}%" of {_e}
+#function StatCalc(p: player, id: string):
+#    load yaml "plugins/Skript/playerdata/karty/%uncolored name of {karta::%{_p}%}%/%{_i}%.yml" as "karty-%player%"
+ #   set {_haste} to yaml value "Card.Stats.Haste" in "karty-%player%"
+ #   if tag "Talents;Row 1" of nbt of {karta::%player%} = "Winter's Blessing":
+ #       set {_haste} to 
+ #   unload yaml "karty-%player%"
+
+on inventory click:
+    if inventory action is shift move:
+        set {_abilityOrTalent} to line 1 of lore of event-slot
+        set {_name} to name of event-slot
+        if {_abilityOrTalent} contains "&8Ability" or "&8Umiejętność":
+            if {_name} = "a":
+                broadcast "c"
+        else if {_abilityOrTalent} contains "Talent":
+            set {_slot} to event-slot
+            #GHAZAN
+            if {_name} = "<##b03228>Volcanic Tremors":
+                if last element of lore of {_slot} contains "expand":
+                    set lore of event-slot to "                         &eLevel 45 Talent%nl%                         &8&m------✤------&f%nl%&7Presing SHIFT while targeting Molten Lava will%nl%&7consume the molten terrain and apply Magma Shock to all%nl%&7enemies in the same radius that Molten Lava covers%nl%&7for the remaining duration of Molten Lava.%nl% %nl%<##b03228>&nMagma Shock%nl%<##b03228>Apply a damage over time effect, that causes%nl%&f1 <##b03228>+ (<##f74428>+3%% <##b03228>) + (<##e3ebff>+1%% <##b03228>) = &f3 <##ff3014>Lava <##b03228>damage instantly,%nl%<##b03228>and an additional &f10 <##b03228>+ (<##f74428>+12%% <##b03228>) + (<##e3ebff>+4%% <##b03228>) = &f12%nl%<##ff3014>Lava <##b03228>damage over the duration.%nl% %nl%&8&oPress [SHIFT + MOUSE] to collapse tooltip."
+                else:
+                    set lore of event-slot to "                         &eLevel 45 Talent%nl%                         &8&m------✤------&f%nl%&7Presing SHIFT while targeting Molten Lava will%nl%&7consume the molten terrain and apply Magma Shock to all%nl%&7enemies in the same radius that Molten Lava covers%nl%&7for the remaining duration of Molten Lava.%nl% %nl%<##b03228>&nMagma Shock%nl%<##b03228>Apply a damage over time effect, that causes%nl%&f3 <##ff3014>Lava <##b03228>damage instantly, <##b03228>and an additional%nl%&f12 <##ff3014>Lava <##b03228>damage over the duration.%nl% %nl%&8&oPress [SHIFT + MOUSE] to expand tooltip."
+            if {_name} = "<##b03228>Magma Shock":
+                if last element of lore of {_slot} contains "expand":
+                    set lore of event-slot to "                    &eLevel 45 Talent%nl%                    &8&m------✤------&f%nl%&7Molten Lava no longer melts terrain and has a%nl%&7significantly decreased cooldown. You can now%nl%&7use it on a single target to apply a damage over%nl%&7time effect that lasts &f18 seconds &7and instantly%nl%&7deals &f1 &7+ (<##f74428>+3%% &7) + (<##e3ebff>+1%% &7) = &f3 <##ff3014>Lava &7damage.%nl%&7This ability inherits all other Molten Lava traits%nl%&7and has no target cap.%nl% %nl%&8&oPress [SHIFT + MOUSE] to collapse tooltip."
+                else:
+                    set lore of event-slot to "                      &eLevel 45 Talent%nl%                      &8&m------✤------&f%nl%&7Molten Lava no longer melts terrain and has a%nl%&7significantly decreased cooldown. You can now%nl%&7use it on a single target to apply a damage over%nl%&7time effect that lasts &f18 seconds &7and instantly%nl%&7deals &f3 <##ff3014>Lava &7damage. This ability inherits all other%nl%&7Molten Lava traits and has no target cap.%nl% %nl%&8&oPress [SHIFT + MOUSE] to expand tooltip."
+            if {_name} = "<##b03228>Lava Wave":
+                if last element of lore of {_slot} contains "expand":
+                    set lore of event-slot to "                      &eLevel 40 Talent%nl%                      &8&m------✤------&f%nl%&fInstant cast%nl%&7Cooldown: &f1 minute%nl%&7Use: &fRMB%nl%&7Talent Ability%nl%<##b03228>Blast your target with a Lava Wave, which%nl%<##b03228>deals &f3 <##b03228>+ (<##f74428>+9%% <##b03228>) + (<##e3ebff>+3%% <##b03228>) = &f3 <##ff3014>Lava <##b03228>damage%nl%<##b03228>and applies Molten Lava upon reaching its target.%nl% %nl%<##b03228>Your next Lava Burst will also hit all targets%nl%<##b03228>affected by Molten Lava for 80%% of normal damage.%nl% %nl%&8&oPress [SHIFT + MOUSE] to collapse tooltip."
+                else:
+                    set lore of event-slot to "                      &eLevel 40 Talent%nl%                      &8&m------✤------&f%nl%&fInstant cast%nl%&7Cooldown: &f1 minute%nl%&7Use: &fRMB%nl%&7Talent Ability%nl%<##b03228>Blast your target with a Lava Wave, which%nl%<##b03228>deals &f3 <##ff3014>Lava <##b03228>damage <##b03228>and applies Molten Lava%nl%<##b03228>upon reaching its target.%nl% %nl%<##b03228>Your next Lava Burst will also hit all targets%nl%<##b03228>affected by Molten Lava for 80%% of normal damage.%nl% %nl%&8&oPress [SHIFT + MOUSE] to expand tooltip."
+            if {_name} = "<##b03228>Lavafury":
+                if last element of lore of {_slot} contains "expand":
+                    set lore of event-slot to "                  &eLevel 40 Talent%nl%                  &8&m------✤------&f%nl%&f1.5 second cast%nl%&7Cooldown: &f1 minute%nl%&7Use: &fRMB%nl%&7Talent Ability%nl%<##b03228>Hurls a hot lava rock at the target,%nl%<##b03228>dealing &f5 <##b03228>+ (<##f74428>+9%% <##b03228>) + (<##e3ebff>+3%% <##b03228>) = &f3 <##ff3014>Lava%nl%<##b03228>damage and causing your next 3 Molten Lava%nl%<##b03228>ticks to generate a Lava Surge and%nl%<##b03228>deal &f20%% <##b03228>increased damage.%nl% %nl%&8&oPress [SHIFT + MOUSE] to collapse tooltip."
+                else:
+                    set lore of event-slot to "                  &eLevel 40 Talent%nl%                  &8&m------✤------&f%nl%&f1.5 second cast%nl%&7Cooldown: &f1 minute%nl%&7Use: &fRMB%nl%&7Talent Ability%nl%<##b03228>Hurls a hot lava rock at the target,%nl%<##b03228>dealing &f5 <##ff3014>Lava <##b03228>damage and causing your%nl%<##b03228>next 3 Molten Lava ticks to generate a%nl%<##b03228>Lava Surge and deal &f20%% <##b03228>increased damage.%nl% %nl%&8&oPress [SHIFT + MOUSE] to expand tooltip."
+            if {_name} = "<##b03228>Flames of the Siege":
+                if last element of lore of {_slot} contains "expand":
+                    set lore of event-slot to  "                     &eLevel 45 Talent%nl%                     &8&m------✤------&f%nl%&7Your Molten Lava gains &f60%% &7additional radius and%nl%&7slows enemies inside by &f30%% &7+ (<##58c3f5>+2%% &7) = &f30%%%nl% %nl%&8&oPress [SHIFT + MOUSE] to collapse tooltip."
+                else:
+                    set lore of event-slot to  "               &eLevel 45 Talent%nl%               &8&m------✤------&f%nl%&7Your Molten Lava gains &f60%% &7additional%nl%&7radius and slows enemies inside by &f30%%%nl% %nl%&8&oPress [SHIFT + MOUSE] to expand tooltip."
+            # <---------- Check if player has constellation 2 and add CC scaling if yes
+            if {_name} = "<##4bbfe2>Glacial Spike":
+                if uncolored name of {karta::%player%} = "Glaceon":
+                    set {_id} to tag "Id" of nbt of {karta::%player%}
+                    load yaml "plugins/Skript/playerdata/karty/%uncolored name of {karta::%player%}%/%{_id}%.yml" as "karta-%player%"
+                    set {_constellation} to yaml value "Card.Constellation" in "karta-%player%"
+                    unload yaml "karta-%player%"
+                if last element of lore of {_slot} contains "expand":
+                    if {_constellation} >= 2:
+                        set lore of event-slot to "                   &eLevel 50 Talent%nl%                   &8&m------✤------&%nl%&f2.75 second cast%nl%&7No cooldown%nl%&7Use: &fRMB%nl%&7Talent Ability%nl%<##4bbfe2>Conjures a massive spike of ice, and merges%nl%<##4bbfe2>your current Icicles into it. It impales your%nl%<##4bbfe2>target, dealing &f5 <##4bbfe2>+ (<##f74428>+9%% <##4bbfe2>) + (<##e3ebff>+3%% <##4bbfe2>)%nl%<##4bbfe2>+ (<##58c3f5>+10%%<##4bbfe2>) = &f3 <##add8e6>Ice <##4bbfe2>damage plus all of the%nl%<##4bbfe2>damage stored in your Icicles.%nl% %nl%<##4bbfe2>Requires 5 Icicles to cast.%nl% %nl%<##4bbfe2>Passive: Ice Lance no longer launches Icicles.%nl% %nl%&8&oPress [SHIFT + MOUSE] to collapse tooltip."
+                    else:
+                        set lore of event-slot to "                   &eLevel 50 Talent%nl%                   &8&m------✤------&%nl%&f2.75 second cast%nl%&7No cooldown%nl%&7Use: &fRMB%nl%&7Talent Ability%nl%<##4bbfe2>Conjures a massive spike of ice, and merges%nl%<##4bbfe2>your current Icicles into it. It impales your%nl%<##4bbfe2>target, dealing &f5 <##4bbfe2>+ (<##f74428>+9%% <##4bbfe2>) + (<##e3ebff>+3%% <##4bbfe2>) = &f3%nl%<##add8e6>Ice <##4bbfe2>damage plus all of the damage stored%nl%<##4bbfe2>in your Icicles.%nl% %nl%<##4bbfe2>Requires 5 Icicles to cast.%nl% %nl%<##4bbfe2>Passive: Ice Lance no longer launches Icicles.%nl% %nl%&8&oPress [SHIFT + MOUSE] to collapse tooltip."
+                else:
+                    set lore of event-slot to "                   &eLevel 50 Talent%nl%                   &8&m------✤------&%nl%&f2.75 second cast%nl%&7No cooldown%nl%&7Use: &fRMB%nl%&7Talent Ability%nl%<##4bbfe2>Conjures a massive spike of ice, and merges%nl%<##4bbfe2>your current Icicles into it. It impales your%nl%<##4bbfe2>target, dealing &f5 <##add8e6>Ice <##4bbfe2>damage plus all of the%nl%<##4bbfe2>damage stored in your Icicles.%nl% %nl%<##4bbfe2>Requires 5 Icicles to cast.%nl% %nl%<##4bbfe2>Passive: Ice Lance no longer launches Icicles.%nl% %nl%&8&oPress [SHIFT + MOUSE] to expand tooltip."
+#on player walk:
+#    if metadata value "channeling" of player is set:
+#        if {language::%player%} = "English":
+#            send action bar "&cInterrupted" to player
+#        else:
+#            send action bar "&cPrzerwano" to player
+#        clear metadata value "channeling" of player
+#        clear metadata value "channeltime" of player
+#        set {_pospiech} to 1 + (({pospiech::%{_p}%}/4) + ({pospiech::%{_id}%}/4) + ({hasteVoidform::%{_p}%}/25))/100
+#        create cooldown "Mind Flay%player%" for ("%1.5/{_pospiech}% seconds" parsed as timespan)
+#        loop all items in the inventory of player:
+#            if name of loop-item contains "Mind Flay":
+#                set the cooldown of loop-item for player to ("%1.5/{_pospiech}% seconds" parsed as timespan)
+#        stop sound "skill.therold.mindflay_channel" for all players
+#        stop sound "skill.therold.mindflay_channel_whisper" for all players
