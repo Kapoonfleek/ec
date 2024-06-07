@@ -23,26 +23,37 @@ function prospectDrop(dropName: text, xp: number, var: text, p: player) :: items
 	else:
 		send "&8[&6Earthcraft&8] &6Gratulacje! Znalazłeś/-aś %{_dropName}%&6! &8(+%{_xp}% XP)" to {_p}
 	return {_drop::*}
-	
-on rightclick:
-	if player has stone or deepslate or player head in offhand:
-		if player's gamemode is survival:
-			if {prospectowanie::%player%} is not true:
-				set {prospectowanie::%player%} to true
+
+on inventory click:
+	if event-inventory = (metadata tag "prospect-%type of player's offhand tool%" of player):
+		cancel event
+		if clicked slot is between 0 and 53:
+			if event-slot is not air:
+				if lore of event-slot = "&7Kliknij, by wydobyć." or "&7Click here to mine.":
+					set event-slot to air
+					set {_materialAmount} to metadata value "MaterialAmount" of player
+					set {_materialAmount} to {_materialAmount} - 1
+					set metadata value "MaterialAmount" of player to {_materialAmount}
+					play sound "block.stone.break" with volume 2 and pitch 0.7 at player
+					if metadata value "MaterialAmount" of player = 0:
+						teleport the player to player's location
+on inventory close:
+	if event-inventory = (metadata tag "prospect-%type of player's offhand tool%" of player):
+		if metadata value "MaterialAmount" of player = 0:
+			if player is alive:
+				clear (metadata tag "prospect-%type of player's offhand tool%" of player)
 				if player has player head in offhand:
-					set {_item} to 1 of (item in player's offhand)
+					set {_item} to 1 of (player's offhand tool)
 					if {_item} = {rudatempestium} or {rudatempestiumEN}:
-						set {_amount} to (item amount of player's offhand)
-						if {_amount} > 2:
-							remove 3 of {_item} from player's inventory
-							add 3 to {prospect::tempestium::%player%}
-							achievement("prospect::tempestium", player, 100, "osiagniecie.100prosptempestium", "Przeszukaj 100 Rudy Tempestium", "Ekstrawaganckie Znaleziska", "Prospect 100 Tempestium Ore", "Extravagant Findings")
-							achievement("prospect::tempestium", player, 1000, "osiagniecie.1000prosptempestium", "Przeszukaj 1000 Rudy Tempestium", "Ekspert Rzadkości", "Prospect 1000 Tempestium Ore", "Rarity Expert")
-							set {_szansaMultiplier} to 6
-							set {_prospectAmount} to 3
-							add 18 to {exp::%player%}
+						remove 5 of {_item} from player's inventory
+						add 5 to {prospect::tempestium::%player%}
+						achievement("prospect::tempestium", player, 100, "osiagniecie.100prosptempestium", "Przeszukaj 100 Rudy Tempestium", "Ekstrawaganckie Znaleziska", "Prospect 100 Tempestium Ore", "Extravagant Findings")
+						achievement("prospect::tempestium", player, 1000, "osiagniecie.1000prosptempestium", "Przeszukaj 1000 Rudy Tempestium", "Ekspert Rzadkości", "Prospect 1000 Tempestium Ore", "Rarity Expert")
+						set {_szansaMultiplier} to 8
+						set {_prospectAmount} to 5
+						add 30 to {exp::%player%}
 				else if player has stone or deepslate in offhand:
-					loop {prospectamount::%player%} + 1 times:
+					loop {prospectamount::%player%} + 5 times:
 						if player has stone in offhand:
 							remove 1 stone from player
 						else:
@@ -57,22 +68,22 @@ on rightclick:
 						add 1 to {_prospectAmount}
 				loop {_prospectAmount} times:
 					add 1 to {prospect::%player%}
-				set {_szansaSzkło} to 10
-				set {_szansaObsydian} to 0.8
-				set {_szansaTempestium} to 0.16
-				set {_szansaDiamondShard} to 0.2
-				set {_szansaGemstone} to 1.2 + {bonusdrop::prospecting::gemstones::%player%}
-				set {_szansaJubiGemstone} to 1
-				set {_szansaUncoGemstone} to 0.6
-				set {_szansaRareGemstone} to 0.12
-				set {_szansaEpicGemstone} to 0.04
-				play sound "profesje.prospect" with volume 2 and pitch 1 at player
-				if {prospectspeed::%player%} is set:
-					wait ("%difference between 2 seconds and {prospectspeed::%player%}%" parsed as timespan)
-				else:
-					wait 2 seconds
-				stop sound "profesje.prospect" for player
-				loop {_prospectAmount} times:
+					set {_szansaSzkło} to 10
+					set {_szansaObsydian} to 0.8
+					set {_szansaTempestium} to 0.16
+					#set {_szansaDiamondShard} to 0.2
+					set {_szansaGemstone} to 1.2 + {bonusdrop::prospecting::gemstones::%player%}
+					set {_szansaJubiGemstone} to 1
+					set {_szansaUncoGemstone} to 0.6
+					set {_szansaRareGemstone} to 0.12
+					set {_szansaEpicGemstone} to 0.04
+					play sound "profession.prospect" with volume 2 and pitch 1 at player
+					#if {prospectspeed::%player%} is set:
+					#	wait ("%difference between 2 seconds and {prospectspeed::%player%}%" parsed as timespan)
+					#else:
+					#	wait 2 seconds
+					#stop sound "profession.prospect" for player
+					ProspectingStopSound(player)
 					#SZKŁO
 					chance of ({_szansaSzkło}*{_szansaMultiplier})%:
 						set {_amount} to a random integer between 1 and 3
@@ -103,13 +114,13 @@ on rightclick:
 							prospectDrop("<##554691>Obsydian", 14, "obsydian", player)
 
 					#DIAMENTOWY ODLAMEK
-					chance of ({_szansaDiamondShard}*{_szansaMultiplier})%:
-						if {language::%player%} = "English":
-							add {diamondshardEN} to {_drop::*}
-							prospectDrop("&bDiamond Shard", 42, "diamondshards", player)
-						else:
-							add {diamondshard} to {_drop::*}
-							prospectDrop("&bDiamentowy Odłamek", 42, "diamondshards", player)
+					#chance of ({_szansaDiamondShard}*{_szansaMultiplier})%:
+						#if {language::%player%} = "English":
+							#add {diamondshardEN} to {_drop::*}
+							#prospectDrop("&bDiamond Shard", 42, "diamondshards", player)
+						#else:
+							#add {diamondshard} to {_drop::*}
+							#prospectDrop("&bDiamentowy Odłamek", 42, "diamondshards", player)
 					#KAMIENIE SZLACHETNE
 					chance of ({_szansaGemstone}*{_szansaMultiplier})%:
 						if {language::%player%} = "English":
@@ -532,22 +543,61 @@ on rightclick:
 							if {_quality} = 3:
 								add "&fJakość: &e★★★" to lore of {_drop}
 							add {_drop} to {_drop::*}
-							prospectDrop("<##a335ee>Illimited Diamond", 152, "illimiteddiamond", player)
-						
+							prospectDrop("<##a335ee>Illimited Diamond", 152, "illimiteddiamond", player)			
 				if {_drop::*} is set:
 					loop {_drop::*}:
 						if player can hold loop-value:
 							give loop-value to player
 						else:
 							drop loop-value at player
-						play sound "profesje.putdowngems" with volume 2 and pitch 1 to player
+						play sound "profession.gem.put_down" with volume 2 and pitch 1 to player
 						wait 0.1 seconds
 				JubilerstwoLevelUp(player)
-				clear {prospectowanie::%player%}
-				
-on quit:
-	clear {prospectowanie::%player%}
+				if {_prospectAmount} is not set:
+					if {language::%player%} = "English":
+						send "&c&oProspecting failed. You do not have any stone, deepslate or ore in your offhand." to player
+					else:
+						send "&c&oProspectowanie niepomyślne. Nie masz żadnego kamienia, deepslate, lub rudy w offhand." to player
 
+on rightclick:
+	if player has stone or deepslate or player head in offhand:
+		if player's gamemode is survival:
+			set {_amount} to (item amount of player's offhand item)
+			if player has player head in offhand:
+				set {_name} to (name of player's offhand item)
+			set {_item} to 1 of (player's offhand item)
+			if {_amount} >= 5:
+				if (metadata tag "prospect-%type of player's offhand tool%" of player) is not set:
+					if {language::%player%} = "English":
+						set metadata tag "prospect-%type of player's offhand tool%" of player to chest inventory with 6 rows named "Prospecting"
+						if {_name} is not set:
+							if {_item} = stone block:
+								set {_name} to "&8Stone"
+							else:
+								set {_name} to "&8Deepslate"
+						set {_lore} to "&7Click here to mine."
+					else:
+						set metadata tag "prospect-%type of player's offhand tool%" of player to chest inventory with 6 rows named "Wydobywanie"
+						if {_name} is not set:
+							if {_item} = stone block:
+								set {_name} to "&8Kamień"
+							else:
+								set {_name} to "&8Deepslate"
+						set {_lore} to "&7Kliknij, by wydobyć."
+					set {_x} to a random integer between 1 and 54
+					set {_number::*} to integers between 0 and 53
+					chance of {prospectquicker::%player%}%:
+						set {_x} to a random integer between 1 and 27
+					loop {_x} times:
+						set {_y} to a random element of {_number::*}
+						set metadata value "MaterialAmount" of player to {_x}
+						set slot {_y} of (metadata tag "prospect-%type of player's offhand tool%" of player) to {_item} named {_name} with lore {_lore}
+						remove {_y} from {_number::*}
+				open (metadata tag "prospect-%type of player's offhand tool%" of player) to player
+				
+function ProspectingStopSound(p: player):
+	wait 2 seconds
+	stop sound "profession.prospect" for {_p}
 
 
 #NIEUŻYTE KONCEPTY/POMYSŁY
@@ -557,31 +607,31 @@ on quit:
 	#if player's gamemode is survival:
 		#if player has 5 stone or 5 of any ore in offhand:
 			#if player is alive:
-				#if (metadata tag "prospect-%player's offhand's type%" of player) is not set:
-					#set metadata tag "prospect-%player's offhand's type%" of player to chest inventory with 6 rows named "Wydobywanie"
+				#if (metadata tag "prospect-%type of player's offhand tool%" of player) is not set:
+					#set metadata tag "prospect-%type of player's offhand tool%" of player to chest inventory with 6 rows named "Wydobywanie"
 					#set {_x} to a random integer between 1 and 54
 					#set {_number::*} to integers between 0 and 53
 					#loop {_x} times:
 						#set {_y} to a random element of {_number::*}
 						#set {wydobytoliczba::%player%} to {_x}
-						#set slot {_y} of (metadata tag "prospect-%player's offhand's type%" of player) to stone named "&8Kamień" with lore "&7Kliknij, by wydobyć."
+						#set slot {_y} of (metadata tag "prospect-%type of player's offhand tool%" of player) to stone named "&8Kamień" with lore "&7Kliknij, by wydobyć."
 						#remove {_y} from {_number::*}
-				#open (metadata tag "prospect-%player's offhand's type%" of player) to player
+				#open (metadata tag "prospect-%type of player's offhand tool%" of player) to player
 		#else:
 			#send "&7[<##c3d4d6>&lJubilerstwo&r&7] &7Potrzebujesz dokładnie 5 kamienia lub rud w lewej łapce, by prospectować." to player
 			
 #on inventory click:
-#	if player's current inventory is (metadata tag "prospect-%player's offhand's type%" of player):
+#	if event-inventory = (metadata tag "prospect-%type of player's offhand tool%" of player):
 #		cancel event
-#		if clicked slot is stone named "&8Kamień" with lore "&7Kliknij, by wydobyć.":
-#			set clicked slot to air
+#		if event-slot is stone named "&8Kamień" with lore "&7Kliknij, by wydobyć.":
+#			set event-slot to air
 #			remove 1 from {wydobytoliczba::%player%}
 #			play sound "block.stone.break" with volume 2 and pitch 0.7 at player
 #on inventory close:
-#	if player's current inventory is (metadata tag "prospect-%player's offhand's type%" of player):
+#	if event-inventory = (metadata tag "prospect-%type of player's offhand tool%" of player):
 #		if {wydobytoliczba::%player%} = 0:
 #			if player is alive:
-#				clear (metadata tag "prospect-%player's offhand's type%" of player)
+#				clear (metadata tag "prospect-%type of player's offhand tool%" of player)
 #				if {_massprospect} is set:
 #					set {_loops} to 20
 #				else:
@@ -740,6 +790,6 @@ on quit:
 #						add 1 to {_a}
 #				if {_a} is set:
 #					loop {_a} times:
-#						play sound "profesje.putdowngems" with volume 2 and pitch 1 to player
+#						play sound "profession.gem.put_down" with volume 2 and pitch 1 to player
 #						wait 0.1 seconds
 #					wait 0.15 second
