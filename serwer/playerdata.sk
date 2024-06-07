@@ -1,16 +1,47 @@
 on join:
-	load yaml "plugins/Skript/playerdata/%player%.yml" as "data-%player%"
-	set yaml value "name" in "data-%player%" to name of player
-	set yaml value "last-login" in "data-%player%" to data()
-	set yaml value "location" in "data-%player%" to location of player
-	set yaml value "level" in "data-%player%" to {poziom::%player%}
-	set yaml value "exp" in "data-%player%" to {exp::%player%}
+	load yaml "plugins/Skript/playerdata/%uuid of player%.yml" as "data-%player%"
+	load yaml "plugins/Skript/playerdata/admin/%uuid of player%-Admin.yml" as "dataAdmin-%player%"
+	load yaml "plugins/Skript/playerdata/enderchesty/Enderchest-%uuid of player%.yml" as "Enderchest%player%"
+	
+	SetPlayerStats(player) #Sets player stats to current selected card's stats (funkcje.sk)
+
+	set {_color} to raw {kolorek::%player%}
+	replace all "<" and ">" in {_color} with ""
+	set yaml value "Player.Name" in "data-%player%" to name of player
+	set yaml value "Player.Last Login" in "data-%player%" to data()
+	set yaml value "Player.Colour" in "data-%player%" to {_color}
+	set yaml value "Player.Level" in "data-%player%" to {poziom::%player%}
+	set yaml value "Player.Exp" in "data-%player%" to round({exp::%player%}, 2)
+	
+	set yaml value "Player.Name" in "dataAdmin-%player%" to name of player
+	set yaml value "Player.UUID" in "dataAdmin-%player%" to uuid of player
+	set yaml value "Player.Location" in "dataAdmin-%player%" to location of player
+	if yaml list "Player.Name History" in "dataAdmin-%player%" does not contain player's name:
+		add player's name to yaml list "Player.Name History" in "dataAdmin-%player%" 
+	
 	save yaml "data-%player%"
+	save yaml "dataAdmin-%player%"
+	set {_size} to size of (yaml list "Player.Item Claim" in "dataAdmin-%player%")
+	if {_size} > 0:
+		wait 6 seconds
+		play sound "block.note_block.harp" with volume 3 and pitch 1.2 to player
+		if {language::%player%} = "English":
+			send "&eYou have &f%{_size}% &eunclaimed items. Type /itemclaim to claim the items." to player
+		else:
+			send "&eMasz &f%{_size}% &enieodebranych przedmiotów. Wpisz /itemclaim, by odebrać przedmioty." to player
+	set {_partymembers::*} to party members of party of player
+	loop {_partymembers::*}:
+		add (name of loop-value parsed as player) to {_party::*}
+	set {_name} to name of party of player
+	#loop {_party::*}:
+		#set loop-value's tab list name to "&b[%{_name}%] &8[<##7c7cff>&l%{poziom::%loop-value%}%<##9494ff>&l⭐&8] &r%loop-value's name%"
 	
 on quit:
-	set yaml value "last-login" in "data-%player%" to now
+	set yaml value "Player.Last Login" in "data-%player%" to now
 	save yaml "data-%player%"
+	save yaml "dataAdmin-%player%"
 	unload yaml "data-%player%"
+	unload yaml "dataAdmin-%player%"
 	
 every 1 minute:
 	loop all loaded yaml:
