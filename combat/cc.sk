@@ -1,10 +1,91 @@
 on any move:
 	if {stun::%player%} is true:
 		cancel event
+	if {-zolnierze::%player%::*} is set:
+		set {_yaw} to player's yaw
+		set {_pitch} to player's pitch
+		loop {-zolnierze::%player%::*}:
+			set {_loc} to location of loop-value
+			set y-coordinate of {_loc} to (y-coordinate of {_loc} - 0.4)
+			teleport {-zolnierz::owner::%uuid of loop-value%} to {_loc}
+			wait 1 tick
+			if {conqueringsands::%uuid of loop-value%} is not true:
+				if loop-value is on ground:
+					set {_loc} to location of loop-value
+					set yaw of {_loc} to {_yaw}
+					set pitch of {_loc} to {_pitch}
+					teleport loop-value to {_loc}
 on entity move:
 	if {stun::%event-entity%} is true:
 		cancel event
+	set {_custom} to tag "custom" of nbt compound of event-entity
+	set {_entity} to tag "ECTextAbove" of {_custom} parsed as entity
+	if {_entity} is set:
+		set {_loc} to location of event-entity
+		if tag "ECModelHeight" of {_custom} is set:
+			increase {_loc}'s y-coordinate by (tag "ECModelHeight" of {_custom})
+		else:
+			increase {_loc}'s y-coordinate by 1.55
+		teleport {_entity} to {_loc}
+		if tag "ECMob" of {_custom} is set:
+			if tag "ECDungeonMob" of {_custom} is set:
+				if metadata value "ECPulled" of event-entity is not set:
+					cancel event
+		if tag "ECTextAboveLevel" of {_custom} is set:
+			set {_loc} to location of event-entity
+			set {_entity} to tag "ECTextAboveLevel" of {_custom} parsed as entity
+			if tag "ECModelHeight" of {_custom} is set:
+				increase {_loc}'s y-coordinate by (tag "ECModelHeight" of {_custom}) + 0.5
+			else:
+				increase {_loc}'s y-coordinate by 2.05
+			teleport {_entity} to {_loc}
+
+on sheep walk:
+	if "%region at block under event-entity%" contains "DreamcatcherPlatforms":
+		loop all blocks in radius 6 around the event-entity where [input = blue glazed terracotta]:
+			if ("%regions at loop-block%") = ("%regions at block under event-entity%"):
+				add loop-block to {_blocks::*}
+		if {_blocks::*} is set:
+			play sound "block.stone_pressure_plate.click_off" with volume 4 and pitch 1 at block under event-entity
+			loop {_blocks::*}:
+				set block at loop-value to yellow wool
+			wait 1.25 second
+			play sound "block.stone_pressure_plate.click_off" with volume 4 and pitch 1.5 at block under event-entity
+			loop {_blocks::*}:
+				set block at loop-value to orange wool
+			wait 1.25 seconds
+			play sound "block.stone_pressure_plate.click_off" with volume 4 and pitch 2 at block under event-entity
+			loop {_blocks::*}:
+				set block at loop-value to red wool
+			wait 1.25 second
+			play sound "block.stone.break" with volume 3 and pitch 0.8 at block under event-entity
+			loop {_blocks::*}:
+				set block at loop-value to air
+				spawn falling block of blue glazed terracotta at loop-value
+				FallingBlockDelete(last spawned falling blue glazed terracotta)
+			play sound "block.lava.extinguish" with volume 3 and pitch 1 at block under event-entity
+			wait 5 seconds
+			loop {_blocks::*}:
+				set block at loop-value to blue glazed terracotta
 on damage:
 	if damage cause is suffocation:
-		victim is player:
+		victim is a player:
 			cancel event
+
+function canBeCCed(e: entity) :: boolean:
+	set {_canbeCCed} to true
+	if tag "custom;ECBoss" of nbt of {_e} is set:
+		set {_canbeCCed} to false
+	else if tag "custom;ECMiniBoss" of nbt of {_e} is set:
+		set {_canbeCCed} to false
+	else if tag "custom;ECImmuneToCC" of nbt of {_e} is set:
+		set {_canbeCCed} to false
+	else if tag "custom;ECDungeonInstance" of nbt of {_e} is set:
+		set {_instance} to tag "custom;ECDungeonInstance" of nbt of {_e}
+		if {-affixes%{_instance}%::*} contains "Inspiring":
+			loop all entities in radius 6 around {_e} where [tag "custom;InspiringMob" of nbt of input is set]:
+				if loop-entity != {_e}:
+					broadcast "P"
+					set {_canbeCCed} to false
+					stop loop
+	return {_canBeCCed}
