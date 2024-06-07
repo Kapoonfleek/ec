@@ -1,0 +1,323 @@
+#on shoot:
+	#type of event-projectile is trident:
+		#silence event-projectile
+		#if shooter is a player:
+			#while event-projectile is not on the ground:
+				#play sound "entity.player.attack.sweep" with volume 1 and pitch 0.8 at location of event-projectile
+				#wait 0.1 seconds
+			
+#on shoot:
+	#type of event-projectile is trident:
+		#silence event-projectile
+		#while event-projectile is not on the ground:
+			#if projectile exists:
+				#play sound "entity.player.attack.sweep" with volume 1 and pitch 0.8 at location of event-projectile
+				#wait 0.1 seconds
+
+command /errorTest:
+	trigger:
+		set {_x} to unbreakable trident of loyalty 1 named "Bumerang" with lore "lore" with nbt from "{HideFlags:127}"
+		give player {_x}
+			
+#pasywwka ferwor jeśli trafisz we wroga to przez kolejne 6 sekund twoje bumerangi wracają szybciej do ciebie (refershuje się po trafieniu znów?)
+
+#albo umka która przyspiesza powrót
+
+
+#time slow umka
+on shoot:
+    shooter is a player
+    if {cheese} = true:
+        wait 1 tick
+        set {_v} to velocity of projectile
+        broadcast "&cBefore freeze: %{_v}%"
+        set gravity of projectile to false
+        set vector length of projectile's velocity to 0.1
+        while {cheese} = true:
+            wait 2 ticks
+        set gravity of projectile to true
+        set vector length of projectile's velocity to 1
+        set velocity of projectile to {_v}
+        wait 1 tick
+        broadcast "&aAfter freeze: %velocity of projectile%"
+
+command cheese:
+    trigger:
+        set {cheese} to false if {cheese} = true, else true
+        send "Cheese: %{cheese}%"
+on rightclick with diamond hoe:
+	loop all entities in radius 10 around the player:
+		if loop-entity is a zombie:
+			set {_v} to vector from player and loop-entity
+			set standard length of {_v} to 3
+			push loop-entity {_v}
+on rightclick with netherite hoe:
+	set {_v} to vector from player and block 5 blocks in front of player
+	set standard length of {_v} to 3
+	push player {_v}
+function throwLeaf(e: entity, target: player):
+	set {_ent} to ({_e}'s uuid) parsed as entity
+	loop 5 times:
+		set {_loc} to {_ent}'s location
+		set pitch of {_loc} to pitch of (vector from {_ent} to {_target})
+		set yaw of {_loc} to yaw of (vector from {_ent} to {_target})
+		teleport {_ent} to {_loc}
+
+		set {_speed} to (1/21*distance between {_target} and {_ent}) #Scaling Speed
+		shoot falling jungle leaves from {_ent} at speed ({_speed}*2)
+		last spawned entity.setDropItem(air)
+		play sound "minecraft:block.piston.extend" with pitch 2 to {_target}
+
+		wait 1 tick
+	wait 0.8 seconds
+	if tag "custom;LeafThrower" of nbt compound of {_ent} is 3:
+		throwLeaf({_ent}, {_target})
+#Mjolnir axe throw
+command /test4:
+	trigger:
+		if target block of player exists:
+			if distance between player's target block and player is more than or equal to 16:
+				set {_l3} to location of block 16 in front of player
+			else:
+				set {_l3} to location of player's target block
+		spawn a armor stand at location of player's head
+		set {_fs} to last spawned armor stand
+		set name of {_fs} to "&a%player%'s Mjolnir"
+		add nbt from "{CustomNameVisible:1,NoGravity:1b,Invisible:1b,Invincible:1b}" to nbt of {_fs}
+		set the held item of {_fs} to iron axe
+		while {_fs} is alive:
+			teleport {_fs} 0.5 meters in front of {_fs}
+			if distance between {_fs} and player is more than or equal to 16:
+				kill {_fs}
+				clear {_fs}
+			loop blocks 1 meter in front of {_fs}:
+				if loop-block is not air:
+					kill {_fs}
+					clear {_fs}
+		set {_fsboomerang} to vector from {_fs} to player
+		set standard length of {_fsboomerang} to 1
+		teleport {_fs} to {_fs} ~~ {_fsboomerang}
+		wait 2 seconds
+		kill {_fs}
+		clear {_fs}
+on right click:
+	if player is holding a bone named "&fBonemerang":
+		set {_loc} to location 0.75 meter in front of player
+		set {_locplayertp} to location of player
+		add -0.15 to y-coord of {_loc}
+		add 12345 to x-coord of {_locplayertp}
+		shoot armor stand from {_locplayertp} at speed 0.9
+		teleport last shot entity to {_loc}
+		set {_yaw} to yaw of last shot entity
+		set visibility of last shot entity to false
+		set {_a} to last shot entity
+		set {_v} to velocity of {_a}  
+		boneReturn(player, {_a})    
+		boneInvis({_a})
+		set {_move} to 0
+		while {_a} is alive:
+			add nbt from "{Rotation:[%{_move}%.0f,0.0f]}" to nbt of {_a}
+			add 20 to {_move}
+			set velocity of {_a} to {_v}
+			set noclip state of {_a} to true
+			if block below eyes of {_a} is solid:
+				set {_particle} to location of {_a}
+				play 10 of dust using dustOption(white, 20) at location 1 meter above {_particle}
+				kill {_a}
+				stop
+			loop all mobs in radius 1 around {_a}:
+				broadcast "b"
+			wait 1 tick
+		set gravity of {_a} to false
+
+function boneInvis(e: entity):
+	wait 4 ticks
+	set {_e}'s helmet to bone
+
+function boneReturn(p: player, e: entity):
+	wait 1.5 seconds
+	delete velocity of {_e}
+	loop 15 times:
+		set gravity of {_e} to true
+		push {_e} (direction from {_e} to {_p}) at speed 2
+		set gravity of {_e} to false
+		wait 1 tick
+Function BoomerangShield(p:player):
+	spawn 1 of armor stand at {_p}
+	set {_b} to last spawned armor stand
+	add nbt from "{Invisible:1,Marker:1b}" to nbt of {_b}
+	add nbt from "{Pose:{Head:[0f,180f,269f]}}" to nbt of {_b}
+	set {_uuid} to uuid of {_b}
+	set {_b}'s helmet to trident
+	set {_uu} to uuid of {_p}
+	add {_b} to {-bumerangi::%{_uu}%::*}
+	while {_b} is alive:
+		loop 360 times:
+			wait 1 ticks
+			set {_v} to spherical vector radius 2, yaw loop-value * 8, pitch 0
+			teleport {_b} to {_p} ~ {_v}
+			stop if {boomerangstop::%{_b}%} = true
+Function BoomerangShield2(p:player):
+	spawn 1 of armor stand at {_p} 
+	set {_b} to last spawned armor stand
+	add nbt from "{Invisible:1,Marker:1b}" to nbt of {_b}
+	add nbt from "{Pose:{Head:[0f,180f,269f]}}" to nbt of {_b}
+	equip {_b} with trident
+	set {_uu} to uuid of {_p}
+	add {_b} to {-bumerangi::%{_uu}%::*}
+	while {_b} is alive:
+		loop 360 times:
+			wait 1 tick
+			set {_v} to spherical vector radius 2, yaw 180 + loop-value * 8, pitch 0
+			teleport {_b} to {_p} ~ {_v}
+			stop if {boomerangstop::%{_b}%} = true
+#Function BoomerangShield(p:player):
+#	spawn 1 of armor stand at {_p}
+#	set {_b} to last spawned armor stand
+#	add nbt from "{Invisible:1}" to nbt of {_b}
+#	set helmet of {_b} to cobblestone
+#	set {_uu} to uuid of {_p}
+#	add {_b} to {-bumerangi::%{_uu}%::*}
+#	while {_b} is alive:
+#		loop 360 times:
+#			wait 1 tick
+#			set {_v} to spherical vector radius 2, yaw loop-value * 15, pitch 0
+#			teleport {_b} to {_p} ~ {_v}
+#			stop if {boomerangstop::%{_b}%} = true
+#Function BoomerangShield2(p:player):
+#	spawn 1 of armor stand at {_p} 
+#	set {_b} to last spawned armor stand
+#	add nbt from "{Invisible:1}" to nbt of {_b}
+#	equip {_b} with cobblestone
+	#set {_uu} to uuid of {_p}
+	#add {_b} to {-bumerangi::%{_uu}%::*}
+	#set {_ya} to 180
+	#while {_b} is alive:
+	#	loop 360 times:
+		#	wait 1 tick
+		#	set {_v} to spherical vector radius 2, yaw {_ya} * 15, pitch 0
+		#	add 1 to {_ya}
+		#	teleport {_b} to {_p} ~ {_v}
+		#	stop if {boomerangstop::%{_b}%} = true
+on disconnect:
+	delete {-bumerangi::%player's uuid%::*}
+command /knife:
+	trigger:
+		clear {-bumerangi::%player's uuid%::*}
+		BoomerangShield(player)
+		BoomerangShield2(player)
+		#make player execute command "knife2"
+command /knife2:
+	trigger:
+		BoomerangShield2(player)
+on left click:
+	size of {-bumerangi::%player's uuid%::*} > 0
+	set {_} to a random element of {-bumerangi::%player's uuid%::*}
+	set {boomerangstop::%{_}%} to true
+	set {_loc} to location of {_}
+	add 0.3 to y-coordinate of {_loc}
+	spawn trident at {_loc}
+	set noclip state of last spawned trident to true
+	set {shooter::%last spawned falling block%} to player
+	set {_x} to target block of player
+	push last spawned trident (vector from player to {_x}) with speed 1.2
+	remove {_} from {-bumerangi::%player's uuid%::*}
+	kill {_}
+	clear {boomerangstop::%{_}%}
+#on left click:
+#	size of {-bumerangi::%player's uuid%::*} > 0
+#	set {_} to a random element of {-bumerangi::%player's uuid%::*}
+#	set {boomerangstop::%{_}%} to true
+#	spawn falling block of cobblestone at player
+#	set {shooter::%last spawned falling block%} to player
+#	set {_x} to target block of player
+#	push last spawned falling block (vector from player to {_x}) with speed 0.8
+#	remove {_} from {-bumerangi::%player's uuid%::*}
+#	kill {_}
+#	clear {boomerangstop::%{_}%}
+function getEntitiesWithinCone(loc: object, angle: number=10, radius: number=10, height: number=1.5) :: entities:
+    {_angle} != 0
+    {_angle} < 90
+    {_radius} > 0
+
+    set {_yaw+} and {_yaw-} to yaw of {_loc}
+    add {_angle} to {_yaw+}
+    remove {_angle} from {_yaw-}
+
+    if {_yaw+} > 360:
+        remove 360 from {_yaw+}
+    if {_yaw+} < 0:
+        add 360 to {_yaw+}
+    if {_yaw-} > 360:
+        remove 360 from {_yaw-}
+    if {_yaw-} < 0:
+        add 360 to {_yaw-}
+
+    set {_} to 360 if {_yaw+} < {_yaw-} else 0
+
+    loop all entities in radius {_radius} around {_loc}:
+        set {_yaw} to (yaw of (vector from {_loc} to loop-entity))
+        if {_yaw} < {_yaw+}:
+            add {_} to {_yaw}
+        if {_yaw} is between {_yaw-} and ({_yaw+} + {_}):
+            distance between (location of {_loc}) and loop-entity <= {_radius}
+            (y-loc of loop-entity) is between ((y-loc of {_loc}) + {_height}) and ((y-loc of {_loc}) - {_height})
+            add loop-entity to {_return::*}
+
+    return {_return::*}
+on rightclick with wheat:
+	set {_shapes2::outer-circle} to a circle of radius 0.225
+	set {_view} to vector from yaw player's yaw and pitch player's pitch
+	set {_yaw} to yaw of {_view}
+	set {_loc} to location 1 meter in front of player's eye location
+	draw {_shapes::*} at {_loc} ~ {_view}
+	set {_vectors::*} to points of (circle of radius 10)
+	broadcast {_vectors::*}
+function LightningInCircle(e: entity):
+	set {_custom} to tag "custom" of nbt of {_e}
+	while {_e} is alive:
+		if metadata value "ECPulled" of {_e} is set:
+			loop all blocks in radius 15 around {_e}:
+				if (rounded y-coordinate of loop-block) >= (rounded y-coordinate of {_e}):
+					if y-coordinate of {_e} + 2 !>= y-coordinate of loop-block:
+						if loop-block is not air:
+							add loop-block to {_blocks::*}
+			loop 3 times:
+				set {_x} to a random element of {_blocks::*}
+				remove {_x} from {_blocks::*}
+				set {_circle} to a circle of radius 2
+				draw {_circle} at location of {_x}:
+					set {_vectors::*} to points of drawn shape
+					loop {_vectors::*}:
+						strike fake lightning at {_x} ~ loop-value
+				wait 0.5 seconds
+		wait 12 seconds
+#on sneak toggle:
+#	broadcast "sneak"
+#	set {_shapes::outer-circle} to a circle of radius 1.225
+#	set particle of {_shapes::*} to electric spark
+#	wait 1 tick
+#	set {_location} to 0
+#	while player is sneaking:
+#		set {_view} to vector from yaw player's yaw and pitch player's pitch
+#		set {_yaw} to yaw of {_view}
+#		# figure out the rotation needed to rotate the shape 
+#		set {_rotation} to rotation from vector(0, 1, 0) to {_view}
+#		draw {_shapes::*} at player's eye location ~ {_view}:
+			# only happens for this draw call, the original shape is not modified
+			# note that this is called once for each shape, hence `drawn shape` and not `drawn shapes`
+#			rotate shape drawn shape by {_rotation}
+			# the shape takes the shortest path to rotate to the desired rotation, but that causes it to appear to rotate as we turn.
+			# so we'll correct for it by rotating the shape around the y axis by the yaw of the player
+#			rotate shape drawn shape around relative y axis by -1 * {_yaw}
+
+#		wait 1 tick
+on falling block land:
+	if event-entity is falling cobblestone block:
+		loop all entities in radius 10 around event-location:
+			if loop-entity is a zombie:
+				set {lastdamagecause::%loop-entity%} to "wowee"
+				make {shooter::%event-entity%} damage loop-entity by 2000
+				set {lastdamagecause::%loop-entity%} to "wowee"
+				clear {shooter::%event-entity%}
+				stop loop

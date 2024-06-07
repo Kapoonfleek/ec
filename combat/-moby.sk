@@ -1,0 +1,161 @@
+
+on rightclick:
+	if player's tool is emerald named "Cipochilla":
+		#Bałagan (rozrzuca cobblestone)
+		#Sprzątanie (wciąga graczy i cobblestone, za każdy cobblestone wciągnięty zwiększa dmg o 1%)
+		spawn 1 skeleton at player
+		set the name of last spawned skeleton to "&d(&f20 Lv.&d) <##ead5db>Cipochilla &d[&f500&c♥&d]"
+		set the max health of last spawned skeleton to 500
+		heal last spawned skeleton
+		silence last spawned skeleton
+		set last spawned skeleton's tool to air
+		set helmet of last spawned skeleton to magenta glass
+		set {_u} to uuid of last spawned skeleton
+		set tag "custom;ECMob" of nbt of last spawned skeleton to true
+		set {expyield::%last spawned skeleton%} to 50
+		execute console command "/disguuid %{_u}% player Cipochilla setSkin chilla setDynamicName true setHelmet air setCustomNameVisible true"
+		play sound "moby.cipochilla.spawn" with volume 5 and pitch 1 at last spawned skeleton
+		set {_s} to last spawned skeleton
+		wait 5 seconds
+		Balagan({_s})
+		wait 8 seconds
+		Sprzatanie({_s})
+		wait 8 seconds
+		Catscan({_s})
+function Balagan(e: entity):
+	while {_e} is alive:
+		set {_casttime} to 6 seconds
+		play sound "moby.cipochilla.balagan" with volume 4 and pitch 1 at {_e}
+		loop 12 times:
+			if {_e} is alive:
+				set {_lloc} to location 2.8 blocks above {_e}
+				loop all players:
+					if {language::%loop-player%} = "English":
+						display hologram "<##ead5db>Mess &f(<##ead5db>%{_casttime}%&f)" at {_lloc} to loop-player for 0.5 seconds
+					else:
+						display hologram "<##ead5db>Bałagan &f(<##ead5db>%{_casttime}%&f)" at {_lloc} to loop-player for 0.5 seconds
+				set {_tid} to random 8 char string from charset `0-9`
+				set {_tid} to "%uuid of {_e}%:::BAŁAGAN%{_tid}%"
+				drop 1 sand named {_tid} at {_e}
+				play sound "entity.item.pickup" with volume 3 and pitch 0 at {_e}
+				remove 0.5 seconds from {_casttime}
+				wait 0.5 seconds
+			else:
+				stop loop
+		wait 20 seconds
+
+function Sprzatanie(e: entity):
+	while {_e} is alive:
+		set {_casttime} to 8 seconds
+		play sound "moby.cipochilla.sprzatanie" with volume 4 and pitch 1 at {_e}
+		apply slowness 20 without particles to {_e} for 8 seconds
+		loop 80 times:
+			if {_e} is alive:
+				set {_lloc} to location 2.8 blocks above {_e}
+				loop all players:
+					if {language::%loop-player%} = "English":
+						display hologram "<##ead5db>Cleaning &f(<##ead5db>%{_casttime}%&f)" at {_lloc} to loop-player for 0.1 seconds
+					else:
+						display hologram "<##ead5db>Sprzątanie &f(<##ead5db>%{_casttime}%&f)" at {_lloc} to loop-player for 0.1 seconds
+				loop all entities in radius 20 around {_e}:
+					if loop-entity is not a living entity:
+						if distance between loop-entity and {_e} < 1:
+							delete loop-entity
+							add 1 to {incrdamage::%uuid of {_e}%}
+						push loop-entity (vector from loop-entity to {_e}) with speed 0.2	
+				remove 0.1 seconds from {_casttime}
+				wait 0.1 seconds
+			else:
+				stop loop
+		wait 28 seconds
+function Catscan(e: entity):
+	while {_e} is alive:
+		play sound "moby.cipochilla.catscan" with volume 4 and pitch 1 at {_e}
+		loop all players in radius 50 around {_e}:
+			add loop-player to {_players::*}
+		set {_r} to a random element of {_players::*}
+		set {_l} to location 0.3 blocks below {_e}'s head
+		set {_v} to vector between {_l} and {_r}'s head
+		loop round(distance between {_l} and {_r}) / 1.8 times:
+			set {_v} to vector between {_l} and {_r}'s head
+			set vector length of {_v} to loop-value * 1.8
+			#ZAMIENIĆ PARTICLE JAK BĘDZIE SKDRAGON
+			draw 1 of dust using dustOption((rgb 234, 213, 219), 1) at {_l} ~ {_v}
+			#drawDot count 1, particle "redstone", RGB 234, 213, 219, center {_l} ~ {_v}, rainbowMode false, visibleRange 32, pulseDelay 0, keepFor 5 ticks
+			wait 1 tick
+		push {_r} upwards with velocity 2
+		set {lastdmgcause::%{_r}%} to "<##ead5db>CAT-scan"
+		set {_dmg} to 2
+		if {incrdamage::%uuid of {_e}%} > 0:
+			set {_dmg} to {_dmg}*(1+({incrdamage::%uuid of {_e}%}/100))
+		make {_e} damage {_r} by {_dmg}
+		wait 35 seconds
+
+#on entity move:
+	#if name of event-entity contains "<##14c8ff>Ice Cube":
+		#ZAMIENIĆ PARTICLE JAK BĘDZIE SKDRAGON
+		#draw 1 of dust using dustOption((rgb 106, 184, 230), 1) at event-entity
+		#drawDot count 3, particle "redstone", RGB 106, 184, 230, center event-entity, visibleRange 32, pulseDelay 1, keepFor 1 tick
+
+on death:
+	if tag "custom;ECMob" of nbt of victim is set:
+		if name of victim contains "<##14c8ff>Ice Cube":
+			clear drops
+		if name of victim contains "<##14c8ff>Ice Elemental":
+			clear drops
+		if name of victim contains "<##ead5db>Cipochilla":
+			clear drops
+			clear {incrdamage::%victim%}
+		if name of victim contains "&fSnow Bombarder":
+			clear drops
+			clear {snowballcount::%victim%}
+on player pick up of sand:
+	set {_item} to "%event-item%"
+	if {_item} contains ":::BAŁAGAN":
+		cancel event
+		set {_owner::*} to {_item} split at ":::"
+		replace all "sand block named " in {_owner::1} with ""
+		set {_en} to ({_owner::1} parsed as entity)
+		if {language::%player%} = "English":
+			set {lastdmgcause::%player%} to "<##ead5db>Mess"
+		else:
+			set {lastdmgcause::%player%} to "<##ead5db>Bałagan"
+		loop all dropped items in radius 2 around the player:
+			if "%event-item%" contains ":::BAŁAGAN":
+				add 0.8 to {_dmg}
+				delete loop-entity
+		if {incrdamage::%{_owner::1}%} > 0:
+			set {_dmg} to {_dmg}*(1+({incrdamage::%{_owner::1}%}/100))
+		play sound "block.lava.extinguish" with volume 3 and pitch 2 at player
+		make {_en} damage player by {_dmg}
+command /mobjournal:
+	trigger:
+		set metadata tag "123" of player to chest inventory with 1 row named "Mob Journal"
+		play sound "ui.select" with volume 3 and pitch 1 to player
+		set slot 3 of metadata tag "123" of player to sand named "pustynia"
+		set slot 5 of metadata tag "123" of player to ice named "lodowe"
+		open metadata tag "123" of player to player
+on inventory click:
+	if event-inventory = metadata tag "123" of player:
+		cancel event
+		if event-slot is 3:
+			set slot 5 of metadata tag "123" of player to {cipochilla}
+		if event-slot is 5:
+			set slot 0 of metadata tag "123" of player to {iceelemental}
+			set slot 1 of metadata tag "123" of player to {snowbombarder}
+			set slot 2 of metadata tag "123" of player to blue stained glass pane with lore " %nl%&7Type: BOSS"
+		open metadata tag "123" of player to player
+#function FrostArrow(e: entity):
+#	while {_e} is alive:
+#		loop all players in radius 30 of {_e}:
+#			add loop-player to {_players::*}
+#		set {_player} to a random element of {_players::*}
+#		set {_vec} to vector between {_e} and {_player}
+#		spawn 1 arrow at block above {_e}
+#		push last spawned arrow {_v} with speed 2
+#		wait 10 seconds
+
+
+
+
+#set {cipochilla} to light gray glass pane named "<##ead5db>Cipochilla" with lore " " and "&7Element: <##7a0000>Beast" and "&7HP: &f500" and "&7EXP yield: &f50-75" and "&7Level range: &f20-40" and "&7Spawn chance: &f15%%" and " " and "&7Abilities:" and "<##ead5db>Bałagan" and "&7Rozrzuca piasek, tworząc <##ead5db>Bałagan&7." and "&7Nadepnięcie na <##ead5db>Bałagan &7zada obrażenia." and " " and "<##ead5db>Sprzątanie" and "&7Sprząta pobliski <##ead5db>Bałagan&7, wciągając" and "&7go jak odkurzacz. Każdy wciągnięty piasek" and "&7zwiększy obrażenia zadawane przez <##ead5db>Cipochille &7o 1%%." and " " and "<##ead5db>CAT-scan" and "&7Prześwietla losowego gracza w dużym zasięgu," and "&7strzelając w niego falą. Po dotarciu," and "&7fala podrzuca wroga, oraz zadaje mu obrażenia." with nbt from "{CustomModelData:40}"
