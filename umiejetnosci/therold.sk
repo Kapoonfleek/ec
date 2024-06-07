@@ -1,0 +1,907 @@
+on right click:
+    if player's tool is purple dye named "<##613e82>Void Eruption" with nbt from "{CustomModelData:9}":
+        cancel event
+        if {kartaname::%player%} = "Brother Therold":
+            if CanUseAbility(player) != false:
+                if metadata value "casting" of player is not set:
+                    if {insanity::%player%} >= 90:
+                        set {_target} to Target(player, 100, false)
+                        if {_target} is set:
+                            if cooldown "Shadow Word: Pain%player%" is finished:
+                                set {_id} to line 19 of lore of {karta::%player%}
+                                set {_pospiech} to 1 + (({haste::%player%}/4))/100
+                                set {_casttime} to "%round((2/{_pospiech}), 1)% seconds" parsed as timespan
+                                if metadata value "cast" of player is not set:
+                                    set metadata value "lastspell" of player to player's tool's name
+                                    play sound "skill.therold.void_eruption_precast" with volume 3 and pitch 1 at player
+                                    set metadata value "casting" of player to true
+                                    set metadata value "cast" of player to {_casttime}
+                                    while metadata value "casting" of player = true:
+                                        if metadata value "channeling" of player is set:
+                                            clear metadata value "channeling" of player
+                                            stop sound "skill.therold.mindflay_channel_whisper" for all players
+                                            stop sound "skill.therold.mindflay_channel" for all players
+                                        set {_voidformStacks} to metadata value "Voidform Stacks" of player
+                                        set {_insanityDrain} to 6 + 0.68*{_voidformStacks}
+                                        if metadata value "Voidform" of player is set:
+                                            set {_insanityInfo} to "| Insanity: %round({insanity::%player%}, 1)%   %round({_insanityDrain}, 1)%p/s    %{_voidformStacks}%"
+                                        else:
+                                            set {_insanityInfo} to "| Insanity: %round({insanity::%player%}, 1)%"
+                                        if metadata value "cast" of player is not set:
+                                            clear metadata value "casting" of player
+                                            stop
+                                        if {_casttime} > 0 seconds:
+                                            set {_cst} to "%{_casttime}%"
+                                            replace all "seconds" and "second" in {_cst} with "sekund"
+                                            if {language::%player%} = "English":
+                                                send action bar "Casting... %{_cst}% %{_insanityInfo}%" to player
+                                            else:
+                                                replace all "seconds" and "second" in {_cst} with "sekund"
+                                                send action bar "Rzucanie Zaklęcia... %{_insanityInfo}%" to player
+                                            wait 0.1 seconds
+                                            remove 0.1 seconds from {_casttime}
+                                        else:
+                                            clear metadata value "casting" of player
+                                            if {language::%player%} = "English":
+                                                send action bar "" to player
+                                            else:
+                                                send action bar "" to player
+                                else:
+                                    stop
+                                clear metadata value "casting" of player
+                                clear metadata value "cast" of player
+                                stop sound "skill.therold.void_eruption_precast" for all players
+                                if {_casttime} > 0 seconds:
+                                    if {language::%player%} = "English":
+                                        send action bar "&cInterrupted" to player
+                                    else:
+                                        send action bar "&cPrzerwano" to player
+                                    stop
+                                set metadata value "Voidform" of player to true
+                                play sound "skill.therold.void_eruption_cast" with volume 3 and pitch 1 at player
+                                set {_crit} to 0 + ({criticalhit::%player%}/10)
+                                loop all items in the inventory of player:
+                                    if loop-item is purple dye named "<##613e82>Void Eruption" with nbt from "{CustomModelData:9}":
+                                        set {_cdVoidbolt} to "%4.5/{_pospiech}% seconds" parsed as timespan
+                                        set {_dmgVoidbolt} to (3 + (({damage::%player%}/15) + ({versatility::%player%}/45)))
+                                        set loop-item to black dye named "<##613e82>Void Bolt" with lore "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdVoidbolt}%%nl%&7Use: &fRMB%nl%<##613e82>Sends a bolt of pure void energy at the%nl%<##613e82>enemy, causing &f%{_dmgVoidbolt}% <##431d53>Ghost <##613e82>damage and%nl%<##613e82>extending the duration of Shadow Word: Pain%nl%<##613e82>and Vampiric Touch to their original duration.%nl%<##613e82>Requires Voidform.%nl% %nl%&fGenerates 16 Insanity." with nbt from "{CustomModelData:3}"
+                                set {_lore} to join lore of player's tool by nl
+                                apply levitation 0.5 without particles to player for 1 day
+                                loop all entities in radius 8 around {_target}:
+                                    if loop-entity is a living entity:
+                                        if loop-entity is alive:
+                                            if loop-entity is not a player:
+                                                if tag "custom;ECMob" of nbt of loop-entity is set:
+                                                    if CheckIfDotted(player, loop-entity) is true:
+                                                        VoidEruptionVisual(player, loop-entity)
+                                                        set {_damage} to (4 + (({damage::%player%}/10) + ({versatility::%player%}/30)))
+                                                        set loop-entity's last damage cause to sweep attack
+                                                        set metadata value "LastDamageCauseEN" of loop-entity to "<##462566>Void Eruption"
+                                                        set metadata value "LastDamageCause" of loop-entity to "<##462566>Erupcja Pustki"
+                                                        set metadata value "LastDamageCauseLore" of loop-entity to {_lore}
+                                                        set metadata value "LastDamageCauseLoreEN" of loop-entity to {_lore}
+                                                        set metadata value "Element" of player to "Ghost"
+                                                        chance of {_crit}%:
+                                                            set {_damage} to {_damage}*2
+                                                        make player damage loop-entity by {_damage}*2
+                                while metadata value "Voidform" of player is true:
+                                    if {insanity::%player%} > 0:
+                                        add 1 to {_voidformStacks}
+                                        set metadata value "Voidform Stacks" of player to {_voidformStacks}
+                                        set {_insanityDrain} to 6 + 0.68*{_voidformStacks}
+                                        remove {_insanityDrain} from {insanity::%player%}             
+                                        draw 20 dust using dustOption(purple, 1) at location above player with offset vector(0.3, 0.6, 0.3) with extra 0.03
+                                        set {insanity::%player%} to 0 if {insanity::%player%} < 0
+                                        add 4 to {hasteVoidform::%player%}
+                                    ExitVoidform(player) if {insanity::%player%} = 0
+                                    stop if {insanity::%player%} = 0
+                                    send action bar "Insanity: %round({insanity::%player%}, 1)%   %round({_insanityDrain}, 1)%p/s    %{_voidformStacks}%" to player
+                                    wait 1 second
+                            else: 
+                                cancel event
+                                if {tekstcd::%player%} = true:
+                                    set {_cdd} to cooldown "Shadow Word: Pain%player%"
+                                    if {language::%player%} = "English":
+                                        send "<##462566>You must wait &f%{_cdd}%<##462566> to use this ability." to player
+                                    else:
+                                        send "<##462566>Musisz odczekać &f%{_cdd}%<##462566>, aby użyć tej umiejętności." to player
+                                stop
+        else:
+            if {language::%player%} = "English":
+                send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to player
+            else:
+                send "&8[&6Earthcraft&8] &6Nie masz wybranej wymaganej karty, by móc użyć tej umiejętności." to player
+            play sound "block.glass.break" with volume 3 and pitch 0 to player
+    else if player's tool is black dye named "<##613e82>Void Bolt" with nbt from "{CustomModelData:3}":
+        cancel event
+        if {kartaname::%player%} = "Brother Therold":
+            if CanUseAbility(player) != false:
+                set {_target} to Target(player, 100, false)
+                if {_target} is set:
+                    if cooldown "Void Bolt%player%" is finished:
+                        if cooldown "Shadow Word: Pain%player%" is finished:
+                            if metadata value "Voidform" of player is set:
+                                set {_id} to line 19 of lore of {karta::%player%}
+                                set {_pospiech} to 1 + (({haste::%player%}/4) + ({hasteVoidform::%player%}/4))/100
+                                set {_cd} to "%4.5/{_pospiech}% seconds" parsed as timespan
+                                set the cooldown of player's held item for player to {_cd}
+                                create cooldown "Void Bolt%player%" for {_cd}
+                                if metadata value "channeling" of player is set:
+                                    clear metadata value "channeling" of player
+                                    StopCastSoundTherold(player)
+                                if metadata value "casting" of player is set:
+                                    clear metadata value "cast" of player
+                                    StopCastSoundTherold(player)
+                                    if {language::%player%} = "English":
+                                        send action bar "&cInterrupted" to player
+                                    else:
+                                        send action bar "&cPrzerwano" to player
+                                set metadata value "lastspell" of player to player's tool's name
+                                set {_randomLocation} to a random number between -0.40 and 0.40
+                                set {_l} to location 0.3 blocks below and {_randomLocation} left of player's head
+                                set {_vec} to vector between player and {_target}'s head
+                                play sound "skill.therold.void_bolt_cast" with volume 3 and pitch 1 at player
+                                play sound "skill.therold.shadowcast" with volume 3 and pitch 1 at player
+                                loop round(distance between {_l} and {_target}) / 0.5 times:
+                                    set {_vec} to vector between {_l} and {_target}'s head
+                                    set vector length of {_vec} to loop-value * 0.5
+                                    draw 1 of dust using dustOption(rgb(65, 46, 115), 1) at {_l} ~ {_vec} with force
+                                play sound "skill.therold.void_bolt_impact" with volume 3 and pitch 1 at player
+                                GrantInsanity(player, 16)
+                                UpdateInsanity(player)
+                                set {_crit} to 0 + ({criticalhit::%player%}/10)
+                                set {_damage} to (4.5 + (({damage::%player%}/15) + ({versatility::%player%}/45)))
+                                if metadata value "Voidform" of player is set:
+                                    set {_damage} to {_damage}*1.2
+                                set {_target}'s last damage cause to sweep attack
+                                set {_lore} to "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cd}%%nl%&7Use: &fRMB%nl%<##613e82>Sends a bolt of pure void energy at the%nl%<##613e82>enemy, causing &f%{_damage}% <##431d53>Ghost <##613e82>damage and%nl%<##613e82>extending the duration of Shadow Word: Pain%nl%<##613e82>and Vampiric Touch to their original duration.%nl%<##613e82>Requires Voidform.%nl% %nl%&fGenerates 16 Insanity."
+                                set metadata value "LastDamageCauseEN" of {_target} to "<##462566>Void Bolt"
+                                set metadata value "LastDamageCause" of {_target} to "<##462566>Bełt Pustki"
+                                set metadata value "LastDamageCauseLore" of {_target} to {_lore}
+                                set metadata value "LastDamageCauseLoreEN" of {_target} to {_lore}
+                                set metadata value "Element" of player to "Ghost"
+                                set lore of player's tool to {_lore}
+                                chance of {_crit}%:
+                                    set {_damage} to {_damage}*2
+                                make player damage {_target} by {_damage}*2
+                                loop all entities in radius 4 around {_target}:
+                                    if metadata value "Shadow Word: Pain-%player%" of loop-entity is set:
+                                        ShadowWordPainRefresh(player, loop-entity)
+                                    if metadata value "Vampiric Touch-%player%" of loop-entity is set:
+                                        VampiricTouchRefresh(player, loop-entity)
+                            else:
+                                if {language::%player%} = "English":
+                                    send "<##462566>You must be in Voidform to use this ability." to player
+                                else:
+                                    send "<##462566>Musisz być w Formie Pustki, by użyć tej umiejętności." to player
+                                stop
+                        else: 
+                            cancel event
+                            if {tekstcd::%player%} = true:
+                                set {_cdd} to cooldown "Shadow Word: Pain%player%"
+                                if {language::%player%} = "English":
+                                    send "<##462566>You must wait &f%{_cdd}%<##462566> to use this ability." to player
+                                else:
+                                    send "<##462566>Musisz odczekać &f%{_cdd}%<##462566>, aby użyć tej umiejętności." to player
+                            stop
+                    else: 
+                        cancel event
+                        if {tekstcd::%player%} = true:
+                            set {_cdd} to cooldown "Void Bolt%player%"
+                            if {language::%player%} = "English":
+                                send "<##462566>You must wait &f%{_cdd}%<##462566> to use this ability." to player
+                            else:
+                                send "<##462566>Musisz odczekać &f%{_cdd}%<##462566>, aby użyć tej umiejętności." to player
+                        stop
+        else:
+            if {language::%player%} = "English":
+                send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to player
+            else:
+                send "&8[&6Earthcraft&8] &6Nie masz wybranej wymaganej karty, by móc użyć tej umiejętności." to player
+            play sound "block.glass.break" with volume 3 and pitch 0 to player
+    else if player's tool is orange dye named "<##613e82>Shadow Word: Pain" with nbt from "{CustomModelData:5}":
+        cancel event
+        if {kartaname::%player%} = "Brother Therold":
+            if CanUseAbility(player) != false:
+                set {_target} to Target(player, 100, false)
+                if {_target} is set:
+                    if cooldown "Shadow Word: Pain%player%" is finished:
+                        set {_id} to line 19 of lore of {karta::%player%}
+                        set {_pospiech} to 1 + (({haste::%player%}/4) + ({hasteVoidform::%player%}/4))/100
+                        set {_cd} to "%1.5/{_pospiech}% seconds" parsed as timespan
+                        set the cooldown of player's held item for player to {_cd}
+                        create cooldown "Shadow Word: Pain%player%" for {_cd}
+                        if metadata value "channeling" of player is set:
+                            clear metadata value "channeling" of player
+                            StopCastSoundTherold(player)
+                        if metadata value "casting" of player is set:
+                            clear metadata value "cast" of player
+                            StopCastSoundTherold(player)
+                            if {language::%player%} = "English":
+                                send action bar "&cInterrupted" to player
+                            else:
+                                send action bar "&cPrzerwano" to player
+                        set metadata value "lastspell" of player to player's tool's name
+                        set {_crit} to 0 + ({criticalhit::%player%}/10)
+                        set {_damage} to (0.6 + (({damage::%player%}/45) + ({versatility::%player%}/135)))
+                        set {_SWPDuration} to 14
+                        set {_damageSWPTicks} to (1 + (({damage::%{_p}%}/42) + ({versatility::%{_p}%}/126)))
+                        if metadata value "Voidform" of player is set:
+                            set {_damage} to {_damage}*1.2
+                            set {_damageSWPTicks} to {_damageSWPTicks}*1.2
+                        set {_target}'s last damage cause to sweep attack
+                        set {_lore} to "&8Ability%nl%&fInstant cast%nl%&7Global Cooldown: &f%{_cd}%%nl%&7Use: &fRMB%nl%<##613e82>A word of darkness that causes%nl%&f%{_damage}% <##431d53>Ghost <##613e82>damage instantly, and an%nl%<##613e82>additional &f%(round({_SWPDuration}/(2/{_pospiech}), 0))*{_damageSWPTicks}% <##431d53>Ghost <##613e82>damage over &f%{_SWPDuration}% sec<##613e82>.%nl% %nl%&fGenerates 3 Insanity."
+                        set metadata value "LastDamageCauseEN" of {_target} to "<##462566>Shadow Word: Pain"
+                        set metadata value "LastDamageCause" of {_target} to "<##462566>Shadow Word: Pain"
+                        set metadata value "LastDamageCauseLore" of {_target} to {_lore}
+                        set metadata value "LastDamageCauseLoreEN" of {_target} to {_lore}
+                        set metadata value "Element" of player to "Ghost"
+                        chance of {_crit}%:
+                            set {_damage} to {_damage}*2
+                        make player damage {_target} by {_damage}*2
+                        GrantInsanity(player, 3)
+                        UpdateInsanity(player)
+                        play sound "skill.therold.shadow_word_pain" with volume 3 and pitch 1 at player
+                        play sound "skill.therold.shadowcast" with volume 3 and pitch 1 at player
+                        draw 10 dust using dustOption(rgb(77, 54, 138), 1) at location above {_target} with offset vector(0.4, 0.5, 0.4) with extra 0.03
+                        if metadata value "Shadow Word: Pain-%player%" of {_target} is not set:
+                            set metadata value "Shadow Word: Pain-%player%" of {_target} to 14
+                            amountOfDotsSet(player, {_target})
+                            ShadowWordPain(player, {_target})
+                            ShadowWordPainExpire(player, {_target})
+                        else:
+                            ShadowWordPainRefresh(player, {_target})
+                        set {_abilities::*} to "Mind Blast", "Shadow Word: Pain", "Vampiric Touch", "Mind Flay", "Void Eruption", "Void Bolt"
+                        set {_abilitiesItems::*} to light gray dye, orange dye, gray dye, cyan dye, purple dye and black dye
+                        GlobalCooldownSpells(player, {_abilities::*}, {_abilitiesItems::*}, {_cd})
+                    else: 
+                        cancel event
+                        if {tekstcd::%player%} = true:
+                            set {_cdd} to cooldown "Shadow Word: Pain%player%"
+                            if {language::%player%} = "English":
+                                send "<##462566>You must wait &f%{_cdd}%<##462566> to use this ability." to player
+                            else:
+                                send "<##462566>Musisz odczekać &f%{_cdd}%<##462566>, aby użyć tej umiejętności." to player
+                        stop
+        else:
+            if {language::%player%} = "English":
+                send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to player
+            else:
+                send "&8[&6Earthcraft&8] &6Nie masz wybranej wymaganej karty, by móc użyć tej umiejętności." to player
+            play sound "block.glass.break" with volume 3 and pitch 0 to player
+    else if player's tool is cyan dye named "<##613e82>Mind Flay" with nbt from "{CustomModelData:3}":
+        cancel event
+        if {kartaname::%player%} = "Brother Therold":
+            if CanUseAbility(player) != false:
+                set {_target} to Target(player, 100, false)
+                if {_target} is set:
+                    if cooldown "Mind Flay%player%" is finished:
+                        if cooldown "Shadow Word: Pain%player%" is finished:
+                            set {_id} to line 19 of lore of {karta::%player%}
+                            set {_pospiech} to 1 + (({haste::%player%}/4) + ({hasteVoidform::%player%}/4))/100
+                            #set {_casttime} to (3/{_pospiech})
+                            set {_casttime} to 3
+                            if metadata value "cast" of player is set:
+                                clear metadata value "cast" of player
+                                StopCastSoundTherold(player)
+                                if {language::%player%} = "English":
+                                    send action bar "&cInterrupted" to player
+                                else:
+                                    send action bar "&cPrzerwano" to player
+                            if metadata value "channeling" of player is not set:
+                                set metadata value "lastspell" of player to player's tool's name
+                                set metadata value "channeling" of player to true
+                                MindFlay(player, {_target}, {_casttime})
+                                #set the cooldown of player's held item for player to ("%{_casttime}% seconds" parsed as timespan)
+                                play sound "skill.therold.mindflay_channel" with volume 3 and pitch 1 at player
+                                play sound "skill.therold.mindflay_channel_whisper" with volume 3 and pitch 1 at player
+                                play sound "skill.therold.shadowcast" with volume 3 and pitch 1 at player
+                            else:
+                                stop
+                            while metadata value "channeling" of player is set:
+                                MindFlayVisual(player, {_target})
+                                wait 3 ticks
+                        else: 
+                            cancel event
+                            if {tekstcd::%player%} = true:
+                                set {_cdd} to cooldown "Shadow Word: Pain%player%"
+                                if {language::%player%} = "English":
+                                    send "<##462566>You must wait &f%{_cdd}%<##462566> to use this ability." to player
+                                else:
+                                    send "<##462566>Musisz odczekać &f%{_cdd}%<##462566>, aby użyć tej umiejętności." to player
+                            stop
+                    else:
+                        cancel event
+                        if {tekstcd::%player%} = true:
+                            set {_cdd} to cooldown "Mind Flay%player%"
+                            if {language::%player%} = "English":
+                                send "<##462566>You must wait &f%{_cdd}%<##462566> to use this ability." to player
+                            else:
+                                send "<##462566>Musisz odczekać &f%{_cdd}%<##462566>, aby użyć tej umiejętności." to player
+                        stop
+        else:
+            if {language::%player%} = "English":
+                send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to player
+            else:
+                send "&8[&6Earthcraft&8] &6Nie masz wybranej wymaganej karty, by móc użyć tej umiejętności." to player
+            play sound "block.glass.break" with volume 3 and pitch 0 to player
+    else if player's tool is light gray dye named "<##613e82>Mind Blast" with nbt from "{CustomModelData:3}":
+        cancel event
+        if {kartaname::%player%} = "Brother Therold":
+            if CanUseAbility(player) != false:
+                if metadata value "casting" of player is not set:
+                    set {_target} to Target(player, 100, false)
+                    if {_target} is set:
+                        if cooldown "Mind Blast%player%" is finished:
+                            if cooldown "Shadow Word: Pain%player%" is finished:
+                                set {_id} to line 19 of lore of {karta::%player%}
+                                set {_pospiech} to 1 + (({haste::%player%}/4) + ({hasteVoidform::%player%}/4))/100
+                                set {_casttime} to "%round((1.5/{_pospiech}), 1)% seconds" parsed as timespan
+                                set {_casttimeText} to {_casttime}
+                                set {_cd} to "%9/{_pospiech}% seconds" parsed as timespan
+                                if metadata value "cast" of player is not set:
+                                    play sound "skill.therold.mindblast_precast" with volume 3 and pitch 1 at player
+                                    set metadata value "casting" of player to true
+                                    if metadata value "channeling" of player is set:
+                                        clear metadata value "channeling" of player
+                                        StopCastSoundTherold(player)
+                                    set metadata value "lastspell" of player to player's tool's name
+                                    set metadata value "cast" of player to {_casttime}
+                                    while metadata value "casting" of player = true:
+                                        set {_voidformStacks} to metadata value "Voidform Stacks" of player
+                                        set {_insanityDrain} to 6 + 0.68*{_voidformStacks}
+                                        if metadata value "Voidform" of player is set:
+                                            set {_insanityInfo} to "| Insanity: %round({insanity::%player%}, 1)%   %round({_insanityDrain}, 1)%p/s    %{_voidformStacks}%"
+                                        else:
+                                            set {_insanityInfo} to "| Insanity: %round({insanity::%player%}, 1)%"
+                                        if metadata value "cast" of player is not set:
+                                            clear metadata value "casting" of player
+                                            stop
+                                        if {_casttime} > 0 seconds:
+                                            set {_cst} to "%{_casttime}%"
+                                            replace all "seconds" and "second" in {_cst} with "sekund"
+                                            if {language::%player%} = "English":
+                                                send action bar "Casting... %{_cst}% %{_insanityInfo}%" to player
+                                            else:
+                                                replace all "seconds" and "second" in {_cst} with "sekund"
+                                                send action bar "Rzucanie Zaklęcia... %{_insanityInfo}%" to player
+                                            wait 0.1 seconds
+                                            remove 0.1 seconds from {_casttime}
+                                        else:
+                                            clear metadata value "casting" of player
+                                            if {language::%player%} = "English":
+                                                send action bar "" to player
+                                            else:
+                                                send action bar "" to player
+                                else:
+                                    stop
+                                clear metadata value "casting" of player
+                                clear metadata value "cast" of player
+                                stop sound "skill.therold.mindblast_precast" for all players
+                                if {_casttime} > 0 seconds:
+                                    if {language::%player%} = "English":
+                                        send action bar "&cInterrupted" to player
+                                    else:
+                                        send action bar "&cPrzerwano" to player
+                                    stop
+                                create cooldown "Mind Blast%player%" for {_cd}
+                                GrantInsanity(player, 12)
+                                UpdateInsanity(player)
+                                play sound "skill.therold.mindblast_impact" with volume 3 and pitch 1 at player
+                                play sound "skill.therold.shadowcast" with volume 3 and pitch 1 at player
+                                draw 20 dust using dustOption(rgb(95, 72, 156), 1) at {_target}'s head with offset vector(0.4, 0.5, 0.4) with extra 0.03
+                                draw 20 dust using dustOption(rgb(41, 22, 92), 1) at {_target}'s head with offset vector(0.35, 0.45, 0.35) with extra 0.03
+                                if {_target} is alive:
+                                    set {_crit} to 0 + ({criticalhit::%player%}/10)
+                                    set {_damage} to (4.5 + (({damage::%player%}/20) + ({versatility::%player%}/60)))
+                                    if metadata value "Voidform" of player is set:
+                                        set {_damage} to {_damage}*1.2
+                                    set {_lore} to "&8Ability%nl%&f%{_casttimeText}% cast%nl%&7Cooldown: &f%{_cd}%%nl%&7Use: &fRMB%nl%<##613e82>Blasts the target's mind for &f%{_damage}%%nl%<##431d53>Ghost <##613e82>damage.%nl% %nl%&fGenerates 12 Insanity."
+                                    loop all items in the inventory of player:
+                                        if loop-item = light gray dye named "<##613e82>Mind Blast" with nbt from "{CustomModelData:3}":
+                                            set lore of loop-item to {_lore}
+                                            set the cooldown of loop-item for player to {_cd}
+                                            stop loop
+                                    set {_target}'s last damage cause to sweep attack
+                                    set metadata value "Element" of player to "Ghost"
+                                    set metadata value "LastDamageCauseEN" of {_target} to "<##462566>Mind Blast"
+                                    set metadata value "LastDamageCause" of {_target} to "<##462566>Wybuch Umysłu"
+                                    set metadata value "LastDamageCauseLore" of {_target} to {_lore}
+                                    set metadata value "LastDamageCauseLoreEN" of {_target} to {_lore}
+                                    chance of {_crit}%:
+                                        set {_damage} to {_damage}*2
+                                    make player damage {_target} by {_damage}*2
+                            else: 
+                                cancel event
+                                if {tekstcd::%player%} = true:
+                                    set {_cdd} to cooldown "Shadow Word: Pain%player%"
+                                    if {language::%player%} = "English":
+                                        send "<##462566>You must wait &f%{_cdd}%<##462566> to use this ability." to player
+                                    else:
+                                        send "<##462566>Musisz odczekać &f%{_cdd}%<##462566>, aby użyć tej umiejętności." to player
+                                stop
+                        else:
+                            cancel event
+                            if {tekstcd::%player%} = true:
+                                set {_cdd} to cooldown "Mind Blast%player%"
+                                if {language::%player%} = "English":
+                                    send "<##462566>You must wait &f%{_cdd}%<##462566> to use this ability." to player
+                                else:
+                                    send "<##462566>Musisz odczekać &f%{_cdd}%<##462566>, aby użyć tej umiejętności." to player
+                            stop
+        else:
+            if {language::%player%} = "English":
+                send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to player
+            else:
+                send "&8[&6Earthcraft&8] &6Nie masz wybranej wymaganej karty, by móc użyć tej umiejętności." to player
+            play sound "block.glass.break" with volume 3 and pitch 0 to player
+    else if player's tool is gray dye named "<##613e82>Vampiric Touch" with nbt from "{CustomModelData:2}":
+        cancel event
+        if {kartaname::%player%} = "Brother Therold":
+            if CanUseAbility(player) != false:
+                if metadata value "casting" of player is not set:
+                    set {_target} to Target(player, 100, false)
+                    if {_target} is set:
+                        if cooldown "Vampiric Touch%player%" is finished:
+                            if cooldown "Shadow Word: Pain%player%" is finished:
+                                set {_id} to line 19 of lore of {karta::%player%}
+                                set {_pospiech} to 1 + (({haste::%{_p}%}/4) + ({hasteVoidform::%{_p}%}/4))/100
+                                set {_casttime} to "%round((1.5/{_pospiech}), 1)% seconds" parsed as timespan
+                                if metadata value "cast" of player is not set:
+                                    play sound "skill.therold.mindflay_channel_whisper" with volume 3 and pitch 1 at player
+                                    set metadata value "casting" of player to true
+                                    if metadata value "channeling" of player is set:
+                                        clear metadata value "channeling" of player
+                                        StopCastSoundTherold(player)
+                                    set metadata value "lastspell" of player to player's tool's name
+                                    set metadata value "cast" of player to {_casttime}
+                                    while metadata value "casting" of player = true:
+                                        set {_voidformStacks} to metadata value "Voidform Stacks" of player
+                                        set {_insanityDrain} to 6 + 0.68*{_voidformStacks}
+                                        if metadata value "Voidform" of player is set:
+                                            set {_insanityInfo} to "| Insanity: %round({insanity::%player%}, 1)%   %round({_insanityDrain}, 1)%p/s    %{_voidformStacks}%"
+                                        else:
+                                            set {_insanityInfo} to "| Insanity: %round({insanity::%player%}, 1)%"
+                                        if metadata value "cast" of player is not set:
+                                            clear metadata value "casting" of player
+                                            stop
+                                        if {_casttime} > 0 seconds:
+                                            set {_cst} to "%{_casttime}%"
+                                            replace all "seconds" and "second" in {_cst} with "sekund"
+                                            if {language::%player%} = "English":
+                                                send action bar "Casting... %{_cst}% %{_insanityInfo}%" to player
+                                            else:
+                                                replace all "seconds" and "second" in {_cst} with "sekund"
+                                                send action bar "Rzucanie Zaklęcia... %{_insanityInfo}%" to player
+                                            wait 0.1 seconds
+                                            remove 0.1 seconds from {_casttime}
+                                        else:
+                                            clear metadata value "casting" of player
+                                            if {language::%player%} = "English":
+                                                send action bar "" to player
+                                            else:
+                                                send action bar "" to player
+                                else:
+                                    stop
+                                clear metadata value "casting" of player
+                                clear metadata value "cast" of player
+                                stop sound "skill.therold.mindflay_channel_whisper" for all players
+                                if {_casttime} > 0 seconds:
+                                    if {language::%player%} = "English":
+                                        send action bar "&cInterrupted" to player
+                                    else:
+                                        send action bar "&cPrzerwano" to player
+                                    stop
+                                GrantInsanity(player, 6)
+                                UpdateInsanity(player)
+                                play sound "skill.therold.vampirictouch" with volume 3 and pitch 1 at player
+                                play sound "skill.therold.shadowcast" with volume 3 and pitch 1 at player
+                                draw 15 dust using dustOption(rgb(44, 30, 77), 1) at location above {_target} with offset vector(0.5, 0.5, 0.5) with extra 0.03
+                                if metadata value "Vampiric Touch-%player%" of {_target} is not set:
+                                    set metadata value "Vampiric Touch-%player%" of {_target} to 18
+                                    amountOfDotsSet(player, {_target})
+                                    VampiricTouch(player, {_target})
+                                    VampiricTouchExpire(player, {_target})
+                                else:
+                                    VampiricTouchRefresh(player, {_target})
+
+                                #If talent = misery, wait 1 tick and only then swp.
+                            else: 
+                                cancel event
+                                if {tekstcd::%player%} = true:
+                                    set {_cdd} to cooldown "Shadow Word: Pain%player%"
+                                    if {language::%player%} = "English":
+                                        send "<##462566>You must wait &f%{_cdd}%<##462566> to use this ability." to player
+                                    else:
+                                        send "<##462566>Musisz odczekać &f%{_cdd}%<##462566>, aby użyć tej umiejętności." to player
+                                stop
+                        else:
+                            cancel event
+                            if {tekstcd::%player%} = true:
+                                set {_cdd} to cooldown "Vampiric Touch%player%"
+                                if {language::%player%} = "English":
+                                    send "<##462566>You must wait &f%{_cdd}%<##462566> to use this ability." to player
+                                else:
+                                    send "<##462566>Musisz odczekać &f%{_cdd}%<##462566>, aby użyć tej umiejętności." to player
+                            stop
+        else:
+            if {language::%player%} = "English":
+                send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to player
+            else:
+                send "&8[&6Earthcraft&8] &6Nie masz wybranej wymaganej karty, by móc użyć tej umiejętności." to player
+            play sound "block.glass.break" with volume 3 and pitch 0 to player
+
+function ExitVoidform(p: player):
+    clear metadata value "Voidform" of {_p}
+    remove levitation from {_p}
+    clear {hasteVoidform::%{_p}%}
+    clear metadata value "Voidform Stacks" of {_p}
+    set {_pospiech} to 1 + (({haste::%{_p}%}/4))/100
+    set {_casttime} to "%round((2/{_pospiech}), 1)% seconds" parsed as timespan
+    set {_damage} to (4 + (({damage::%{_p}%}/10) + ({versatility::%{_p}%}/30)))
+    loop all items in the inventory of {_p}:
+        if loop-item is black dye named "<##613e82>Void Bolt" with nbt from "{CustomModelData:3}":
+            set loop-item to purple dye named "<##613e82>Void Eruption" with lore "&8Ultimate Ability%nl%&f%{_casttime}% cast%nl%&7No cooldown%nl%&7Use: &fRMB%nl%<##613e82>Releases an explosive blast of pure void%nl%<##613e82>energy, activating Voidform and causing &f%{_damage}%%nl%<##431d53>Ghost <##613e82>damage to all enemies afflicted by%nl%<##613e82>your Shadow Word: Pain or Vampiric Touch.%nl% %nl%<##613e82>During Voidform, this ability is replaced%nl%<##613e82>by Void Bolt.%nl% %nl%&fRequires 90 Insanity to activate." with nbt from "{CustomModelData:9}"
+
+function GrantInsanity(p: player, num: number):
+    add {_num} to {insanity::%{_p}%}
+    if {insanity::%{_p}%} > 100:
+        set {insanity::%{_p}%} to 100
+
+function UpdateInsanity(p: player):
+    set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
+    set {_insanityDrain} to 6 + 0.68*{_voidformStacks}
+    if metadata value "Voidform" of {_p} is set:
+        send action bar "Insanity: %round({insanity::%{_p}%}, 1)%   %round({_insanityDrain}, 1)%p/s    %{_voidformStacks}%" to {_p}
+    else:
+        send action bar "Insanity: %round({insanity::%{_p}%}, 1)%" to {_p}
+
+function VoidEruptionVisual(p: player, target: entity):
+    set {_offX} to a random number between -4 and 4
+    set {_offY} to a random number between -0.6 and 2
+    set {_offZ} to a random number between -4 and 4
+    set {_vec} to vector {_offX}, {_offY}, {_offZ}
+    set {_loc} to location of {_p}'s head offset by {_vec}
+    set {_v} to vector between {_loc} and {_target}'s head
+    loop round(distance between {_loc} and {_target}) / 0.4 times:
+        set {_v} to vector between {_loc} and {_target}'s head
+        set vector length of {_v} to loop-value-2 * 0.4
+        draw 1 of dust using dustOption(rgb(70, 56, 107), 1) at {_loc} ~ {_v} with offset random vector
+        wait 1 tick
+
+function ShadowWordPain(p: player, target: entity):
+    set {_id} to line 19 of lore of {karta::%{_p}%}
+    wait 1 tick
+    while metadata value "Shadow Word: Pain-%{_p}%" of {_target} is set:
+        if {_target} is alive:
+            set {_pospiech} to 1 + (({haste::%{_p}%}/4) + ({hasteVoidform::%{_p}%}/4))/100
+            set {_crit} to 0 + ({criticalhit::%{_p}%}/10)
+            set {_SWPDuration} to 14
+            set {_damage} to (1 + (({damage::%{_p}%}/42) + ({versatility::%{_p}%}/126)))
+            if metadata value "Voidform" of {_p} is set:
+                set {_damage} to {_damage}*1.2
+            loop all items in the inventory of {_p}:
+                if loop-item = orange dye named "<##613e82>Shadow Word: Pain" with nbt from "{CustomModelData:5}":
+                    set {_instantDamage} to 0.6 + (({damage::%{_p}%}/45) + ({versatility::%{_p}%}/135))
+                    if metadata value "Voidform" of {_p} is set:
+                        set {_instantDamage} to {_instantDamage}*1.2
+                    set {_gcd} to "%1.5/{_pospiech}% seconds" parsed as timespan
+                    set {_lore} to "&8Ability%nl%&fInstant cast%nl%&7Global Cooldown: &f%{_gcd}%%nl%&7Use: &fRMB%nl%<##613e82>A word of darkness that causes%nl%&f%{_instantDamage}% <##431d53>Ghost <##613e82>damage instantly, and an%nl%<##613e82>additional &f%(round({_SWPDuration}/(2/{_pospiech}), 0))*{_damage}% <##431d53>Ghost <##613e82>damage over &f%{_SWPDuration}% sec<##613e82>.%nl% %nl%&fGenerates 3 Insanity."
+                    set lore of loop-item to {_lore}
+                else if loop-item = purple dye named "<##613e82>Shadowy Apparitions" with nbt from "{CustomModelData:3}":
+                    set {_shadowyApparitionsDamage} to 1 + ({mastery::%{_p}%}/32)
+                    if metadata value "Voidform" of {_p} is set:
+                        set {_shadowyApparitionsDamage} to {_shadowyApparitionsDamage}*1.2
+                    set lore of loop-item to "&8Mastery Bonus%nl%<##613e82>When your Shadow Word: Pain damage%nl%<##613e82>over time critically strikes, you also create%nl%<##613e82>a shadowy version of yourself that floats%nl%<##613e82>towards the target and deals &f%{_shadowyApparitionsDamage}% <##613e82>damage."
+            set {_target}'s last damage cause to sweep attack
+            chance of {_crit}%:
+                set {_damage} to {_damage}*2
+                ShadowyApparitionSpawn({_p}, {_target})
+            set metadata value "Element" of {_p} to "Ghost"
+            set metadata value "LastDamageCauseEN" of {_target} to "<##462566>Shadow Word: Pain"
+            set metadata value "LastDamageCause" of {_target} to "<##462566>Słowo Cienia: Ból"
+            set metadata value "LastDamageCauseLore" of {_target} to {_lore}
+            set metadata value "LastDamageCauseLoreEN" of {_target} to {_lore}
+            make {_p} damage {_target} by {_damage}*2
+            set {_tickTime} to "%2/{_pospiech}% seconds" parsed as timespan
+            wait {_tickTime}
+        else:
+            clear metadata value "Shadow Word: Pain-%{_p}%" of {_target}
+            stop loop
+function ShadowWordPainExpire(p: player, target: entity):
+    set {_id} to line 19 of lore of {karta::%{_p}%}
+    set {_duration} to 14
+    set {_height} to amountOfDots({_p}, {_target})
+    set {_dots} to metadata value "AmountOfDots%{_p}%" of {_target}
+    while {_duration} > 0:
+        if {_target} is alive:
+            set {_pospiech} to 1 + (({haste::%{_p}%}/4) + ({hasteVoidform::%{_p}%}/4))/100
+            set {_tickTime} to "1 seconds" parsed as timespan
+            if metadata value "AmountOfDots%{_p}%" of {_target} < {_dots}:
+                set {_height} to amountOfDots({_p}, {_target})
+            dialogue(" %{_duration}%", (location {_height} above {_target}'s head), 0 seconds, {_tickTime})
+            wait 1 second
+            remove 1 from {_duration}
+            if metadata value "Shadow Word: Pain - Refresh-%{_p}%" of {_target} is set:
+                set {_duration} to 14
+                clear metadata value "Shadow Word: Pain - Refresh-%{_p}%" of {_target}
+        else:
+            stop loop
+    clear metadata value "Shadow Word: Pain-%{_p}%" of {_target}
+    amountOfDotsSubtract({_p}, {_target})
+
+function ShadowWordPainRefresh(p: player, target: entity):
+    if {_target} is alive:
+        if metadata value "Shadow Word: Pain-%{_p}%" of {_target} is set:
+            set metadata value "Shadow Word: Pain - Refresh-%{_p}%" of {_target} to true
+
+function MindFlayVisual(p: player, target: entity):
+    set {_l} to location 0.5 blocks below {_p}'s head
+    set {_vec} to vector between {_p} and {_target}'s head
+    loop round(distance between {_l} and {_target}) / 0.5 times:
+        set {_vec} to vector between {_l} and {_target}'s head
+        set vector length of {_vec} to loop-value * 0.5
+        draw 1 of dust using dustOption(rgb(78, 68, 102), 1) at {_l} ~ {_vec} with force
+
+function MindFlayTicks(p: player, target: entity, cast: number):
+    set {_id} to line 19 of lore of {karta::%{_p}%}
+    while metadata value "channeling" of {_p} is set:
+        set {_pospiech} to 1 + (({haste::%{_p}%}/4)+ ({hasteVoidform::%{_p}%}/4))/100
+        set {_crit} to 20
+        set {_casttime} to ({_cast}/4)/{_pospiech}
+        set {_tickTime} to "%{_casttime}% seconds" parsed as timespan
+        set metadata value "channeltime" of {_p} to {_cast}
+        if {_target} is alive:
+            GrantInsanity({_p}, 2)
+            set {_damage} to 0.5
+            set {_target}'s last damage cause to sweep attack
+            set metadata value "Element" of {_p} to "Ghost"
+            set metadata value "LastDamageCauseEN" of {_target} to "<##462566>Mind Flay"
+            set metadata value "LastDamageCause" of {_target} to "<##462566>Zdzieranie Umysłu"
+            set metadata value "LastDamageCauseLore" of {_target} to {_lore}
+            set metadata value "LastDamageCauseLoreEN" of {_target} to {_lore}
+            chance of {_crit}%:
+                set {_damage} to {_damage}*2
+            make {_p} damage {_target} by {_damage}*2
+        set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
+        set {_insanityDrain} to 6 + 0.68*{_voidformStacks}
+        if metadata value "Voidform" of {_p} is set:
+            set {_insanityInfo} to "| Insanity: %round({insanity::%{_p}%}, 1)%   %round({_insanityDrain}, 1)%p/s    %{_voidformStacks}%"
+        else:
+            set {_insanityInfo} to "| Insanity: %round({insanity::%{_p}%}, 1)%"
+        send action bar "Channeling... %{_casttime}*(4-{_totalTicks})% seconds %{_insanityInfo}%" to {_p}
+        wait {_tickTime}
+        add 1 to {_totalTicks}
+        if {_totalTicks} >= 4:
+            stop sound "skill.therold.mindflay_channel" for all players
+            stop sound "skill.therold.mindflay_channel_whisper" for all players
+            clear metadata value "channeling" of {_p}
+            send action bar "Channeling... %{_casttime}*(4-{_totalTicks})% seconds %{_insanityInfo}%" to {_p}
+        stop loop if {_target} is not alive
+
+function MindFlay(p: player, target: entity, cast: number):
+    set {_id} to line 19 of lore of {karta::%{_p}%}
+    while metadata value "channeling" of {_p} is set:
+        set {_pospiech} to 1 + ((({haste::%{_p}%}/4)+ ({hasteVoidform::%{_p}%}/4))/100)/1.5 #Scale with haste 0.67x as effectively
+        set {_crit} to 0 + ({criticalhit::%{_p}%}/10)
+        set {_casttime} to ({_cast}/4)/{_pospiech}
+        set {_tickTime} to "%{_casttime}% seconds" parsed as timespan
+        set metadata value "channeltime" of {_p} to {_cast}
+        if {_target} is alive:
+            GrantInsanity({_p}, 2)
+            set {_damage} to (0.6 + (({damage::%{_p}%}/105) + ({versatility::%{_p}%}/315)))
+            if metadata value "Voidform" of {_p} is set:
+                set {_damage} to {_damage}*1.2
+            set {_lore} to "&8Ability%nl%&fChanneled%nl%&7No cooldown%nl%&7Use: &fRMB%nl%<##613e82>Assaults the target's mind with Shadow%nl%<##613e82>energy, causing &f%{_damage}*(rounded up 3/(({_cast}/4)/{_pospiech}))% <##431d53>Ghost <##613e82>damage over%nl%&f%{_cast}% sec <##613e82>and slowing their movement speed%nl%<##613e82>by &f50%%<##613e82>.%nl% %nl%&fGenerates %2*(rounded up 3/(({_cast}/4)/{_pospiech}))% Insanity over the duration."
+            loop all items in the inventory of {_p}:
+                if loop-item = cyan dye named "<##613e82>Mind Flay":
+                    set lore of loop-item to {_lore}
+                    stop loop
+            set {_target}'s last damage cause to sweep attack
+            set metadata value "Element" of {_p} to "Ghost"
+            set metadata value "LastDamageCauseEN" of {_target} to "<##462566>Mind Flay"
+            set metadata value "LastDamageCause" of {_target} to "<##462566>Zdzieranie Umysłu"
+            set metadata value "LastDamageCauseLore" of {_target} to {_lore}
+            set metadata value "LastDamageCauseLoreEN" of {_target} to {_lore}
+            chance of {_crit}%:
+                set {_damage} to {_damage}*2
+            make {_p} damage {_target} by {_damage}*2
+            if canBeCCed({_target}) = true:
+                set {_potion} to potion effect of slowness of tier 3.34 without particles for {_tickTime}
+                add {_potion} to potion effects of {_target}
+        set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
+        set {_insanityDrain} to 6 + 0.68*{_voidformStacks}
+        if metadata value "Voidform" of {_p} is set:
+            set {_insanityInfo} to "| Insanity: %round({insanity::%{_p}%}, 1)%   %round({_insanityDrain}, 1)%p/s    %{_voidformStacks}%"
+        else:
+            set {_insanityInfo} to "| Insanity: %round({insanity::%{_p}%}, 1)%"
+        if {_castBar} is not set:
+            MindFlayCast({_p}, 3 seconds, {_target})
+            set {_castBar} to true
+        wait {_tickTime}
+        add {_tickTime} to {_totalTime}
+        add 1 to {_totalTicks}
+        if {_totalTime} >= 3 seconds:
+            stop sound "skill.therold.mindflay_channel" for all players in radius 20 around {_p}
+            stop sound "skill.therold.mindflay_channel_whisper" for all players in radius 20 around {_p}
+            clear metadata value "channeling" of {_p}
+        if {_target} is not alive:
+            stop sound "skill.therold.mindflay_channel" for all players in radius 20 around {_p}
+            stop sound "skill.therold.mindflay_channel_whisper" for all players in radius 20 around {_p}
+            clear metadata value "channeling" of {_p}
+            
+function MindFlayCast(p: player, seconds: timespan, target: entity):
+    while metadata value "channeling" of {_p} is set:
+        set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
+        set {_insanityDrain} to 6 + 0.68*{_voidformStacks}
+        if metadata value "Voidform" of {_p} is set:
+            set {_insanityInfo} to "| Insanity: %round({insanity::%{_p}%}, 1)%   %round({_insanityDrain}, 1)%p/s    %{_voidformStacks}%"
+        else:
+            set {_insanityInfo} to "| Insanity: %round({insanity::%{_p}%}, 1)%"
+        send action bar "Channeling... %{_seconds}% %{_insanityInfo}%" to {_p}
+        wait 0.1 seconds
+        remove 0.1 second from {_seconds}
+        stop loop if {_target} is not alive
+    send action bar "Channeling... 0 seconds %{_insanityInfo}%" to {_p}
+
+function VampiricTouch(p: player, target: entity):
+    set {_id} to line 19 of lore of {karta::%{_p}%}
+    while metadata value "Vampiric Touch-%{_p}%" of {_target} is set:
+        if {_target} is alive:
+            set {_pospiech} to 1 + (({haste::%{_p}%}/4) + ({hasteVoidform::%{_p}%}/4))/100
+            set {_VPTDuration} to 18
+            set {_crit} to 0 + ({criticalhit::%{_p}%}/10)
+            set {_damage} to (1.5 + (({damage::%{_p}%}/36) + ({versatility::%{_p}%}/108)))
+            if metadata value "Voidform" of {_p} is set:
+                set {_damage} to {_damage}*1.2
+            loop all items in the inventory of {_p}:
+                if loop-item = gray dye named "<##613e82>Vampiric Touch" with nbt from "{CustomModelData:2}":
+                    set {_lore} to "&8Ability%nl%&f1.5 second cast%nl%&7No cooldown%nl%&7Use: &fRMB%nl%<##613e82>A touch of darkness that causes &f%(round({_VPTDuration}/(3/{_pospiech}), 0))*{_damage}% <##431d53>Ghost%nl%<##613e82>damage over &f%{_VPTDuration}% sec<##613e82>, and heals the priest for%nl%&f20%% <##613e82>of damage dealt.%nl% %nl%&fGenerates 6 Insanity."
+                    set lore of loop-item to {_lore}
+            set {_target}'s last damage cause to sweep attack
+            set metadata value "Element" of {_p} to "Ghost"
+            set metadata value "LastDamageCauseEN" of {_target} to "<##462566>Vampiric Touch"
+            set metadata value "LastDamageCause" of {_target} to "<##462566>Wampiryczny Dotyk"
+            set metadata value "LastDamageCauseLore" of {_target} to {_lore}
+            set metadata value "LastDamageCauseLoreEN" of {_target} to {_lore}
+            chance of {_crit}%:
+                set {_damage} to {_damage}*2
+            make {_p} damage {_target} by {_damage}*2
+            set {_heal} to 0.2*{_damage}
+            if {_p} is alive:
+                if {_heal} > ((max health of {_p}) - (health of {_p})):
+                    set {_heal} to ((max health of {_p}) - (health of {_p}))
+                    if {_heal} < 0:
+                        set {_heal} to 0
+                heal {_p} by {_heal}
+                HealAssist({_p}, {_p})
+                HealRefresh({_p}, {_heal})
+                if metadata value "DungeonInstance" of {_p} is set:
+                    DungeonHeal({_p}, {_p}, {_heal}, "Vampiric Touch")
+                if {_heal} > 0:
+                    add {_heal} to {_healTotal}
+            set {_tickTime} to "%3/{_pospiech}% seconds" parsed as timespan
+            wait {_tickTime}
+        else:
+            clear metadata value "Vampiric Touch-%{_p}%" of {_target}
+            stop loop
+    if {_healTotal} > 0:
+        if {language::%{_p}%} = "English":
+            send formatted "%{kartacolor::%{_p}%}%%{_p}% &fhealed you. <tooltip:<##613e82>Vampiric Touch%nl%%{_lore}%>(<##baff8c>+%{_healTotal}% HP&f)" to {_p}
+        else:
+            send formatted "%{kartacolor::%{_p}%}%%{_p}% &fuleczył cię. <tooltip:<##613e82>Wampiryczny Dotyk%nl%%{_lore}%>(<##baff8c>+%{_healTotal}% HP&f)" to {_p}
+        add {_heal} to {healtotal::%{_p}%}
+        add {_heal} to {healcard::%{kartaname::%{_p}%}%::%{_id}%}
+        add {_heal} to {healcard::%{kartaname::%{_p}%}%::%{_id}%::Vampiric Touch}
+
+function VampiricTouchExpire(p: player, target: entity):
+    set {_id} to line 19 of lore of {karta::%{_p}%}
+    set {_duration} to 18
+    set {_height} to amountOfDots({_p}, {_target})
+    set {_dots} to metadata value "AmountOfDots%{_p}%" of {_target}
+    while {_duration} > 0:
+        if {_target} is alive:
+            set {_pospiech} to 1 + (({haste::%{_p}%}/4) + ({hasteVoidform::%{_p}%}/4))/100
+            set {_tickTime} to "1 seconds" parsed as timespan
+            if metadata value "AmountOfDots%{_p}%" of {_target} < {_dots}:
+                set {_height} to amountOfDots({_p}, {_target})
+            dialogue(" %{_duration}%", (location {_height} above {_target}'s head), 0 seconds, {_tickTime})
+            wait 1 second
+            remove 1 from {_duration}
+            if metadata value "Vampiric Touch - Refresh-%{_p}%" of {_target} is set:
+                set {_duration} to 18
+                clear metadata value "Vampiric Touch - Refresh-%{_p}%" of {_target}
+        else:
+            stop loop
+    clear metadata value "Vampiric Touch-%{_p}%" of {_target}
+    amountOfDotsSubtract({_p}, {_target})
+
+function VampiricTouchRefresh(p: player, target: entity):
+    if {_target} is alive:
+        if metadata value "Vampiric Touch-%{_p}%" of {_target} is set:
+            set metadata value "Vampiric Touch - Refresh-%{_p}%" of {_target} to true
+
+function ShadowyApparitionSpawn(p: player, target: entity):
+    spawn 1 bee at {_p} with nbt from "{Silent:1b}"
+    set the name of last spawned bee to "Shadowy Apparition"
+    set tag "custom;ECSummoned" of nbt of last spawned bee to "%{_p}%"
+    set {_shadowyApparition} to last spawned bee
+    ShadowyApparitionFloat({_p}, {_shadowyApparition}, {_target})
+    ShadowyApparitionVisual({_shadowyApparition})
+    play sound "skill.therold.shadowy_apparitions" with volume 2 and pitch 1 at {_p}
+    if cooldown "Shadowy Apparition Sound-%{_p}%" is finished:
+        set {_pitch} to a random number between 0.8 and 1.1
+        play sound "skill.therold.shadowy_apparitions_whisper" with volume 2 and pitch {_pitch} at {_p}
+        set {_random} to a random number between 1 and 1.5
+        create cooldown "Shadowy Apparition Sound-%{_p}%" for ("%{_random}% seconds" parsed as timespan)
+    #stop
+    #set {_l} to location 0.3 blocks below {_p}'s head
+    #set {_l} to location 0.4 blocks right of {_l}
+    #set {_v} to vector between {_l} and {_target}'s head
+    #loop round(distance between {_l} and {_target}) / 0.2 times:
+    #    set {_v} to vector between {_l} and {_target}'s head
+    #    set vector length of {_v} to loop-value * 0.2
+    #    draw 1 of dust using dustOption(rgb(70, 56, 107), 1) at {_l} ~ {_v} with offset vector(0.125, 0.125, 0.125) with extra 0.02
+    #    wait 1 tick
+    #if {_target} is alive:
+    #    set {_damage} to 1 + {mastery::%{_p}%/32}
+    #    set {_target}'s last damage cause to sweep attack
+    #    set {_lore}
+    #    set metadata value "LastDamageCauseEN" of {_target} to "<##462566>Shadowy Apparitions"
+    #    set metadata value "LastDamageCause" of {_target} to "<##462566>Cieniste Aparycje"
+    #    set metadata value "LastDamageCauseLore" of {_target} to {_lore}
+    #    set metadata value "LastDamageCauseLoreEN" of {_target} to {_lore}
+    #    make {_p} damage {_target} by {_damage}*2
+
+function ShadowyApparitionFloat(p: player, apparition: entity, target: entity):
+    while distance between {_apparition} and {_target} > 2:
+        make {_apparition} pathfind to {_target}
+        {_apparition}.setFlower(null)
+        wait 5 ticks
+        stop loop if {_target} is not alive
+    if {_target} is alive:
+        set {_damage} to 1 + ({mastery::%{_p}%}/32)
+        if metadata value "Voidform" of {_p} is set:
+            set {_damage} to {_damage}*1.2
+        set {_target}'s last damage cause to sweep attack
+        set {_lore} to "&8Mastery Bonus%nl%<##613e82>When your Shadow Word: Pain damage%nl%<##613e82>over time critically strikes, you also create%nl%<##613e82>a shadowy version of yourself that floats%nl%<##613e82>towards the target and deals &f%{_damage}% <##613e82>damage."
+        set metadata value "Element" of {_p} to "Ghost"
+        set metadata value "LastDamageCauseEN" of {_target} to "<##462566>Shadowy Apparitions"
+        set metadata value "LastDamageCause" of {_target} to "<##462566>Cieniste Aparycje"
+        set metadata value "LastDamageCauseLore" of {_target} to {_lore}
+        set metadata value "LastDamageCauseLoreEN" of {_target} to {_lore}
+        make {_p} damage {_target} by {_damage}*2
+    teleport {_apparition} to location(0, -100, 0)
+    kill {_apparition}
+
+function ShadowyApparitionVisual(apparition: entity):
+    while {_apparition} is alive:
+        draw 2 dust using dustOption(rgb(77, 54, 138), 1) at location 0.3 above {_apparition} with offset vector(0.125, 0.125, 0.125) with extra 0.03
+        wait 1 tick
+
+function StopCastSoundTherold(p: player):
+    set {_ability} to metadata value "lastspell" of {_p}
+    if {_ability} = "Mind Blast":
+        stop sound "skill.therold.mind_blast_precast" for all players
+    else if {_ability} = "Void Eruption":
+        stop sound "skill.therold.void_eruption_precast" for all players
+    else if {_ability} = "Mind Flay":
+        stop sound "skill.therold.mindflay_channel" for all players
+        stop sound "skill.therold.mindflay_channel_whisper" for all players
+    else if {_ability} = "Vampiric Touch":
+        stop sound "skill.therold.mindflay_channel_whisper" for all players
+
+function TheroldDamage(p: player, basevalue: number, damageStat: number, damageScaling: number, versStat: number, versScaling: number) :: number:
+    set {_damage} to {_basevalue} + ({damage::%{_p}%}/{_damageScaling}) + ({versatility::%{_p}%}/{_versScaling})
+    if metadata value "Voidform" of {_p} is set:
+        set {_damage} to {_damage}*1.2
+    return {_damage}
+
+function CheckIfDotted(p: player, target: entity) :: boolean:
+    if metadata value "Shadow Word: Pain-%{_p}%" of {_target} is set:
+        set {_bool} to true
+    if metadata value "Vampiric Touch-%{_p}%" of {_target} is set:
+        set {_bool} to true
+    if {_bool} is not set:
+        set {_bool} to false
+    return {_bool}
