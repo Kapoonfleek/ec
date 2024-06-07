@@ -12,21 +12,7 @@ variables:
 #			spawn 1 glow item frame at block above event-block
 #			silence last spawned glow item frame
 #			display hologram "&eDzienna Nagroda" at block above event-block to player for 10 seconds
-on join:
-	if {dailyready::%player%} = true:
-		set {_x} to location(-1185.5, 62.75, -1829.5, world "world")
-		hologramStandard({_x}, "&e!")
-		set metadata tag "Dostępna%player%" of last spawned armor stand to true
-		add nbt compound from "{NoBasePlate:1b,ShowArms:1b,Pose:{LeftLeg:[0f,0f,338f],RightLeg:[0f,0f,24f]}}" to nbt of last spawned armor stand
-		loop all players:
-			if loop-player is not player:
-				HideEntity(last spawned armor stand, loop-player)
-		set {_x} to location(-1185.5, 62.25, -1829.5, world "world")
-		hologramStandard({_x}, "&eDaily Reward")
-		add nbt compound from "{NoBasePlate:1b,ShowArms:1b,Pose:{LeftLeg:[0f,0f,338f],RightLeg:[0f,0f,24f]}}" to nbt of last spawned armor stand
-		loop all players:
-			if loop-player is not player:
-				HideEntity(last spawned armor stand, loop-player)
+
 on rightclick:
 	if clicked block is lectern:
 		if block is {@loc}:
@@ -38,16 +24,27 @@ on rightclick:
 				set slots integers between 0 and 8 of {@gui} to black glass pane named " "
 				set slots integers between 36 and 44 of {@gui} to black glass pane named " "
 				set slot 9 and 17 and 18 and 26 and 27 and 35 of {@gui} to black glass pane named " "
-				set slot 28 of {@gui} to emerald named "%({klejnotEN}'s name)% x25"
-				set slot 29 of {@gui} to glowstone dust named "%({stardustEN}'s name)% x100" with nbt from "{CustomModelData:1}"
-				set slot 30 of {@gui} to glass pane named "&fRandom Booster" with lore "&7Random booster from:%nl%&7- &fSecret Wonders%nl%&7- &fMajestic Dawn" #%nl%&7- &fMajestic Dawn%nl%&7- &fUnseen Forces"
-				set slot 31 of {@gui} to amethyst shard named "&fMagic Prism"
-				set slot 32 of {@gui} to note block named "&f8x Luxurious Chest" with nbt from "{CustomModelData:4}"
-				set slot 33 of {@gui} to firework star named "&fToken of Gratitude"
-				set slot 34 of {@gui} to glowstone dust named "&fStar Piece" with nbt from "{CustomModelData:11}"
+				if {dailynagroda::%player%} <= 7:
+					set {_dailySet} to 0
+					set slot 28 of {@gui} to 25 of emerald named "%({klejnotEN}'s name)% x25"
+					set slot 29 of {@gui} to 64 of glowstone dust named "%({stardustEN}'s name)% x100" with nbt from "{CustomModelData:1}"
+					set slot 30 of {@gui} to glass pane named "&fRandom Booster" with lore "&7Random booster from:%nl%&7- &fSecret Wonders%nl%&7- &fMajestic Dawn" #%nl%&7- &fMajestic Dawn%nl%&7- &fUnseen Forces"
+					set slot 31 of {@gui} to amethyst shard named "&fMagic Prism"
+					set slot 32 of {@gui} to 8 of note block named "&f8x Luxurious Chest" with nbt from "{CustomModelData:4}"
+					set slot 33 of {@gui} to firework star named "&fToken of Gratitude"
+					set slot 34 of {@gui} to glowstone dust named "&fStar Piece" with nbt from "{CustomModelData:11}"
+				else:
+					set {_dailySet} to 7
+					set slot 28 of {@gui} to 64 of emerald named "%({klejnotEN}'s name)% x100"
+					set slot 29 of {@gui} to glowstone dust named ({diamondshardEN}'s name) with nbt from "{CustomModelData:12}"
+					set slot 30 of {@gui} to 2 of book named "%({adeptexpbookEN})'s name% x2"
+					set slot 31 of {@gui} to lapis lazuli named "&fRandom Rank III Boost" with lore "&7Random Boost from:%nl%&7- &fJade Statue%nl%&7- &fCitrine Looking Glass%nl%&7- &fSapphire Dice%nl%&7- &fTourmaline Diadem" with nbt from "{CustomModelData:4}"
+					set slot 32 of {@gui} to 16 of note block named "&f16x Luxurious Chest" with nbt from "{CustomModelData:4}"
+					set slot 33 of {@gui} to 64 of glowstone dust named "%({stardustEN}'s name)% x300" with nbt from "{CustomModelData:1}"
+					set slot 34 of {@gui} to 2 of glowstone dust named "&fStar Piece x2" with nbt from "{CustomModelData:11}"
 				loop 7 times:
-					if loop-number is not {dailynagroda::%player%}:
-						if {dailynagroda::%player%} < loop-number:
+					if loop-number is not {dailynagroda::%player%} - {_dailySet}:
+						if {dailynagroda::%player%} < loop-number + {_dailySet}:
 							set slot {_slot} of {@gui} to gray glass pane named " "
 						else:
 							set slot {_slot} of {@gui} to yellow glass pane named "&eClaimed"
@@ -58,16 +55,29 @@ on rightclick:
 					add 1 to {_slot}
 				set {_slot} to 28
 				set {_x} to 1
-				loop 7 times:
+				loop 7 + {_dailySet} times:
 					if {_slot} = 30:
 						if slot {_slot} of {@gui} is yellow glass pane:
 							set lore of slot {_slot} of {@gui} to "&8Day %{_x}%"
 						else:
-							set lore of slot {_slot} of {@gui} to "&7Random booster from:%nl%&7- &fSecret Wonders%nl%&7- &fMajestic Dawn" #%nl%&7- &fMajestic Dawn%nl%&7- &fUnseen Forces%nl%&8Day %{_x}%"
+							if slot {_slot} of {@gui} is glass pane:
+								set lore of slot {_slot} of {@gui} to "&8Day %{_x}%%nl%&7Random booster from:%nl%&7- &fSecret Wonders%nl%&7- &fMajestic Dawn" #%nl%&7- &fMajestic Dawn%nl%&7- &fUnseen Forces%nl%&8Day %{_x}%"
+							else:
+								set lore of slot {_slot} of {@gui} to "&8Day 10"
+					else if {_slot} = 31:
+						if slot {_slot} of {@gui} is yellow glass pane:
+							set lore of slot {_slot} of {@gui} to "&8Day %{_x}%"
+						else:
+							if slot {_slot} of {@gui} is lapis lazuli:
+								set lore of slot {_slot} of {@gui} to "&8Day %{_x}%%nl%&7Random boost from:%nl%&7- &fJade Statue%nl%&7- &fCitrine Looking Glass%nl%&7- &fSapphire Dice%nl%&7- &fTourmaline Diadem"
+							else:
+								set lore of slot {_slot} of {@gui} to "&8Day 11"
 					else:
 						set lore of slot {_slot} of {@gui} to "&8Day %{_x}%"
 					add 1 to {_slot}
 					add 1 to {_x}
+					if {_slot} = 35:
+						set {_slot} to 28
 				set {_slot} to 19
 				set {_x} to 1
 				loop 7 times:
@@ -85,16 +95,27 @@ on rightclick:
 				set slots integers between 0 and 8 of {@gui} to black glass pane named " "
 				set slots integers between 36 and 44 of {@gui} to black glass pane named " "
 				set slot 9 and 17 and 18 and 26 and 27 and 35 of {@gui} to black glass pane named " "
-				set slot 28 of {@gui} to emerald named "%({klejnot}'s name)% x25"
-				set slot 29 of {@gui} to glowstone dust named "%({stardust}'s name)% x100" with nbt from "{CustomModelData:1}"
-				set slot 30 of {@gui} to glass pane named "&fLosowy Booster" with lore "&7Losowy booster z puli:%nl%&7- &fSecret Wonders%nl%&7- &fMajestic Dawn" #%nl%&7- &fMajestic Dawn%nl%&7- &fUnseen Forces"
-				set slot 31 of {@gui} to amethyst shard named "&fMagiczny Pryzmat" with nbt from "{CustomModelData:2}"
-				set slot 32 of {@gui} to note block named "&f8x Luksusowa Skrzynka" with nbt from "{CustomModelData:4}"
-				set slot 33 of {@gui} to firework star named "&fToken Wdzięczności"
-				set slot 34 of {@gui} to glowstone dust named "&fOdłamek Gwiazdy" with nbt from "{CustomModelData:11}"
+				if {dailynagroda::%player%} <= 7:
+					set {_dailySet} to 0
+					set slot 28 of {@gui} to emerald named "%({klejnot}'s name)% x25"
+					set slot 29 of {@gui} to glowstone dust named "%({stardust}'s name)% x100" with nbt from "{CustomModelData:1}"
+					set slot 30 of {@gui} to glass pane named "&fLosowy Booster" with lore "&7Losowy booster z puli:%nl%&7- &fSecret Wonders%nl%&7- &fMajestic Dawn" #%nl%&7- &fMajestic Dawn%nl%&7- &fUnseen Forces"
+					set slot 31 of {@gui} to amethyst shard named "&fMagiczny Pryzmat" with nbt from "{CustomModelData:2}"
+					set slot 32 of {@gui} to note block named "&f8x Luksusowa Skrzynka" with nbt from "{CustomModelData:4}"
+					set slot 33 of {@gui} to firework star named "&fToken Wdzięczności"
+					set slot 34 of {@gui} to glowstone dust named "&fOdłamek Gwiazdy" with nbt from "{CustomModelData:11}"
+				else:
+					set {_dailySet} to 7
+					set slot 28 of {@gui} to 64 of emerald named "%({klejnot}'s name)% x100"
+					set slot 29 of {@gui} to glowstone dust named ({diamondshard}'s name) with nbt from "{CustomModelData:12}"
+					set slot 30 of {@gui} to 2 of book named "%({adeptexpbook})'s name% x2"
+					set slot 31 of {@gui} to lapis lazuli named "&fLosowy Boost III Rangi" with lore "&7Random Boost from:%nl%&7- &fJadeitowa Statuetka%nl%&7- &fCytrynowe Lustro%nl%&7- &fSzafirowe Kostki%nl%&7- &fTurmalinowy Diadem" with nbt from "{CustomModelData:4}"
+					set slot 32 of {@gui} to 16 of note block named "&f16x Luksusowa Skrzynka" with nbt from "{CustomModelData:4}"
+					set slot 33 of {@gui} to 64 of glowstone dust named "%({stardust}'s name)% x300" with nbt from "{CustomModelData:1}"
+					set slot 34 of {@gui} to 2 of glowstone dust named "&fOdłamek Gwiazdy x2" with nbt from "{CustomModelData:11}"
 				loop 7 times:
-					if loop-number is not {dailynagroda::%player%}:
-						if {dailynagroda::%player%} < loop-number:
+					if loop-number is not {dailynagroda::%player%} - {_dailySet}:
+						if {dailynagroda::%player%} < loop-number + {_dailySet}:
 							set slot {_slot} of {@gui} to gray glass pane named " "
 						else:
 							set slot {_slot} of {@gui} to yellow glass pane named "&eOdebrano"
@@ -105,16 +126,29 @@ on rightclick:
 					add 1 to {_slot}
 				set {_slot} to 28
 				set {_x} to 1
-				loop 7 times:
+				loop 7 + {_dailySet} times:
 					if {_slot} = 30:
 						if slot {_slot} of {@gui} is yellow glass pane:
 							set lore of slot {_slot} of {@gui} to "&8Dzień %{_x}%"
 						else:
-							set lore of slot {_slot} of {@gui} to "&7Losowy booster z puli:%nl%&7- &fSecret Wonders%nl%&7- &fMajestic Dawn" #%nl%&7- &fMajestic Dawn%nl%&7- &fUnseen Forces%nl%&8Dzień %{_x}%"
+							if slot {_slot} of {@gui} is glass pane:
+								set lore of slot {_slot} of {@gui} to "&8Dzień %{_x}%%nl%&7Losowy booster z puli:%nl%&7- &fSecret Wonders%nl%&7- &fMajestic Dawn"
+							else:
+								set lore of slot {_slot} of {@gui} to "&8Dzień 10"
+					else if {_slot} = 31:
+						if slot {_slot} of {@gui} is yellow glass pane:
+							set lore of slot {_slot} of {@gui} to "&8Dzień %{_x}%"
+						else:
+							if slot {_slot} of {@gui} is lapis lazuli:
+								set lore of slot {_slot} of {@gui} to "&8Dzień %{_x}%%nl%&7Losowy boost z puli:%nl%&7- &fJadeitowa Statuetka%nl%&7- &fCytrynowe Lustro%nl%&7- &fSzafirowe Kostki%nl%&7- &fTurmalinowy Diadem"
+							else:
+								set lore of slot {_slot} of {@gui} to "&8Dzień 11"
 					else:
 						set lore of slot {_slot} of {@gui} to "&8Dzień %{_x}%"
 					add 1 to {_slot}
 					add 1 to {_x}
+					if {_slot} = 35:
+						set {_slot} to 28
 				set {_slot} to 19
 				set {_x} to 1
 				loop 7 times:
@@ -129,11 +163,11 @@ on rightclick:
 			play sound "block.note_block.hat" with volume 3 and pitch {_x} at clicked block
 			play sound "block.note_block.pling" with volume 3 and pitch {_x} at clicked block
 on inventory click:
-	if player's current inventory is {@gui}:
+	if event-inventory = {@gui}:
 		cancel event
-		if clicked raw slot is between 28 and 34:
-			if clicked slot is not gray glass pane:
-				if clicked slot is not yellow glass pane:
+		if index of event-slot is between 28 and 34:
+			if event-slot is not gray glass pane:
+				if event-slot is not yellow glass pane:
 					if {dailyready::%player%} is true:
 						set {dailyready::%player%} to false
 						set {_loc} to player's location
@@ -152,26 +186,22 @@ on inventory click:
 						achievement("dailystreak", player, 30, "osiagniecie.30dailystreak", "Osiągnij daily streak 30 na dziennej nagrodzie", "Daily Streak: 30 Dni", "Reach daily streak 30 on daily reward", "Daily Streak: 30 Days")
 						achievement("dailystreak", player, 60, "osiagniecie.60dailystreak", "Osiągnij daily streak 60 na dziennej nagrodzie", "Daily Streak: 60 Dni", "Reach daily streak 60 on daily reward", "Daily Streak: 60 Days")
 						achievement("dailystreak", player, 100, "osiagniecie.100dailystreak", "Osiągnij daily streak 100 na dziennej nagrodzie", "Daily Streak: 100 Dni", "Reach daily streak 100 on daily reward", "Daily Streak: 100 Days")
-						loop all entities in radius 7 around player:
-							if loop-entity is an armor stand:
-								if metadata tag "Dostępna%player%" of loop-entity is true:
-									kill loop-entity
-						if clicked slot is an emerald:
+						if event-slot is an emerald:
 							drawItemFountain emerald, style 2, center location of {@loc}, id "%player%nagroda", itemTime 10 second, yVelocity 0.34, radius 0.3, density 5, displacementXYZ 0, 0, 0, pulseDelay 1
-						if clicked slot is glowstone dust:
-							if name of clicked slot = "%({stardust}'s name)% x100":
-								drawItemFountain {stardust}, style 2, center location of {@loc}, id "%player%nagroda", itemTime 10 second, yVelocity 0.34, radius 0.3, density 5, displacementXYZ 0, 0, 0, pulseDelay 1
-						if clicked slot is glass pane:
+						if event-slot is glowstone dust:
+							if name of event-slot = "%({stardust}'s name)% x100" or "%({stardust}'s name)% x300":
+								drawItemFountain (glowstone dust with nbt from "{CustomModelData:1}"), style 2, center location of {@loc}, id "%player%nagroda", itemTime 10 second, yVelocity 0.34, radius 0.3, density 5, displacementXYZ 0, 0, 0, pulseDelay 1
+						if event-slot is glass pane:
 							drawItemFountain glass pane, style 2, center location of {@loc}, id "%player%nagroda", itemTime 10 second, yVelocity 0.34, radius 0.3, density 5, displacementXYZ 0, 0, 0, pulseDelay 1
-						if clicked slot is amethyst shard:
+						if event-slot is amethyst shard:
 							drawItemFountain {magicznypryzmat}, style 2, center location of {@loc}, id "%player%nagroda", itemTime 10 second, yVelocity 0.34, radius 0.3, density 5, displacementXYZ 0, 0, 0, pulseDelay 1
-						if clicked slot is note block:
+						if event-slot is note block:
 							drawItemFountain {skrzynkaluksusowa}, style 2, center location of {@loc}, id "%player%nagroda", itemTime 10 second, yVelocity 0.34, radius 0.3, density 5, displacementXYZ 0, 0, 0, pulseDelay 1
-						if clicked slot is firework star:
+						if event-slot is firework star:
 							drawItemFountain {tokenwdziecznosci}, style 2, center location of {@loc}, id "%player%nagroda", itemTime 10 second, yVelocity 0.34, radius 0.3, density 5, displacementXYZ 0, 0, 0, pulseDelay 1
-						if clicked slot is glowstone dust:
-							if name of clicked slot = "&fOdłamek Gwiazdy":
-								drawItemFountain {odlamekgwiazdy}, style 2, center location of {@loc}, id "%player%nagroda", itemTime 10 second, yVelocity 0.34, radius 0.3, density 5, displacementXYZ 0, 0, 0, pulseDelay 1
+						if event-slot is glowstone dust:
+							if name of event-slot = "&fOdłamek Gwiazdy":
+								drawItemFountain (glowstone dust with nbt from "{CustomModelData:11}"), style 2, center location of {@loc}, id "%player%nagroda", itemTime 10 second, yVelocity 0.34, radius 0.3, density 5, displacementXYZ 0, 0, 0, pulseDelay 1
 						set {_x} to 0
 						loop 20 times:
 							if loop-number is divisible by 5:
@@ -211,20 +241,22 @@ on inventory click:
 							play sound "block.note_block.basedrum" with volume 3 and pitch 1 at {@loc}
 							wait 5 ticks
 						if {language::%player%} = "English":
-							if clicked slot is emerald:
-								send "<##f0cc9e> Daily Reward >>> &fClaimed <##b5e550>25 Klejnots&f! Come back tomorrow for another surprise!" to player
-								if player can hold 25 of {klejnotEN}:
-									give 25 of {klejnotEN} to player
-								else:
-									drop 25 of {klejnotEN} at player
-							if clicked slot is glowstone dust:
-								if name of clicked slot = "%({stardustEN}'s name)% x100":
-									send "<##f0cc9e> Daily Reward >>> &fClaimed &5100 &f%{stardustEN}'s name%&f! Come back tomorrow for another surprise!" to player
-									if player can hold 100 of {stardustEN}:
-										give 100 of {stardustEN} to player
-									else:
-										drop 100 of {stardustEN} at player
-							if clicked slot is glass pane:
+							if event-slot is emerald:
+								if name of event-slot contains "x25":
+									set {_itemAmount} to 25
+								else if name of event-slot contains "x100":
+									set {_itemAmount} to 100
+								send "<##f0cc9e> Daily Reward >>> &fClaimed <##b5e550>%{_itemAmount}%x Klejnots&f! Come back tomorrow for another surprise!" to player
+								giveItem(player, ({_itemAmount} of {klejnotEN}))
+							if event-slot is glowstone dust:
+								if name of event-slot contains "x100":
+									set {_itemAmount} to 100
+								else if name of event-slot contains "x300":
+									set {_itemAmount} to 300
+								if name of event-slot = "%({stardustEN}'s name)% x100" or "%({stardustEN}'s name)% x300":
+									send "<##f0cc9e> Daily Reward >>> &fClaimed &5%{_itemAmount}%x &f%{stardustEN}'s name%&f! Come back tomorrow for another surprise!" to player
+									giveItem(player, ({_itemAmount} of {stardustEN}))
+							if event-slot is glass pane:
 								#send "<##f0cc9e> Daily Reward >>> &fClaimed a &5Random Booster&f! Come back tomorrow for another surprise!" to player
 								#set {_block} to block 2 blocks east of {@loc}
 								#spawn 1 armor stand at {_block}
@@ -266,7 +298,7 @@ on inventory click:
 										set {_booster} to {boostersecretwondersEN}
 									else if {_ran} = 2:
 										set {_booster} to {boostermajesticdawnEN}	
-									give {_booster} to player
+									giveItem(player, {_booster})
 									play sound "block.lava.pop" with volume 3 and pitch 1 at player
 									send "<##f0cc9e> Daily Reward>>> &fClaimed %{_booster}'s name%&f! Wróć kolejnego dnia po następną niespodziankę!" to player
 								else:
@@ -276,56 +308,75 @@ on inventory click:
 										set {_booster} to {boostersecretwonders}
 									else if {_ran} = 2:
 										set {_booster} to {boostermajesticdawn}	
-									give {_booster} to player
+									giveItem(player, {_booster})
 									play sound "block.lava.pop" with volume 3 and pitch 1 at player
 									send "<##f0cc9e> Dzienna Nagroda >>> &fOdebrano %{_booster}'s name%&f! Wróć kolejnego dnia po następną niespodziankę!" to player
-							if clicked slot is amethyst shard:
+							if event-slot is amethyst shard:
 								send "<##f0cc9e> Daily Reward >>> &fClaimed %{magicznypryzmatEN}'s name%&f! Come back tomorrow for another surprise!" to player
-								if player can hold {magicznypryzmatEN}:
-									give {magicznypryzmatEN} to player
-								else:
-									drop {magicznypryzmatEN} at player
-							if clicked slot is note block:
-								send "<##f0cc9e> Daily Reward >>> &fClaimed &98x %{skrzynkaluksusowaEN}'s name%&f! Come back tomorrow for another surprise!" to player
-								if player can hold 8 of {skrzynkaluksusowaEN}:
-									give 8 of {skrzynkaluksusowaEN} to player
-								else:
-									drop 8 of {skrzynkaluksusowaEN} at player
-							if clicked slot is firework star:
+								giveItem(player, {magicznypryzmatEN})
+							else if event-slot is note block:
+								if name of event-slot contains "8x":
+									set {_itemAmount} to 8
+								else if name of event-slot contains "16x":
+									set {_itemAmount} to 16
+								send "<##f0cc9e> Daily Reward >>> &fClaimed &9%{_itemAmount}%x %{skrzynkaluksusowaEN}'s name%&f! Come back tomorrow for another surprise!" to player
+								giveItem(player, {_itemAmount} of {skrzynkaluksusowaEN})
+							else if event-slot is firework star:
 								send "<##f0cc9e> Daily Reward >>> &fClaimed a %{tokenwdziecznosciEN}'s name%&f! Come back tomorrow for another surprise!" to player
-								if player can hold {tokenwdziecznosciEN}:
-									give {tokenwdziecznosciEN} to player
-								else:
-									drop {tokenwdziecznosciEN} at player
-							if clicked slot is glowstone dust:
-								if name of clicked slot = "&fStar Piece":
-									send "<##f0cc9e> Daily Reward >>> &fClaimed a %{odlamekgwiazdyEN}'s name%&f! Come back tomorrow for another surprise!" to player
-									if player can hold {odlamekgwiazdyEN}:
-										give {odlamekgwiazdyEN} to player
+								giveItem(player, {tokenwdziecznosciEN})
+							else if event-slot is glowstone dust:
+								if name of event-slot contains "&fStar Piece":
+									if name of event-slot contains "x2":
+										set {_itemAmount} to 2
 									else:
-										drop {odlamekgwiazdyEN} at player
+										set {_itemAmount} to 1
+									send "<##f0cc9e> Daily Reward >>> &fClaimed %{_itemAmount}%x %{odlamekgwiazdyEN}'s name%&f! Come back tomorrow for another surprise!" to player
+									giveItem(player, ({_itemAmount} of {odlamekgwiazdyEN}))
+								else if name of event-slot = "&bDiamond Shard":
+									send "<##f0cc9e> Daily Reward >>> &fClaimed %{diamondshardEN}'s name%&f! Come back tomorrow for another surprise!" to player
+									giveItem(player, ({diamondshardEN}))
+							else if event-slot is book:
+								if name of event-slot contains (name of {adeptexpbookEN}):
+									if name of event-slot contains "x2":
+										set {_itemAmount} to 2
+									send "<##f0cc9e> Daily Reward >>> &fClaimed %{_itemAmount}%x %{adeptexpbookEN}'s name%&f! Come back tomorrow for another surprise!" to player
+									giveItem(player, ({_itemAmount} of {adeptexpbookEN}))
+							else if event-slot is lapis lazuli:
+								set {_rng} to a random integer between 1 and 4
+								if {_rng} = 1:
+									set {_boost} to {jadeitowastatuetkaEN}
+								else if {_rng} = 2:
+									set {_boost} to {cytrynowelustroEN}
+								else if {_rng} = 3:
+									set {_boost} to {szafirowekostkiEN}
+								else:
+									set {_boost} to {turmalinowydiademEN}
+								send "<##f0cc9e> Daily Reward >>> &fClaimed %{_boost}'s name%&f! Come back tomorrow for another surprise!" to player
+								giveItem(player, ({_boost}))
 						else:
-							if clicked slot is emerald:
-								send "<##f0cc9e> Dzienna Nagroda >>> &fOdebrano <##b5e550>25 Klejnotów&f! Wróć kolejnego dnia po następną niespodziankę!" to player
-								if player can hold 25 of {klejnot}:
-									give 25 of {klejnot} to player
-								else:
-									drop 25 of {klejnot} at player
-							if clicked slot is glowstone dust:
-								if name of clicked slot = "%({stardust}'s name)% x100":
-									send "<##f0cc9e> Dzienna Nagroda >>> &fOdebrano &5100 &f%{stardust}'s name%u &f! Wróć kolejnego dnia po następną niespodziankę!" to player
-									if player can hold 100 of {stardust}:
-										give 100 of {stardust} to player
-									else:
-										drop 100 of {stardust} at player
-							if clicked slot is glass pane:
-								send "<##f0cc9e> Dzienna Nagroda >>> &fOdebrano &5Losowy Booster&f! Wróć kolejnego dnia po następną niespodziankę!" to player
-								#set {_block} to block at player
+							if event-slot is emerald:
+								if name of event-slot contains "x25":
+									set {_itemAmount} to 25
+								else if name of event-slot contains "x100":
+									set {_itemAmount} to 100
+								send "<##f0cc9e> Dzienna Nagroda >>> &fOdebrano <##b5e550>%{_itemAmount}%x Klejnotów&f! Wróć kolejnego dnia po następną niespodziankę!" to player
+								giveItem(player, ({_itemAmount} of {klejnotEN}))
+							if event-slot is glowstone dust:
+								if name of event-slot contains "x100":
+									set {_itemAmount} to 100
+								else if name of event-slot contains "x300":
+									set {_itemAmount} to 300
+								if name of event-slot = "%({stardustEN}'s name)% x100" or "%({stardustEN}'s name)% x300":
+									send "<##f0cc9e> Dzienna Nagroda >>> &fOdebrano &5%{_itemAmount}%x &f%{stardustEN}'s name%&f! Wróć kolejnego dnia po następną niespodziankę!" to player
+									giveItem(player, ({_itemAmount} of {stardustEN}))
+							if event-slot is glass pane:
+								#send "<##f0cc9e> Daily Reward >>> &fClaimed a &5Random Booster&f! Come back tomorrow for another surprise!" to player
+								#set {_block} to block 2 blocks east of {@loc}
 								#spawn 1 armor stand at {_block}
 								#add nbt compound from "{Invisible:1}" to nbt of last spawned armor stand
 								#add nbt compound from "{NoGravity:1}" to nbt of last spawned armor stand
 								#add nbt compound from "{NoBasePlate:1b,ShowArms:1b,Pose:{LeftLeg:[0f,0f,338f],RightLeg:[0f,0f,24f]}}" to nbt of last spawned armor stand
-								#set the display name of last spawned armor stand to "&5Losowy Booster"
+								#set the display name of last spawned armor stand to "&5Random Booster"
 								#set {_x} to y-coordinate of last spawned armor stand
 								#set {_x} to {_x} - 2
 								#set {_y} to x-coordinate of last spawned armor stand
@@ -347,7 +398,7 @@ on inventory click:
 								#add nbt compound from "{Invisible:1}" to nbt of last spawned armor stand
 								#add nbt compound from "{NoGravity:1}" to nbt of last spawned armor stand
 								#add nbt compound from "{NoBasePlate:1b,ShowArms:1b,Pose:{LeftLeg:[0f,0f,338f],RightLeg:[0f,0f,24f]}}" to nbt of last spawned armor stand
-								#set the display name of last spawned armor stand to "<##00ff2a><Kliknij, by otworzyć>"
+								#set the display name of last spawned armor stand to "<##00ff2a><Click to open>"
 								#set {_x} to y-coordinate of last spawned armor stand
 								#set {_x} to {_x} - 2.25
 								#set {_y} to x-coordinate of last spawned armor stand
@@ -360,43 +411,61 @@ on inventory click:
 										set {_booster} to {boostersecretwondersEN}
 									else if {_ran} = 2:
 										set {_booster} to {boostermajesticdawnEN}	
-									give {_booster} to player
+									giveItem(player, {_booster})
 									play sound "block.lava.pop" with volume 3 and pitch 1 at player
-									send "<##f0cc9e> Daily Reward>>> &fClaimed %{_booster}'s name%&f! Wróć kolejnego dnia po następną niespodziankę!" to player
+									send "<##f0cc9e> Dzienna Nagroda >>> &fOdebrano %{_booster}'s name%&f! Wróć kolejnego dnia po następną niespodziankę!" to player
 								else:
 									#set {_booster} to a random element of {boostery::*}
+									set {_ran} to a random integer between 1 and 2
 									if {_ran} = 1:
 										set {_booster} to {boostersecretwonders}
 									else if {_ran} = 2:
 										set {_booster} to {boostermajesticdawn}	
-									give {_booster} to player
+									giveItem(player, {_booster})
 									play sound "block.lava.pop" with volume 3 and pitch 1 at player
 									send "<##f0cc9e> Dzienna Nagroda >>> &fOdebrano %{_booster}'s name%&f! Wróć kolejnego dnia po następną niespodziankę!" to player
-							if clicked slot is amethyst shard:
-								send "<##f0cc9e> Dzienna Nagroda >>> &fOdebrano %{magicznypryzmat}'s name%&f! Wróć kolejnego dnia po następną niespodziankę!" to player
-								if player can hold {magicznypryzmat}:
-									give {magicznypryzmat} to player
-								else:
-									drop {magicznypryzmat} at player
-							if clicked slot is note block:
-								send "<##f0cc9e> Dzienna Nagroda >>> &fOdebrano &98x %{skrzynkaluksusowa}'s name%&f! Wróć kolejnego dnia po następną niespodziankę!" to player
-								if player can hold 8 of {skrzynkaluksusowa}:
-									give 8 of {skrzynkaluksusowa} to player
-								else:
-									drop 8 of {skrzynkaluksusowa} at player
-							if clicked slot is firework star:
-								send "<##f0cc9e> Dzienna Nagroda >>> &fOdebrano %{tokenwdziecznosci}'s name%&f! Wróć kolejnego dnia po następną niespodziankę!" to player
-								if player can hold {tokenwdziecznosci}:
-									give {tokenwdziecznosci} to player
-								else:
-									drop {tokenwdziecznosci} at player
-							if clicked slot is glowstone dust:
-								if name of clicked slot = "&fOdłamek Gwiazdy":
-									send "<##f0cc9e> Dzienna Nagroda >>> &fOdebrano %{odlamekgwiazdy}'s name%&f! Wróć kolejnego dnia po następną niespodziankę!" to player
-									if player can hold {odlamekgwiazdy}:
-										give {odlamekgwiazdy} to player
+							if event-slot is amethyst shard:
+								send "<##f0cc9e> Dzienna Nagroda >>> &fOdebrano %{magicznypryzmatEN}'s name%&f! Wróć kolejnego dnia po następną niespodziankę!" to player
+								giveItem(player, {magicznypryzmatEN})
+							else if event-slot is note block:
+								if name of event-slot contains "8x":
+									set {_itemAmount} to 8
+								else if name of event-slot contains "16x":
+									set {_itemAmount} to 16
+								send "<##f0cc9e> Dzienna Nagroda >>> &fOdebrano &9%{_itemAmount}%x %{skrzynkaluksusowaEN}'s name%&f! Wróć kolejnego dnia po następną niespodziankę!" to player
+								giveItem(player, {_itemAmount} of {skrzynkaluksusowaEN})
+							else if event-slot is firework star:
+								send "<##f0cc9e> Daily Reward >>> &fClaimed a %{tokenwdziecznosciEN}'s name%&f! Come back tomorrow for another surprise!" to player
+								giveItem(player, {tokenwdziecznosciEN})
+							else if event-slot is glowstone dust:
+								if name of event-slot contains "&fStar Piece":
+									if name of event-slot contains "x2":
+										set {_itemAmount} to 2
 									else:
-										drop {odlamekgwiazdy} at player
+										set {_itemAmount} to 1
+									send "<##f0cc9e> Dzienna Nagroda >>> &fOdebrano %{_itemAmount}%x %{odlamekgwiazdyEN}'s name%&f! Wróć kolejnego dnia po następną niespodziankę!" to player
+									giveItem(player, ({_itemAmount} of {odlamekgwiazdyEN}))
+								else if name of event-slot = "&bDiamond Shard":
+									send "<##f0cc9e> Daily Reward >>> &fClaimed %{diamondshardEN}'s name%&f! Come back tomorrow for another surprise!" to player
+									giveItem(player, ({diamondshardEN}))
+							else if event-slot is book:
+								if name of event-slot contains (name of {adeptexpbookEN}):
+									if name of event-slot contains "x2":
+										set {_itemAmount} to 2
+									send "<##f0cc9e> Dzienna Nagroda >>> &fOdebrano %{_itemAmount}%x %{adeptexpbookEN}'s name%&f! Wróć kolejnego dnia po następną niespodziankę!" to player
+									giveItem(player, ({_itemAmount} of {adeptexpbookEN}))
+							else if event-slot is lapis lazuli:
+								set {_rng} to a random integer between 1 and 4
+								if {_rng} = 1:
+									set {_boost} to {jadeitowastatuetkaEN}
+								else if {_rng} = 2:
+									set {_boost} to {cytrynowelustroEN}
+								else if {_rng} = 3:
+									set {_boost} to {szafirowekostkiEN}
+								else:
+									set {_boost} to {turmalinowydiademEN}
+								send "<##f0cc9e> Dzienna Nagroda >>> &fOdebrano %{_boost}'s name%&f! Wróć kolejnego dnia po następną niespodziankę!" to player
+								giveItem(player, ({_boost}))
 						play sound "entity.item.pickup" with volume 3 and pitch 1 at player
 #on rightclick on armor stand:
 #	if helmet of clicked entity is glass pane:

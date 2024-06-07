@@ -96,10 +96,13 @@ on chat:
 			replace all ":wink:" with "" in message
 		if message contains ":yum:":
 			replace all ":yum:" with "" in message
+		if message contains ":xdd:":
+			replace all ":xdd:" with "" in message
 		send " [%{poziom::%player%}% Lvl] %player%: %message%" to console
 		set message to formatted message
 		set {_data} to data()
-		log "%{_data}% [%{poziom::%player%}% Lvl] <%player%> %message%" to "logi/czat/czat %{datatydzien}%-%{datatydzien2}%.log"
+		set {_month} to dataConversion()
+		log "%{_data}% [%{poziom::%player%}% Lvl] <%player%> %message%" to "logi/czat/.general chat/%{_month}%/czat %{datatydzien}%-%{datatydzien2}%.log"
 		log "%{_data}% [%{poziom::%player%}% Lvl] <%player%> %message%" to "logi/czat/%player%/%player%.log"
 		if {kanal::%player%} = "admin":
 			if {admin::%player%} is true:
@@ -120,38 +123,7 @@ on chat:
 							else:
 								send "<##fcbde2>[%{kanal::%player%}%<##fcbde2><##fcbde2>] [%{poziom::%player%}%<##fcbde2>] <%{pseudonim::%player%}%<##fcbde2>> &f%message%" to loop-player
 		if {kanal::%player%} = "":
-			if {poziom::%player%} is bigger than or equal to 100:
-				set the chat format to "&8[%{kolorek::%player%}%%{poziom::%player%}% Lvl&8] <%{kolorek::%player%}%%{pseudonim::%player%}%&8> &f%message%"
-			else:
-				if {poziom::%player%} is smaller than 10:
-					set the chat format to "&8[&6%{poziom::%player%}% Lvl&8] <&6%{pseudonim::%player%}%&8> &f%message%"
-				if {poziom::%player%} is smaller than 20:
-					if {poziom::%player%} is bigger than 9:
-						set the chat format to "&8[&b%{poziom::%player%}% Lvl&8] <&b%{pseudonim::%player%}%&8> &f%message%"
-				if {poziom::%player%} is smaller than 30:
-					if {poziom::%player%} is bigger than 19:
-						set the chat format to "&8[&c%{poziom::%player%}% Lvl&8] <&c%{pseudonim::%player%}%&8> &f%message%"
-				if {poziom::%player%} is smaller than 40:
-					if {poziom::%player%} is bigger than 29:
-						set the chat format to "&8[&d%{poziom::%player%}% Lvl&8] <&d%{pseudonim::%player%}%&8> &f%message%"
-				if {poziom::%player%} is smaller than 50:
-					if {poziom::%player%} is bigger than 39:
-						set the chat format to "&8[&a%{poziom::%player%}% Lvl&8] <&a%{pseudonim::%player%}%&8> &f%message%"
-				if {poziom::%player%} is smaller than 60:
-					if {poziom::%player%} is bigger than 49:
-						set the chat format to "&8[&9%{poziom::%player%}% Lvl&8] <&9%{pseudonim::%player%}%&8> &f%message%"
-				if {poziom::%player%} is smaller than 70:
-					if {poziom::%player%} is bigger than 59:
-						set the chat format to "&8[&e%{poziom::%player%}% Lvl&8] <&e%{pseudonim::%player%}%&8> &f%message%"
-				if {poziom::%player%} is smaller than 80:
-					if {poziom::%player%} is bigger than 69:
-						set the chat format to "&8[&5%{poziom::%player%}% Lvl&8] <&5%{pseudonim::%player%}%&8> &f%message%"
-				if {poziom::%player%} is smaller than 90:
-					if {poziom::%player%} is bigger than 79:
-						set the chat format to "&8[&3%{poziom::%player%}% Lvl&8] <&3%{pseudonim::%player%}%&8> &f%message%"
-				if {poziom::%player%} is smaller than 100:
-					if {poziom::%player%} is bigger than 89:
-						set the chat format to "&8[&4%{poziom::%player%}% Lvl&8] <&4%{pseudonim::%player%}%&8> &f%message%"
+			set the chat format to "&8[%{kolorek::%player%}%%{poziom::%player%}% Lvl&8] <%{kolorek::%player%}%%{pseudonim::%player%}%&8> &f%message%"
 		loop all players:
 			if {czat.dzwieki::%loop-player%} is true:
 				play sound "block.wooden_button.click_on" with volume 5 and pitch 2 to loop-player
@@ -246,20 +218,48 @@ command /pseudonim [<text>]:
 				else:
 					send "&cPseudonim nie może być dłuższy niż 20 znaków." to player
 					play sound "block.glass.break" with volume 3 and pitch 2 to player
+
 on tab complete of "pseudonim" or "nick" or "nickname":
 	set tab completions for position 1 to "-" and "" and "usun" and "brak" and "clear" and "remove"
+
 on command:
 	set {_data} to data()
 	if command sender is console:
 		set {_sender} to console
 	if command sender is player:
 		set {_sender} to player
-	log "%{_data}% %{_sender}%: /%full command%" to "logi/komendy/komendy %{datatydzien}%-%{datatydzien2}%.log"
+	set {_month} to dataConversion()
+	set {_full} to full command
+	if {_sender} is not console:
+		if {_full} does not contain "minecraft:fill":
+			log "%{_data}% %{_sender}%: /%full command%" to "logi/komendy/%{_month}%/komendy %{datatydzien}%-%{datatydzien2}%.log"
+	else:
+		set {_banned::*} to "npc select 6630", "npc select 6632", "npc select 6633", "npc skin"
+		if {_banned::*} does not contain {_full}:
+			log "%{_data}% %{_sender}%: /%full command%" to "logi/komendy/%{_month}%/console %{datatydzien}%-%{datatydzien2}%.log"
+
+function dataConversion() :: text:
+	set {_data::*} to {datatydzien} split at "."
+	replace all "01" in {_data::2} with "january"
+	replace all "02" in {_data::2} with "february"
+	replace all "03" in {_data::2} with "march"
+	replace all "04" in {_data::2} with "april"
+	replace all "05" in {_data::2} with "may"
+	replace all "06" in {_data::2} with "june"
+	replace all "07" in {_data::2} with "july"
+	replace all "08" in {_data::2} with "august"
+	replace all "09" in {_data::2} with "september"
+	replace all "10" in {_data::2} with "october"
+	replace all "11" in {_data::2} with "november"
+	replace all "12" in {_data::2} with "december"
+	return {_data::2}
+	
 command /admin:
 	trigger:
 		if player's name is "kapoonfleek" or "llamadegree":
 			set {admin::%player%} to true
 			set {admin::%target player%} to true
+
 command /emotki:
 	aliases: /symbole, /emotes, /symbols
 	trigger:
@@ -284,7 +284,7 @@ command /emotki:
 		set {_d} to text component of "&f &0- :hand_mouth:%nl%:hand_over_mouth:%nl%:face_with_hand_over_mouth:%nl%&f &0- :monocle:%nl%:face_with_monocle:%nl%&f &0- :eyebrow:%nl%:face_with_raised_eyebrow:%nl%&f &0- :fingers_crossed:%nl%&f &0- :flushed:%nl%&f &0- :frowning:%nl%&f &0- :grimacing:%nl%&f &0- :grinning:"
 		set {_e} to text component of "&f &0- :heart_eyes:%nl%&f &0- :kiss:%nl%&f &0- :kissing_heart%nl%:kissing_face:%nl%&f &0- :kissing:%nl%&f &0- :money_mouth:%nl%&f &0- :nauseated_face:%nl%:nauseated:%nl%&f &0- :ok_hand:, :ok:%nl%&f &0- :partying_face:%nl%:party:%nl%&f &0- :pensive:%nl%&f &0- :pray:%nl%&f &0- :relieved:"
 		set {_f} to text component of "&f &0- :rolling_eyes:%nl%&f &0- :skull:%nl%&f &0- :sleepy:%nl%&f &0- :slight_smile:%nl%&f &0- :smile%nl%&f &0- :smiling_tear:%nl%:smiling_face_with_tear:%nl%&f &0- :smirk:%nl%&f &0- :sob:%nl%&f &0- :sparkles:%nl%&f &0- :star_struck:%nl%&f &0- :sweat:%nl%&f &0- :thinking:"
-		set {_g} to text component of "&f &0- :thumbsdown:, :-1:%nl%&f &0- :thumbsup:, :+1:%nl%&f &0- :upside_down:%nl%&f &0- :wink:%nl%&f &0- :yum:"
+		set {_g} to text component of "&f &0- :thumbsdown:, :-1:%nl%&f &0- :thumbsup:, :+1:%nl%&f &0- :upside_down:%nl%&f &0- :wink:%nl%&f &0- :yum:%nl%&f &0- :xdd:"
 		set {_a::*} to {_a}, {_b} and {_c}
 		set {_b::*} to {_h} and {_i}
 		set page 1 of book {_book} to {_a::*}

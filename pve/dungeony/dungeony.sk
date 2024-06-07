@@ -1,0 +1,2161 @@
+import:
+    java.lang.Math
+    com.earth2me.essentials.UserData
+    org.bukkit.Bukkit
+#Affixes:
+    #Level 2:
+        #Fortified: Non-boss enemies have 20% more health and inflict up to 30% increased damage.
+        #Tyrannical: Bosses have 30% more health. Bosses and their minions inflict up to 15% increased damage.
+    #Level 4:
+        #Bolstering: When any non-boss enemy dies, its death cry empowers nearby allies, increasing their maximum health by 15% and damage by 20%.
+        #Bursting: When slain, non-boss enemies explode, causing all players to suffer damage over 4 sec. This effect stacks.
+        #Inspiring: Some non-boss enemies have an inspiring presence that strengthens their allies, causing them to be immune to CC.
+        #Spiteful: Fiends rise from the corpses of non-boss enemies and pursue random players.
+    #Level 7:
+        #Raging: Non-boss enemies enrage at 30% health remaining, dealing 100% increased damage until defeated.
+        #Explosive: While in combat, enemies periodically summon Explosive Orbs that will detonate if not destroyed.
+        #Storming: While in combat, random players are periodically knocked up or pushed back or forward at random intervals.
+        #Grievous: Injured players suffer increasing damage over time until healed. 
+
+on rightclick on reinforced deepslate:
+    if {KeystoneHolderID::%location of clicked block%} is set:
+        if metadata value "DungeonInstance" of player is not set:
+            if metadata value "DungeonInProgress" of clicked block is not set:
+                if tag "Keystone" of nbt of player's tool is set:
+                    if tag "Soulbound" of nbt of player's tool = player's name:
+                        if player's tool = {KeystoneItem::%player%}:
+                            set {_KeystoneHolderSpawnLoc} to yaml value "KeystoneHolder" in "SOSspawnlocations"
+                            set metadata value "KeystoneHolderLoc" of player to {_KeystoneHolderSpawnLoc} #//Spawn location
+                            set metadata value "KeystoneHolderLocation" of player to location of clicked block #//Block location
+                            if {language::%player%} = "English":
+                                set {_name} to "Insert Keystone"
+                                set {_n} to "&fKeystone"
+                                set {_l} to "&7&oClick here to insert a Keystone"
+                                set {_n2} to "&9Click here to start Dungeon"
+                                set {_l2} to "&7&oYou must insert a Keystone before%nl%&7&ocommencing the Dungeon."
+                            else:
+                                set {_name} to "Włóż Kamień Klucza"
+                                set {_n} to "&fKamień Klucza"
+                                set {_l} to "&7&oKliknij tutaj, by włożyć Kamień Klucza"
+                                set {_n2} to "&9Kliknij tutaj, by zacząć Dungeon"
+                                set {_l2} to "&7&oMusisz włożyć Kamień Klucza,%nl%&7&oby zacząć Dungeon."
+                            set metadata tag "keystone" of player to chest inventory with 6 rows named {_name}
+                            set slot 40 of (metadata tag "keystone" of player) to black glass pane named {_n} with lore {_l}
+                            set slot 13 of (metadata tag "keystone" of player) to blue glass pane named {_n2} with lore {_l2}
+                            open (metadata tag "keystone" of player) to player
+                            play sound "block.grindstone.use" with volume 4 and pitch 0 to player
+                        else:
+                            if {language::%player%} = "English":
+                                send "&c&oYou can only use your most recently obtained Keystone." to player
+                            else:
+                                send "&c&oMożesz tylko i wyłącznie użyć swój ostatnio zdobyty kamień klucza." to player
+                            play sound "block.glass.break" with volume 2 and pitch 0 to player
+                    else:
+                        if {language::%player%} = "English":
+                            send "&c&oThis key is Soulbound to %tag "Soulbound" of nbt of player's tool%." to player
+                        else:
+                            send "&c&oTen klucz należy do %tag "Soulbound" of nbt of player's tool%." to player
+                        play sound "block.glass.break" with volume 2 and pitch 0 to player
+                else:
+                    if {language::%player%} = "English":
+                        send "&c&oYou can only interact with this pedestal while holding a keystone." to player
+                    else:
+                        send "&c&oMożesz przeprowadzać interakcje z tym postumentem kluczy tylko gdy trzymasz kamień klucza." to player
+                    play sound "block.glass.break" with volume 2 and pitch 0 to player
+            else:
+                if {language::%player%} = "English":
+                    send "&c&oThis dungeon is already in progress. You cannot interact with this key holder while the corresponding dungeon is in progress." to player
+                else:
+                    send "&&c&oTen dungeon aktualnie trwa. Nie możesz przeprowadzać interakcji z tym postumentem kluczy podczas jego trwania." to player
+                play sound "block.glass.break" with volume 2 and pitch 0 to player
+        else:
+            if {language::%player%} = "English":
+                send "&c&oYou cannot interact with the key holder while being in an active dungeon." to player
+            else:
+                send "&&c&oNie możesz przeprowadzać interakcji z postumentem kluczy podczas aktywnego dungeonu." to player
+            play sound "block.glass.break" with volume 2 and pitch 0 to player
+
+function KeystoneModifiers(keystonelevel: integer) :: number:
+    if {_keystonelevel} >= 10:
+        set {_increase} to Math.pow(1.10, ({_keystonelevel} - 9)) + (Math.pow(1.08, 8)-1)
+    else:
+        set {_increase} to Math.pow(1.08, ({_keystonelevel} - 1))
+    return {_increase}
+
+on inventory click:
+    if event-inventory = metadata value "keystone" of player:
+        cancel event
+        if index of event-slot is 40:
+            if event-slot is black glass pane:
+                loop all items in the player's inventory:
+                    set {_tag} to tag "Keystone" of nbt of loop-item
+                    if {_tag} is set:
+                        if tag "Soulbound" of nbt of loop-item = player's name:
+                            set {_item} to loop-item
+                            #set {_lore::*} to lore of {_item}
+                            #set {_num} to 1
+                            #loop {_lore::*}:
+                            #    if loop-value-2 contains "inside the Dungeon.":
+                            #        set {_index} to {_num} + 2
+                            #    if {_num} >= {_index}:
+                            #        add uncolored loop-value-2 to {_affixes::*}
+                            #    add 1 to {_num}
+                            #set {_affixes} to (join {_affixes::*} by "!!!")
+                            #broadcast {_affixes}
+                            set slot 40 of player's current inventory to 1 of loop-item
+                            play sound "block.grindstone.use" with volume 4 and pitch 2 to player
+                            play sound "block.smithing_table.use" with volume 4 and pitch 1.2 to player
+                            remove loop-item from player
+                            set {_haveKeystone} to true
+                            stop loop
+                if slot 40 of player's current inventory is not black glass pane:
+                    set {_modifiers::*} to tag "Affixes" of nbt of ({KeystoneItem::%player%})
+                    set {_lore::*} to lore of slot 40 of player's current inventory
+                    loop {_lore::*}:
+                        loop {_modifiers::*}:
+                            if loop-value-1 contains loop-value-2:
+                                if loop-value-1 does not contain "&7":
+                                    add uncolored loop-value-1 to {_affixes::*}
+                    set {_keystonelevel::*} to (uncolored line 1 of lore of slot 40 of player's current inventory) split at " "
+                    set {_keystonelevel} to {_keystonelevel::3} parsed as integer
+                    set slot 31 of player's current inventory to gray glass pane named "&8Dungeon Info" with lore "&7Keystone Level %{_keystonelevel}%%nl%&7Affixes:"
+                    loop {_affixes::*}:
+                        add "&7- %loop-value%" to lore of slot 31 of player's current inventory
+                    set {_increase} to KeystoneModifiers({_keystonelevel})
+                    set {_increasePercent} to ({_increase}-1)*100
+                    add "%nl%&7Health increased by &f%{_increasePercent}%%%&7." to lore of slot 31 of player's current inventory
+                    add "&7Damage increased by &f%{_increasePercent}%%%&7." to lore of slot 31 of player's current inventory
+        else if index of event-slot is 13:
+            if event-slot is blue glass pane:
+                if slot 40 of player's current inventory is not black glass pane:
+                    if player is in party:
+                        set {_party::*} to party members of party of player
+                        loop {_party::*}:
+                            add (name of loop-value parsed as player) to {_partymembers::*}
+                        loop {_partymembers::*}:
+                            if loop-value is offline:
+                                remove loop-value from {_partymembers::*}
+                        set {_loc} to metadata value "KeystoneHolderLoc" of player
+                        set {_locHolder} to metadata value "KeystoneHolderLocation" of player
+                        #// Get the Instance ID
+                        load yaml "plugins/Skript/dungeonconfig/KeystoneHolderIDs.yml" as "keystoneIds"
+                        broadcast "ID %{KeystoneHolderID::%{_locHolder}%}%"
+                        set {_instanceId} to yaml value "Keystone Holders.%{KeystoneHolderID::%{_locHolder}%}%" in "keystoneIds"
+                        if {_instanceId} is set:
+                            set {_instance} to {_instanceId}
+                        broadcast " Instance %{_instance}% InstanceId %{_instanceId}% Loc %{_locHolder}%"
+                        set {-KeystoneHolderLoc%{_instance}%} to {_locHolder}
+                        set metadata value "DungeonInProgress" of block at {_locHolder} to 1
+                        set {_keystonelevel} to tag "KeystoneLevel" of nbt of {KeystoneItem::%player%}
+                        set {-KeystoneLevel%{_instance}%} to {_keystonelevel}
+                        set {_keystoneId} to random 8 char string from charset `0-9` `a-z`
+                        set {_affixes::*} to tag "Affixes" of nbt of ({KeystoneItem::%player%})
+                        set {_keystonenamePlayer} to uncolored name of ({KeystoneItem::%player%})
+                        replace all "Keystone: " in {_keystonenamePlayer} with ""
+                        set {_keystone} to {KeystoneItem::%player%}
+                        set {_keystonename} to tag "KeystoneName" of nbt of {_keystone}
+                        set {KeystoneOwner%{_instance}%} to player
+                        if {_keystonename} = "Siege of Spawn":
+                            set {_dungeonBosses} to 4
+                            set {_boss::*} to yaml list "Bosses" from "SOSspawnlocations"
+                            set {-DungeonTimer%{_instance}%} to 30*60
+                            set {-DungeonTimerLimit%{_instance}%} to 30*60
+                            set {-dungeonBosses%{_instance}%} to 4
+                        set {-dungeonBossesSlain%{_instance}%} to 0
+                        set {-affixes%{_instance}%::*} to {_affixes::*}
+                        broadcast {-affixes%{_instance}%::*}
+                        loop {_partymembers::*}:
+                            if metadata value "dungeon" of loop-value is not set:
+                                set metadata value "dungeon" of loop-value to true
+                                set metadata value "spawnpointDungeon" of loop-value to {_loc}
+                                set metadata value "KeystoneName" of loop-value to {_keystonename}
+                                teleport the loop-value to {_loc}
+                                #set {_player} to loop-value parsed as player
+                                #set {stun::%{_player}%} to true
+                                add loop-value to {-dungeonInstance%{_instance}%::*}
+                                set metadata value "DungeonInstance" of loop-value to {_instance}
+                                set metadata value "KeystoneId" of loop-value to {_keystoneId}
+                                clear loop-value's scoreboard
+                                set title of loop-value's scoreboard to "&f&l%{_keystonename}%"
+                                set line 9 of loop-value's scoreboard to "&eDungeon Level %{_keystonelevel}%"
+                                set line 8 of loop-value's scoreboard to "&fTime Remaining: %CalculateTimer(loop-value, {-DungeonTimer%{_instance}%})%"
+                                set line 7 of loop-value's scoreboard to "&f+2: %CalculateTimer(loop-value, {-DungeonTimer%{_instance}%}*0.6)% | +3: %CalculateTimer(loop-value, {-DungeonTimer%{_instance}%}*0.8)%"
+                                set line 6 of loop-value's scoreboard to "&fDeaths: &c0 (-00:00)"
+                                set line 5 of loop-value's scoreboard to "&70/1 %{_boss::1}% defeated"
+                                set line 4 of loop-value's scoreboard to "&70/1 %{_boss::2}% defeated"
+                                set line 3 of loop-value's scoreboard to "&70/1 %{_boss::3}% defeated"
+                                set line 2 of loop-value's scoreboard to "&70/1 %{_boss::4}% defeated"
+                                set line 1 of loop-value's scoreboard to "&fEnemy Forces: 0%%"
+                                set {_player} to Bukkit.getPluginManager().getPlugin("Essentials").getUser(loop-value)
+                                if {_player}.isGodModeEnabled() = true:
+                                    {_player}.setGodModeEnabled(false)
+                                if loop-value can fly:
+                                    disable flight for loop-value
+                                heal loop-value
+                                if loop-value = player:
+                                    DungeonCountdown(loop-value, {_loc}, {_instance}, true)
+                                else:
+                                    DungeonCountdown(loop-value, {_loc}, {_instance})
+                            else:
+                                send "&c&o%loop-value% is already in a Dungeon. The instance will start without the player." to player
+                        SOSSpawnInstance({_keystoneId}, (size of {-dungeonInstance%{_instance}%::*}), {_instance})
+                        clear metadata value "KeystoneHolderLocation" of player
+                        clear metadata value "KeystoneHolderLoc" of player
+                        set {-EnemyForces%{_instance}%} to 0
+                        LogDungeonStart(player, {-dungeonInstance%{_instance}%::*}, {_keystoneId}, {_keystonelevel}, {_affixes::*})
+                        StartRp({_keystonenamePlayer}, player, {_loc})
+                        UpdateTimer({_instance})
+                        DungeonStatsFile({_keystonename}, {_keystonelevel}, "started")
+                        if {-affixes%{_instance}%::*} contains "Grievous":
+                            spawn 1 armor stand at {_loc} with nbt from "{Invisible:1b,Invincible:1b}"
+                            set the name of last spawned armor stand to "Grievous"
+                            set {_grievous} to last spawned armor stand
+                            kill {_grievous}
+                            teleport {_grievous} to location(-1228, -100, -1792, world "world")
+                            loop {-dungeonInstance%{_instance}%::*}:
+                                Grievous(loop-value, {_grievous})
+
+                        loop all players in radius 50 around {_loc} where [{-dungeonInstance%{_instance}%::*} does not contain input]:
+                            loop 2 times:
+                                execute loop-player command "spawn"
+                    else:
+                        if {jezyk::%player%} = "English":
+                            send "&cYou are not in a party. Use /party create to create a party." to player
+                        else:
+                            send "&cNie jesteś w grupie. Wpisz /party create by utworzyć grupę." to player
+                        play sound "entity.zombie.break_wooden_door" with volume 2 and pitch 1 to player
+
+
+function DungeonCountdown(p: player, loc: location, instance: number, keyowner: boolean = false):
+    set {_radius} to 5
+    loop all blocks in radius ({_radius}) around {_loc}:
+        add loop-value to {_inner::*}
+    loop all blocks in radius ({_radius} + 1) around {_loc}:
+        if loop-block is not solid:
+            if {_inner::*} does not contain loop-value:
+                add type of loop-block to {_blocks::*}
+                set block at loop-block to (blue glass)
+                set tag "custom;KeystoneCountdown" of nbt of loop-block to 1
+    set {_am} to 10
+    set metadata value "CannotUseAbilities" of {_p} to true
+    loop 10 times:
+        if metadata value "dungeon" of {_p} = true:
+            send title "&e&l%{_am}%" with subtitle " " to {_p} for 1 second with fade in 0.5 second and fade out 0.5 second
+            remove 1 from {_am}
+            play sound "block.note_block.pling" with volume 3 and pitch 0.2 at {_p}
+        else:
+            clear {stun::%{_p}%}
+            loop 2 times:
+                execute {_p} command "spawn"
+                wait 1 tick
+            stop loop
+        wait 1 second
+    #clear {stun::%{_p}%}
+    #teleport {_p} to {_loc}
+    clear metadata value "CannotUseAbilities" of {_p}
+    UpdateScoreboardDungeon({_p}, {_instance}, {_keyowner})
+    if {-affixes%{_instance}%::*} contains "Storming":
+        Storming({_p})
+    set {_num} to 0
+    loop all blocks in radius ({_radius} + 1) around {_loc}:
+        if loop-block is blue glass:
+            if tag "custom;KeystoneCountdown" of nbt of loop-block is set:
+                add 1 to {_num}
+                set block at loop-block to {_blocks::%{_num}%}
+    
+function UpdateScoreboardDungeon(p: player, instance: number, keyowner: boolean = false):
+    while {-DungeonTimer%{_instance}%} > 0:
+        wait 1 second
+        stop loop if metadata value "dungeon" of {_p} is not true
+        set {_txt} to CalculateTimer({_p}, {-DungeonTimer%{_instance}%})
+        set line 8 of {_p}'s scoreboard to "&fTime Remaining: %{_txt}%"
+        CompletionCheck({_p}, {_instance})
+    if metadata value "dungeon" of {_p} = true:
+        set line 8 of {_p}'s scoreboard to "&7Time Remaining: %{_txt}%"
+    while metadata value "dungeon" of {_p} = true:
+        wait 1 second
+        stop loop if metadata value "dungeon" of {_p} is not true
+        set {_txt} to CalculateTimer({_p}, {-DungeonTimer%{_instance}%}*-1)
+        set line 8 of {_p}'s scoreboard to "&7Time Remaining: 00:00 (+%{_txt}%)"
+
+function CompletionCheck(p: player, instance: number):
+    if {-DungeonTimer%{_instance}%} < 0.8*{-DungeonTimerLimit%{_instance}%}:
+        set {_completionLine::*} to uncolored line 7 of {_p}'s scoreboard split at " | "
+        set {_completionLine::2} to "&7&m%{_completionLine::2}%"
+        if {-DungeonTimer%{_instance}%} < 0.6*{-DungeonTimerLimit%{_instance}%}:
+            set {_completionLine::1} to "&7&m%{_completionLine::1}%"
+        set line 7 of {_p}'s scoreboard to "%{_completionLine::1}% | %{_completionLine::2}%"
+
+function UpdateTimer(instance: number):
+    wait 10 seconds
+    while {-DungeonTimerLimit%{_instance}%} is set:
+        wait 1 second
+        remove 1 from {-DungeonTimer%{_instance}%}
+
+function UpdateEnemyForces(p: player, instance: number):
+    set {_partymembers::*} to party members of party of {_p}
+    loop {_partymembers::*}:
+        #if loop-value is online:
+        if metadata value "DungeonInstance" of loop-value is {_instance}:
+            loop 4 times:
+                if line loop-number of loop-value-1's scoreboard contains "Enemy Forces":
+                    set line loop-number of loop-value-1's scoreboard to "&fEnemy Forces: %{-EnemyForces%{_instance}%}%%%"
+
+function UpdateMobHealthBar(e: entity):
+    set {_custom} to tag "custom" of nbt of {_e}
+    set {_entity} to tag "ECTextAbove" of {_custom} parsed as entity
+    if {_entity} is set:
+        wait 1 tick
+        if health of {_e} != max health of {_e}: #Remove if problems
+            set {_hp} to (health of {_e}/max health of {_e})*10
+            set {_health} to "||||||||||"
+            loop 10 times:
+                if loop-number <= (rounded up {_hp}):
+                    add 1 to {_green}
+            set {_1} to first ({_green}) characters of {_health}
+            set {_2} to last (10-{_green}) characters of {_health}
+            replace all "|" in {_1} with "&a|"
+            if {_2} is set:
+                replace all "|" in {_2} with "&c|"
+                set {_health} to "%{_1}%%{_2}% &f(%{_hp}*10%)%%"
+            else:
+                set {_health} to "%{_1}% &f(%{_hp}*10%)%%"
+            set the display name of {_entity} to {_health}
+
+function StartRp(keystonename: string, player: player, loc: location):
+    if {_keystonename} = "Siege of Spawn":
+        set {_party::*} to party members of party of {_player}
+        loop {_party::*}:
+            add (name of loop-value parsed as player) to {_partymembers::*}
+        loop {_partymembers::*}:
+            if loop-value is offline:
+                remove loop-value from {_partymembers::*}
+        set {_balthazarStartLoc} to yaml value "BalthazarStartLocation" from "SOSspawnlocations"
+        spawn 1 zombie at {_balthazarStartLoc}
+        set {_x} to last spawned zombie
+        add nbt from "{Silent:1b,Invulnerable:1b,NoAI:1b}" to nbt of {_x}
+        set name of {_x} to "Balthazar"
+        disguise {_x} as "Balthazar"
+        set custom name of {_x}'s disguise to "Balthazar"
+        set skin of {_x}'s disguise to "Balthazar"
+        wait 1.5 seconds
+        make {_x} swing their hand
+        wait 1.7 seconds
+        set {_player} to a random element of {_partymembers::*}
+        make {_x} look at {_player}
+        wait 1.8 second
+        make {_x} swing their hand
+        set {_player} to a random element of {_partymembers::*}
+        make {_x} look at {_player}
+        wait 3.2 seconds
+        make {_x} swing their hand
+        wait 1.8 seconds
+        play sound "entity.enderman.teleport" with volume 3 and pitch 2 at {_loc}
+        draw 40 witch particle at location at location 1 above {_x} with offset vector(0.3, 0.6, 0.3) with extra 0.03
+        teleport {_x} to location(783, 41, -1827, world "world")
+        kill {_x}
+
+function LogDungeonStart(p: player, partymembers: players, keystoneId: text, keystoneLevel: integer, affixes: texts):
+    set {_data} to data()
+    set {_keystone} to {KeystoneItem::%{_p}%}
+    set {_keystonename} to tag "KeystoneName" of nbt of {_keystone}
+    load yaml "plugins/Skript/logs/logi/dungeons/%{_keystonename}%/+%{_keystoneLevel}%/%{_keystoneId}%.yml" as "keystone-%{_keystoneId}%"
+    set yaml value "Dungeon.Keystone Name" in "keystone-%{_keystoneId}%" to {_keystonename}
+    set yaml value "Dungeon.Keystone Level" in "keystone-%{_keystoneId}%" to {_keystoneLevel}
+    loop {_affixes::*}:
+        if loop-value contains ":":
+            set {_affix} to loop-value
+            if {_affixDesc::*} is set:
+                set {_affixDesc} to join {_affixDesc::*} by " "
+                set yaml value "Dungeon.Affixes.%{_affix}%" in "keystone-%{_keystoneId}%" to {_affixDesc}
+                clear {_affixDesc::*}
+                clear {_affixDesc}
+            set yaml value "Dungeon.Affixes.%loop-value%" in "keystone-%{_keystoneId}%" to ""
+        else:
+            add loop-value to {_affixDesc::*}
+        if loop-value = last element of {_affixes::*}:
+            set {_affixDesc} to join {_affixDesc::*} by " "
+            set yaml value "Dungeon.Affixes.%{_affix}%" in "keystone-%{_keystoneId}%" to {_affixDesc}
+    set yaml value "Dungeon.Instance ID" in "keystone-%{_keystoneId}%" to {_keystoneId}
+    set yaml value "Dungeon.Date" in "keystone-%{_keystoneId}%" to {_data}
+    set yaml value "Dungeon.Time" in "keystone-%{_keystoneId}%" to ""
+    set yaml value "Dungeon.Completion" in "keystone-%{_keystoneId}%" to "-"
+    set yaml value "Dungeon.Deaths" in "keystone-%{_keystoneId}%" to 0
+    set yaml value "Dungeon.Count" in "keystone-%{_keystoneId}%" to "0%%"
+    set yaml value "Dungeon.Party Size" in "keystone-%{_keystoneId}%" to size of {_partymembers::*}
+    set yaml list "Dungeon.Players" in "keystone-%{_keystoneId}%" to {_partymembers::*}
+    loop {_partymembers::*}:
+        set yaml value "Dungeon.Players.%loop-value%.Level" in "keystone-%{_keystoneId}%" to {poziom::%loop-value%}
+        set yaml value "Dungeon.Players.%loop-value%.Card" in "keystone-%{_keystoneId}%" to uncolored {kartaname::%loop-value%}
+        set yaml value "Dungeon.Players.%loop-value%.Card.Name" in "keystone-%{_keystoneId}%" to uncolored name of {karta::%loop-value%}
+        set yaml value "Dungeon.Players.%loop-value%.Card.Card Icon" in "keystone-%{_keystoneId}%" to {ikonkakarta::%loop-value%}
+        set {_id} to uncolored line 19 of lore of {karta::%loop-value%}
+        replace all "Id: " in {_id} with ""
+        load yaml "plugins/Skript/playerdata/karty/%uncolored name of {karta::%loop-value%}%/%{_id}%.yml" as "kartyDg-%loop-value%"
+        set {_colour} to yaml value "Card.Colour" in "kartyDg-%loop-value%"
+        set yaml value "Dungeon.Players.%loop-value%.Card.Card Colour" in "keystone-%{_keystoneId}%" to {_colour}
+        set yaml value "Dungeon.Players.%loop-value%.Card.Card ID" in "keystone-%{_keystoneId}%" to {_id}
+        set {_cardLevel} to yaml value "Card.Level" in "kartyDg-%loop-value%"
+        set {_constellation} to yaml value "Card.Constellation" in "kartyDg-%loop-value%"
+        set {_gearscore} to yaml value "Card.Gear Score" in "kartyDg-%loop-value%"
+        if {_constellation} is not set:
+            set {_constellation} to 0
+        if {_gearscore} is not set:
+            set {_gearscore} to 0
+        unload yaml "kartyDg-%loop-value%"
+        set yaml value "Dungeon.Players.%loop-value%.Card.Level" in "keystone-%{_keystoneId}%" to {_cardLevel}
+        set yaml value "Dungeon.Players.%loop-value%.Card.Constellation" in "keystone-%{_keystoneId}%" to {_constellation}
+        set yaml value "Dungeon.Players.%loop-value%.Card.Gear Score" in "keystone-%{_keystoneId}%" to {_gearscore}
+        loop 5 times:
+            set {_talent} to tag "Talents;Row %loop-number%" of nbt of {karta::%loop-value-1%}
+            if tag "Talents;Row %loop-number%" of nbt of {karta::%loop-value-1%} is set:
+                set yaml value "Dungeon.Players.%loop-value-1%.Card.Talents.Row %loop-number%" in "keystone-%{_keystoneId}%" to {_talent}
+            else:
+                set yaml value "Dungeon.Players.%loop-value-1%.Card.Talents.Row %loop-number%" in "keystone-%{_keystoneId}%" to "Not learned"
+        #set {_talents} to "%tag "Talents" of nbt compound of {karta::%loop-value%}%"
+        #replace all ":{" in {_talents} with ","
+        #replace all """", "{" and "}" in {_talents} with ""
+        #replace all ",," in {_talents} with ","
+        # set {_talents::*} to {_talents} split at ","
+        #set {_num} to 1
+        #loop {_talents::*}:
+        #    set {_talents::%{_num}%} to "%loop-value-2%"
+        #    if {_talents::%{_num}%} does not contain "1" or "2" or "3" or "4" or "5" or "6" or "7" or "8" or "9":
+        #        add {_talents::%{_num}%} to {_specs::*}
+        #        set {_spec} to {_talents::%{_num}%}
+        #    set {_num} to {_num} + 1
+        #set yaml list "Players.%loop-value-1%.Card.Talents" in "keystone-%{_keystoneId}%" to {_specs::*}
+        #set {_num} to 1
+        #loop {_talents::*}:
+        #    if {_talents::%{_num}%} contains "1" or "2" or "3" or "4" or "5" or "6" or "7" or "8" or "9":
+        #        replace all ":" in {_talents::%{_num}%} with ": "
+        #        add {_talents::%{_num}%} to yaml list "Players.%loop-value-1%.Card.Talents.%{_spec}%" in "keystone-%{_keystoneId}%"
+        #    else:
+        #        set {_spec} to {_talents::%{_num}%}
+        #    set {_num} to {_num} + 1
+        #clear {_talents::*}
+        #clear {_talents}
+        #clear {_spec}
+    save yaml "keystone-%{_keystoneId}%"
+    stop
+    log "   - Traits:" to "logi/dungeons/%{_keystonename}%/%{_keystoneId}%.log"
+    log "     Chorus of Insanity x3" to "logi/dungeons/%{_keystonename}%/%{_keystoneId}%.log"
+    log "     Spiteful Apparitions x2" to "logi/dungeons/%{_keystonename}%/%{_keystoneId}%.log"
+    log "     Whispers of the Damned x1" to "logi/dungeons/%{_keystonename}%/%{_keystoneId}%.log"
+    log " " to "logi/dungeons/%{_keystonename}%/%{_keystoneId}%.log"
+    log "   - Heart of Earthcraft:" to "logi/dungeons/%{_keystonename}%/%{_keystoneId}%.log"
+    log "     Level: 20" to "logi/dungeons/%{_keystonename}%/%{_keystoneId}%.log"
+    log "     Item Level: 320" to "logi/dungeons/%{_keystonename}%/%{_keystoneId}%.log"
+    #log "     Azerite: %{azerite::%loop-value%}%" to "logi/dungeons/%{_keystonename}%/%{_keystoneId}%.log"
+    log " " to "logi/dungeons/%{_keystonename}%/%{_keystoneId}%.log"
+    log "   - Gear:" to "logi/dungeons/%{_keystonename}%/%{_keystoneId}%.log"
+    log "      Head:" to "logi/dungeons/%{_keystonename}%/%{_keystoneId}%.log"
+    log "       Visage of the Ascended Prophet:" to "logi/dungeons/%{_keystonename}%/%{_keystoneId}%.log"
+    log "        Item Level: 60" to "logi/dungeons/%{_keystonename}%/%{_keystoneId}%.log"
+    log "        Stats:" to "logi/dungeons/%{_keystonename}%/%{_keystoneId}%.log"
+    log "         +17 Intellect" to "logi/dungeons/%{_keystonename}%/%{_keystoneId}%.log"
+    log "         +19 Health" to "logi/dungeons/%{_keystonename}%/%{_keystoneId}%.log"
+    log "        Azerite Traits:" to "logi/dungeons/%{_keystonename}%/%{_keystoneId}%.log"
+    log "         Chorus of Insanity" to "logi/dungeons/%{_keystonename}%/%{_keystoneId}%.log"
+    log "         Spiteful Apparitions" to "logi/dungeons/%{_keystonename}%/%{_keystoneId}%.log"
+    log " " to "logi/dungeons/%{_keystonename}%/%{_keystoneId}%.log"
+
+function CalculateTimer(p: player, timer: number, extra: number = 0) :: text:
+    add {_extra} to {_timer}
+    set {_timer} to round({_timer}, 0)
+    set {_instance} to metadata value "DungeonInstance" of {_p}
+    set {_time} to "%{_timer}% seconds" parsed as timespan
+    set {_timescore} to "%{_time}%"
+    if {_timescore} does not contain " minutes" or " minute":
+        set {_onlySeconds} to true
+    replace all " minutes" and " minute" and "seconds" and "second" in {_timescore} with ""
+    if {_timescore} contains "and":
+        set {_timescoreList::*} to {_timescore} split at " and "
+        if length of {_timescoreList::1} = 1:
+            set {_timescoreList::1} to "0%{_timescoreList::1}%"
+        replace all " " in {_timescoreList::2} with ""
+        if length of {_timescoreList::2} = 1:
+            set {_timescoreList::2} to "0%{_timescoreList::2}%"
+        set {_txt} to join {_timescoreList::*} by ":"
+    else:
+        if {_onlySeconds} is true:
+            replace all " " in {_timescore} with ""
+            if length of {_timescore} = 1:
+                set {_txt} to "00:0%{_timescore}%"
+            else:
+                set {_txt} to "00:%{_timescore}%"
+        else:
+            set {_secs} to ":00"
+            if length of {_timescore} = 1:
+                set {_txt} to "0%{_timescore}%%{_secs}%"
+            else:
+                set {_txt} to "%{_timescore}%%{_secs}%"
+    return {_txt}
+
+on command:
+    if metadata value "dungeon" of player is true:
+        if full command is not "dungeon leave":
+            if {jezyk::%player%} = "English":
+                send "&cYou cannot use any commands while you're in a dungeon. If you wish to leave the dungeon, type /dungeon leave." to player
+            else:
+                send "&cNie możesz używac żadnych komend będąc w dungeonie. Jeśli chcesz opuścić dungeon, wpisz /dungeon leave."
+            #cancel event
+function GiveKeystone(p: player, keystoneName: text, keystoneLevel: number, keystoneData: number):
+    if {_keystoneLevel} >= 2:
+        set {_affixesList2::*} to "Fortified" and "Tyrannical"
+        set {_randomAffix} to a random element of {_affixesList2::*}
+        add {_randomAffix} to {_affixesKeystoneData::*}
+        add "%nl% <##00ff00>%{_randomAffix}%" to {_affixes::*}
+    if {_keystoneLevel} >= 4:
+        set {_affixesList4::*} to "Bolstering", "Bursting", "Inspiring" and "Spiteful"
+        set {_randomAffix} to a random element of {_affixesList4::*}
+        add {_randomAffix} to {_affixesKeystoneData::*}
+        add "%nl% <##00ff00>%{_randomAffix}%" to {_affixes::*}
+    if {_keystoneLevel} >= 7:
+        set {_affixesList7::*} to "Raging", "Explosive", "Storming" and "Grievous"
+        set {_randomAffix} to a random element of {_affixesList7::*}
+        add {_randomAffix} to {_affixesKeystoneData::*}
+        add "%nl% <##00ff00>%{_randomAffix}%" to {_affixes::*}
+
+    if {_keystoneLevel} >= 2:
+        set {_affixes} to join {_affixes::*} by ""
+        loop {_affixes::*}:
+            if loop-value contains "Fortified":
+                set {_affixDesc::%loop-index%} to "&7Fortified:%nl%&7Non-boss enemies have 20%% more health%nl%&7and inflict 30%% increased damage."
+            else if loop-value contains "Tyrannical":
+                set {_affixDesc::%loop-index%} to "&7Tyrannical:%nl%&7Bosses have 30%% more health. Bosses and their%nl%&7minions inflict up to 15%% increased damage."
+            else if loop-value contains "Bolstering":
+                set {_affixDesc::%loop-index%} to "&7Bolstering:%nl%&7When any non-boss enemy dies, its death cry%nl%&7empowers nearby allies, increasing their maximum%nl%&7health by 15%% and damage by 20%%."
+            else if loop-value contains "Bursting":
+                set {_affixDesc::%loop-index%} to "&7Bursting:%nl%&7When slain, non-boss enemies explode, causing all%nl%&7players to suffer damage over 4 sec. This effect stacks."
+            else if loop-value contains "Inspiring":
+                set {_affixDesc::%loop-index%} to "&7Inspiring:%nl%&7Some non-boss enemies have an inspiring presence%nl%&7that strengthens their allies, causing them to be%nl%&7immune to CC."
+            else if loop-value contains "Spiteful":
+                set {_affixDesc::%loop-index%} to "&7Spiteful:%nl%&7Fiends rise from the corpses of non-boss%nl%&7enemies and pursue random players."
+            else if loop-value contains "Raging":
+                set {_affixDesc::%loop-index%} to "&7Raging:%nl%&7Non-boss enemies enrage at 30%% health remaining,%nl%&7dealing 100%% increased damage until defeated."
+            else if loop-value contains "Explosive":
+                set {_affixDesc::%loop-index%} to "&7Explosive:%nl%&7While in combat, enemies periodically summon%nl%&7Explosive Orbs that will detonate if not destroyed."
+            else if loop-value contains "Storming":
+                set {_affixDesc::%loop-index%} to "&7Storming:%nl%&7Players are periodically knocked up or%nl%&7pushed back or forward at random intervals."
+            else if loop-value contains "Grievous":
+                set {_affixDesc::%loop-index%} to "&7Grievous:%nl%&7Injured players suffer increasing%nl%&7damage over time until healed."
+    else:
+        set {_affixes} to " &7none"
+    
+    if {_affixDesc::*} is set:
+        set {_affixDesc} to join {_affixDesc::*} by "%nl% %nl%"
+
+    set {_key} to iron ingot named "<##a335ee>Keystone: %{_keystoneName}%" with lore "<##fdd002>Keystone Level %{_keystoneLevel}%%nl%&fSoulbound: %{_p}%%nl%&fModifiers:%{_affixes}%%nl% %nl%<##fdd002>Place within the Keystone Holder%nl%<##fdd002>inside the Dungeon." with nbt from "{CustomModelData:%{_keystoneData}%,Keystone:1b,KeystoneName:""%{_keystoneName}%"",KeystoneLevel:%{_keystoneLevel}%,Soulbound:%{_p}'s name%}"
+    if {_affixDesc} is set:
+        add "%nl%%{_affixDesc}%" to lore of {_key}
+    set tag "Affixes" of nbt of {_key} to {_affixesKeystoneData::*}
+    set {KeystoneItem::%{_p}%} to {_key}
+    giveItem({_p}, {_key})
+    
+function CheckIfDungeonCompleted(p: player):
+    if metadata value "DungeonInstance" of {_p} is set:
+        set {_instance} to metadata value "DungeonInstance" of {_p}
+        if {-EnemyForces%{_instance}%} >= 100:
+            if {-dungeonBossesSlain%{_instance}%} = {-dungeonBosses%{_instance}%}:
+                broadcast "!!"
+                wait 1 tick
+                KeystoneCompleted({KeystoneOwner%{_instance}%}, {_instance})
+
+function KeystoneCompleted(p: player, instance: number):
+    broadcast "Depending on the completion, award a +1/+2/+3 key"
+    broadcast "Randomize affixes depending on the key level"
+    broadcast "Add 1 to global completion stats"
+    broadcast "Spawn a chest and determine dropped items"
+    broadcast "Send message and title"
+    broadcast "Play appropriate sounds"
+    broadcast "Randomize affixes for the key"
+    
+    set {_keystones::*} to "Siege of Spawn"
+    set {_newKeystone} to a random element of {_keystones::*}
+    if {_newKeystone} = "Siege of Spawn":
+        set {_keystoneData} to 5
+    
+    loop {-dungeonInstance%{_instance}%::*}:
+        if metadata value "dungeon" of loop-value is set:
+            set {_keystonename} to metadata value "KeystoneName" of loop-value
+            set {_keystonelevel} to {-KeystoneLevel%{_instance}%}
+
+            
+            if {-DungeonTimer%{_instance}%} > 0.8*{-DungeonTimerLimit%{_instance}%}:
+                set {_completion} to 3
+            else if {-DungeonTimer%{_instance}%} > 0.6*{-DungeonTimerLimit%{_instance}%}:
+                set {_completion} to 2
+            else:
+                if {-DungeonTimer%{_instance}%} > 0:
+                    set {_completion} to 1
+                else:
+                    set {_completion} to -1
+                
+            if {_keystonelevel} + {_completion} > 1:
+                set {_newKeystoneLevel} to {_keystonelevel} + {_completion}
+            else:
+                set {_newKeystoneLevel} to 2
+
+            set {_finishedIn} to CalculateTimer(loop-value, ({-DungeonTimerLimit%{_instance}%}-{-DungeonTimer%{_instance}%}))
+            
+            
+            if {language::%loop-value%} = "English":
+                if {_completion} = -1:
+                    send "&eYou finished a +%{_keystonelevel}% %{_keystonename}% in %{_finishedIn}%." to loop-value
+                    send "&eKeystone level reduced by -1." to loop-value
+                    send "&eYour new Keystone is a +%{_newKeystoneLevel}% %{_newKeystone}%." to loop-value
+                    play sound "dungeons.keystone_failed" with volume 5 and pitch 1 to loop-value
+                else:
+                    send "&eYou sucessfully finished a +%{_keystonelevel}% %{_keystonename}% in %{_finishedIn}% and beat the timer!" to loop-value
+                    send "&eKeystone level increased by +%{_completion}%." to loop-value
+                    send "&eYour new Keystone is a +%{_newKeystoneLevel}% %{_newKeystone}%." to loop-value
+                    play sound "dungeons.keystone_upgrade" with volume 5 and pitch 1 to loop-value
+                    broadcast "CHECK PER PLAYER DUNGEON STAT FILE FOR PERSONAL BEST DUNGEON BOTH +KEYSTONE LEVEL AND TIME WISE, IF IT'S PB, PLAY PERSONAL BEST SOUND"
+                    send title "&e+%{_keystonelevel}% %{_keystonename}%" with subtitle "<##00ff00>Keystone Upgraded +%{_completion}%" to loop-value for 4 seconds with fade in 1 second and fade out 1 second
+            else:
+                if {_completion} = -1:
+                    send "&eUkończyłeś +%{_keystonelevel}% %{_keystonename}% in %{_finishedIn}%." to loop-value
+                    send "&ePoziom kamienia klucza został zmniejszony o -1." to loop-value
+                    send "&eTwój nowy kamień klucza to +%{_newKeystoneLevel}% %{_newKeystone}%." to loop-value
+                    play sound "dungeons.keystone_failed" with volume 5 and pitch 1 to loop-value
+                else:
+                    send "&ePomyślnie ukończyłeś +%{_keystonelevel}% %{_keystonename}% w %{_finishedIn}%, pokonując czas!" to loop-value
+                    send "&ePoziom kamienia klucza został zwiększony o +%{_completion}%." to loop-value
+                    send "&eTwój nowy kamień klucza to +%{_newKeystoneLevel}% %{_newKeystone}%." to loop-value
+                    play sound "dungeons.keystone_upgrade" with volume 5 and pitch 1 to loop-value
+                    broadcast "CHECK PER PLAYER DUNGEON STAT FILE FOR PERSONAL BEST DUNGEON BOTH +KEYSTONE LEVEL AND TIME WISE, IF IT'S PB, PLAY PERSONAL BEST SOUND"
+                    send title "&e+%{_keystonelevel}% %{_keystonename}%" with subtitle "<##00ff00>Kamień Klucza Ulepszony +%{_completion}%" to loop-value for 4 seconds with fade in 1 second and fade out 1 second
+            
+            if loop-value = {_p}:
+                GiveKeystone(loop-value, {_newKeystone}, {_newKeystoneLevel}, {_keystoneData})
+
+            clear metadata value "dungeon" of loop-value
+        
+            remove loop-value from {-dungeonInstance%{_instance}%::*}
+            remove poison from potion effects of loop-value
+            
+            if {_completion} = -1:
+                DungeonPlayerStat(loop-value, {_keystonename}, "completed")
+            else:
+                DungeonPlayerStat(loop-value, {_keystonename}, "timed")
+
+            if size of {-dungeonInstance%{_instance}%::*} = 0:
+                broadcast "Yes"
+                set {_keystoneId} to metadata value "KeystoneId" of loop-value
+                load yaml "plugins/Skript/logs/logi/dungeons/%{_keystonename}%/+%{_keystonelevel}%/%{_keystoneId}%.yml" as "keystone-%{_keystoneId}%"
+                set {_time} to "%CalculateTimer(loop-value, ({-DungeonTimerLimit%{_instance}%}-{-DungeonTimer%{_instance}%}))% / %CalculateTimer(loop-value, {-DungeonTimerLimit%{_instance}%})%"
+                if {-DungeonTimer%{_instance}%} < 0:
+                    set {_timeText} to "over time"
+                    set {_timeDif} to CalculateTimer(loop-value, ({-DungeonTimer%{_instance}%}*-1))
+                else:
+                    set {_timeText} to "under time"
+                    set {_timeDif} to CalculateTimer(loop-value, ({-DungeonTimer%{_instance}%}))
+                set yaml value "Dungeon.Time" in "keystone-%{_keystoneId}%" to "%{_time}%  (%{_timeDif}% %{_timeText}%)"
+                if {_completion} != -1:
+                    set {_completion} to "+%{_completion}%"
+                set yaml value "Dungeon.Completion" in "keystone-%{_keystoneId}%" to "Completed %{_completion}%"
+                set yaml value "Dungeon.Count" in "keystone-%{_keystoneId}%" to "100%%"
+                save yaml "keystone-%{_keystoneId}%"
+                loop all entities where [tag "custom;ECDungeonInstance" of nbt of input is set]:
+                    if tag "custom;ECDungeonInstance" of nbt of loop-entity = {_instance}:
+                        if tag "custom;ECTextAbove" of nbt of loop-entity is set:
+                            set {_textabove} to (tag "custom;ECTextAbove" of nbt of loop-entity) parsed as entity
+                            teleport {_textabove} to location(-1228, -100, -1792, world "world")
+                            kill {_textabove}
+                        teleport loop-entity to location(-1228, -100, -1792, world "world")
+                        set {_id} to tag "custom;ECBossBossBar" of nbt of loop-entity
+                        delete bossbar with id {_id}
+                        kill loop-entity
+                    else if tag "custom;SpitefulShade" of nbt of loop-entity is set:
+                        SpitefulShadeClear(loop-entity)
+                clear metadata value "DungeonInProgress" of block at {-KeystoneHolderLoc%{_instance}%}
+                clear {-KeystoneHolderLoc%{_instance}%}
+                clear {-dungeonInstance%{_instance}%::*}
+                clear {-DungeonTimer%{_instance}%}
+                clear {-DungeonTimerLimit%{_instance}%}
+                clear {-deaths%{_instance}%}
+                clear {-dungeonBosses%{_instance}%}
+                clear {-dungeonBossesSlain%{_instance}%}
+                clear {KeystoneOwner%{_instance}%}
+                clear {-EnemyForces%{_instance}%}
+                clear {-affixes%{_instance}%::*}
+                clear metadata value "KeystoneName" of loop-value
+                #remove 1 from {-dungeons}
+                unload yaml "keystone-%{_keystoneId}%"
+            clear metadata value "KeystoneId" of loop-value
+            clear metadata value "DungeonInstance" of loop-value
+            remove loop-value from all boss bars
+            clear loop-value's scoreboard
+            if metadata value "ECEngaged" of loop-value is not set:
+                if metadata value "DungeonInstance" of loop-value is not set:
+                    UpdateScoreboard(loop-value)
+            if {_completion} = -1:
+                DungeonStatsFile({_keystonename}, {_keystonelevel}, "completed")
+            else:
+                DungeonStatsFile({_keystonename}, {_keystonelevel}, "timed")
+            TopKeystones({_keystoneId})
+            if {_keystonename} = "Siege of Spawn":
+                execute console command "ar load SiegeOfSpawn"
+                execute console command "ar load DreamcatcherFightArea1"
+            wait 1 second
+            MostRecentKeystones({_keystoneId}, "plugins/Skript/logs/logi/dungeons/%{_keystonename}%/+%{_keystonelevel}%/%{_keystoneId}%.yml")
+
+function MostRecentKeystones(keystoneId: string, keystonePath: string):
+    set {mostRecentKeystone} to {_keystoneId}
+    set {mostRecentKeystonePath} to {_keystonePath}
+    UpdateTopDungeons({mostRecentKeystone}, {mostRecentKeystonePath}, "recent")
+
+function TopKeystones(keystoneId: string):
+    wait 1 tick
+    set {_directories::*} to all directories of dir path "plugins/Skript/logs/logi/dungeons/" 
+    loop {_directories::*}:
+        set {_directoriesDungeons::*} to all directories of dir path "%loop-value%/" #Gets all dungeons inside the logs/dungeons folder
+    loop {_directoriesDungeons::*}:
+        add 1 to {_index}
+        if "%loop-value%" contains "+":
+            set {_keyLevelDirectory::*} to "%loop-value%" split at "/"
+            set {_size} to size of {_keyLevelDirectory::*}
+            set {_keyLevelDirectory} to {_keyLevelDirectory::%{_size}%} #Gets the key level
+            replace all "+" in {_keyLevelDirectory} with ""
+            set {_keyLevelDirectory} to {_keyLevelDirectory} parsed as number
+            add {_keyLevelDirectory} to {_keyLevels::*}
+        if {_index} = (size of {_directoriesDungeons::*}):
+            set {_highestKeyLevel} to max({_keyLevels::*})
+            set {_highestKeyLevels::*} to sorted {_keyLevels::*}
+            set {_sizeKeystone} to size of {_keyLevels::*} + 1
+            set {_dungeonName} to {_keyLevelDirectory::%{_size}-1%}
+            set {_loopCount} to 0
+            if size of {_keyLevels::*} < 3:
+                set {_loops} to size of {_keyLevels::*}
+            else:
+                set {_loops} to 3
+            while size of {_bestKeystones::*} < {_loops}:
+                add 1 to {_loopCount}
+                set {_bestKeystones} to {_highestKeyLevels::%{_sizeKeystone}-{_loopCount}%}
+                if {_bestKeystones} is not set:
+                    set {_bestKeystones} to {_highestKeyLevel}
+                set {_files::*} to all files of dir path "plugins/Skript/logs/logi/dungeons/%{_dungeonName}%/+%{_bestKeystones}%"
+                if size of {_files::*} > 1:
+                    load all yaml from directory "plugins/Skript/logs/logi/dungeons/%{_dungeonName}%/+%{_bestKeystones}%" using the filename as the id
+                    loop the loaded yaml from directory "plugins/Skript/logs/logi/dungeons/%{_dungeonName}%/+%{_bestKeystones}%":
+                        set {_completed} to yaml value "Dungeon.Completion" in loop-value-2
+                        if "%{_completed}%" contains "Completed":
+                            if "%{_completed}%" != "Not completed":
+                                if 1 = 1:
+                                    set {_timedIn} to yaml value "Dungeon.Time" in loop-value-2
+                                    set {_timedIn::*} to {_timedIn} split at " "
+                                    set {_time1} to {_timedIn::1}
+                                    set {_minutesAndSeconds::*} to {_time1} split at ":"
+                                    set {_minutes} to {_minutesAndSeconds::1}
+                                    set {_seconds} to {_minutesAndSeconds::2}
+                                    if character at 1 in {_minutes} = "0":
+                                        set {_minutes} to character at 2 in {_minutes}
+                                        if {_minutes} = "0":
+                                            clear {_minutes}
+                                    if {_minutes} is set:
+                                        set {_minutes} to {_minutes} parsed as number
+                                        add {_minutes}*60 to {_totalTime}
+                                    if character at 1 in {_seconds} = "0":
+                                        set {_seconds} to character at 2 in {_seconds}
+                                    set {_seconds} to {_seconds} parsed as number
+                                    add {_seconds} to {_totalTime}
+                                    add {_totalTime} to {_totalTime::%loop-value-2%}
+                                    clear {_totalTime}
+                                set {_bestInThisKeyLevel::*} to sorted indices of {_totalTime::*}
+                                loop {_bestInThisKeyLevel::*}:
+                                    if size of {_bestKeystones::*} < 3:
+                                        add loop-value-2 to {_bestKeystones::*}
+                                        add "plugins/Skript/logs/logi/dungeons/%{_dungeonName}%/+%{_bestKeystones}%/%loop-value-2%.yml" to {_bestKeystonesPath::*}
+                                    else:
+                                        stop loop
+                                clear {_bestInThisKeyLevel::*}
+                else:
+                    load all yaml from directory "plugins/Skript/logs/logi/dungeons/%{_dungeonName}%/+%{_bestKeystones}%" using the filename as the id
+                    loop the loaded yaml from directory "plugins/Skript/logs/logi/dungeons/%{_dungeonName}%/+%{_bestKeystones}%":
+                        set {_completed} to yaml value "Dungeon.Completion" in loop-value-2
+                        if "%{_completed}%" contains "Completed":
+                            if "%{_completed}%" != "Not completed":
+                                add loop-value-2 to {_bestKeystones::*}
+                                add "plugins/Skript/logs/logi/dungeons/%{_dungeonName}%/+%{_bestKeystones}%/%loop-value-2%.yml" to {_bestKeystonesPath::*}
+                loop the loaded yaml from directory "plugins/Skript/logs/logi/dungeons/%{_dungeonName}%/+%{_bestKeystones}%":
+                    unload loop-value-2
+            if {_bestKeystones::*} != {topKeystones::*}:
+                set {topKeystones::*} to {_bestKeystones::*}
+                set {topKeystonesPath::*} to {_bestKeystonesPath::*}
+                UpdateTopDungeons({topKeystones::1}, {topKeystonesPath::1}, "top")
+
+function UpdateTopDungeons(topDungeon: string, topDungeonPath: string, topOrRecent: string):
+    broadcast ":P"
+    if {_topOrRecent} = "top":
+        set {_id} to "TopDungeon"
+        delete hologram with the id {_id}
+        create a hologram at location(-1182, 70, -1807, world "world") with the id {_id}
+        add glowing diamond helmet to the hologram with id {_id}
+    else if {_topOrRecent} = "recent":
+        set {_id} to "RecentDungeon"
+        delete hologram with the id {_id}
+        create a hologram at location(-1183, 70, -1821, world "world") with the id {_id}
+        add glowing totem of undying to the hologram with id {_id}
+    load yaml "%{_topDungeonPath}%" as "TopDungeonFile"
+    set {_keyName} to yaml value "Dungeon.Keystone Name" in "TopDungeonFile"
+    set {_keyLevel} to yaml value "Dungeon.Keystone Level" in "TopDungeonFile"
+    add line "&e+%{_keyLevel}% %{_keyName}%" to the hologram with id {_id}
+    set {_keyTime} to yaml value "Dungeon.Time" in "TopDungeonFile"
+    set {_time::*} to {_keyTime} split at " "
+    set {_time::2} to "&7%{_time::2}%"
+    set {_keyTime} to join "%{_time::1}% &7%{_time::2}% &r%{_time::3}%"
+    set {_keyCompletion} to yaml value "Dungeon.Completion" in "TopDungeonFile"
+    replace all "Completed " in {_keyCompletion} with ""
+    add line "%{_keyTime}% %{_keyCompletion}%" to the hologram with id {_id}
+    set {_deaths} to yaml value "Dungeon.Deaths" in "TopDungeonFile"
+    set {_partySize} to  yaml value "Dungeon.Party Size" in "TopDungeonFile"
+    add line "💀 Deaths: &r%{_deaths}% &7| &fParty Size: %{_partySize}%" to the hologram with id {_id}
+    loop yaml nodes with keys "Damage Dealt" from "TopDungeonFile":
+        set {_player} to loop-value
+        set {_totalDamageDealtMobs} to yaml value "Damage Dealt.%loop-value%.Total.Mobs.Total" from "TopDungeonFile"
+        set {_totalDamageDealtBosses} to yaml value "Damage Dealt.%loop-value%.Total.Bosses.Total" from "TopDungeonFile"
+        set {_totalDamagePlayer::%{_player}%} to {_totalDamageDealtMobs} + {_totalDamageDealtBosses}
+    set {_totalDamageTop::*} to sorted {_totalDamagePlayer::*}
+    set {_totalDamageTop::*} to {_totalDamageTop::1}, {_totalDamageTop::2} and {_totalDamageTop::3}
+    set {_totalDamageTopPlayers::*} to sorted indices of {_totalDamagePlayer::*}
+    set {_totalDamageTopPlayers::*} to {_totalDamageTopPlayers::1}, {_totalDamageTopPlayers::2} and {_totalDamageTopPlayers::3}
+    loop {_totalDamageTopPlayers::*}:
+        set {_totalDamageTopPlayers::%loop-index%} to loop-value in strict proper case
+    broadcast {_totalDamageTop3::*} and {_totalDamageTop3Players::*}
+    set {_timedIn} to yaml value "Dungeon.Time" in "TopDungeonFile"
+    set {_timedIn::*} to {_timedIn} split at " "
+    set {_time1} to {_timedIn::1}
+    set {_minutesAndSeconds::*} to {_time1} split at ":"
+    set {_minutes} to {_minutesAndSeconds::1}
+    set {_seconds} to {_minutesAndSeconds::2}
+    if character at 1 in {_minutes} = "0":
+        set {_minutes} to character at 2 in {_minutes}
+        if {_minutes} = "0":
+            clear {_minutes}
+    if {_minutes} is set:
+        set {_minutes} to {_minutes} parsed as number
+        add {_minutes}*60 to {_totalTime}
+    if character at 1 in {_seconds} = "0":
+        set {_seconds} to character at 2 in {_seconds}
+    set {_seconds} to {_seconds} parsed as number
+    add {_seconds} to {_totalTime}
+    loop {_totalDamageTop::*}:
+        add loop-value/{_totalTime} to {_dpsTop3::*}
+    loop size of {_totalDamageTop::*} times:
+        set {_player} to {_totalDamageTopPlayers::%loop-number%}
+        set {_cardIcon} to yaml value "Dungeon.Players.%{_player}%.Card.Card Icon" from "TopDungeonFile"
+        set {_damage} to round({_totalDamageTop::%loop-number%}, 2)
+        set {_dps} to round({_dpsTop3::%loop-number%}, 2)
+        add line "%loop-number%. &f%{_cardIcon}% &f%{_player}%: %{_damage}% DMG &7| &f%{_dps}% DPS" to the hologram with id {_id}
+   # add line "💀 Deaths: &r%{_deaths}% &7| &fParty Size: %{_partySize}%" to the hologram with id {_id}
+    #add line "1. &f &fWuuzurd: 1000 DMG &7| &f2.3 DPS" to the hologram with id {_id}
+    #add line "2. &f &fKapo: 600 DMG &7| &f2.3 DPS" to the hologram with id {_id}
+    #add line "3. &f &fAloesia: 200 DMG &7| &f0.55 DPS" to the hologram with id {_id}
+    #add line "Affixes: Fortified, Bolstering, Raging" to the hologram with id {_id}
+    set {_date} to yaml value "Dungeon.Date" in "TopDungeonFile"
+    set {_date::*} to {_date} split at " "
+    set {_dateNew} to "%{_date::2}% &7| &f%{_date::1}%"
+    add line {_dateNew} to the hologram with id {_id}
+    unload yaml "TopDungeonFile"
+
+function LatestKeystone(keystoneId: string): 
+    set {latestKeystone} to {_keystoneId}
+
+function KeystoneFailed(p: player):
+    set {_instance} to metadata value "DungeonInstance" of {_p}
+    set {_item} to {KeystoneItem::%{_p}%}   
+    set ({KeystoneItem::%{_p}%}) to KeystoneAffixesReduce({_p}, {_item})
+    giveItem({_p}, ({KeystoneItem::%{_p}%}))
+    #clear {KeystoneItem::%{_p}%}
+
+function KeystoneAffixesReduce(p: player, keystoneItem: item) :: item:
+    set {_keystoneName} to tag "KeystoneName" of nbt of {_keystoneItem}
+    set {_keystoneLevel} to tag "KeystoneLevel" of nbt of {_keystoneItem}
+    set {_affixes::*} to tag "Affixes" of nbt of {_keystoneItem}
+
+    if {_keystoneLevel} - 1 >= 1:
+        set {_keystoneLevel} to {_keystoneLevel} - 1
+    else:
+        set {_keystoneLevel} to 1
+
+    if {_keystoneLevel} < 4:
+        remove "Bolstering", "Bursting", "Inspiring" and "Spiteful" from {_affixes::*}
+    else if {_keystoneLevel} < 7:
+        remove "Raging", "Explosive", "Storming" and "Grievous" from {_affixes::*}
+    
+    loop {_affixes::*}:
+        add "%nl% <##00ff00>%loop-value%" to {_modifiers::*}
+    set {_affixes} to join {_modifiers::*} by ""
+    
+    if {_keystoneLevel} >= 2:
+        loop {_affixes::*}:
+            if loop-value contains "Fortified":
+                set {_affixDesc::%loop-index%} to "&7Fortified:%nl%&7Non-boss enemies have 20%% more health%nl%&7and inflict 30%% increased damage."
+            else if loop-value contains "Tyrannical":
+                set {_affixDesc::%loop-index%} to "&7Tyrannical:%nl%&7Bosses have 30%% more health. Bosses and their%nl%&7minions inflict up to 15%% increased damage."
+            else if loop-value contains "Bolstering":
+                set {_affixDesc::%loop-index%} to "&7Bolstering:%nl%&7When any non-boss enemy dies, its death cry%nl%&7empowers nearby allies, increasing their maximum%nl%&7health by 15%% and damage by 20%%."
+            else if loop-value contains "Bursting":
+                set {_affixDesc::%loop-index%} to "&7Bursting:%nl%&7When slain, non-boss enemies explode, causing all%nl%&7players to suffer damage over 4 sec. This effect stacks."
+            else if loop-value contains "Inspiring":
+                set {_affixDesc::%loop-index%} to "&7Inspiring:%nl%&7Some non-boss enemies have an inspiring presence%nl%&7that strengthens their allies, causing them to be%nl%&7immune to CC."
+            else if loop-value contains "Spiteful":
+                set {_affixDesc::%loop-index%} to "&7Spiteful:%nl%&7Fiends rise from the corpses of non-boss%nl%&7enemies and pursue random players."
+            else if loop-value contains "Raging":
+                set {_affixDesc::%loop-index%} to "&7Raging:%nl%&7Non-boss enemies enrage at 30%% health remaining,%nl%&7dealing 100%% increased damage until defeated."
+            else if loop-value contains "Explosive":
+                set {_affixDesc::%loop-index%} to "&7Explosive:%nl%&7While in combat, enemies periodically summon%nl%&7Explosive Orbs that will detonate if not destroyed."
+            else if loop-value contains "Storming":
+                set {_affixDesc::%loop-index%} to "&7Storming:%nl%&7Players are periodically knocked up or%nl%&7pushed back or forward at random intervals."
+            else if loop-value contains "Grievous":
+                set {_affixDesc::%loop-index%} to "&7Grievous:%nl%&7Injured players suffer increasing%nl%&7damage over time until healed."
+    else:
+        set {_affixes} to " &7none"
+    
+    if {_affixDesc::*} is set:
+        set {_affixDesc} to join {_affixDesc::*} by "%nl% %nl%"
+
+    set {_keystoneData} to tag "CustomModelData" of nbt of {_keystoneItem}
+
+    set {_key} to iron ingot named "<##a335ee>Keystone: %{_keystoneName}%" with lore "<##fdd002>Keystone Level %{_keystoneLevel}%%nl%&fSoulbound: %{_p}%%nl%&fModifiers:%{_affixes}%%nl% %nl%<##fdd002>Place within the Keystone Holder%nl%<##fdd002>inside the Dungeon." with nbt from "{CustomModelData:%{_keystoneData}%,Keystone:1b,KeystoneName:""%{_keystoneName}%"",KeystoneLevel:%{_keystoneLevel}%,Soulbound:%{_p}'s name%}"
+    if {_affixDesc} is set:
+        add "%nl%%{_affixDesc}%" to lore of {_key}
+    set tag "Affixes" of nbt of {_key} to {_affixes::*}
+    set tag "KeystoneLevel" of nbt of {_key} to {_keystoneLevel}
+    return {_key}
+
+function DungeonLeave(p: player):
+    if metadata value "dungeon" of {_p} is set:
+        clear metadata value "dungeon" of {_p}
+        if {language::%{_p}%} = "English":
+            send "&aYou left the dungeon." to {_p}
+        else:
+            send "&aOpuściłeś dungeon." to {_p}
+        set {_instance} to metadata value "DungeonInstance" of {_p}
+        set {_keystonename} to metadata value "KeystoneName" of {_p}
+        broadcast "Instance: %{_instance}%"
+        if {KeystoneItem::%{_p}%} is set:
+            broadcast {KeystoneItem::%{_p}%}
+            KeystoneFailed({_p})
+        send title " " with subtitle " " to {_p} for 0 second with fade in 0 second and fade out 0 second
+        remove {_p} from {-dungeonInstance%{_instance}%::*}
+        remove poison from {_p}
+        DungeonPlayerStat({_p}, {_keystonename}, "left")
+        if size of {-dungeonInstance%{_instance}%::*} > 0:
+            loop {-dungeonInstance%{_instance}%::*}:
+                if {language::%loop-value%} = "English":
+                    send "&6- %{_p}% left the dungeon." to loop-value
+                else:
+                    send "&6- %{_p}% opuścił dungeon." to loop-value
+        else if size of {-dungeonInstance%{_instance}%::*} = 0:
+            broadcast "Yes"
+            set {_keystonelevel} to {-KeystoneLevel%{_instance}%}
+            set {_keystoneId} to metadata value "KeystoneId" of {_p}
+            load yaml "plugins/Skript/logs/logi/dungeons/%{_keystonename}%/+%{_keystonelevel}%/%{_keystoneId}%.yml" as "keystone-%{_keystoneId}%"
+            set {_time} to "%CalculateTimer({_p}, ({-DungeonTimerLimit%{_instance}%}-{-DungeonTimer%{_instance}%}))% / %CalculateTimer({_p}, {-DungeonTimerLimit%{_instance}%})%"
+            if {-DungeonTimer%{_instance}%} < 0:
+                set {_timeText} to "over time"
+                set {_timeDif} to CalculateTimer({_p}, ({-DungeonTimer%{_instance}%}*-1))
+                #set {_timePercent} to (({-DungeonTimer%{_instance}%}*-1)/{-DungeonTimerLimit%{_instance}%})*100 //Percent over time
+            else:
+                set {_timeText} to "under time"
+                set {_timeDif} to CalculateTimer({_p}, ({-DungeonTimer%{_instance}%}))
+                #set {_timePercent} to (({-DungeonTimer%{_instance}%})/{-DungeonTimerLimit%{_instance}%})*100 // Percent under time
+            set yaml value "Dungeon.Time" in "keystone-%{_keystoneId}%" to "%{_time}%  (%{_timeDif}% %{_timeText}%)"
+            set yaml value "Dungeon.Completion" in "keystone-%{_keystoneId}%" to "Not completed"
+            set yaml value "Dungeon.Count" in "keystone-%{_keystoneId}%" to "%{-EnemyForces%{_instance}%}%%%"
+            save yaml "keystone-%{_keystoneId}%"
+            loop all entities where [tag "custom;ECDungeonInstance" of nbt of input is set]:
+                if tag "custom;ECDungeonInstance" of nbt of loop-entity = {_instance}:
+                    if tag "custom;ECTextAbove" of nbt of loop-entity is set:
+                        set {_textabove} to (tag "custom;ECTextAbove" of nbt of loop-entity) parsed as entity
+                        teleport {_textabove} to location(-1228, -100, -1792, world "world")
+                        kill {_textabove}
+                    teleport loop-entity to location(-1228, -100, -1792, world "world")
+                    set {_id} to tag "custom;ECBossBossBar" of nbt of loop-entity
+                    delete bossbar with id {_id}
+                    kill loop-entity
+                else if tag "custom;SpitefulShade" of nbt of loop-entity is set:
+                    SpitefulShadeClear(loop-entity)
+            clear metadata value "DungeonInProgress" of block at {-KeystoneHolderLoc%{_instance}%}
+            clear {-KeystoneHolderLoc%{_instance}%}
+            clear {-dungeonInstance%{_instance}%::*}
+            clear {-DungeonTimer%{_instance}%}
+            clear {-DungeonTimerLimit%{_instance}%}
+            clear {-deaths%{_instance}%}
+            clear {-dungeonBosses%{_instance}%}
+            clear {-dungeonBossesSlain%{_instance}%}
+            clear {KeystoneOwner%{_instance}%}
+            clear {-EnemyForces%{_instance}%}
+            clear {-affixes%{_instance}%::*}
+            clear metadata value "KeystoneName" of {_p}
+            #remove 1 from {-dungeons}
+            unload yaml "keystone-%{_keystoneId}%"
+            if {_keystonename} = "Siege of Spawn":
+                execute console command "ar load SiegeOfSpawn"
+        clear metadata value "KeystoneId" of {_p}
+        clear metadata value "DungeonInstance" of {_p}
+        remove {_p} from all boss bars
+        loop 2 times:
+            execute {_p} command "spawn"
+        wait 1 tick
+        clear {_p}'s scoreboard
+        wait 1 second
+        clear {_p}'s scoreboard
+        if metadata value "ECEngaged" of {_p} is not set:
+            if metadata value "DungeonInstance" of {_p} is not set:
+                UpdateScoreboard({_p})
+        DungeonStatsFile({_keystonename}, {_keystonelevel}, "left")
+
+function DungeonComplete():
+    broadcast "Complete"
+    broadcast "Update log"
+    broadcast "+3/+2/+1 Completion"
+    broadcast "Update log with new obtained keystone"
+    broadcast "Spawn chest with gear"
+    broadcast "Update log with obtained gear"
+
+function DungeonPullDamage(atta: entity, vic: entity, damage: number, DamageCause: string):
+    set {_keystoneId} to metadata value "KeystoneId" of {_vic}
+    set {_custom} to tag "custom" of nbt compound of {_vic}
+    set {_keystonename} to tag "ECInstanceName" of {_custom}
+    set {_instance} to tag "ECDungeonInstance" of {_custom}
+    set {_keystonelevel} to {-KeystoneLevel%{_instance}%}
+    if yaml "keystone-%{_keystoneId}%" is not loaded:
+        load yaml "plugins/Skript/logs/logi/dungeons/%{_keystonename}%/+%{_keystonelevel}%/%{_keystoneId}%.yml" as "keystone-%{_keystoneId}%"
+    #broadcast {_keystoneId}
+    #if metadata value "ECPulled" of {_vic} is set:
+    if tag "ECBoss" of {_custom} is set:
+        set {_bossName} to uncolored name of {_vic}
+        if metadata value "LastDamageCauseEN" of {_vic} is set:
+            set {_damageOverall} to yaml value "Damage Dealt.%{_atta}%.Bosses.%{_bossName}%.Total" in "keystone-%{_keystoneId}%"
+            set {_damageAbility} to yaml value "Damage Dealt.%{_atta}%.Bosses.%{_bossName}%.%{_DamageCause}%" in "keystone-%{_keystoneId}%"
+            set {_damageOverallAll} to yaml value "Damage Dealt.%{_atta}%.Total.Bosses.Total" in "keystone-%{_keystoneId}%"
+            set {_damageAbilityAll} to yaml value "Damage Dealt.%{_atta}%.Total.Bosses.%{_DamageCause}%" in "keystone-%{_keystoneId}%"
+            add {_damage} to {_damageOverall}
+            add {_damage} to {_damageAbility}
+            add {_damage} to {_damageOverallAll}
+            add {_damage} to {_damageAbilityAll}
+            set yaml value "Damage Dealt.%{_atta}%.Bosses.%{_bossName}%.Total" in "keystone-%{_keystoneId}%" to {_damageOverall}
+            set yaml value "Damage Dealt.%{_atta}%.Bosses.%{_bossName}%.%{_DamageCause}%" in "keystone-%{_keystoneId}%" to {_damageAbility}
+            set yaml value "Damage Dealt.%{_atta}%.Total.Bosses.Total" in "keystone-%{_keystoneId}%" to {_damageOverallAll}
+            set yaml value "Damage Dealt.%{_atta}%.Total.Bosses.%{_DamageCause}%" in "keystone-%{_keystoneId}%" to {_damageAbilityAll}
+            #LIST 1. 2. 3. TOP DAMAGE SOURCES
+            #1. {_DAMAGECAUSE} .
+    else:
+        set {_name} to uncolored name of {_vic}
+        #broadcast metadata value "LastDamageCauseEN" of {_vic}
+        #broadcast "%{_DamageCause}% %{_damage}%"
+        if metadata value "LastDamageCauseEN" of {_vic} is set:
+            set {_damageOverall} to yaml value "Damage Dealt.%{_atta}%.Mobs.%{_name}%.Total" in "keystone-%{_keystoneId}%"
+            set {_damageOverallAll} to yaml value "Damage Dealt.%{_atta}%.Total.Mobs.Total" in "keystone-%{_keystoneId}%"
+            set {_damageAbilityAll} to yaml value "Damage Dealt.%{_atta}%.Total.Mobs.%{_DamageCause}%" in "keystone-%{_keystoneId}%"
+            set {_damageAbility} to yaml value "Damage Dealt.%{_atta}%.Mobs.%{_name}%.%{_DamageCause}%" in "keystone-%{_keystoneId}%"
+            add {_damage} to {_damageOverall}
+            add {_damage} to {_damageAbility}
+            add {_damage} to {_damageOverallAll}
+            add {_damage} to {_damageAbilityAll}
+            set yaml value "Damage Dealt.%{_atta}%.Mobs.%{_name}%.Total" in "keystone-%{_keystoneId}%" to {_damageOverall}
+            set yaml value "Damage Dealt.%{_atta}%.Mobs.%{_name}%.%{_DamageCause}%" in "keystone-%{_keystoneId}%" to {_damageAbility}
+            set yaml value "Damage Dealt.%{_atta}%.Total.Mobs.Total" in "keystone-%{_keystoneId}%" to {_damageOverallAll}
+            set yaml value "Damage Dealt.%{_atta}%.Total.Mobs.%{_DamageCause}%" in "keystone-%{_keystoneId}%" to {_damageAbilityAll}
+            #LIST 1. 2. 3. TOP DAMAGE SOURCES
+            #1. {_DAMAGECAUSE} .
+    save yaml "keystone-%{_keystoneId}%"
+
+function DungeonDamageTaken(atta: entity, vic: entity, damage: number, DamageCause: string):
+    set {_keystoneId} to metadata value "KeystoneId" of {_vic}
+    set {_custom} to tag "custom" of nbt compound of {_vic}
+    set {_keystonename} to tag "ECInstanceName" of {_custom}
+    set {_instance} to tag "ECDungeonInstance" of {_custom}
+    set {_keystonelevel} to {-KeystoneLevel%{_instance}%}
+    if yaml "keystone-%{_keystoneId}%" is not loaded:
+        load yaml "plugins/Skript/logs/logi/dungeons/%{_keystonename}%/+%{_keystonelevel}%/%{_keystoneId}%.yml" as "keystone-%{_keystoneId}%"
+    #broadcast {_keystoneId}
+    #if metadata value "ECPulled" of {_vic} is set:
+    if tag "ECBoss" of {_custom} is set:
+        set {_bossName} to uncolored name of {_vic}
+        if metadata value "LastDamageCauseEN" of {_vic} is set:
+            set {_damageOverall} to yaml value "Damage Taken.%{_atta}%.Bosses.%{_bossName}%.Total" in "keystone-%{_keystoneId}%"
+            set {_damageAbility} to yaml value "Damage Taken.%{_atta}%.Bosses.%{_bossName}%.%{_DamageCause}%" in "keystone-%{_keystoneId}%"
+            set {_damageOverallAll} to yaml value "Damage Taken.%{_atta}%.Total.Bosses.Total" in "keystone-%{_keystoneId}%"
+            set {_damageAbilityAll} to yaml value "Damage Taken.%{_atta}%.Total.Bosses.%{_DamageCause}%" in "keystone-%{_keystoneId}%"
+            add {_damage} to {_damageOverall}
+            add {_damage} to {_damageAbility}
+            add {_damage} to {_damageOverallAll}
+            add {_damage} to {_damageAbilityAll}
+            set yaml value "Damage Taken.%{_atta}%.Bosses.%{_bossName}%.Total" in "keystone-%{_keystoneId}%" to {_damageOverall}
+            set yaml value "Damage Taken.%{_atta}%.Bosses.%{_bossName}%.%{_DamageCause}%" in "keystone-%{_keystoneId}%" to {_damageAbility}
+            set yaml value "Damage Taken.%{_atta}%.Total.Bosses.Total" in "keystone-%{_keystoneId}%" to {_damageOverallAll}
+            set yaml value "Damage Taken.%{_atta}%.Total.Bosses.%{_DamageCause}%" in "keystone-%{_keystoneId}%" to {_damageAbilityAll}
+            #LIST 1. 2. 3. TOP DAMAGE SOURCES
+            #1. {_DAMAGECAUSE} .
+    else:
+        set {_name} to uncolored name of {_vic}
+        #broadcast metadata value "LastDamageCauseEN" of {_vic}
+        #broadcast "%{_DamageCause}% %{_damage}%"
+        if metadata value "LastDamageCauseEN" of {_vic} is set:
+            set {_damageOverall} to yaml value "Damage Taken.%{_atta}%.Mobs.%{_name}%.Total" in "keystone-%{_keystoneId}%"
+            set {_damageOverallAll} to yaml value "Damage Taken.%{_atta}%.Total.Mobs.Total" in "keystone-%{_keystoneId}%"
+            set {_damageAbilityAll} to yaml value "Damage Taken.%{_atta}%.Total.Mobs.%{_DamageCause}%" in "keystone-%{_keystoneId}%"
+            set {_damageAbility} to yaml value "Damage Taken.%{_atta}%.Mobs.%{_name}%.%{_DamageCause}%" in "keystone-%{_keystoneId}%"
+            add {_damage} to {_damageOverall}
+            add {_damage} to {_damageAbility}
+            add {_damage} to {_damageOverallAll}
+            add {_damage} to {_damageAbilityAll}
+            set yaml value "Damage Taken.%{_atta}%.Mobs.%{_name}%.Total" in "keystone-%{_keystoneId}%" to {_damageOverall}
+            set yaml value "Damage Taken.%{_atta}%.Mobs.%{_name}%.%{_DamageCause}%" in "keystone-%{_keystoneId}%" to {_damageAbility}
+            set yaml value "Damage Taken.%{_atta}%.Total.Mobs.Total" in "keystone-%{_keystoneId}%" to {_damageOverallAll}
+            set yaml value "Damage Taken.%{_atta}%.Total.Mobs.%{_DamageCause}%" in "keystone-%{_keystoneId}%" to {_damageAbilityAll}
+            #LIST 1. 2. 3. TOP DAMAGE SOURCES
+            #1. {_DAMAGECAUSE} .
+    save yaml "keystone-%{_keystoneId}%"
+
+function DungeonHeal(healer: entity, healTarget: entity, healAmount: number, ability: string):
+    set {_keystoneId} to metadata value "KeystoneId" of {_healer}
+    set {_keystone} to {KeystoneItem::%{_healer}%}
+    set {_keystonename} to tag "KeystoneName" of nbt of {_keystone}
+    set {_instance} to metadata value "DungeonInstance" of {_healer}
+    set {_keystonelevel} to {-KeystoneLevel%{_instance}%}
+    if yaml "keystone-%{_keystoneId}%" is not loaded:
+        load yaml "plugins/Skript/logs/logi/dungeons/%{_keystonename}%/+%{_keystonelevel}%/%{_keystoneId}%.yml" as "keystone-%{_keystoneId}%"
+    if metadata value "KeystoneId" of {_healTarget} = {_keystoneId}:
+        set {_healingOverall} to yaml value "Healing Done.%{_healer}%.Targets.%{_healTarget}%.Total" in "keystone-%{_keystoneId}%"
+        set {_healingAbility} to yaml value "Healing Done.%{_healer}%.Targets.%{_healTarget}%.%{_ability}%" in "keystone-%{_keystoneId}%"
+        set {_healingOverallTotal} to yaml value "Healing Done.%{_healer}%.Total" in "keystone-%{_keystoneId}%"
+        set {_healingAbilityTotal} to yaml value "Healing Done.%{_healer}%.Total.%{_ability}%" in "keystone-%{_keystoneId}%"
+        add {_healAmount} to {_healingOverall}
+        add {_healAmount} to {_healingAbility}
+        add {_healAmount} to {_healingOverallTotal}
+        add {_healAmount} to {_healingAbilityTotal}
+        set yaml value "Healing Done.%{_healer}%.Targets.%{_healTarget}%.Total" in "keystone-%{_keystoneId}%" to {_healingOverall}
+        set yaml value "Healing Done.%{_healer}%.Targets.%{_healTarget}%.%{_ability}%" in "keystone-%{_keystoneId}%" to {_healingAbility}
+        set yaml value "Healing Done.%{_healer}%.Total" in "keystone-%{_keystoneId}%" to {_healingOverallTotal}
+        set yaml value "Healing Done.%{_healer}%.Total.%{_ability}%" in "keystone-%{_keystoneId}%" to {_healingAbilityTotal}
+        save yaml "keystone-%{_keystoneId}%"
+                #LIST 1. 2. 3. TOP DAMAGE SOURCES
+
+function DungeonShield(shielder: entity, shieldTarget: entity, shieldAmount: number, ability: string):
+    set {_keystoneId} to metadata value "KeystoneId" of {_shielder}
+    set {_keystone} to {KeystoneItem::%{_shielder}%}
+    set {_keystonename} to tag "KeystoneName" of nbt of {_keystone}
+    set {_instance} to metadata value "DungeonInstance" of {_shielder}
+    set {_keystonelevel} to {-KeystoneLevel%{_instance}%}
+    if yaml "keystone-%{_keystoneId}%" is not loaded:
+        load yaml "plugins/Skript/logs/logi/dungeons/%{_keystonename}%/+%{_keystonelevel}%/%{_keystoneId}%.yml" as "keystone-%{_keystoneId}%"
+    if metadata value "KeystoneId" of {_shieldTarget} = {_keystoneId}:
+        set {_shieldingOverall} to yaml value "Shielding Done.%{_shielder}%.Targets.%{_shieldTarget}%.Total" in "keystone-%{_keystoneId}%"
+        set {_shieldingAbility} to yaml value "Shielding Done.%{_shielder}%.Targets.%{_shieldTarget}%.%{_ability}%" in "keystone-%{_keystoneId}%"
+        set {_shieldingOverallTotal} to yaml value "Shielding Done.%{_shielder}%.Total" in "keystone-%{_keystoneId}%"
+        set {_shieldingAbilityTotal} to yaml value "Shielding Done.%{_shielder}%.Total.%{_ability}%" in "keystone-%{_keystoneId}%"
+        add {_shieldAmount} to {_shieldingOverall}
+        add {_shieldAmount} to {_shieldingAbility}
+        add {_shieldAmount} to {_shieldingOverallTotal}
+        add {_shieldAmount} to {_shieldingAbilityTotal}
+        set yaml value "Shielding Done.%{_shielder}%.Targets.%{_shieldTarget}%.Total" in "keystone-%{_keystoneId}%" to {_shieldingOverall}
+        set yaml value "Shielding Done.%{_shielder}%.Targets.%{_shieldTarget}%.%{_ability}%" in "keystone-%{_keystoneId}%" to {_shieldingAbility}
+        set yaml value "Shielding Done.%{_shielder}%.Total" in "keystone-%{_keystoneId}%" to {_shieldingOverallTotal}
+        set yaml value "Shielding Done.%{_shielder}%.Total.%{_ability}%" in "keystone-%{_keystoneId}%" to {_shieldingAbilityTotal}
+        save yaml "keystone-%{_keystoneId}%"
+
+function DungeonStatsFile(keystoneName: string, keystoneLevel: number, type: string):
+    if yaml "plugins/Skript/serverstats/DungeonStats.yml" is not loaded:
+        load yaml "plugins/Skript/serverstats/DungeonStats.yml" as "DungeonStats"
+    if {_type} = "started":
+        set {_dungeonStartedTotal} to yaml value "%{_keystoneName}%.Dungeons Started.Total" in "DungeonStats"
+        add 1 to {_dungeonStartedTotal} 
+        set yaml value "%{_keystoneName}%.Dungeons Started.Total" in "DungeonStats" to {_dungeonStartedTotal} 
+        set {_dungeonStartedKeyLevel} to yaml value "%{_keystoneName}%.Dungeons Started.+%{_keystoneLevel}%" in "DungeonStats"
+        add 1 to {_dungeonStartedKeyLevel}
+        set yaml value "%{_keystoneName}%.Dungeons Started.+%{_keystoneLevel}%" in "DungeonStats" to {_dungeonStartedKeyLevel}
+    else if {_type} = "completed":
+        set {_dungeonCompletedTotal} to yaml value "%{_keystoneName}%.Dungeons Completed.Total" in "DungeonStats"
+        add 1 to {_dungeonCompletedTotal} 
+        set yaml value "%{_keystoneName}%.Dungeons Completed.Total" in "DungeonStats" to {_dungeonCompletedTotal} 
+        set {_dungeonCompletedKeyLevel} to yaml value "%{_keystoneName}%.Dungeons Completed.+%{_keystoneLevel}%" in "DungeonStats"
+        add 1 to {_dungeonCompletedKeyLevel}
+        set yaml value "%{_keystoneName}%.Dungeons Completed.+%{_keystoneLevel}%" in "DungeonStats" to {_dungeonCompletedKeyLevel}
+    else if {_type} = "timed":
+        set {_dungeonTimedTotal} to yaml value "%{_keystoneName}%.Dungeons Timed.Total" in "DungeonStats"
+        add 1 to {_dungeonTimedTotal} 
+        set yaml value "%{_keystoneName}%.Dungeons Timed.Total" in "DungeonStats" to {_dungeonTimedTotal} 
+        set {_dungeonTimedKeyLevel} to yaml value "%{_keystoneName}%.Dungeons Timed.+%{_keystoneLevel}%" in "DungeonStats"
+        add 1 to {_dungeonTimedKeyLevel}
+        set yaml value "%{_keystoneName}%.Dungeons Timed.+%{_keystoneLevel}%" in "DungeonStats" to {_dungeonTimedKeyLevel}
+
+        set {_dungeonCompletedTotal} to yaml value "%{_keystoneName}%.Dungeons Completed.Total" in "DungeonStats"
+        add 1 to {_dungeonCompletedTotal} 
+        set yaml value "%{_keystoneName}%.Dungeons Completed.Total" in "DungeonStats" to {_dungeonCompletedTotal} 
+        set {_dungeonCompletedKeyLevel} to yaml value "%{_keystoneName}%.Dungeons Completed.+%{_keystoneLevel}%" in "DungeonStats"
+        add 1 to {_dungeonCompletedKeyLevel}
+        set yaml value "%{_keystoneName}%.Dungeons Completed.+%{_keystoneLevel}%" in "DungeonStats" to {_dungeonCompletedKeyLevel}
+    else if {_type} = "left":
+        set {_dungeonLeftTotal} to yaml value "%{_keystoneName}%.Dungeons Left.Total" in "DungeonStats"
+        add 1 to {_dungeonLeftTotal} 
+        set yaml value "%{_keystoneName}%.Dungeons Left.Total" in "DungeonStats" to {_dungeonLeftTotal} 
+        set {_dungeonLeftKeyLevel} to yaml value "%{_keystoneName}%.Dungeons Left.+%{_keystoneLevel}%" in "DungeonStats"
+        add 1 to {_dungeonLeftKeyLevel}
+        set yaml value "%{_keystoneName}%.Dungeons Left.+%{_keystoneLevel}%" in "DungeonStats" to {_dungeonLeftKeyLevel}
+    if {_dungeonTimedTotal} is not set:
+        set {_dungeonTimedTotal} to 1
+    if {_dungeonCompletedTotal} is not set:
+        set {_dungeonCompletedTotal} to 1
+    set yaml value "%{_keystoneName}%.Completion Rate" in "DungeonStats" to "%{_dungeonTimedTotal}/{_dungeonCompletedTotal}*100%%%"
+    save yaml "DungeonStats"
+
+function DungeonPlayerStat(p: player, keystoneName: string, type: string):
+    if {_type} = "started":
+        set {_started} to yaml value "Dungeons.Dungeons Started.Total" in "data-%{_p}%"
+        add 1 to {_started}
+        set yaml value "Dungeons.Dungeons Started.Total" in "data-%{_p}%" to {_started}
+        set {_startedKey} to yaml value "Dungeons.Dungeons Started.%{_keystoneName}%" in "data-%{_p}%"
+        add 1 to {_startedKey}
+        set yaml value "Dungeons.Dungeons Started.%{_keystoneName}%" in "data-%{_p}%" to {_startedKey}
+    else if {_type} = "timed":
+        set {_timed} to yaml value "Dungeons.Dungeons Finished In Time.Total" in "data-%{_p}%"
+        add 1 to {_timed}
+        set yaml value "Dungeons.Dungeons Finished In Time.Total" in "data-%{_p}%" to {_timed}
+        set {_timedKey} to yaml value "Dungeons.Dungeons Finished In Time.%{_keystoneName}%" in "data-%{_p}%"
+        add 1 to {_timedKey}
+        set yaml value "Dungeons.Dungeons Finished In Time.%{_keystoneName}%" in "data-%{_p}%" to {_timedKey}
+
+        set {_completed} to yaml value "Dungeons.Dungeons Completed.Total" in "data-%{_p}%"
+        add 1 to {_completed}
+        set yaml value "Dungeons.Dungeons Completed.Total" in "data-%{_p}%" to {_completed}
+        set {_completedKey} to yaml value "Dungeons.Dungeons Completed.%{_keystoneName}%" in "data-%{_p}%"
+        add 1 to {_completedKey}
+        set yaml value "Dungeons.Dungeons Completed.%{_keystoneName}%" in "data-%{_p}%" to {_completedKey}
+    else if {_type} = "completed":
+        set {_completed} to yaml value "Dungeons.Dungeons Completed.Total" in "data-%{_p}%"
+        add 1 to {_completed}
+        set yaml value "Dungeons.Dungeons Completed.Total" in "data-%{_p}%" to {_completed}
+        set {_completedKey} to yaml value "Dungeons.Dungeons Completed.%{_keystoneName}%" in "data-%{_p}%"
+        add 1 to {_completedKey}
+        set yaml value "Dungeons.Dungeons Completed.%{_keystoneName}%" in "data-%{_p}%" to {_completedKey}
+    else if {_type} = "left":
+        set {_left} to yaml value "Dungeons.Dungeons Left.Total" in "data-%{_p}%"
+        add 1 to {_left}
+        set yaml value "Dungeons.Dungeons Left.Total" in "data-%{_p}%" to {_left}
+        set {_leftKey} to yaml value "Dungeons.Dungeons Left.%{_keystoneName}%" in "data-%{_p}%"
+        add 1 to {_leftKey}
+        set yaml value "Dungeons.Dungeons Left.%{_keystoneName}%" in "data-%{_p}%" to {_leftKey}
+    save yaml "data-%{_p}%"
+
+function DungeonStatsFileAverageUpdate():
+    if yaml "DungeonStats" is not loaded:
+        load yaml "plugins/Skript/serverstats/DungeonStats.yml" as "DungeonStats"
+    set {_dungeons::*} to "Siege of Spawn"
+    loop {_dungeons::*}:
+        load all yaml from directory "plugins/Skript/logs/logi/dungeons/%loop-value%/"
+        loop the loaded yaml from directory "plugins/Skript/logs/logi/dungeons/%loop-value%/":
+            broadcast loop-value-2
+            add 1 to {_index}
+            if {_index} is divisible by 40:
+                wait 1 tick
+            if yaml value "Dungeon.Party Size" in loop-value-2 is set:
+                set {_partySize} to (yaml value "Dungeon.Party Size" in loop-value-2)
+                add {_partySize} to {_partySizeTotal}
+                add 1 to {_logged}
+        set {_averagePartySize} to {_partySizeTotal}/{_logged}
+        set yaml value "%loop-value%.Average Party Size" in "DungeonStats" to {_averagePartySize}
+    save yaml "DungeonStats"
+    
+function PullDuration(victim: entity, keystoneId: string):
+    set {_custom} to tag "custom" of nbt compound of {_victim}
+    if tag "ECBoss" of {_custom} is set:
+        set {_bool} to true
+        if tag "ECBossPartner" of {_custom} is set:
+            set {_partnerBoss} to tag "ECBossPartner" of {_custom}
+            set {_partnerBoss} to ({_partnerBoss} parsed as entity)
+            if name of {_partnerBoss} contains "Pehrek" or "merimelle":
+                set {_bossName} to "The Council of Admins"
+        else:
+            set {_bossName} to uncolored name of {_victim}
+    while {_victim} is alive:
+        add 1 to {_seconds}
+        wait 1 second
+    if {_partnerBoss} is set:
+        while {_partnerBoss} is alive:
+            add 1 to {_seconds}
+            wait 1 second
+    set {_time} to SecondsToMinutes("%{_seconds}%")
+    if {_bool} is true:
+        if yaml "keystone-%{_keystoneId}%" is loaded:
+            set yaml value "Boss Fight Durations.%{_bossName}%" in "keystone-%{_keystoneId}%" to {_time}
+        else:
+            set {_keystonename} to tag "ECInstanceName" of {_custom}
+            load yaml "plugins/Skript/logs/logi/dungeons/%{_keystonename}%/%{_keystoneId}%.yml" as "keystone-%{_keystoneId}%"
+            set yaml value "Boss Fight Durations.%{_bossName}%" in "keystone-%{_keystoneId}%" to {_time}
+        save yaml "keystone-%{_keystoneId}%"
+ 
+#AFFIXES
+function Bolstering(e: entity):
+    set {_mobInstance} to tag "custom;ECDungeonInstance" of nbt of {_e}
+    broadcast "Bolstering %{_mobInstance}%"
+    loop all entities in radius 5 around {_e} where [metadata value "ECPulled" of input is set]:
+        if tag "custom;ECMob" of nbt of loop-entity is set:
+            if tag "custom;ECDungeonMob" of nbt of loop-entity is set:
+                if tag "custom;ECBoss" of nbt of loop-entity is not set:
+                    if tag "custom;ECBossMinion" of nbt of loop-entity is not set:
+                        if tag "custom;ECDungeonInstance" of nbt of loop-entity = {_mobInstance}:
+                            if loop-entity is alive:
+                                if loop-entity is not {_e}:
+                                    set {_maxHealth} to max health of loop-entity
+                                    set max health of loop-entity to {_maxHealth}*1.15
+                                    heal loop-entity by 0.15*max health of loop-entity
+                                    set {_bolsteringStacks} to tag "custom;BolsteringStacks" of nbt of {_e}
+                                    add 1 to {_bolsteringStacks}
+                                    set tag "custom;BolsteringStacks" of nbt of {_e} to {_bolsteringStacks}
+                                    dialogue("&eBolstered", location 1 above loop-entity's head, 0 seconds, 2 seconds)
+function Bursting(e: entity):
+    set {_mobInstance} to tag "custom;ECDungeonInstance" of nbt of {_e}
+    broadcast "Bursting %{_mobInstance}%"
+    loop {-dungeonInstance%{_mobInstance}%::*}:
+        set {_burstingStacks} to metadata value "BurstingStacks" of loop-value
+        if {_burstingStacks} is not set:
+            set {_burstingStacks} to 1
+            BurstingDot(loop-value, 4 seconds, {_e})
+        else:
+            add 1 to {_burstingStacks}
+            set metadata value "BurstingRefresh" of loop-value to 1
+        set metadata value "BurstingStacks" of loop-value to {_burstingStacks}
+    draw 20 dust using dustOption(rgb(235, 64, 52), 1) at location 1 above {_e} with offset vector(0.4, 0.5, 0.4) with extra 0.03
+    draw 20 dust using dustOption(rgb(130, 43, 36), 1) at location 1 above {_e} with offset vector(0.35, 0.45, 0.35) with extra 0.03
+
+function Spiteful(e: entity, p: player, instance: number):
+    set {_partySize} to tag "custom;ECPartySize" of nbt of {_e}
+    set {_instanceName} to tag "custom;ECInstanceName" of nbt of {_e}
+    set {_keystoneId} to metadata value "KeystoneId" of {_e}
+    draw 50 smoke at location 1 above {_e} with offset vector(0.7, 0.5, 0.7) with extra 0.04
+    wait 1 second
+    spawn a zombie at {_e}'s location with nbt compound from "{Silent:1b}"
+    set {_x} to last spawned entity
+    set the name of {_x} to "Spiteful Shade"
+    set {_x}'s tool to air
+    set {_pot} to potion effect of slowness of tier 0.75 without particles for 1 day
+    add {_pot} to potion effects of {_x}
+    DungeonMobAssignment({_x}, false, 70, 0)
+    set {_custom} to tag "custom" of nbt compound of {_x}
+    set {_loc} to location of last spawned entity
+    increase {_loc}'s y-coordinate by 1.55
+    spawn 1 armor stand at {_loc} with nbt from "{Marker:1b,Invulnerable:1b,Invisible:1b}"
+    set display name of last spawned armor stand to "&a|||||||||| &f(100%%)"
+    set tag "ECTextAbove" of {_custom} to uuid of last spawned armor stand
+    set tag "ECElement" of {_custom} to "Ghost"
+    set tag "ECInstanceName" of {_custom} to {_instanceName}
+    set tag "ECPartySize" of {_custom} to {_partySize}
+    set tag "custom;SpitefulShade" of nbt of {_x} to true
+    add nbt from "{Attributes:[{Name:""generic.follow_range"",Base:60}]}" to nbt of {_x}
+    disguise {_x} as "&fSpiteful Shade"
+    set skin of disguise of {_x} to "Spiteful"
+    set {_maxHealth} to 10
+    set {_keystonelevel} to {-KeystoneLevel%{_instance}%}
+    set {_healthModifier} to KeystoneModifiers({_keystonelevel})
+    set {_damageModifier} to KeystoneModifiers({_keystonelevel})
+    set max health of {_x} to {_maxHealth}*({_healthModifier})*{_partySize}
+    set tag "DamageModifier" of {_custom} to ({_damageModifier})
+    set metadata value "KeystoneId" of {_x} to {_keystoneId}
+    set tag "ECDungeonInstance" of {_custom} to {_instance}
+    set {_randomTarget} to a random element of {-dungeonInstance%{_instance}%::*}
+    UpdateTarget({_x}, {_randomTarget}, "attacker")
+    PullMob({_p}, {_x})
+    SpitefulHealth({_x})
+    heal {_x}
+
+function SpitefulHealth(e: entity):
+    set {_maxHealth} to max health of {_e}
+    while {_e} is alive:
+        set {_e}'s last damage cause to sweep attack
+        set {_e}'s health to {_e}'s health-(0.1*{_e}'s health)
+        if {_e}'s health <= 0.1*{_maxHealth}:
+            kill {_e}
+        MobHealthBar({_e})
+        wait 1 second
+function SpitefulShadeClear(e: entity):
+    wait 1.25 seconds
+    if tag "custom;ECTextAbove" of nbt of {_e} is set:
+        set {_textabove} to (tag "custom;ECTextAbove" of nbt of {_e}) parsed as entity
+        teleport {_textabove} to location(-1228, -100, -1792, world "world")
+        kill {_textabove}
+    teleport {_e} to location(-1228, -100, -1792, world "world")
+    kill {_e}
+
+function Grievous(p: player, grievous: entity):
+    while metadata value "dungeon" of {_p} is set:
+        if health of {_p} < 0.9*max health of {_p}:
+            if metadata value "ECEngaged" of {_p} is set:
+                add 1 to {_grievousStacks}
+        else:
+            clear {_grievousStacks}
+        if {_grievousStacks} > 0:
+            set {_lore} to "&7Injured players suffer increasing damage over time until healed."
+            set {_p}'s last damage cause to sweep attack
+            set metadata value "Element" of {_p} to "Normal"
+            set metadata value "LastDamageCauseEN" of {_p} to "<##8a5130>Grievous"
+            set metadata value "LastDamageCause" of {_p} to "<##8a5130>Grievous"
+            set metadata value "LastDamageCauseLore" of {_p} to {_lore}
+            set metadata value "LastDamageCauseLoreEN" of {_p} to {_lore}
+            make {_grievous} damage {_p} by {_grievousStacks}*0.3
+        wait 3 seconds
+
+function Raging(e: entity):
+    set metadata value "Raging" of {_e} to 1
+    set {_pitch} to a random number between 0.6 and 1
+    play sound "entity.ghast.hurt" with volume 3.5 and pitch {_pitch} at {_e}
+    draw 30 dust using dustOption(rgb(130, 43, 36), 1) at location 1 above {_e} with offset vector(0.5, 0.45, 0.5) with extra 0.03
+
+function Explosive(e: entity, instance: number):
+    loop all blocks in radius 3 around {_e} where [block above input = air]:
+        if y-coordinate of loop-block = y-coordinate of {_e}:
+            add loop-block to {_blocks::*}
+    if {_blocks::*} is not set:
+        set {_block} to block at {_e}
+    else:
+        set {_block} to a random element of {_blocks::*}
+    spawn 1 skeleton at location 1 above {_block} with nbt from "{NoAI:1b,Silent:1b}"
+    set last spawned skeleton's tool to air
+    set {_pot} to potion effect of invisibility of tier 1 without particles for 1 day
+    add {_pot} to potion effects of last spawned skeleton
+    set tag "custom;ECDungeonInstance" of nbt of last spawned skeleton to {_instance}
+    set tag "custom;ECMob" of nbt of last spawned skeleton to true
+    set tag "custom;ECDungeonMob" of nbt of last spawned skeleton to true
+    set the name of last spawned skeleton to "Explosive Orb"
+    set the max health of last spawned skeleton to 1
+    heal last spawned skeleton
+    set {_explosiveOrb} to last spawned skeleton
+    set metadata value "ExplosiveOrbStacks" of {_explosiveOrb} to 0
+    set gravity of {_explosiveOrb} to false
+    play sound "item.flintandsteel.use" with volume 3 and pitch 1 at {_block}
+    ExplosiveOrb({_explosiveOrb}, {_instance})
+
+function ExplosiveOrb(explosiveOrb: entity, instance: number):
+    set {_explosiveOrbStacks} to metadata value "ExplosiveOrbStacks" of {_explosiveOrb}
+    while {_explosiveOrbStacks} < 5:
+        wait 1 second
+        stop if {-dungeonInstance%{_instance}%::*} is not set
+        stop if {_explosiveOrb} is not alive
+        add 1 to {_explosiveOrbStacks}
+        set tag "custom;ExplosiveOrbStacks" of nbt of {_explosiveOrb} to {_stacks}
+        set {_shape} to sphere with radius ({_explosiveOrbStacks}*0.2)
+        set particle of {_shape} to dust particle using dustOption(rgb(232, 130, 21), 1)
+        draw {_shape} at {_explosiveOrb}
+        draw 10 flame at {_explosiveOrb} with offset vector(0.25, 0.35, 0.25) with extra 0.02
+        play sound "entity.creeper.primed" with volume 4 and pitch 0.4*{_explosiveOrbStacks} at {_explosiveOrb}
+    if {-dungeonInstance%{_instance}%::*} is set:  
+        set {_lore} to "&7While in combat, enemies periodically summon Explosive Orbs that will detonate if not destroyed."
+        play sound "entity.generic.explode" with volume 3 and pitch 1.6 at {_explosiveOrb}
+        loop {-dungeonInstance%{_instance}%::*}:
+            if distance between {_explosiveOrb} and loop-value < 25:
+                set loop-value's last damage cause to sweep attack
+                set metadata value "Element" of loop-value to "Normal"
+                set metadata value "LastDamageCauseEN" of {_target} to "<##e88215>Explosive"
+                set metadata value "LastDamageCause" of {_target} to "<##e88215>Explosive"
+                set metadata value "LastDamageCauseLore" of {_target} to {_lore}
+                set metadata value "LastDamageCauseLoreEN" of {_target} to {_lore}
+                broadcast 0.2*(max health of loop-value)
+                make {_explosiveOrb} damage loop-value by 0.2*(max health of loop-value)
+        kill {_explosiveOrb}
+        create a fake explosion at {_explosiveOrb}
+
+function ExplosiveInterval(e: entity, instance: number):
+    while {_e} is alive:
+        set {_randomInterval} to a random integer between 10 and 25
+        set {_wait} to "%{_randomInterval}% seconds" parsed as timespan
+        wait {_wait}
+        stop if {_e} is not alive
+        if metadata value "ECPulled" of {_e} is set:
+            broadcast "Explosive!"
+            Explosive({_e}, {_instance})
+    
+function Inspiring(e: entity, inspiring: boolean, instance: integer):
+    if {_inspiring} = true:
+        broadcast "Inspiring is true"
+        set tag "custom;InspiringMob" of nbt of {_e} to true
+        InspiringAura({_e})
+
+function InspiringAura(e: entity):
+    while {_e} is alive:
+        set {_shape} to a circle with radius 1.25
+        set particle of {_shape} to dust particle using dustOption(rgb(255, 225, 74), 1)
+        draw {_shape} at {_e}
+        wait 1 second
+
+function BurstingDot(p: player, duration: timespan, e: entity):
+    wait 1 tick
+    while {_duration} > 0 seconds:
+        wait 1 second
+        stop loop if {_p} is not alive
+        set {_burstingStacks} to metadata value "BurstingStacks" of {_p}
+        stop loop if metadata value "dungeon" of {_p} is not set
+        if metadata value "BurstingRefresh" of {_p} is set:
+            clear metadata value "BurstingRefresh" of {_p}
+            set {_duration} to 4 seconds
+        set {_lore} to "&7When slain, non-boss enemies explode, causing all players to suffer damage over 4 sec. This effect stacks."
+        set {_p}'s last damage cause to sweep attack
+        set metadata value "Element" of {_p} to "Normal"
+        set metadata value "LastDamageCauseEN" of {_p} to "<##c43723>Bursting"
+        set metadata value "LastDamageCause" of {_p} to "<##c43723>Bursting"
+        set metadata value "LastDamageCauseLore" of {_p} to {_lore}
+        set metadata value "LastDamageCauseLoreEN" of {_p} to {_lore}
+        broadcast 2*(0.5*{_burstingStacks})
+        make {_e} damage {_p} by 2*(0.5*{_burstingStacks})
+        remove 1 second from {_duration}
+    clear metadata value "BurstingStacks" of {_p}
+
+function Storming(p: player):
+    set {_directions::*} to "upward", "forward" and "backward"
+    while metadata value "dungeon" of {_p} is set:
+        set {_randomDirection} to a random element of {_directions::*}
+        set {_randomInterval} to a random number between 15 and 45
+        set {_randomForce} to a random number between 1 and 1.5
+        set {_wait} to "%{_randomInterval}% seconds" parsed as timespan
+        wait {_wait}
+        stop if metadata value "dungeon" of {_p} is not set 
+        if {_randomDirection} = "upward":
+            push {_p} upward with velocity {_randomForce}
+        else if {_randomDirection} = "forward":
+            push {_p} forward with speed {_randomForce}
+        else if {_randomDirection} = "backward":
+            push {_p} backwards with speed {_randomForce}
+        
+on quit:
+    if metadata value "DungeonInstance" of player is set:
+        wait 5 minutes
+        if player is offline:
+            DungeonLeave(player)
+
+on skript stop:
+    clear {-dungeons}
+    clear {-dungeonInstance::*}
+    clear {-intermissionLila::*}
+    clear {-intermissionLilaloc::*}
+
+command /dungeon [<text>] [<text>]:
+    trigger:
+        if arg-1 = "leave":
+            DungeonLeave(player)
+            #If engaged is set, displays the damage dealt in chat
+            # Option to save damage results
+            #If not, displays standard scoreboard
+        if player's name = "Pehrek":
+            if arg-1 = "setnamelocation":
+                if name of player = "Pehrek":
+                    set {_command::*} to full command split at " "
+                    clear {_command::1} and {_command::2}
+                    set {_command} to join {_command::*} by " "
+                    set metadata value "locset" of player to {_command}
+                    send "Successfully set the location of %{_command}% to %player's location%. Use /dungeon [dungeon code e.g. SOS] to update the spawn locations text file." to player
+            else if arg-1 = "SOS":
+                if metadata value "locset" of player is set:
+                    set {_loc} to player's location
+                    set {_bosses::*} to "Balthazar", "The Council of Admins", "Gosha" and "Dreamcatcher"
+                    set the comments at the top of "SOSspawnlocations" to "Spawn locations for Bosses and mobs in the Siege of Spawn dungeon."
+                    set the header of "SOSspawnlocations" to "Spawn Locations"
+                    set yaml list "Bosses" in "SOSspawnlocations" to {_bosses::*}
+                    set yaml value metadata value "locset" of player from "SOSspawnlocations" to {_loc}
+                    save yaml "SOSspawnlocations"
+                    clear metadata value "locset" of player
+                    send "Successfully updated the spawn locations text file for %arg-1%."
+            else if arg-1 = "KeystoneHolderID":
+                if arg-2 = "sos":
+                    if target block of player is reinforced deepslate:
+                        set {_id} to random 8 char string from charset `0-9` `a-z`
+                        load yaml "plugins/Skript/dungeonconfig/KeystoneHolderIDs.yml" as "keystoneIds"
+                        clear yaml value "IDs Registered" in "keystoneIds"
+                        clear yaml value "Keystone Holders" in "keystoneIds"
+                        set {_size} to yaml value "IDs Registered" in "keystoneIds"
+                        if {_size} is not set:
+                            set {_size} to 1
+                        else:
+                            add 1 to {_size}
+                        set yaml value "IDs Registered" in "keystoneIds" to {_size}
+                        set yaml value "Keystone Holders.%{_id}%" in "keystoneIds" to {_size}
+                        save yaml "keystoneIds"
+                        unload yaml "keystoneIds"
+                        set {KeystoneHolderID::%location of target block of player%} to {_id}
+                        send "Successfully set the Keystone Holder's ID at %location of target block of player% to ID %{_size}%. (Id: %{_id}%)" to player
+                    else:
+                        send "&c&oYou must be looking at a Keystone Holder." to player
+on inventory close:
+    if event-inventory = metadata value "keystone" of player:
+        if slot 40 of player's current inventory is not black glass pane:
+            if metadata value "dungeon" of player is not true:
+                set {_x} to {KeystoneItem::%player%}
+                give {_x} to player
+                #clear {KeystoneItem::%player%}
+function DungeonMobAssignment(e: entity, b: boolean, lvl: number, percent: number):
+    set {_custom} to tag "custom" of nbt compound of {_e}
+    set tag "ECMob" of {_custom} to true
+    set tag "ECLvl" of {_custom} to {_lvl}
+    set tag "ECDungeonMob" of {_custom} to "true"
+    set tag "ECEnemyForces" of {_custom} to {_percent}
+    if {_b} is true:
+        set tag "ECBoss" of {_custom} to "true"
+        set {_id} to random 5 char string from charset `0-9` `a-z`  
+        set tag "ECBossBossBar" of {_custom} to {_id}
+#Zrobić w worldguardzie zeby dodawalo permisje na wejscie na region dla graczy w dungeonie, reszta nei moze wejsc
+#Keystone with lore Dungeon Level 2 and Place within
+#Scoreboard DPS, bosses defeated, time elapsed time left, dungeon name and level
+
+function BodyMobPull(x: entity, mob: entity):
+    set {_attackerInstance} to metadata value "DungeonInstance" of {_x}
+    set {_custom} to tag "custom" of nbt compound of {_mob}
+    set {_victimInstance} to tag "ECDungeonInstance" of {_custom}
+    if {_attackerInstance} = {_victimInstance}:
+        set the target of {_mob} to {_x}
+        if metadata value "ECPulled" of {_mob} is not set:
+            set metadata value "ECPulled" of {_mob} to 1
+            CheckInRange({_mob})
+            PullDuration({_mob}, (metadata value "KeystoneId" of {_mob}))
+            if {_mob} is a skeleton:
+                UpdateTarget({_mob}, {_x}, "attacker")
+            #set {_partymembers::*} to party members of party of {_x}
+            #loop {_partymembers::*}:
+                #if loop-value is online:
+            #    add loop-value to {_bar}
+            if tag "ECBoss" of {_custom} is set:
+                set {_id} to tag "ECBossBossBar" of {_custom}
+                set {_color} to metadata value "ECBossBarColor" of {_mob}
+                set {_bar} to boss bar with id {_id} with title name of {_mob} with color {_color}
+                loop {-dungeonInstance%{_victimInstance}%::*}:
+                    add loop-value to {_bar}
+                set bar style of {_bar} to segmented 20
+                set bar flag darken sky of {_bar} to true
+            else:
+                if {-affixes%{_victimInstance}%::*} contains "Explosive":
+                    if tag "custom;SpitefulShade" of nbt of {_mob} is not set:
+                        if tag "custom;ECBossMinion" of nbt of {_mob} is not set:
+                            ExplosiveInterval({_mob}, {_victimInstance})
+            if tag "custom;SpitefulShade" of nbt of {_mob} is set:
+                UpdateTarget({_mob}, {_x}, "attacker")
+            if tag "ECBossPartner" of {_custom} is set:
+                set {_partnerBoss} to tag "ECBossPartner" of {_custom}
+                set {_partnerBoss} to ({_partnerBoss} parsed as entity)
+                set {_custom} to tag "custom" of nbt compound of {_partnerBoss}
+                set metadata value "ECPulled" of {_partnerBoss} to 1 #check if fixed, replaced {_mob} with {_partnerBoss}
+                CheckInRange({_partnerBoss}) #check if fixed, replaced {_mob} with {_partnerBoss}
+                PullDuration({_partnerBoss}, (metadata value "KeystoneId" of {_partnerBoss}))
+                if {_partnerBoss} is a skeleton:
+                    UpdateTarget({_partnerBoss}, {_x}, "attacker")
+                set {_partnerBoss}'s target to target of {_mob}
+                if tag "ECBoss" of {_custom} is set:
+                    set {_id} to tag "ECBossBossBar" of {_custom}
+                    set {_color} to metadata value "ECBossBarColor" of {_partnerBoss}
+                    set {_bar} to boss bar with id {_id} with title (name of {_partnerBoss}) with color {_color}
+                    loop {-dungeonInstance%{_attackerInstance}%::*}:
+                        add loop-value to {_bar}
+                    set bar style of {_bar} to segmented 20
+                    set bar flag darken sky of {_bar} to true
+            if tag "ECBoss" of {_custom} is set:
+                if name of {_mob} = "Balthazar":
+                    Rings({_mob}, location of {_mob})
+                    ShootArrow({_mob})
+                    Sigils({_mob})
+                    MagicBullets({_mob})
+                    UpdateTarget({_mob}, {_x}, "random")
+                else if name of {_mob} = "Gosha":
+                    GoshaCallMinions({_mob})
+                    GoshaInfectPlayer({_mob})
+                    GoshaFungiShot({_mob})
+                else if name of {_mob} = "Dreamcatcher":
+                    DreamcatcherTornado({_mob}, {_victimInstance})
+                    DreamcatcherSheepBeds({_mob}, {_victimInstance})
+                    DreamcatcherStraySheep({_mob})
+                    DreamcatcherFightAmbience({_mob})
+                    DreamcatcherTeleport({_mob})
+                    loop {-dungeonInstance%{_attackerInstance}%::*}:
+                        set metadata value "DreamcatcherEngaged" of loop-value to true
+            else:
+                if name of {_mob} = "Destruction Mage":
+                    Fireball({_mob})
+                    FireballStorm({_mob})
+                    UpdateTarget({_mob}, {_x}, "dynamic")
+                else if name of {_mob} = "Destruction Archer":
+                    DestructionArrow({_mob})
+                    UpdateTarget({_mob}, {_x}, "dynamic")
+                else if name of {_victim} = "Magic Tome":
+                    RandomAbility({_mob})
+
+on entity target:
+    if target is a player:
+        if tag "custom" of nbt compound of event-entity is set:
+            set {_custom} to tag "custom" of nbt compound of event-entity
+            if tag "ECMob" of {_custom} is set:
+                set {_x} to nearest player in radius 4 around event-entity
+                if {_x} is set:
+                    if tag "ECDungeonMob" of {_custom} is set:
+                        if metadata value "DungeonInstance" of {_x} is set:
+                            set {_attackerInstance} to metadata value "DungeonInstance" of {_x}
+                            set {_custom} to tag "custom" of nbt compound of event-entity
+                            set {_victimInstance} to tag "ECDungeonInstance" of {_custom}
+                            if {_attackerInstance} = {_victimInstance}:
+                                if {_x} does not have invisibility:
+                                    BodyMobPull({_x}, event-entity)
+                                    loop all entities in radius 4 around event-entity:
+                                        if loop-entity is not a player:
+                                            if loop-entity is not event-entity:
+                                                if tag "custom;ECMob" of nbt of loop-entity is set:
+                                                    if tag "custom;ECDungeonMob" of nbt of loop-entity is set:
+                                                        if metadata value "ECPulled" of loop-entity is not set:
+                                                            BodyMobPull({_x}, loop-entity)
+                                else:
+                                    cancel event
+                else:
+                    cancel event
+            if tag "ECCantTarget" of {_custom} is set:
+                cancel event
+    else if event-entity is zombie or skeleton:
+        if target is a zombie or skeleton:
+            cancel event
+on death:
+    if tag "custom" of nbt compound of victim is set:
+        set {_custom} to tag "custom" of nbt compound of victim
+        if metadata value "ECPulled" of victim is set:
+            clear metadata value "ECPulled" of victim
+        if tag "ECBoss" of {_custom} is set:
+            set {_id} to tag "ECBossBossBar" of {_custom}
+            if boss bar with id {_id} is set:
+                remove all players from bossbar with id {_id}
+                delete bossbar with id {_id}
+        if tag "ECTextAbove" of {_custom} is set:
+            set {_entity} to tag "ECTextAbove" of {_custom} parsed as entity
+            kill {_entity}
+        if metadata value "ECMobSpawnLoc" of victim is set:
+            clear metadata value "ECMobSpawnLoc" of victim
+            clear metadata value "ECMobRespawn" of victim
+    if victim is a player:
+        if metadata value "DungeonInstance" of victim is set:
+            set {_instance} to metadata value "DungeonInstance" of victim
+            remove 10 from {-DungeonTimer%{_instance}%}
+            add 1 to {-deaths%{_instance}%}
+            set {_seconds} to "%{-deaths%{_instance}%}*10% seconds" parsed as timespan
+            loop {-dungeonInstance%{_instance}%::*}:
+                set line 6 of loop-value's scoreboard to "&fDeaths: &c%{-deaths%{_instance}%}% (-%formatTimespan({_seconds}, "mm:ss")%)"
+            
+            set metadata value "Died" of victim to true
+            set {_keystonename} to uncolored name of ({KeystoneItem::%victim%})
+            replace all "Keystone: " in {_keystonename} with ""
+            set {_keystoneLevel::*} to (uncolored line 1 of lore of {KeystoneItem::%victim%}) split at " "
+            set {_keystoneLevel} to {_keystoneLevel::3} parsed as integer
+            set {_keystoneId} to metadata value "KeystoneId" of victim
+            load yaml "plugins/Skript/logs/logi/dungeons/%{_keystonename}%/+%{_keystoneLevel}%/%{_keystoneId}%.yml" as "keystone-%{_keystoneId}%"
+            set {_deathsTotal} to yaml value "Dungeon.Deaths" in "keystone-%{_keystoneId}%"
+            add 1 to {_deathsTotal}
+            set yaml value "Dungeon.Deaths" in "keystone-%{_keystoneId}%" to {_deathsTotal}
+            set {_deathsPlayer} to yaml value "Deaths.%{_victim}%.Amount" in "keystone-%{_keystoneId}%"
+            add 1 to {_deathsPlayer}
+            set yaml value "Deaths.%victim%.Amount" in "keystone-%{_keystoneId}%" to {_deathsPlayer}
+            set yaml value "Deaths.%victim%.%{_deathsPlayer}%.Attacker" in "keystone-%{_keystoneId}%" to uncolored name of attacker
+            set yaml value "Deaths.%victim%.%{_deathsPlayer}%.Cause" in "keystone-%{_keystoneId}%" to uncolored metadata value "LastDamageCauseEN" of victim
+            save "keystone-%{_keystoneId}%"
+            unload "keystone-%{_keystoneId}%"
+
+    else:
+        if tag "custom;ECDungeonInstance" of nbt of victim is set:
+            set {_instance} to tag "custom;ECDungeonInstance" of nbt of victim
+            if {_instance} = metadata value "DungeonInstance" of attacker:
+                set {_percent} to tag "custom;ECEnemyForces" of nbt of victim
+                if {-EnemyForces%{_instance}%} + {_percent} >= 100:
+                    set {-EnemyForces%{_instance}%} to 100
+                    CheckIfDungeonCompleted(attacker)
+                else:
+                    add {_percent} to {-EnemyForces%{_instance}%}
+                    UpdateEnemyForces(attacker, {_instance})
+                    CheckIfDungeonCompleted(attacker)
+                
+                if {-affixes%{_instance}%::*} contains "Bolstering":
+                    Bolstering(victim)
+                if {-affixes%{_instance}%::*} contains "Bursting":
+                    Bursting(victim)
+                if {-affixes%{_instance}%::*} contains "Spiteful":
+                    Spiteful(victim, attacker, metadata value "DungeonInstance" of attacker)
+                
+                if tag "custom;ECBoss" of nbt of victim is not set:
+                    set {_keystonename} to uncolored name of ({KeystoneItem::%attacker%})
+                    replace all "Keystone: " in {_keystonename} with ""
+                    set {_keystoneLevel} to tag "KeystoneLevel" of nbt of {KeystoneItem::%attacker%}
+                    set {_keystoneId} to metadata value "KeystoneId" of attacker
+                    load yaml "plugins/Skript/logs/logi/dungeons/%{_keystonename}%/+%{_keystoneLevel}%/%{_keystoneId}%.yml" as "keystone-%{_keystoneId}%"
+                    set {_amount} to yaml value "Mobs Defeated.%uncolored name of victim%.Amount" in "keystone-%{_keystoneId}%"
+                    add 1 to {_amount}
+                    set yaml value "Mobs Defeated.%uncolored name of victim%.Amount" in "keystone-%{_keystoneId}%" to {_amount}
+                    set yaml value "Mobs Defeated.%uncolored name of victim%.Count" in "keystone-%{_keystoneId}%" to "%({_amount} * tag "custom;ECEnemyForces" of nbt of victim)%%%"
+                    save "keystone-%{_keystoneId}%"
+                    unload "keystone-%{_keystoneId}%"
+on respawn:
+    if metadata value "dungeon" of player is set:
+        set {_spawnpoint} to metadata value "spawnpointDungeon" of player
+        teleport the player to {_spawnpoint}
+        wait 3 seconds
+        clear metadata value "Died" of player
+
+on heal:
+    if tag "custom" of nbt compound of event-entity is set:
+        set {_custom} to tag "custom" of nbt compound of event-entity
+        if tag "ECBoss" of {_custom} is set:
+            set {_id} to tag "ECBossBossBar" of {_custom}
+            if boss bar with id {_id} is set:
+                wait 1 tick
+                set bar progress of boss bar with id {_id} to rounded (event-entity's health/event-entity's max health)*100
+
+function BossReset(e: entity):
+    kill {_e}
+    #spawn new boss
+    #check if all players are dead
+    #when a player dies (if they are engaged in a boss fight) they get spectator mode and have to wait till the fight is over or until they are resurrected
+    #if players in spectator fly out of arena bounds (set these in dungeon file), they are teleported back to dungeon spawn (or just cancel event on region exit and only enable it on /dungeon leave or the dungeon variable is false)
+    #if all players die, the boss resets <- check this in "on death" if attacker is boss
+   
+function PullMob(attacker: entity, victim: entity):
+    set {_custom} to tag "custom" of nbt compound of {_victim}
+    set {_attackerInstance} to metadata value "DungeonInstance" of {_attacker}
+    set {_victimInstance} to tag "ECDungeonInstance" of {_custom}
+    tag "custom;SpitefulShade" of nbt of {_victim} is set:
+        set {_victimInstance} to {_attackerInstance}
+    if {_attackerInstance} = {_victimInstance}:
+        if {-threat::%uuid of {_victim}%::%uuid of {_attacker}%} is not set:
+            set {-threat::%uuid of {_victim}%::%uuid of {_attacker}%} to 0
+        add damage to {-threat::%uuid of {_victim}%::%uuid of {_attacker}%}
+        set {_v} to (first element of createTop("-threat::%uuid of {_victim}%", 5, "[P]")) parsed as player
+        if {_v} is not set:
+            set {_v} to {_attacker}
+        set target of {_victim} to {_v}
+        if metadata value "ECSummonAggro" of {_victim} is set:
+            KnightArmorAggro({_victim}, {_v})
+        if metadata value "ECPulled" of {_victim} is not set:
+            set metadata value "ECPulled" of {_victim} to 1
+            CheckInRange({_victim})
+            PullDuration({_victim}, (metadata value "KeystoneId" of {_victim}))
+            if tag "ECBoss" of {_custom} is set:
+                set {_id} to tag "ECBossBossBar" of {_custom}
+                set {_color} to metadata value "ECBossBarColor" of {_victim}
+                clear boss bar with id {_id}
+                set {_bar} to boss bar with id {_id} with title name of {_victim} with color {_color}
+                loop {-dungeonInstance%{_victimInstance}%::*}:
+                    add loop-value to {_bar}
+                set bar style of {_bar} to segmented 20
+                set bar flag darken sky of {_bar} to true   
+            else:
+                if {-affixes%{_victimInstance}%::*} contains "Explosive":
+                    if tag "custom;SpitefulShade" of nbt of {_victim} is not set:
+                        if tag "custom;ECBossMinion" of nbt of {_victim} is not set:
+                            ExplosiveInterval({_victim}, {_victimInstance})
+            if {_victim} is a skeleton:
+                UpdateTarget({_victim}, {_attacker}, "attacker")
+            else if tag "custom;SpitefulShade" of nbt of {_victim} is set:
+                UpdateTarget({_victim}, {_attacker}, "attacker")
+            #set {_partymembers::*} to party members of party of {_attacker}
+            #loop {_partymembers::*}:
+                #if loop-value is online:
+            #    add loop-value to {_bar}
+            #    broadcast loop-value
+            if tag "ECBossPartner" of {_custom} is set:
+                set {_partnerBoss} to tag "ECBossPartner" of {_custom}
+                set {_partnerBoss} to ({_partnerBoss} parsed as entity)
+                set metadata value "ECPulled" of {_partnerBoss} to 1
+                set {_partnerBoss}'s target to {_attacker}
+                set {_custom} to tag "custom" of nbt compound of {_partnerBoss}
+                CheckInRange({_partnerBoss})
+                PullDuration({_partnerBoss}, (metadata value "KeystoneId" of {_partnerBoss}))
+                if {_partnerBoss} is a skeleton:
+                    UpdateTarget({_partnerBoss}, {_attacker}, "attacker")
+                if tag "ECBoss" of {_custom} is set:
+                    set {_id} to tag "ECBossBossBar" of {_custom}
+                    set {_color} to metadata value "ECBossBarColor" of {_partnerBoss}
+                    set {_bar} to boss bar with id {_id} with title (name of {_partnerBoss}) with color {_color}
+                    loop {-dungeonInstance%{_attackerInstance}%::*}:
+                        #if loop-value is online:
+                        add loop-value to {_bar}
+                    set bar style of {_bar} to segmented 20
+                    set bar flag darken sky of {_bar} to true
+            if tag "ECBoss" of {_custom} is set:
+                if name of {_victim} = "Balthazar":
+                    Rings({_victim}, location of {_victim})
+                    ShootArrow({_victim})
+                    Sigils({_victim})
+                    MagicBullets({_victim})
+                    UpdateTarget({_victim}, {_attacker}, "random")
+                if name of {_victim} = "Gosha":
+                    GoshaCallMinions({_victim})
+                    GoshaInfectPlayer({_victim})
+                    GoshaFungiShot({_victim})
+                else if name of {_victim} = "Dreamcatcher":
+                    DreamcatcherTornado({_victim}, {_victimInstance})
+                    DreamcatcherSheepBeds({_victim}, {_victimInstance})
+                    DreamcatcherStraySheep({_victim})
+                    DreamcatcherFightAmbience({_victim})
+                    DreamcatcherTeleport({_victim})
+                    loop {-dungeonInstance%{_attackerInstance}%::*}:
+                        set metadata value "DreamcatcherEngaged" of loop-value to true
+            else:
+                if name of {_victim} = "Destruction Mage":
+                    Fireball({_victim})
+                    FireballStorm({_victim})
+                    UpdateTarget({_victim}, {_attacker}, "dynamic")
+                else if name of {_victim} = "Destruction Archer":
+                    DestructionArrow({_victim})
+                    UpdateTarget({_victim}, {_attacker}, "dynamic")
+                else if name of {_victim} = "Magic Tome":
+                    RandomAbility({_victim})
+        MobHealthBar({_victim})
+
+on damage:
+    if tag "custom" of nbt compound of victim is set:
+        set {_custom} to tag "custom" of nbt compound of victim
+        if tag "ECMob" of {_custom} is set:
+            if tag "ECDungeonMob" of {_custom} is set:
+                if attacker or victim is a player:
+                    if metadata value "DungeonInstance" of attacker is set:
+                        if damage > 0:
+                            PullMob(attacker, victim)
+                            loop all entities in radius 4 around victim:
+                                if loop-entity is not a player:
+                                    if loop-entity is not victim:
+                                        if tag "custom" of nbt compound of loop-entity is set:
+                                            set {_custom} to tag "custom" of nbt compound of loop-entity
+                                            if tag "ECMob" of {_custom} is set:
+                                                if tag "ECDungeonMob" of {_custom} is set:
+                                                    if metadata value "ECPulled" of loop-entity is not set:
+                                                        PullMob(attacker, loop-entity)
+                    # IF PROBLEMS START OCCURING, RESTORE THIS PART AND REMOVE FROM IF METADATA VALUE DUNGEON INSTANCE TO IF ATTACKERINSTANDE = VICTIMINSTANCE
+                    #if victim is not a player:
+                    #    set {_custom} to tag "custom" of nbt compound of victim
+                    #    set {_victimInstance} to "%tag "ECDungeonInstance" of {_custom}%" parsed as number
+                    #    if metadata value "DungeonInstance" of attacker is set:
+                    #        set {_attackerInstance} to "%metadata value "DungeonInstance" of attacker%" parsed as number
+                    #       if tag "ECDungeonMob" of {_custom} is set:
+                    #            if {_attackerInstance} != {_victimInstance}:
+                    #                set damage to 0
+                    #               cancel event
+                    #            if {_victimInstance} is not set || {_victimInstance} = 0:
+                    #                set damage to 0
+                    #                cancel event
+                    #    else:
+                    #        if tag "ECDungeonMob" of {_custom} is set:
+                    #            if {_victimInstance} is not set || {_victimInstance} = 0:
+                    #                set damage to 0
+                    #               cancel event
+                    else:
+                        set damage to 0
+                        cancel event
+                else:
+                    set damage to 0
+                    cancel event                  
+
+function MobHealthBar(e: entity):
+    set {_custom} to tag "custom" of nbt of {_e}
+    if tag "ECBoss" of {_custom} is not set:
+        wait 1 tick
+        UpdateMobHealthBar({_e})
+    else:
+        set {_id} to tag "ECBossBossBar" of {_custom}
+        if boss bar with id {_id} is set:
+            wait 1 tick
+            set bar progress of boss bar with id {_id} to rounded ({_e}'s health/{_e}'s max health)*100
+
+on death:
+    if victim is not a player:
+        if tag "custom;ECMob" of nbt of victim is set:
+            if tag "custom;ECTextAbove" of nbt of victim is set:
+                kill (tag "custom;ECTextAbove" of nbt of victim parsed as entity)
+                if (tag "custom;ECTextAboveLevel" of nbt of victim) is set:
+                    kill (tag "custom;ECTextAboveLevel" of nbt of victim parsed as entity)
+            if tag "custom;ECDungeonMob" of nbt of victim is set:
+                clear {-threat::%uuid of victim%::%uuid of attacker%}
+                clear metadata value "KeystoneId" of victim
+                clear metadata value "Raging" of victim
+                if tag "custom;ECBoss" of nbt of victim is set:
+                    if attacker is a player:
+                        set {_attackerPlayer} to attacker
+                        set {_instance} to metadata value "DungeonInstance" of {_attackerPlayer}
+                        set {_partymembers::*} to party members of party of {_attackerPlayer}
+                        CheckIfDungeonCompleted(attacker)
+                        if tag "custom;ECBossPartner" of nbt of victim is set:
+                            set {_BossPartner} to tag "custom;ECBossPartner" of nbt of victim
+                            broadcast {_BossPartner}
+                            set {_partner} to {_BossPartner} parsed as entity
+                            if {_partner} is not alive:
+                                add 1 to {-dungeonBossesSlain%{_instance}%}
+                                if name of victim contains "Pehrek" or "merimelle":
+                                    loop {_partymembers::*}:
+                                        #if loop-value is online:
+                                        send title "&lThe Council of Admins &edefeated" with subtitle " " to loop-value for 3 seconds with fade in 0.5 second and fade out 0.5 second
+                                        clear tag "custom;ShadowStrikeDebuff" of nbt of loop-value
+                                        loop 15 times:
+                                            set {_x} to line loop-number of loop-value-1's scoreboard
+                                            if {_x} contains "The Council of Admins":
+                                                replace all "&7" in {_x} with "&a"
+                                                replace all "0/1" in {_x} with "1/1"
+                                                set line loop-number of loop-value-1's scoreboard to {_x}
+                                                stop loop
+                                    loop 2 times:
+                                        if (metadata value "ArmorStand%loop-number%" of victim) is set:
+                                            set {_ar} to (metadata value "ArmorStand%loop-number%" of victim)
+                                        else if (metadata value "ArmorStand%loop-number%" of {_partner}) is set:
+                                            set {_ar} to (metadata value "ArmorStand%loop-number%" of {_partner})
+                                        teleport {_ar} to location(-1228, -100, -1792, world "world")
+                                        kill {_ar}
+                                        clear metadata value "ArmorStand%loop-number%" of victim
+                        else:
+                            add 1 to {-dungeonBossesSlain%{_instance}%}
+                            loop {_partymembers::*}:
+                                send title "&l%name of victim% &edefeated" with subtitle " " to loop-value for 3 seconds with fade in 0.5 second and fade out 0.5 second
+                                loop 15 times:
+                                    set {_x} to line loop-number of loop-value-1's scoreboard
+                                    if {_x} contains (uncolored victim's name):
+                                        replace all "&7" in {_x} with "&a"
+                                        replace all "0/1" in {_x} with "1/1"
+                                        set line loop-number of loop-value-1's scoreboard to {_x}
+                                        stop loop
+                                if name of victim = "Gosha":
+                                    clear metadata value "GoshaPoison" of loop-value
+                                    clear metadata value "PoisonStacks" of loop-value
+                                    remove poison from loop-value's active potion effects
+                            if name of victim = "Gosha":
+                                loop all blocks in radius 50 around victim where [input = mycelium]:
+                                    clear metadata value "GoshaPoisonousGround" of loop-block
+function CheckInRange(e: entity):
+    while {_e} is alive:
+        if metadata value "ECMobSpawnLoc" of {_e} is set:
+            if distance between (metadata value "ECMobSpawnLoc" of {_e}) and {_e} > 40:
+                if tag "custom;ECSummon" of nbt of {_e} is not set:
+                    if tag "custom;RP" of nbt of {_e} is not set:
+                        MobReset({_e})
+            else:
+                set {_mobInstance} to tag "custom;ECDungeonInstance" of nbt of {_e}
+                set {_targetList::*} to {-threat::%uuid of {_e}%}
+                loop {_targetList::*}:
+                    if metadata value "Died" of loop-value is set:
+                        remove loop-value from {_targetList::*}
+                set {_topThreat} to (first element of createTop("_targetList::*", 5, "[P]")) parsed as player
+                if {_topThreat} is not set:
+                    loop {-dungeonInstance%{_mobInstance}%::*}:
+                        if metadata value "Died" of loop-value is not set:
+                            set {_topThreat} to loop-value
+                            stop loop
+                if distance between {_topThreat} and {_e} >= 30:
+                    teleport {_e} to {_topThreat}
+        else:
+            stop loop
+        wait 2 seconds
+        
+function MobReset(e: entity) :: string:
+    set {_l} to location of {_e}
+    play sound "entity.blaze.hurt" with volume 3.5 and pitch 1.1 at {_l}
+
+    set {_location} to (metadata value "ECMobSpawnLoc" of {_e})
+    set {_keystoneId} to metadata value "KeystoneId" of {_e}
+    set {_partySize} to tag "custom;ECPartySize" of nbt of {_e}
+
+    set {_instance} to tag "custom;ECDungeonInstance" of nbt of {_e}
+
+    set {_affixes::*} to tag "custom;Affixes" of nbt of {_e}
+
+    if tag "custom;InspiringMob" of nbt of {_e} is set:
+        broadcast "Yup"
+        set {_inspiring} to true
+    #if block at {_location} is air:
+    #    set {_lowestblock} to block 300 below {_location}
+    #    set {_highestblock} to block at {_location}
+     #   loop blocks between {_highestblock} and {_lowestblock}:
+    #        if loop-block is not air:
+    #            set {_location} to block 0.6 above loop-block
+     #           stop loop
+
+    if tag "custom;ECInstanceName" of nbt of {_e} = "Siege of Spawn":
+        if name of {_e} = "Destruction Mage":
+            set {_newlySpawnedMob} to (SOSMobSpawn({_location}, blaze, "Destruction Mage", air, "Fire", 1.8, {_keystoneId}, {_partySize}, 30, {_instance}, {_affixes::*})) parsed as entity
+        else if name of {_e} = "Destruction Archer":
+            set {_newlySpawnedMob} to (SOSMobSpawn({_location}, skeleton, "Destruction Archer", air, "Fire", 1.3, {_keystoneId}, {_partySize}, 24, {_instance}, {_affixes::*})) parsed as entity
+        else if name of {_e} = "Magic Tome":
+            set {_newlySpawnedMob} to (SOSMobSpawn({_location}, bee, "Magic Tome", air, "Magic", 0.9, {_keystoneId}, {_partySize}, 17, {_instance}, {_affixes::*})) parsed as entity
+        else if name of {_e} = "&fPehrek" or "&fmerimelle":
+            if tag "custom;ECBossPartner" of nbt of {_e} is set:
+                set {_partnerBoss} to tag "custom;ECBossPartner" of nbt of {_e}
+                set {_partnerBoss} to ({_partnerBoss} parsed as entity)
+            if name of {_e} = "&fPehrek":
+                set {_newlySpawnedMob} to (SOSTheCouncilOfAdminsSpawnPehrek({_location}, {_keystoneId}, {_partySize}, {_instance}, {_affixes::*})) parsed as entity
+                loop 2 times:
+                    set {_ar} to metadata value "ArmorStand%loop-number%" of {_e}
+                    set {_locationAR} to (metadata value "ECMobSpawnLoc" of {_ar})
+                    force teleport {_ar} to location(-1228, -100, -1792, world "world")
+                    kill {_ar}
+
+                    set {_arNew} to SOSMobSpawn({_locationAR}, zombie, "&fKnight Armor", iron sword, "Ghost", 0, {_keystoneId}, {_partySize}, 15, {_instance}, {_affixes::*})
+                    set {_pot} to potion effect of speed of tier 1.3 without particles for 1 day
+                    add {_pot} to potion effects of {_arNew}
+                    set metadata value "ArmorStand%loop-number%" of {_newlySpawnedMob} to ({_arNew} parsed as entity)
+            else if name of {_e} = "&fmerimelle":
+                set {_newlySpawnedMob} to (SOSTheCouncilOfAdminsSpawnmerimelle({_location}, {_keystoneId}, {_partySize}, {_instance}, {_affixes::*})) parsed as entity
+        else if name of {_e} = "Balthazar":
+            set {_newlySpawnedMob} to (SOSSpawnBalthazar({_location}, {_keystoneId}, {_partySize}, {_instance}, {_affixes::*}))
+        else if name of {_e} = "Dreamcatcher":
+            set {_newlySpawnedMob} to (SOSSpawnDreamcatcher({_location}, {_keystoneId}, {_partySize}, {_instance}, {_affixes::*})) parsed as entity
+        else if name of {_e} = "Gosha":
+            set {_newlySpawnedMob} to (SOSSpawnGosha({_location}, {_keystoneId}, {_partySize}, {_instance}, {_affixes::*})) parsed as entity
+            loop all entities where [tag "custom;ECBossMinion" of nbt of input is set]:
+                if name of loop-entity contains "Gosha's Minion":
+                    broadcast "Def"
+                    set {_instanceMinion} to tag "custom;ECDungeonInstance" of nbt of loop-entity
+                    if {_instanceMinion} = {_instance}:
+                        broadcast "Ghi"
+                        force teleport loop-entity to location(-1228, -100, -1792, world "world")
+                        kill loop-entity
+
+    if tag "custom;ECTextAbove" of nbt of {_e} is set:
+        set {_textabove} to (tag "custom;ECTextAbove" of nbt of {_e}) parsed as entity
+        force teleport {_textabove} to location(-1228, -100, -1792, world "world")
+        kill {_textabove}
+
+    broadcast "!@!"
+    force teleport {_e} to location(-1228, -100, -1792, world "world")
+    set {_id} to tag "custom;ECBossBossBar" of nbt of {_e}
+    delete bossbar with id {_id}
+    kill {_e}
+
+    if {_partnerBoss} is set:
+        if {_partnerBoss} is alive:
+            set {_newBoss} to (MobReset({_partnerBoss})) parsed as entity
+    
+        set tag "custom;ECBossPartner" of nbt of {_newBoss} to (uuid of {_newlySpawnedMob})
+        set tag "custom;ECBossPartner" of nbt of {_newlySpawnedMob} to (uuid of {_newBoss})
+    
+    if {_inspiring} is set:
+        Inspiring({_newlySpawnedMob}, {_inspiring}, {_instance})
+        
+    return uuid of {_newlySpawnedMob}
+
+command /setdungeon [<text>]:
+    trigger:
+        #for arg-1, insert the name of the .yml file of the dungeon
+        if player's name = "Pehrek":
+            set {_custom} to tag "custom" of nbt compound of target block
+            set {KeystoneHolder::%target block%} to true
+            set tag "KeystoneHolderSpawnLoc" of {_custom} to arg-1
+            set {_loc} to player's location
+            set pitch of {_loc} to 0
+            set yaw of {_loc} to 180
+            set yaml value "KeystoneHolder" from arg-1 to {_loc}
+
+on break of reinforced deepslate:
+    if {KeystoneHolder::%event-block%} is set:
+        clear {KeystoneHolder::%event-block%}
+        clear tag "custom;KeystoneHolderSpawnLoc" of nbt of event-block
+
+on gamemode change:
+    if player's gamemode is survival or creative or adventure:
+        if {dead::%player%} is true:
+            cancel event
+            broadcast "Destrukcja"
+on block break:
+    if "%region at player%" contains "dungeon":
+        #if metadata value "DungeonInstance" of player is not set:
+        cancel event
+on skript stop:
+    delete all bossbars
+    clear {-threat::*}
+on skript start:
+    wait 1 tick
+    delete all bossbars
+    

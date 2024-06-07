@@ -3,164 +3,170 @@ variables:
 	{space} = ""
 	{space2} = ""
 function CombatRefresh(v: entity):
-	if {mob::%{_v}%} is true:
-		if {engagedc::%{_v}%} is not set:
-			set {engagedc::%{_v}%} to 60
-			while {engagedc::%{_v}%} > -1:
-				if {engagedc::%{_v}%} > 0:
+	if tag "custom;ECMob" of nbt of {_v} is set:
+		if metadata value "ECEngaged" of {_v} is not set:
+			set metadata value "ECEngaged" of {_v} to 60
+			while metadata value "ECEngaged" of {_v} > -1:
+				if metadata value "ECEngaged" of {_v} > 0:
 					wait 1 second
-					remove 1 from {engagedc::%{_v}%}
+					set {_tag} to metadata value "ECEngaged" of {_v}
+					remove 1 from {_tag}
+					set metadata value "ECEngaged" of {_v} to {_tag}
 				else:
-					clear {engagedc::%{_v}%}
-					clear {asyst::%{_v}%::*}
+					clear metadata value "ECEngaged" of {_v}
+					clear {asyst::%uuid of {_v}%::*}
 					clear {lastdmgcauselore::%{_v}%::*}
-					clear {lastdmgcause::%{_v}%}
+					clear metadata value "LastDamageCause" of {_v}
 					clear {lastdmgcauseloreEN::%{_v}%::*}
-					clear {lastdmgcauseEN::%{_v}%}
-				
+					clear metadata value "LastDamageCauseEN" of {_v}			
 		else:
-			set {engagedc::%{_v}%} to 60
+			set metadata value "ECEngaged" of {_v} to 60
 function HealRefresh(p: player, h: number):
-	if {engagedc::%{_p}%} is not set:
+	if metadata value "ECEngaged" of {_p} is not set:
+		set {_id} to line 19 of lore of {karta::%{_p}%}
 		set {healed::%{_p}%} to 0
 		set {hps::%{_p}%} to 0
 		clear {healcard::%{kartaname::%{_p}%}%::%{_id}%::*}
 		clear {dmgbreak::%{kartaname::%{_p}%}%::%{_id}%::*}
 		add {_h} to {healed::%{_p}%}
-		delete skoreboard for {_p}
-		setup skoreboard for {_p}
-		set {engagedc::%{_p}%} to 60
-		while {engagedc::%{_p}%} > -1:
-			if {engagedc::%{_p}%} > 0:
-				wait 1 second
-				remove 1 from {engagedc::%{_p}%}
-			else:
-				set {_data} to data()
-				if {hps::%{_p}%} is set:
-					log "%{_data}% %{_p}% exit the combat with %{dmgdealt::%{_p}%}% damage dealt, %{dps::%{_p}%}% DPS, %{healed::%{_p}%}% health healed and %{hps::%{_p}%}% HPS. Fight duration: %{seconds::%{_p}%}% seconds" to "logi/combat/combatdetails %{datatydzien}%-%{datatydzien2}%.log"
+		if metadata value "DungeonInstance" of {_p} is not set:
+			clear scoreboard of {_p}
+			set metadata value "ECEngaged" of {_p} to 60
+			while metadata value "ECEngaged" of {_p} > -1:
+				if metadata value "ECEngaged" of {_p} > 0:
+					wait 1 second
+					set {_tag} to metadata value "ECEngaged" of {_p}
+					remove 1 from {_tag}
+					set metadata value "ECEngaged" of {_p} to {_tag}
 				else:
-					log "%{_data}% %{_p}% exit the combat with %{dmgdealt::%{_p}%}% damage dealt and %{dps::%{_p}%}% DPS. Fight duration: %{seconds::%{_p}%}% seconds" to "logi/combat/combatdetails %{datatydzien}%-%{datatydzien2}%.log"
-				set {healed::%{_p}%} to 0
-				set {hps::%{_p}%} to 0
-				clear {engagedc::%{_p}%}
-				clear {seconds::%{_p}%}
-				set {_id} to line 18 of lore of {karta::%{_p}%}
-				clear {healcard::%{kartaname::%{_p}%}%::%{_id}%::*}
-				clear {dmgbreak::%{kartaname::%{_p}%}%::%{_id}%::*}
+					set {_data} to data()
+					if {hps::%{_p}%} is set:
+						log "%{_data}% %{_p}% exit combat with %{dmgdealt::%{_p}%}% damage dealt, | %{dps::%{_p}%}% DPS, %{healed::%{_p}%}% health healed and %{hps::%{_p}%}% HPS. Fight duration: %{seconds::%{_p}%}% seconds" to "logi/combat/combatdetails %{datatydzien}%-%{datatydzien2}%.log"
+					else:
+						log "%{_data}% %{_p}% exit combat with %{dmgdealt::%{_p}%}% damage dealt and | %{dps::%{_p}%}% DPS. Fight duration: %{seconds::%{_p}%}% seconds" to "logi/combat/combatdetails %{datatydzien}%-%{datatydzien2}%.log"
+					set {healed::%{_p}%} to 0
+					set {hps::%{_p}%} to 0
+					clear metadata value "ECEngaged" of {_p}
+					clear {seconds::%{_p}%}
+					set {_id} to line 19 of lore of {karta::%{_p}%}
+					clear {healcard::%{kartaname::%{_p}%}%::%{_id}%::*}
+					clear {dmgbreak::%{kartaname::%{_p}%}%::%{_id}%::*}
 	else:
-		set {engagedc::%{_p}%} to 60
+		set metadata value "ECEngaged" of {_p} to 60
 		add {_h} to {healed::%{_p}%}
 	set {hps::%{_p}%} to {healed::%{_p}%}/{seconds::%{_p}%}
-	wait 1 tick
-	if {_p} has a skoreboard:
-		if {meter::%{_p}%} = "healing":
-			set {_kolorek} to KolorekScoreboard({_p})
-			set title of skoreboard {_p} to "&f&l«-───▬ %{_kolorek}%&lEC &f&l▬───-»"
-			set slot 12 of skoreboard {_p} to ""
-			if {language::%{_p}%} = "English":
-				set slot 11 of skoreboard {_p} to " &fIn combat for: %{_kolorek}%%{seconds::%{_p}%}% seconds     "
+	if metadata value "DungeonInstance" of {_p} is not set:
+		wait 1 tick
+		if title of {_p}'s scoreboard is set:
+			if {meter::%{_p}%} = "healing":
+				set {_kolorek} to KolorekScoreboard({_p})
+				set title of {_p}'s scoreboard to "&f&l«-───▬ %{_kolorek}%&lEC &f&l▬───-»"
+				set line 12 of {_p}'s scoreboard to ""
+				if {language::%{_p}%} = "English":
+					set line 11 of {_p}'s scoreboard to " &fIn combat for: %{_kolorek}%%{seconds::%{_p}%}% seconds     "
+				else:
+					set line 11 of {_p}'s scoreboard to " &fW walce od: %{_kolorek}%%{seconds::%{_p}%}% sekund     "
+				set line 10 of {_p}'s scoreboard to " "
+				set {_x} to first element of createTop("healed", 5, "[P]")
+				set {_x2} to 2nd element of createTop("healed", 5, "[P]")
+				set {_x3} to 3rd element of createTop("healed", 5, "[P]")
+				set {_x4} to 4th element of createTop("healed", 5, "[P]")
+				set {_x5} to 5th element of createTop("healed", 5, "[P]")
+				if {healed::%{_x}%} > 0:
+					set line 9 of {_p}'s scoreboard to "  &f1. &f%{ikonkakarta::%{_x}%}%%{kartacolor::%{_x}%}%%first element of createTop("healed", 5, "[P]")% &f%first element of createTop("healed", 5, "[V]")% %{kartacolor::%{_x}%}%HEAL | &f%{hps::%{_x}%}% %{kartacolor::%{_x}%}%HPS"
+				if {healed::%{_x2}%} > 0:
+					set line 8 of {_p}'s scoreboard to "  &f2. &f%{ikonkakarta::%{_x2}%}%%{kartacolor::%{_x2}%}%%2nd element of createTop("healed", 5, "[P]")% &f%2nd element of createTop("healed", 5, "[V]")% %{kartacolor::%{_x}%}%HEAL | &f%{hps::%{_x2}%}% %{kartacolor::%{_x}%}%HPS"
+				if {healed::%{_x3}%} > 0:
+					set line 7 of {_p}'s scoreboard to "  &f3. &f%{ikonkakarta::%{_x3}%}%%{kartacolor::%{_x3}%}%%3rd element of createTop("healed", 5, "[P]")% &f%3rd element of createTop("healed", 5, "[V]")% %{kartacolor::%{_x}%}%HEAL | &f%{hps::%{_x3}%}% %{kartacolor::%{_x}%}%HPS"
+				if {healed::%{_x4}%} > 0:
+					set line 6 of {_p}'s scoreboard to "  &f4. %{ikonkakarta::%{_x4}%}%%{kartacolor::%{_x4}%}%%4th element of createTop("healed", 5, "[P]")% &f%4th element of createTop("healed", 5, "[V]")% %{kartacolor::%{_x}%}%HEAL | &f%{hps::%{_x4}%}% %{kartacolor::%{_x}%}%HPS"
+				if {healed::%{_x5}%} > 0:
+					set line 5 of {_p}'s scoreboard to "  &f5. %{ikonkakarta::%{_x5}%}%%{kartacolor::%{_x5}%}%%5th element of createTop("healed", 5, "[P]")% &f%5th element of createTop("healed", 5, "[V]")% %{kartacolor::%{_x}%}%HEAL | &f%{hps::%{_x5}%}% %{kartacolor::%{_x}%}%HPS"
+				set line 4 of {_p}'s scoreboard to ""
 			else:
-				set slot 11 of skoreboard {_p} to " &fW walce od: %{_kolorek}%%{seconds::%{_p}%}% sekund     "
-			set slot 10 of skoreboard {_p} to " "
-			set {_x} to first element of createTop("healed", 5, "[P]")
-			set {_x2} to 2nd element of createTop("healed", 5, "[P]")
-			set {_x3} to 3rd element of createTop("healed", 5, "[P]")
-			set {_x4} to 4th element of createTop("healed", 5, "[P]")
-			set {_x5} to 5th element of createTop("healed", 5, "[P]")
-			if {healed::%{_x}%} > 0:
-				set slot 9 of skoreboard {_p} to "  &f1. &f%{ikonkakarta::%{_x}%}%%{kartacolor::%{_x}%}%%first element of createTop("healed", 5, "[P]")% %first element of createTop("healed", 5, "[V]")% HEAL %{hps::%{_x}%}% HPS"
-			if {healed::%{_x2}%} > 0:
-				set slot 8 of skoreboard {_p} to "  &f2. &f%{ikonkakarta::%{_x2}%}%%{kartacolor::%{_x2}%}%%2nd element of createTop("healed", 5, "[P]")% %2nd element of createTop("healed", 5, "[V]")% HEAL %{hps::%{_x2}%}% HPS"
-			if {healed::%{_x3}%} > 0:
-				set slot 7 of skoreboard {_p} to "  &f3. &f%{ikonkakarta::%{_x3}%}%%{kartacolor::%{_x3}%}%%3rd element of createTop("healed", 5, "[P]")% %3rd element of createTop("healed", 5, "[V]")% HEAL %{hps::%{_x3}%}% HPS"
-			if {healed::%{_x4}%} > 0:
-				set slot 6 of skoreboard {_p} to "  &f4. %{ikonkakarta::%{_x4}%}%%{kartacolor::%{_x4}%}%%4th element of createTop("healed", 5, "[P]")% %4th element of createTop("healed", 5, "[V]")% HEAL %{hps::%{_x4}%}% HPS"
-			if {healed::%{_x5}%} > 0:
-				set slot 5 of skoreboard {_p} to "  &f5. %{ikonkakarta::%{_x5}%}%%{kartacolor::%{_x5}%}%%5th element of createTop("healed", 5, "[P]")% %5th element of createTop("healed", 5, "[V]")% HEAL %{hps::%{_x5}%}% HPS"
-			set slot 4 of skoreboard {_p} to ""
-		else:
-			set {_kolorek} to KolorekScoreboard({_p})
-			set title of skoreboard {_p} to "&f&l«-───▬ %{_kolorek}%&lEC &f&l▬───-»"
-			set slot 12 of skoreboard {_p} to ""
-			if {language::%{_p}%} = "English":
-				set slot 11 of skoreboard {_p} to " &fIn combat for: %{_kolorek}%%{seconds::%{_p}%}% seconds     "
-			else:
-				set slot 11 of skoreboard {_p} to " &fW walce od: %{_kolorek}%%{seconds::%{_p}%}% sekund     "
-			set slot 10 of skoreboard {_p} to " "
-			set {_x} to first element of createTop("dmgdealt", 5, "[P]")
-			set {_x2} to 2nd element of createTop("dmgdealt", 5, "[P]")
-			set {_x3} to 3rd element of createTop("dmgdealt", 5, "[P]")
-			set {_x4} to 4th element of createTop("dmgdealt", 5, "[P]")
-			set {_x5} to 5th element of createTop("dmgdealt", 5, "[P]")
-			if {dmgdealt::%{_x}%} > 0:
-				set slot 9 of skoreboard {_p} to "  &f1. &f%{ikonkakarta::%{_x}%}%%{kartacolor::%{_x}%}%%first element of createTop("dmgdealt", 5, "[P]")% %first element of createTop("dmgdealt", 5, "[V]")% DMG %{dps::%{_x}%}% DPS"
-			if {dmgdealt::%{_x2}%} > 0:
-				set slot 8 of skoreboard {_p} to "  &f2. &f%{ikonkakarta::%{_x2}%}%%{kartacolor::%{_x2}%}%%2nd element of createTop("dmgdealt", 5, "[P]")% %2nd element of createTop("dmgdealt", 5, "[V]")% DMG %{dps::%{_x2}%}% DPS"
-			if {dmgdealt::%{_x3}%} > 0:
-				set slot 7 of skoreboard {_p} to "  &f3. &f%{ikonkakarta::%{_x3}%}%%{kartacolor::%{_x3}%}%%3rd element of createTop("dmgdealt", 5, "[P]")% %3rd element of createTop("dmgdealt", 5, "[V]")% DMG %{dps::%{_x3}%}% DPS"
-			if {dmgdealt::%{_x4}%} > 0:
-				set slot 6 of skoreboard {_p} to "  &f4. %{ikonkakarta::%{_x4}%}%%{kartacolor::%{_x4}%}%%4th element of createTop("dmgdealt", 5, "[P]")% %4th element of createTop("dmgdealt", 5, "[V]")% DMG %{dps::%{_x4}%}% DPS"
-			if {dmgdealt::%{_x5}%} > 0:
-				set slot 5 of skoreboard {_p} to "  &f5. %{ikonkakarta::%{_x5}%}%%{kartacolor::%{_x5}%}%%5th element of createTop("dmgdealt", 5, "[P]")% %5th element of createTop("dmgdealt", 5, "[V]")% DMG %{dps::%{_x5}%}% DPS"
-			set slot 4 of skoreboard {_p} to ""
-	if {engagedc::%{_p}%} is not set:
-		delete skoreboard to {_p}
-on leave:
-	if {engagedc::%player%} is not set:
-		clear {zdrowie::%player%}
-		clear {obrazenia::%player%}
-		clear {wytrzymalosc::%player%}
-		clear {mobilnosc::%player%}
-		clear {kontrolatlumu::%player%}
-		clear {uzytecznosc::%player%}
-		clear {pospiech::%player%}
-		clear {mistrzostwo::%player%}
-		clear {unik::%player%}
-		clear {zywiol::%player%}
-		clear {crit::%player%}
+				set {_kolorek} to KolorekScoreboard({_p})
+				set title of {_p}'s scoreboard to "&f&l«-───▬ %{_kolorek}%&lEC &f&l▬───-»"
+				set line 12 of {_p}'s scoreboard to ""
+				if {language::%{_p}%} = "English":
+					set line 11 of {_p}'s scoreboard to " &fIn combat for: %{_kolorek}%%{seconds::%{_p}%}% seconds     "
+				else:
+					set line 11 of {_p}'s scoreboard to " &fW walce od: %{_kolorek}%%{seconds::%{_p}%}% sekund     "
+				set line 10 of {_p}'s scoreboard to " "
+				set {_x} to first element of createTop("dmgdealt", 5, "[P]")
+				set {_x2} to 2nd element of createTop("dmgdealt", 5, "[P]")
+				set {_x3} to 3rd element of createTop("dmgdealt", 5, "[P]")
+				set {_x4} to 4th element of createTop("dmgdealt", 5, "[P]")
+				set {_x5} to 5th element of createTop("dmgdealt", 5, "[P]")
+				if {dmgdealt::%{_x}%} > 0:
+					set line 9 of {_p}'s scoreboard to "  &f1. &f%{ikonkakarta::%{_x}%}%%{kartacolor::%{_x}%}%%first element of createTop("dmgdealt", 5, "[P]")% &f%first element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x}%}%DMG | &f%{dps::%{_x}%}% %{kartacolor::%{_x}%}%DPS"
+				if {dmgdealt::%{_x2}%} > 0:
+					set line 8 of {_p}'s scoreboard to "  &f2. &f%{ikonkakarta::%{_x2}%}%%{kartacolor::%{_x2}%}%%2nd element of createTop("dmgdealt", 5, "[P]")% &f%2nd element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x}%}%DMG | &f%{dps::%{_x2}%}% %{kartacolor::%{_x}%}%DPS"
+				if {dmgdealt::%{_x3}%} > 0:
+					set line 7 of {_p}'s scoreboard to "  &f3. &f%{ikonkakarta::%{_x3}%}%%{kartacolor::%{_x3}%}%%3rd element of createTop("dmgdealt", 5, "[P]")% &f%3rd element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x}%}%DMG | &f%{dps::%{_x3}%}% %{kartacolor::%{_x}%}%DPS"
+				if {dmgdealt::%{_x4}%} > 0:
+					set line 6 of {_p}'s scoreboard to "  &f4. %{ikonkakarta::%{_x4}%}%%{kartacolor::%{_x4}%}%%4th element of createTop("dmgdealt", 5, "[P]")% &f%4th element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x}%}%DMG | &f%{dps::%{_x4}%}% %{kartacolor::%{_x}%}%DPS"
+				if {dmgdealt::%{_x5}%} > 0:
+					set line 5 of {_p}'s scoreboard to "  &f5. %{ikonkakarta::%{_x5}%}%%{kartacolor::%{_x5}%}%%5th element of createTop("dmgdealt", 5, "[P]")% &f%5th element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x}%}%DMG | &f%{dps::%{_x5}%}% %{kartacolor::%{_x}%}%DPS"
+				set line 4 of {_p}'s scoreboard to ""
+	if metadata value "ECEngaged" of {_p} is not set:
+		clear {_p}'s scoreboard
+		UpdateScoreboard({_p})
 function HealAssist(p: player, e: entity):
 	loop {incombatwith::%{_e}%::*}:
-		if {asyst::%loop-value%::*} does not contain uuid of {_p}:
-			add uuid of {_p} to {asyst::%loop-value%::*}
+		if {asyst::%uuid of loop-value%::*} does not contain uuid of {_p}:
+			add uuid of {_p} to {asyst::%uuid of loop-value%::*}
 on damage:
 	if attacker is a player:
 		if damage is not 0:
-			#set {engagedc::%attacker%} to true
+			#set metadata value "ECEngaged" of attacker to true
 			CombatRefresh(victim)
-			if {engagedc::%attacker%} is not set:
+			if metadata value "ECEngaged" of attacker is not set:
 				set {dmgdealt::%attacker%} to 0
 				set {dps::%attacker%} to 0
-				set {_id} to line 18 of lore of {karta::%attacker%}
+				set {_id} to line 19 of lore of {karta::%attacker%}
 				if {kartaname::%attacker%} = "Cresselia":
 					ShootingStars(attacker)
 					AstralPower(attacker)
 				clear {dmgbreak::%{kartaname::%attacker%}%::%{_id}%::*}
-				delete skoreboard for attacker
-				setup skoreboard for attacker
-				set {engagedc::%attacker%} to 60
+				if metadata value "DungeonInstance" of attacker is not set:
+					clear scoreboard of attacker
+				set metadata value "ECEngaged" of attacker to 60
 				if {incombatwith::%attacker%::*} does not contain victim:
 					add uuid of victim to {incombatwith::%attacker%::*}
 				if name of attacker = "agnes":
 					set {agnesstop} to true
-					equip citizen 6512 with diamond sword
-				while {engagedc::%attacker%} > -1:
-					if {engagedc::%attacker%} > 0:
+					#equip citizen 6512 with diamond sword
+				while metadata value "ECEngaged" of attacker > -1:
+					if metadata value "ECEngaged" of attacker > 0:
+						inCombat(attacker)
 						wait 1 second
-						remove 1 from {engagedc::%attacker%}
+						set {_tag} to metadata value "ECEngaged" of attacker
+						remove 1 from {_tag}
+						set metadata value "ECEngaged" of attacker to {_tag}
 					else:
 						set {_data} to data()
 						if {hps::%attacker%} > 0:
-							log "%{_data}% %attacker% exit the combat with %{dmgdealt::%attacker%}% damage dealt, %{dps::%attacker%}% DPS, %{healed::%attacker%}% health healed and %{hps::%attacker%}% HPS. Fight duration: %{seconds::%attacker%}% seconds" to "logi/combat/combatdetails %{datatydzien}%-%{datatydzien2}%.log"
+							log "%{_data}% %attacker% exit combat with %{dmgdealt::%attacker%}% damage dealt, | %{dps::%attacker%}% DPS, %{healed::%attacker%}% health healed and %{hps::%attacker%}% HPS. Fight duration: %{seconds::%attacker%}% seconds" to "logi/combat/combatdetails %{datatydzien}%-%{datatydzien2}%.log"
 						else:
-							log "%{_data}% %attacker% exit the combat with %{dmgdealt::%attacker%}% damage dealt and %{dps::%attacker%}% DPS. Fight duration: %{seconds::%attacker%}% seconds" to "logi/combat/combatdetails %{datatydzien}%-%{datatydzien2}%.log"
+							log "%{_data}% %attacker% exit combat with %{dmgdealt::%attacker%}% damage dealt and | %{dps::%attacker%}% DPS. Fight duration: %{seconds::%attacker%}% seconds" to "logi/combat/combatdetails %{datatydzien}%-%{datatydzien2}%.log"
 						log "%{_data}% Damage breakdown of %attacker%:" to "logi/combat/combatdetails %{datatydzien}%-%{datatydzien2}%.log"	
 						LogDmgBreakdown(attacker)
-						clear {engagedc::%attacker%}
+						clear metadata value "ECEngaged" of attacker
 						clear {seconds::%attacker%}
 						clear {lavasurge::%attacker%}
 						clear {magmaarea::%attacker%}
 						clear {circleofwater::%attacker%}
+						clear {extraSecondsIcyVeins::%attacker%}
+						clear {ascendanceDuration::%attacker%}
+						clear {lavakeeper::%attacker%}
+						clear {lavafury::%attacker%}
+						clear metadata value "Lava Wave" of attacker
+						loop 7 times:
+							set {_icicle} to {icicle%loop-number%::%attacker%}
+							kill {_icicle}
+							clear {icicle%loop-number%::%attacker%}
 						clear {icicles::%attacker%}
+						clear {iciclehave::%attacker%}
 						set {astralpower::%attacker%} to 50
 						set {healed::%{_p}%} to 0
 						set {hps::%{_p}%} to 0
@@ -169,57 +175,63 @@ on damage:
 						set {dps::%attacker%} to 0
 						set {_uuid} to uuid of attacker
 						set {tarcza::%{_uuid}%} to 0
-						set {_id} to line 18 of lore of {karta::%attacker%}
-						remove uuid of attacker from {asyst::%victim%::*}
+						set {_id} to line 19 of lore of {karta::%attacker%}
+						remove uuid of attacker from {asyst::%uuid of victim%::*}
 						set {mobilnosc::%attacker%} to 0
 						clear {lastdmgcauselore::%attacker%::*}
-						clear {lastdmgcause::%attacker%}
+						clear metadata value "LastDamageCause" of attacker
 						clear {lastdmgcauseloreEN::%attacker%::*}
-						clear {lastdmgcauseEN::%attacker%}
+						clear metadata value "LastDamageCauseEN" of attacker
 						clear {incombatwith::%attacker%::*}
+						send title " " with subtitle " " to attacker for 0 seconds with fade in 0 second and fade out 0 second
 						if {agnesstop} is true:
 							clear {agnesstop}
 						#set {_mob} to {mobilnosc::%attacker%}/5000
 						#set attacker's walking speed to 0.2
 			else:
-				set {engagedc::%attacker%} to 60
+				set metadata value "ECEngaged" of attacker to 60
 			set {dps::%attacker%} to {dmgdealt::%attacker%}/{seconds::%attacker%}
+			set {_health1} to victim's health
 			wait 1 tick
-			if attacker has a skoreboard:
-				if {meter::%attacker%} is not "healing":
-					set {_kolorek} to KolorekScoreboard(attacker)
-					set title of skoreboard attacker to "&f&l«-───▬ %{_kolorek}%&lEC &f&l▬───-»"
-					set slot 12 of skoreboard attacker to ""
-					if {language::%attacker%} = "English":
-						set slot 11 of skoreboard attacker to " &fIn combat for: %{_kolorek}%%{seconds::%attacker%}% seconds     "
-					else:
-						set slot 11 of skoreboard attacker to " &fW walce od: %{_kolorek}%%{seconds::%attacker%}% sekund     "
-					set slot 10 of skoreboard attacker to " "
-					set {_x} to first element of createTop("dmgdealt", 5, "[P]")
-					set {_x2} to 2nd element of createTop("dmgdealt", 5, "[P]")
-					set {_x3} to 3rd element of createTop("dmgdealt", 5, "[P]")
-					set {_x4} to 4th element of createTop("dmgdealt", 5, "[P]")
-					set {_x5} to 5th element of createTop("dmgdealt", 5, "[P]")
-					if {dmgdealt::%{_x}%} > 0:
-						set slot 9 of skoreboard attacker to "  &f1. &f%{ikonkakarta::%{_x}%}%%{kartacolor::%{_x}%}%%first element of createTop("dmgdealt", 5, "[P]")% %first element of createTop("dmgdealt", 5, "[V]")% DMG %{dps::%{_x}%}% DPS"
-					if {dmgdealt::%{_x2}%} > 0:
-						set slot 8 of skoreboard attacker to "  &f2. &f%{ikonkakarta::%{_x2}%}%%{kartacolor::%{_x2}%}%%2nd element of createTop("dmgdealt", 5, "[P]")% %2nd element of createTop("dmgdealt", 5, "[V]")% DMG %{dps::%{_x2}%}% DPS"
-					if {dmgdealt::%{_x3}%} > 0:
-						set slot 7 of skoreboard attacker to "  &f3. &f%{ikonkakarta::%{_x3}%}%%{kartacolor::%{_x3}%}%%3rd element of createTop("dmgdealt", 5, "[P]")% %3rd element of createTop("dmgdealt", 5, "[V]")% DMG %{dps::%{_x3}%}% DPS"
-					if {dmgdealt::%{_x4}%} > 0:
-						set slot 6 of skoreboard attacker to "  &f4. %{ikonkakarta::%{_x4}%}%%{kartacolor::%{_x4}%}%%4th element of createTop("dmgdealt", 5, "[P]")% %4th element of createTop("dmgdealt", 5, "[V]")% DMG %{dps::%{_x4}%}% DPS"
-					if {dmgdealt::%{_x5}%} > 0:
-						set slot 5 of skoreboard attacker to "  &f5. %{ikonkakarta::%{_x5}%}%%{kartacolor::%{_x5}%}%%5th element of createTop("dmgdealt", 5, "[P]")% %5th element of createTop("dmgdealt", 5, "[V]")% DMG %{dps::%{_x5}%}% DPS"
-					set slot 4 of skoreboard attacker to ""
-			if {engagedc::%attacker%} is not set:
-				delete skoreboard to attacker
-			#while {engagedc::%attacker%} = true:
+			if {_health1} != victim's health:
+				if metadata value "DungeonInstance" of attacker is not set:
+					if title of attacker's scoreboard is set:
+						if {meter::%attacker%} is not "healing":
+							set {_kolorek} to KolorekScoreboard(attacker)
+							set title of attacker's scoreboard to "&f&l«-───▬ %{_kolorek}%&lEC &f&l▬───-»"
+							set line 12 of attacker's scoreboard to ""
+							if {language::%attacker%} = "English":
+								set line 11 of attacker's scoreboard to " &fIn combat for: %{_kolorek}%%{seconds::%attacker%}% seconds     "
+							else:
+								set line 11 of attacker's scoreboard to " &fW walce od: %{_kolorek}%%{seconds::%attacker%}% sekund     "
+							set line 10 of attacker's scoreboard to " "
+							set {_x} to first element of createTop("dmgdealt", 5, "[P]")
+							set {_x2} to 2nd element of createTop("dmgdealt", 5, "[P]")
+							set {_x3} to 3rd element of createTop("dmgdealt", 5, "[P]")
+							set {_x4} to 4th element of createTop("dmgdealt", 5, "[P]")
+							set {_x5} to 5th element of createTop("dmgdealt", 5, "[P]")
+							if {dmgdealt::%{_x}%} > 0:
+								set line 9 of attacker's scoreboard to "  &f1. &f%{ikonkakarta::%{_x}%}%%{kartacolor::%{_x}%}%%first element of createTop("dmgdealt", 5, "[P]")% &f%first element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x}%}%DMG | &f%{dps::%{_x}%}% %{kartacolor::%{_x}%}%DPS"
+							if {dmgdealt::%{_x2}%} > 0:
+								set line 8 of attacker's scoreboard to "  &f2. &f%{ikonkakarta::%{_x2}%}%%{kartacolor::%{_x2}%}%%2nd element of createTop("dmgdealt", 5, "[P]")% &f%2nd element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x2}%}%DMG | &f%{dps::%{_x2}%}% %{kartacolor::%{_x2}%}%DPS"
+							if {dmgdealt::%{_x3}%} > 0:
+								set line 7 of attacker's scoreboard to "  &f3. &f%{ikonkakarta::%{_x3}%}%%{kartacolor::%{_x3}%}%%3rd element of createTop("dmgdealt", 5, "[P]")% &f%3rd element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x3}%}%DMG | &f%{dps::%{_x3}%}% %{kartacolor::%{_x3}%}%DPS"
+							if {dmgdealt::%{_x4}%} > 0:
+								set line 6 of attacker's scoreboard to "  &f4. %{ikonkakarta::%{_x4}%}%%{kartacolor::%{_x4}%}%%4th element of createTop("dmgdealt", 5, "[P]")% &f%4th element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x4}%}%DMG | &f%{dps::%{_x4}%}% %{kartacolor::%{_x4}%}%DPS"
+							if {dmgdealt::%{_x5}%} > 0:
+								set line 5 of attacker's scoreboard to "  &f5. %{ikonkakarta::%{_x5}%}%%{kartacolor::%{_x5}%}%%5th element of createTop("dmgdealt", 5, "[P]")% &f%5th element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x5}%}%DMG | &f%{dps::%{_x5}%}% %{kartacolor::%{_x5}%}%DPS"
+							set line 4 of attacker's scoreboard to ""
+			if metadata value "ECEngaged" of attacker is not set:
+				if metadata value "DungeonInstance" of attacker is not set:
+					clear attacker's scoreboard
+					UpdateScoreboard(attacker)
+			#while metadata value "ECEngaged" of attacker = true:
 				#add 1 to {seconds::%attacker%}
 				#wait 1 second
 on leave:
 	wait 60 seconds
 	if player is not online:
-		clear {engagedc::%player%}
+		clear metadata value "ECEngaged" of player
 		clear {seconds::%player%}
 		clear {seconds::%player%}
 		set {dps::%player%} to 0
@@ -227,87 +239,79 @@ on leave:
 		clear {incombatwith::%player%::*}
 		clear {icicles::%player%}
 		set {astralpower::%player%} to 50
-every 1 second:
-	loop all players:
-		if loop-player is online:
-			if {engagedc::%loop-player%} is bigger than -1:
-				add 1 to {seconds::%loop-player%}
-				set {dps::%loop-player%} to {dmgdealt::%loop-player%}/{seconds::%loop-player%}
-				if {haled::%loop-player%} > 0:
-					set {hps::%loop-player%} to {healed::%loop-player%}/{seconds::%loop-player%}
-				if loop-player has a skoreboard:
-					if {meter::%loop-player%} = "healing":
-						set {_kolorek} to KolorekScoreboard(loop-player)
-						set title of skoreboard loop-player to "&f&l«-───▬ %{_kolorek}%&lEC &f&l▬───-»"
-						set slot 12 of skoreboard loop-player to ""
-						if {language::%loop-player%} = "English":
-							set slot 11 of skoreboard loop-player to " &fIn combat for: %{_kolorek}%%{seconds::%loop-player%}% seconds     "
-						else:
-							set slot 11 of skoreboard loop-player to " &fW walce od: %{_kolorek}%%{seconds::%loop-player%}% sekund     "
-						set slot 10 of skoreboard loop-player to " "
-						set {_x} to first element of createTop("healed", 5, "[P]")
-						set {_x2} to 2nd element of createTop("healed", 5, "[P]")
-						set {_x3} to 3rd element of createTop("healed", 5, "[P]")
-						set {_x4} to 4th element of createTop("healed", 5, "[P]")
-						set {_x5} to 5th element of createTop("healed", 5, "[P]")
-						if {healed::%{_x}%} > 0:
-							set slot 9 of skoreboard loop-player to "  &f1. &f%{ikonkakarta::%{_x}%}%%{kartacolor::%{_x}%}%%first element of createTop("healed", 5, "[P]")% %first element of createTop("healed", 5, "[V]")% HEAL %{hps::%{_x}%}% HPS"
-						if {healed::%{_x2}%} > 0:
-							set slot 8 of skoreboard loop-player to "  &f2. &f%{ikonkakarta::%{_x2}%}%%{kartacolor::%{_x2}%}%%2nd element of createTop("healed", 5, "[P]")% %2nd element of createTop("healed", 5, "[V]")% HEAL %{hps::%{_x2}%}% HPS"
-						if {healed::%{_x3}%} > 0:
-							set slot 7 of skoreboard loop-player to "  &f3. &f%{ikonkakarta::%{_x3}%}%%{kartacolor::%{_x3}%}%%3rd element of createTop("healed", 5, "[P]")% %3rd element of createTop("healed", 5, "[V]")% HEAL %{hps::%{_x3}%}% HPS"
-						if {healed::%{_x4}%} > 0:
-							set slot 6 of skoreboard loop-player to "  &f4. %{ikonkakarta::%{_x4}%}%%{kartacolor::%{_x4}%}%%4th element of createTop("healed", 5, "[P]")% %4th element of createTop("healed", 5, "[V]")% HEAL %{hps::%{_x4}%}% HPS"
-						if {healed::%{_x5}%} > 0:
-							set slot 5 of skoreboard loop-player to "  &f5. %{ikonkakarta::%{_x5}%}%%{kartacolor::%{_x5}%}%%5th element of createTop("healed", 5, "[P]")% %5th element of createTop("healed", 5, "[V]")% HEAL %{hps::%{_x5}%}% HPS"
-						set slot 4 of skoreboard loop-player to ""
-						if {language::%loop-player%} = "English":
-							set slot 3 of skoreboard loop-player to " &fCombat ends in: %{_kolorek}%%{engagedc::%loop-player%}% seconds     "
-						else:
-							set slot 3 of skoreboard loop-player to " &fKoniec walki za: %{_kolorek}%%{engagedc::%loop-player%}% sekund     "
-						set slot 2 of skoreboard loop-player to ""
-					else:
-						set {_kolorek} to KolorekScoreboard(loop-player)
-						setup skoreboard for loop-player
-						set title of skoreboard loop-player to "&f&l«-───▬ %{_kolorek}%&lEC &f&l▬───-»"
-						set slot 12 of skoreboard loop-player to ""
-						if {language::%loop-player%} = "English":
-							set slot 11 of skoreboard loop-player to " &fIn combat for: %{_kolorek}%%{seconds::%loop-player%}% seconds     "
-						else:
-							set slot 11 of skoreboard loop-player to " &fW walce od: %{_kolorek}%%{seconds::%loop-player%}% sekund     "
-						set slot 10 of skoreboard loop-player to " "
-						set {_x} to first element of createTop("dmgdealt", 5, "[P]")
-						set {_x2} to 2nd element of createTop("dmgdealt", 5, "[P]")
-						set {_x3} to 3rd element of createTop("dmgdealt", 5, "[P]")
-						set {_x4} to 4th element of createTop("dmgdealt", 5, "[P]")
-						set {_x5} to 5th element of createTop("dmgdealt", 5, "[P]")
-						if {dmgdealt::%{_x}%} > 0:
-							set slot 9 of skoreboard loop-player to "  &f1. %{ikonkakarta::%{_x}%}%%{kartacolor::%{_x}%}%%first element of createTop("dmgdealt", 5, "[P]")% %first element of createTop("dmgdealt", 5, "[V]")% DMG %{dps::%{_x}%}% DPS"
-						if {dmgdealt::%{_x2}%} > 0:
-							set slot 8 of skoreboard loop-player to "  &f2. &f%{ikonkakarta::%{_x2}%}%%{kartacolor::%{_x2}%}%%2nd element of createTop("dmgdealt", 5, "[P]")% %2nd element of createTop("dmgdealt", 5, "[V]")% DMG %{dps::%{_x2}%}% DPS"
-						if {dmgdealt::%{_x3}%} > 0:
-							set slot 7 of skoreboard loop-player to "  &f3. &f%{ikonkakarta::%{_x3}%}%%{kartacolor::%{_x3}%}%%3rd element of createTop("dmgdealt", 5, "[P]")% %3rd element of createTop("dmgdealt", 5, "[V]")% DMG %{dps::%{_x3}%}% DPS"
-						if {dmgdealt::%{_x4}%} > 0:
-							set slot 6 of skoreboard loop-player to "  &f4. %{ikonkakarta::%{_x4}%}%%{kartacolor::%{_x4}%}%%4th element of createTop("dmgdealt", 5, "[P]")% %4th element of createTop("dmgdealt", 5, "[V]")% DMG %{dps::%{_x4}%}% DPS"
-						if {dmgdealt::%{_x5}%} > 0:
-							set slot 5 of skoreboard loop-player to "  &f5. %{ikonkakarta::%{_x5}%}%%{kartacolor::%{_x5}%}%%5th element of createTop("dmgdealt", 5, "[P]")% %5th element of createTop("dmgdealt", 5, "[V]")% DMG %{dps::%{_x5}%}% DPS"
-						set slot 4 of skoreboard loop-player to ""
-						if {language::%loop-player%} = "English":
-							set slot 3 of skoreboard loop-player to " &fCombat ends in: %{_kolorek}%%{engagedc::%loop-player%}% seconds     "
-						else:
-							set slot 3 of skoreboard loop-player to " &fKoniec walki za: %{_kolorek}%%{engagedc::%loop-player%}% sekund     "
-						set slot 2 of skoreboard loop-player to ""
-			else if {engagedc::%loop-player%} is not set:
-				if {dmgdealt::%loop-player%} is not 0:
-					set {dmgdealt::%loop-player%} to 0
-				if loop-player does not have a skoreboard:
-					UpdateScoreboard(loop-player)
+		set {_id} to line 19 of lore of {karta::%player%}
+		clear {dmgbreak::%{kartaname::%player%}%::%{_id}%}
+
+		ClearPlayerStats(player) #Clears player stats inherited from the player's card
+
+function inCombat(p: player):
+	add 1 to {seconds::%{_p}%}
+	set {dps::%{_p}%} to {dmgdealt::%{_p}%}/{seconds::%{_p}%}
+	if {healed::%{_p}%} > 0:
+		set {hps::%{_p}%} to {healed::%{_p}%}/{seconds::%{_p}%}
+	if metadata value "DungeonInstance" of {_p} is not set:
+		if title of {_p}'s scoreboard is set:
+			if {meter::%{_p}%} = "healing":
+				set {_kolorek} to KolorekScoreboard({_p})
+				set title of {_p}'s scoreboard to "&f&l«-───▬ %{_kolorek}%&lEC &f&l▬───-»"
+				set line 12 of {_p}'s scoreboard to ""
+				if {language::%{_p}%} = "English":
+					set line 11 of {_p}'s scoreboard to " &fIn combat for: %{_kolorek}%%{seconds::%{_p}%}% seconds     "
 				else:
-					set {_kolorek} to KolorekScoreboard(loop-player)
-					if {language::%loop-player%} = "English":
-						set slot 11 of skoreboard loop-player to " &fCard: %{_kolorek}%%uncolored {kartaname::%loop-player%}%"
+					set line 11 of {_p}'s scoreboard to " &fW walce od: %{_kolorek}%%{seconds::%{_p}%}% sekund     "
+				set line 10 of {_p}'s scoreboard to " "
+				set {_x} to first element of createTop("healed", 5, "[P]")
+				set {_x2} to 2nd element of createTop("healed", 5, "[P]")
+				set {_x3} to 3rd element of createTop("healed", 5, "[P]")
+				set {_x4} to 4th element of createTop("healed", 5, "[P]")
+				set {_x5} to 5th element of createTop("healed", 5, "[P]")
+				if {healed::%{_x}%} > 0:
+					set line 9 of {_p}'s scoreboard to "  &f1. &f%{ikonkakarta::%{_x}%}%%{kartacolor::%{_x}%}%%first element of createTop("healed", 5, "[P]")% &f%first element of createTop("healed", 5, "[V]")% %{kartacolor::%{_x}%}%HEAL | &f%{hps::%{_x}%}% %{kartacolor::%{_x}%}%HPS"
+				if {healed::%{_x2}%} > 0:
+					set line 8 of {_p}'s scoreboard to "  &f2. &f%{ikonkakarta::%{_x2}%}%%{kartacolor::%{_x2}%}%%2nd element of createTop("healed", 5, "[P]")% &f%2nd element of createTop("healed", 5, "[V]")% %{kartacolor::%{_x2}%}%HEAL | &f%{hps::%{_x2}%}% %{kartacolor::%{_x2}%}%HPS"
+				if {healed::%{_x3}%} > 0:
+					set line 7 of {_p}'s scoreboard to "  &f3. &f%{ikonkakarta::%{_x3}%}%%{kartacolor::%{_x3}%}%%3rd element of createTop("healed", 5, "[P]")% &f%3rd element of createTop("healed", 5, "[V]")% %{kartacolor::%{_x3}%}%HEAL | &f%{hps::%{_x3}%}% %{kartacolor::%{_x3}%}%HPS"
+				if {healed::%{_x4}%} > 0:
+					set line 6 of {_p}'s scoreboard to "  &f4. %{ikonkakarta::%{_x4}%}%%{kartacolor::%{_x4}%}%%4th element of createTop("healed", 5, "[P]")% &f%4th element of createTop("healed", 5, "[V]")% %{kartacolor::%{_x4}%}%HEAL | &f%{hps::%{_x4}%}% %{kartacolor::%{_x4}%}%HPS"
+				if {healed::%{_x5}%} > 0:
+					set line 5 of {_p}'s scoreboard to "  &f5. %{ikonkakarta::%{_x5}%}%%{kartacolor::%{_x5}%}%%5th element of createTop("healed", 5, "[P]")% &f%5th element of createTop("healed", 5, "[V]")% %{kartacolor::%{_x5}%}%HEAL | &f%{hps::%{_x5}%}% %{kartacolor::%{_x5}%}%HPS"
+				set line 4 of {_p}'s scoreboard to ""
+				if {language::%{_p}%} = "English":
+					set line 3 of {_p}'s scoreboard to " &fCombat ends in: %{_kolorek}%%metadata value "ECEngaged" of {_p}% seconds     "
+				else:
+					set line 3 of {_p}'s scoreboard to " &fKoniec walki za: %{_kolorek}%%metadata value "ECEngaged" of {_p}% sekund     "
+				set line 2 of {_p}'s scoreboard to ""
+			else:
+				set {_kolorek} to KolorekScoreboard({_p})
+				if metadata value "DungeonInstance" of {_p} is not set:
+					set title of {_p}'s scoreboard to "&f&l«-───▬ %{_kolorek}%&lEC &f&l▬───-»"
+					set line 12 of {_p}'s scoreboard to ""
+					if {language::%{_p}%} = "English":
+						set line 11 of {_p}'s scoreboard to " &fIn combat for: %{_kolorek}%%{seconds::%{_p}%}% seconds     "
 					else:
-						set slot 11 of skoreboard loop-player to " &fKarta: %{_kolorek}%%uncolored {kartaname::%loop-player%}%"
+						set line 11 of {_p}'s scoreboard to " &fW walce od: %{_kolorek}%%{seconds::%{_p}%}% sekund     "
+					set line 10 of {_p}'s scoreboard to " "
+					set {_x} to first element of createTop("dmgdealt", 5, "[P]")
+					set {_x2} to 2nd element of createTop("dmgdealt", 5, "[P]")
+					set {_x3} to 3rd element of createTop("dmgdealt", 5, "[P]")
+					set {_x4} to 4th element of createTop("dmgdealt", 5, "[P]")
+					set {_x5} to 5th element of createTop("dmgdealt", 5, "[P]")
+					if {dmgdealt::%{_x}%} > 0:
+						set line 9 of {_p}'s scoreboard to "  &f1. &f%{ikonkakarta::%{_x}%}%%{kartacolor::%{_x}%}%%first element of createTop("dmgdealt", 5, "[P]")% &f%first element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x}%}%DMG | &f%{dps::%{_x}%}% %{kartacolor::%{_x}%}%DPS"
+					if {dmgdealt::%{_x2}%} > 0:
+						set line 8 of {_p}'s scoreboard to "  &f2. &f%{ikonkakarta::%{_x2}%}%%{kartacolor::%{_x2}%}%%2nd element of createTop("dmgdealt", 5, "[P]")% &f%2nd element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x2}%}%DMG | &f%{dps::%{_x2}%}% %{kartacolor::%{_x2}%}%DPS"
+					if {dmgdealt::%{_x3}%} > 0:
+						set line 7 of {_p}'s scoreboard to "  &f3. &f%{ikonkakarta::%{_x3}%}%%{kartacolor::%{_x3}%}%%3rd element of createTop("dmgdealt", 5, "[P]")% &f%3rd element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x3}%}%DMG | &f%{dps::%{_x3}%}% %{kartacolor::%{_x3}%}%DPS"
+					if {dmgdealt::%{_x4}%} > 0:
+						set line 6 of {_p}'s scoreboard to "  &f4. %{ikonkakarta::%{_x4}%}%%{kartacolor::%{_x4}%}%%4th element of createTop("dmgdealt", 5, "[P]")% &f%4th element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x4}%}%DMG | &f%{dps::%{_x4}%}% %{kartacolor::%{_x4}%}%DPS"
+					if {dmgdealt::%{_x5}%} > 0:
+						set line 5 of {_p}'s scoreboard to "  &f5. %{ikonkakarta::%{_x5}%}%%{kartacolor::%{_x5}%}%%5th element of createTop("dmgdealt", 5, "[P]")% &f%5th element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x5}%}%DMG | &f%{dps::%{_x5}%}% %{kartacolor::%{_x5}%}%DPS"
+					set line 4 of {_p}'s scoreboard to ""
+					if {language::%{_p}%} = "English":
+						set line 3 of {_p}'s scoreboard to " &fCombat ends in: %{_kolorek}%%metadata value "ECEngaged" of {_p}% seconds     "
+					else:
+						set line 3 of {_p}'s scoreboard to " &fKoniec walki za: %{_kolorek}%%metadata value "ECEngaged" of {_p}% sekund     "
+					set line 2 of {_p}'s scoreboard to ""
 command /meter [<text>]:
 	aliases: /licznik
 	trigger:
@@ -326,14 +330,20 @@ command /meter [<text>]:
 on tab complete of "meter" or "licznik":
 	set tab completions for position 1 to "healing" and "damage"
 #on death:
-	#set {engagedc::%attacker%} to false
+	#set metadata value "ECEngaged" of attacker to false
 on skript stop:
-	loop all players:
-		clear {engagedc::%loop-player%}
+	clear {lastdmgcauseen::*}
+	clear {lastdmgcause::*}
+	clear {lastdmgcauselore::*}
+	clear {lastdmgcauseloreen::*}
+	clear {dmgbreak::*}
+	clear {healcard::*}
+	clear {extraSecondsIcyVeins::%player%}
+	clear {ascendanceDuration::%player%}
 		
 function LogDmgBreakdown(p: player):
 	set {_data} to data()
-	if {engagedc::%{_p}%} is set:
+	if metadata value "ECEngaged" of {_p} is set:
 		set {_t} to SecondsToMinutes("%{seconds::%{_p}%}%")
 		log "%{_data}% Fight duration: %{_t}%" to "logi/combat/combatdetails %{datatydzien}%-%{datatydzien2}%.log"
 	else:
@@ -341,8 +351,8 @@ function LogDmgBreakdown(p: player):
 	if {dmgdealt::%{_p}%} is 0:
 		log "%{_data}% Total: - (- dps)" to "logi/combat/combatdetails %{datatydzien}%-%{datatydzien2}%.log"
 	else:
-		log "%{_data}% Total: %{dmgdealt::%{_p}%}% (%{dps::%{_p}%}% dps)" to "logi/combat/combatdetails %{datatydzien}%-%{datatydzien2}%.log"
-	set {_id} to line 18 of lore of {karta::%{_p}%}
+		log "%{_data}% Total: %{dmgdealt::%{_p}%}% (| %{dps::%{_p}%}% dps)" to "logi/combat/combatdetails %{datatydzien}%-%{datatydzien2}%.log"
+	set {_id} to line 19 of lore of {karta::%{_p}%}
 	set {_k} to {kartaname::%{_p}%}
 	set {_r::*} to sorted indices of {dmgbreak::%{_k}%::%{_id}%::*} in descending order
 	set {_size} to size of {_r::*}
@@ -353,13 +363,13 @@ function LogHealBreakdown(p: player):
 	set {_data} to data()
 	log "%{_data}% Healing breakdown of %{_p}%:" to "logi/combat/combatdetails %{datatydzien}%-%{datatydzien2}%.log"	
 	if {healed::%{_p}%} > 0:
-		if {engagedc::%{_p}%} is set:
+		if metadata value "ECEngaged" of {_p} is set:
 			set {_t} to SecondsToMinutes("%{seconds::%{_p}%}%")
 			log "%{_data}% Fight duration: %{_t}%" to "logi/combat/combatdetails %{datatydzien}%-%{datatydzien2}%.log"
 		else:
 			log "%{_data}% Fight duration: -" to "logi/combat/combatdetails %{datatydzien}%-%{datatydzien2}%.log"
 		log "%{_data}% Total: %{healed::%{_p}%}% (%{hps::%{_p}%}% hps)" to "logi/combat/combatdetails %{datatydzien}%-%{datatydzien2}%.log"
-		set {_id} to line 18 of lore of {karta::%{_p}%}
+		set {_id} to line 19 of lore of {karta::%{_p}%}
 		set {_k} to {kartaname::%{_p}%}
 		set {_r::*} to sorted indices of {healcard::%{kartaname::%{_p}%}%::%{_id}%::*} in descending order
 		set {_size} to size of {_r::*}
@@ -371,29 +381,40 @@ command /damagebreakdown:
 	trigger:
 		send "Coming soon (TM)" to player
 		send "Damage breakdown:" to player
-		if {engagedc::%player%} is set:
+		if metadata value "ECEngaged" of player is set:
 			set {_t} to SecondsToMinutes("%{seconds::%player%}%")
 			send "Fight duration: %{_t}%" to player
 		else:
 			send "Fight duration: -" to player
+			set {_id} to line 19 of lore of {karta::%player%}
+			if {dmgbreak::%{kartaname::%player%}%::%{_id}%::*} is set:
+				clear {dmgbreak::%{kartaname::%player%}%::%{_id}%::*}
 		if {dmgdealt::%player%} is 0:
 			send "Total: - (- dps)" to player
 		else:
 			send "Total: %{dmgdealt::%player%}% (%{dps::%player%}% dps)" to player
-		set {_id} to line 18 of lore of {karta::%player%}
+		set {_id} to line 19 of lore of {karta::%player%}
 		set {_k} to {kartaname::%player%}
 		set {_r::*} to sorted indices of {dmgbreak::%{_k}%::%{_id}%::*} in descending order
-		set {_size} to size of {_r::*}
-		loop {_size} times:
-			set {_1} to ({_r::%loop-number%} in strict proper case)
-			send "%{_1}%: %{dmgbreak::%{_k}%::%{_id}%::%{_1}%}% (%({dmgbreak::%{_k}%::%{_id}%::%{_1}%}/{dmgdealt::%player%})*100%%%)" to player
+		if {_r::*} is set:
+			set {_size} to size of {_r::*}
+			loop {_size} times:
+				set {_1} to ({_r::%loop-number%} in strict proper case)
+				add "%{_1}%: %{dmgbreak::%{_k}%::%{_id}%::%{_1}%}% (%({dmgbreak::%{_k}%::%{_id}%::%{_1}%}/{dmgdealt::%player%})*100%%%)" to {_breakdown::*}
+			if size of {_breakdown::*} > 1:
+				set {_breakdown} to join {_breakdown::*} by nl
+				#Aset {_message} to mini message from "<gradient:##f54242:##ffe270:##20e32a:##20b5e3:##7526bf>%{_breakdown}%"
+				set {_message} to mini message from "<gradient:##f54242:##ffe270:##20e32a>%{_breakdown}%"
+				send {_message} to player
+			else:
+				send "<##f54242>%{_breakdown::1}%" to player
 
 command /healingbreakdown:
 	aliases: /healbreakdown
 	trigger:
 		send "Coming soon (TM)" to player
 		send "Healing breakdown:" to player
-		if {engagedc::%player%} is set:
+		if metadata value "ECEngaged" of player is set:
 			set {_t} to SecondsToMinutes("%{seconds::%player%}%")
 			send "Fight duration: %{_t}%" to player
 		else:
@@ -402,7 +423,7 @@ command /healingbreakdown:
 			send "Total: - (- hps)" to player
 		else:
 			send "Total: %{healed::%player%}% (%{hps::%player%}% hps)" to player
-		set {_id} to line 18 of lore of {karta::%player%}
+		set {_id} to line 19 of lore of {karta::%player%}
 		set {_k} to {kartaname::%player%}
 		set {_r::*} to sorted indices of {healcard::%{kartaname::%player%}%::%{_id}%::*} in descending order
 		set {_size} to size of {_r::*}
@@ -441,10 +462,10 @@ command /kill [<player>]:
 		if name of player = "kapoonfleek":
 			kill arg-1
 function DamageBreakdown(p: player, e: entity, v: number):
-	set {_id} to line 18 of lore of {karta::%{_p}%}
+	set {_id} to line 19 of lore of {karta::%{_p}%}
 	if {language::%{_p}%} = "Polski":
-		if {lastdmgcause::%{_e}%} is set:
-			add {_v} to {dmgbreak::%{kartaname::%{_p}%}%::%{_id}%::%uncolored ({lastdmgcause::%{_e}%} in strict proper case)%}
+		if metadata value "LastDamageCause" of {_e} is set:
+			add {_v} to {dmgbreak::%{kartaname::%{_p}%}%::%{_id}%::%uncolored (metadata value "LastDamageCause" of {_e} in strict proper case)%}
 	else:
-		if {lastdmgcauseEN::%{_e}%} is set:
-			add {_v} to {dmgbreak::%{kartaname::%{_p}%}%::%{_id}%::%uncolored ({lastdmgcauseEN::%{_e}%} in strict proper case)%}
+		if metadata value "LastDamageCauseEN" of {_e} is set:
+			add {_v} to {dmgbreak::%{kartaname::%{_p}%}%::%{_id}%::%uncolored (metadata value "LastDamageCauseEN" of {_e} in strict proper case)%}

@@ -1,0 +1,310 @@
+function GoshaCallMinions(e: entity):
+    #random location around
+    #set hp scaling off key level
+    #set disguise to silverfish
+    #set target to target of {_e}
+    #set dungeon mob
+    #set tag minion, if tag minion is set then dont display death message?
+
+
+    set {_custom} to tag "custom" of nbt of {_e}
+    play sound "entity.cow.ambient" with volume 3 and pitch 1.5 at {_e}
+    play sound "block.note_block.chime" with volume 3 and pitch 0 at {_e}
+    set {_instance} to tag "ECDungeonInstance" of {_custom}
+    set {_keystoneId} to metadata value "KeystoneId" of {_custom}
+    set {_partySize} to size of {-dungeonInstance%{_instance}%::*}
+
+    set {_GoshaLoc} to yaml value "Gosha" from "SOSspawnlocations"
+
+    set {_below} to y-coordinate of block below {_e}
+
+    loop all blocks in region "GoshaFloor1":
+        if loop-block is dirt:
+            if {_below} = y-coordinate of loop-block:
+                if {KeystoneHolder::%loop-block%} is not set:
+                    add loop-block to {_blocks::*}
+        
+    if {_blocks::*} is not set:
+        set {_chaseplayer} to true
+        loop {-dungeonInstance%{_instance}%::*}:
+            if loop-value is alive:
+                if distance between {_e} and loop-value < 100:
+                    set {_players::*} to {_players::*} and loop-value
+
+    loop 6*{_partySize} times:
+        set {_loc} to {_e}'s location
+        increase {_loc}'s x-coordinate by a random number between -2.50 and 2.50
+        increase {_loc}'s z-coordinate by a random number between -2.50 and 2.50
+        set {_yaw} to a random number between -180.00 and 180.00
+        set {_pitch} to a random number between -90.00 and 90.00
+        set yaw of {_loc} to {_yaw}
+        set pitch of {_loc} to {_pitch}
+        if block at {_loc} is not air:
+            set {_loc} to {_e}'s location
+        spawn 1 baby mooshroom at {_e} with nbt from "{Silent:1b,CustomNameVisible:1b}"
+        set {_minion} to last spawned baby mooshroom
+        set the name of {_minion} to "Gosha's Minion"
+        DungeonMobAssignment({_minion}, false, 70, 0)
+        set {_customMinion} to tag "custom" of nbt compound of {_minion}
+        set tag "ECBossMinion" of {_customMinion} to (uuid of {_e})
+        set {_potion} to potion effect of speed of tier 3.05 without particles for 24 hours
+        add {_potion} to potion effects of {_minion}
+        set tag "ECDungeonInstance" of {_customMinion} to {_instance}
+        set tag "ECElement" of {_customMinion} to "Poison"
+        set tag "ECInstanceName" of {_customMinion} to "Siege of Spawn"
+        set metadata value "ECPulled" of {_minion} to 1
+        add nbt from "{Attributes:[{Name:""generic.follow_range"",Base:60}]}" to nbt of {_minion}
+        set {_keystonelevel} to {-KeystoneLevel%{_instance}%}
+        set max health of {_minion} to 2*(KeystoneModifiers({_keystonelevel}))*{_partySize}
+        set metadata value "KeystoneId" of {_minion} to {_keystoneId}
+        heal {_minion}
+        set {_block} to a random element of {_blocks::*}
+        remove {_block} from {_blocks::*}
+        if {_chaseplayer} is not set:
+            GoshaMinionPathfind({_minion}, (location of {_block}), {_instance}, {_e}, false, {_e})
+            GoshaMinionExplode({_minion}, {_e})
+        else:
+            set {_randomPlayer} to (random element of {_players::*})
+            GoshaMinionPathfind({_minion}, location of {_randomPlayer}, {_instance}, {_e}, true, {_randomPlayer})
+            GoshaMinionExplode({_minion}, {_e})
+        wait 2 ticks
+
+function GoshaMinionExplode(e: entity, gosha: entity):
+    set {_instance} to tag "custom;ECDungeonInstance" of nbt of {_e}
+    broadcast {_instance}
+    wait 15 seconds
+    if {_e} is alive:
+        if {_gosha} is alive:
+            broadcast "Explode"
+            draw 50 glow particle at location 1 above {_e} with offset vector(0.2, 0.3, 0.2) with extra 0.03
+            draw 80 white_ash particle at location 1 above {_e} with offset vector(1, 0.3, 1) with extra 0.03
+            play sound "entity.witch.drink" with volume 1 and pitch 0 at {_e}
+            set {_block} to block below {_e}
+            play sound "block.grass.break" with volume 1.5 and pitch 0 at {_block}
+            loop all blocks in radius 4 around {_block}:
+                if y-coordinate of {_block} = y-coordinate of loop-block:
+                    if {KeystoneHolder::%loop-block%} is not set:
+                        set block at loop-block to mycelium
+                        set metadata value "GoshaPoisonousGround" of loop-block to {_gosha}
+                        play sound "block.fungus.break" with volume 1.5 and pitch 1 at loop-block
+            loop all players in radius 4 around {_block}:
+                set {_instanceLoopPlayer} to metadata value "DungeonInstance" of loop-player
+                if {_instance} = {_instanceLoopPlayer}:
+                    if metadata value "GoshaPoisonousGround" of block under loop-player is set:
+                        set {_poisonStacks} to metadata value "PoisonStacks" of loop-player
+                        if {_poisonStacks} is not set:
+                            set {_poisonStacks} to 1
+                        else:
+                            add 1 to {_poisonStacks}
+                        set metadata value "PoisonStacks" of loop-player to {_poisonStacks}
+                        if metadata value "GoshaPoison" of loop-player is not set:
+                            set metadata value "GoshaPoison" of loop-player to true
+                            GoshaPoisonousGround({_gosha}, loop-player)
+            kill {_e}
+        else:
+            force teleport {_e} to location(-1228, -100, -1792, world "world")
+            kill {_e}
+
+function GoshaMinionPathfind(e: entity, loc: location, instance: number, boss: entity, chase: boolean, target: entity):
+    while distance between {_e} and {_loc} > 1.5:
+        if {_target} is a player:
+            make {_e} pathfind to {_target}
+        else:
+            make {_e} pathfind to {_loc}
+        wait 2 ticks
+    add nbt from "{NoAI:1b}" to nbt of {_e}
+    if {_e} is alive:
+        if {_chase} is true:
+            draw 60 glow particle at location 1 above {_e} with offset vector(0.5, 0.3, 0.5) with extra 0.03
+            draw 90 white_ash particle at location 1 above {_e} with offset vector(2, 0.3, 2) with extra 0.03
+            play sound "entity.witch.drink" with volume 1 and pitch 0 at {_e}
+            play sound "block.fungus.break" with volume 1.5 and pitch 1 at {_e}
+            loop all entities in radius 5 around {_e}:
+                if {-dungeonInstance%{_instance}%::*} contains loop-entity:
+                    if loop-entity is alive:
+                        if {_boss} is alive:
+                            broadcast {_boss}
+                            DamageProperties(loop-entity, {_boss}, "<##7564b3>Pościg", "<##7564b3>Pursuit", {_lore}, {_loreEN}, 9)
+                        else:
+                            kill {_e}
+                            stop loop
+            kill {_e}
+                    
+function GoshaInfectPlayer(boss: entity):
+    set {_custom} to tag "custom" of nbt of {_boss}
+    set {_instance} to tag "ECDungeonInstance" of {_custom}
+    set {_keystoneId} to metadata value "KeystoneId" of {_custom}
+    set {_partySize} to size of {-dungeonInstance%{_instance}%::*}
+    wait 8 seconds
+    while {_boss} is alive:
+        play sound "entity.cow.ambient" with volume 3 and pitch 0 at {_boss}
+        loop {-dungeonInstance%{_instance}%::*}:
+            if loop-value is alive:
+                if distance between {_boss} and loop-value < 100:
+                    if metadata value "DungeonInstance" of loop-value is set:
+                        add loop-value to {_players::*}
+        set {_randomPlayer} to a random element of {_players::*}
+        set metadata value "GoshaInfect" of {_randomPlayer} to true
+        GoshaInfectTick({_boss}, {_randomPlayer})
+        wait 30 seconds
+    
+function GoshaFungiShot(boss: entity):
+    set {_custom} to tag "custom" of nbt of {_boss}
+    set {_instance} to tag "ECDungeonInstance" of {_custom}
+    set {_keystoneId} to metadata value "KeystoneId" of {_custom}
+    set {_partySize} to size of {-dungeonInstance%{_instance}%::*}
+    wait 2 seconds
+    while {_boss} is alive:
+        loop 3 times:
+            loop {-dungeonInstance%{_instance}%::*}:
+                if loop-value-2 is alive:
+                    if distance between {_boss} and loop-value-2 < 100:
+                        if metadata value "DungeonInstance" of loop-value-2 is set:
+                            add loop-value-2 to {_players::*}
+            set {_randomPlayer} to a random element of {_players::*}
+            spawn 1 snowball at {_boss}
+            push last spawned snowball (direction from {_boss} to {_randomPlayer}) with speed 1.7
+            set item of last spawned snowball to mushroom
+            set metadata value "Shooter" of last spawned snowball to {_boss}
+        wait 5 seconds
+
+on projectile hit:
+    if event-projectile is snowball:
+        set {_block} to block at event-location
+        set {_shooter} to metadata value "Shooter" of event-projectile
+        play sound "block.grass.step" with volume 2.5 and pitch 0.1 at event-location
+        loop all blocks in radius 2 around event-location:
+            if loop-block is dirt:
+                if {KeystoneHolder::%loop-block%} is not set:
+                    set block at loop-block to mycelium
+                    broadcast {_shooter}
+                    set metadata value "GoshaPoisonousGround" of loop-block to {_shooter}
+                    play sound "block.fungus.break" with volume 1.5 and pitch 1 at loop-block
+        set {_instance} to tag "custom;ECDungeonInstance" of nbt of {_shooter}
+        loop all players in radius 2 around event-location:
+            set {_instanceLoopPlayer} to metadata value "DungeonInstance" of loop-player
+            if {_instance} = {_instanceLoopPlayer}:
+                if metadata value "GoshaPoisonousGround" of block under loop-player is set:
+                    set {_poisonStacks} to metadata value "PoisonStacks" of loop-player
+                    if {_poisonStacks} is not set:
+                        set {_poisonStacks} to 1
+                    else:
+                        add 1 to {_poisonStacks}
+                    set metadata value "PoisonStacks" of loop-player to {_poisonStacks}
+                    if metadata value "GoshaPoison" of loop-player is not set:
+                        set metadata value "GoshaPoison" of loop-player to true
+                        GoshaPoisonousGround({_shooter}, loop-player)
+        clear metadata value "Shooter" of event-projectile
+
+function GoshaInfectTick(gosha: entity, vic: entity):
+    set {_instance} to tag "custom;ECDungeonInstance" of nbt of {_gosha}
+    set {_instanceVictim} to metadata value "DungeonInstance" of {_vic}
+    set {_pitch} to 2
+    loop 3 times:
+        if {_vic} is alive:
+            play sound "block.nether_sprouts.place" with volume 2 and pitch {_pitch} at {_vic}
+            play sound "block.pumpkin.carve" with volume 2 and pitch {_pitch} at {_vic}
+            draw 40 end_rod particle at location 1 above {_vic} with offset vector(1, 0.3, 1) with extra 0.03
+            remove 0.5 from {_pitch}
+            wait 2 seconds
+    #Change to function later
+    clear metadata value "GoshaInfect" of {_vic}
+    if metadata value "DungeonInstance" of {_vic} is set:
+        if {_instance} = {_instanceVictim}:
+            if block below {_vic} is not mycelium:
+                if block below {_vic} is not air:
+                    set {_block} to block below {_vic}
+                else:
+                    set {_lowestblock} to block 300 below {_vic}
+                    set {_highestblock} to block at {_vic}
+                    loop blocks between {_highestblock} and {_lowestblock}:
+                        if loop-block is not air:
+                            if loop-block is not mycelium:
+                                set {_block} to loop-block
+                            else:
+                                set {_loopRadius} to 30
+                                set {_block} to loop-block
+                            stop loop
+            else:
+                set {_loopRadius} to 30
+                set {_block} to block below {_vic}
+            if {_loopRadius} is not set:
+                set {_loopRadius} to 4
+            draw 50 glow particle at location 1 above {_vic} with offset vector(0.2, 0.3, 0.2) with extra 0.03
+            draw 80 white_ash particle at location 1 above {_vic} with offset vector(1, 0.3, 1) with extra 0.03
+            play sound "entity.witch.drink" with volume 1 and pitch 0 at {_vic}
+            play sound "block.grass.break" with volume 1.5 and pitch 0 at {_block}
+            loop all blocks in radius {_loopRadius} around {_block}:
+                if y-coordinate of {_block} = y-coordinate of loop-block:
+                    if loop-block is not air:
+                        if loop-block is not mycelium:
+                            if {KeystoneHolder::%loop-block%} is not set:
+                                set block at loop-block to mycelium
+                                set metadata value "GoshaPoisonousGround" of loop-block to {_gosha}
+                                play sound "block.fungus.break" with volume 1.5 and pitch 1 at loop-block
+            loop all players in radius {_loopRadius} around {_block}:
+                if loop-player is alive:
+                    set {_instanceLoopPlayer} to metadata value "DungeonInstance" of loop-player
+                    if {_instance} = {_instanceLoopPlayer}:
+                        if metadata value "GoshaPoisonousGround" of block under loop-player is set:
+                            set {_poisonStacks} to metadata value "PoisonStacks" of loop-player
+                            if {_poisonStacks} is not set:
+                                set {_poisonStacks} to 1
+                            else:
+                                add 1 to {_poisonStacks}
+                            set metadata value "PoisonStacks" of loop-player to {_poisonStacks}
+                            if metadata value "GoshaPoison" of loop-player is not set:
+                                set metadata value "GoshaPoison" of loop-player to true
+                                GoshaPoisonousGround({_gosha}, loop-player)
+on silverfish enter:
+    if tag "custom;ECBossMinion" of nbt of event-entity is set:
+        cancel event
+        
+on step on mycelium:
+    if event-entity is a player:
+        if metadata value "GoshaPoisonousGround" of event-block is set:
+            if cooldown "PoisonousGround%event-entity%" is finished:
+                create cooldown "PoisonousGround%event-entity%" for 0.25 seconds
+                set {_boss} to (metadata value "GoshaPoisonousGround" of event-block)
+                if {_boss} is alive:
+                    set {_instance} to tag "custom;ECDungeonInstance" of nbt of {_boss}
+                    set {_instancePlayer} to metadata value "DungeonInstance" of player
+                    if {_instance} = {_instancePlayer}:
+                        set {_potion} to potion effect of poison of tier 1 without particles for 24 hours
+                        add {_potion} to potion effects of event-entity
+                        set {_poisonStacks} to metadata value "PoisonStacks" of event-entity
+                        if {_poisonStacks} is not set:
+                            set {_poisonStacks} to 1
+                        else:
+                            add 1 to {_poisonStacks}
+                        set metadata value "PoisonStacks" of event-entity to {_poisonStacks}
+                        if metadata value "GoshaPoison" of event-entity is not set:
+                            set metadata value "GoshaPoison" of event-entity to true
+                            GoshaPoisonousGround({_boss}, event-entity)
+
+on step on dirt:
+    if event-entity is a player:
+        if metadata value "GoshaPoison" of event-entity is set:
+            clear metadata value "GoshaPoison" of event-entity
+            clear metadata value "PoisonStacks" of event-entity
+            remove poison from event-entity
+
+function GoshaPoisonousGround(boss: entity, target: entity):
+    set {_instance} to tag "custom;ECDungeonInstance" of nbt of {_boss}
+    set {_instanceTarget} to metadata value "DungeonInstance" of {_target}
+    if {_instanceTarget} is not set:
+        set {_instanceTarget} to tag "custom;ECDungeonInstance" of nbt of {_target}
+    set {_instanceTarget} to "%{_instanceTarget}%" parsed as number
+    if {_instance} = {_instanceTarget}:
+        while metadata value "GoshaPoison" of {_target} is set:
+            if {_boss} is alive:
+                if {_target} is alive:
+                    set {_poisonStacks} to metadata value "PoisonStacks" of {_target}
+                    DamageProperties({_target}, {_boss}, "<##7564b3>Zatruta Ziemia", "<##7564b3>Poisonous Ground", {_lore}, {_loreEN}, (0.5*{_poisonStacks}))
+                else:
+                    clear metadata value "GoshaPoison" of {_target}
+                    stop loop
+            else:
+                clear metadata value "GoshaPoison" of {_target}
+                stop loop
+            wait 1 second

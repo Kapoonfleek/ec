@@ -5,16 +5,16 @@ on damage:
 		type of event-projectile is shulker bullet:
 			cancel event
 			set {_starshooter} to metadata value "starshooter" of event-projectile
-			set {_id} to line 18 of lore of {karta::%{_starshooter}%}
+			set {_id} to line 19 of lore of {karta::%{_starshooter}%}
 			set {_crit} to 0 + ({crit::%{_starshooter}%}/44) + ({crit::%{_id}%}/44)
 			set {_damage} to 1 + ({obrazenia::%{_starshooter}%}/50) + ({obrazenia::%{_id}%}/50) + ({uniwersalnosc::%{_starshooter}%}/50) + ({uniwersalnosc::%{_id}%}/50)
 			set {_lore} to "&7..."
 			set {_loreEN} to "&7..."
-			set {element::%{_starshooter}%} to "Astral"
+			set {elementCard::%{_starshooter}%} to "Astral"
 			set victim's last damage cause to sweep attack
-			set {lastdmgcause::%victim%} to "<##6a5e9e>Spadające Gwiazdy"
+			set metadata value "LastDamageCause" of victim to "<##6a5e9e>Spadające Gwiazdy"
 			set {lastdmgcauselore::%victim%::*} to {_lore}
-			set {lastdmgcauseEN::%victim%} to "<##6a5e9e>Starfall"
+			set metadata value "LastDamageCauseEN" of victim to "<##6a5e9e>Starfall"
 			set {lastdmgcauseloreEN::%victim%::*} to {_loreEN}
 			chance of {_crit}%:
 				set {_damage} to {_damage}*2
@@ -24,16 +24,16 @@ on damage:
 
 function ShootingStars(p: player):
 	wait 1 tick
-	while {engagedc::%{_p}%} is set:
+	while metadata value "ECEngaged" of {_p} is set:
 		if {_p} is alive:
 			chance of 6%:
 				ShootingStar({_p})
-		stop loop if {engagedc::%{_p}%} is not set
+		stop loop if metadata value "ECEngaged" of {_p} is not set
 		wait 1 second
 function ShootingStar(p: player):
-	set {_id} to line 18 of lore of {karta::%{_p}%}
+	set {_id} to line 19 of lore of {karta::%{_p}%}
 	set {_damage} to 0.8 + ({mistrzostwo::%{_p}%}/32) + ({mistrzostwo::%{_id}%}/32)
-	set {_crit} to 0 + ({crit::%{_p}%}/50) + ({crit::%{_id}%}/50)
+	set {_crit} to 0 + ({criticalhit::%{_p}%}/50) + ({crit::%{_id}%}/50)
 	loop all living entities in radius 50 around {_p}:
 		if {mob::%loop-entity%} is true:
 			add loop-entity to {_enti::*}
@@ -47,8 +47,8 @@ function ShootingStar(p: player):
 			draw 1 of dust using dustOption((rgb 168, 134, 240), 1) at {_l} ~ {_v}
 			wait 1 tick
 		set {_target}'s last damage cause to sweep attack
-		set {lastdmgcauseEN::%{_target}%} to "<##6a5e9e>Shooting Star"
-		set {lastdmgcause::%{_target}%} to "<##6a5e9e>Spadająca Gwiazda"
+		set metadata value "LastDamageCauseEN" of {_target} to "<##6a5e9e>Shooting Star"
+		set metadata value "LastDamageCause" of {_target} to "<##6a5e9e>Spadająca Gwiazda"
 		set {lastdmgcauselore::%{_target}%::*} to {_lore}
 		set {lastdmgcauseloreEN::%{_target}%::*} to {_loreEN}
 		chance of {_crit}%:
@@ -59,61 +59,62 @@ function ShootingStar(p: player):
 		clear {_enti::*}
 function AstralPower(p: player):
 	wait 1 tick
-	set {_pospiech} to 1 + (({pospiech::%{_p}%}/25) + ({pospiech::%{_id}%}/25))/100
+	set {_pospiech} to 1 + (({pospiech::%{_p}%}/4) + ({pospiech::%{_id}%}/4))/100
 	set {_wait} to "%1/{_pospiech}% seconds" parsed as timespan
-	while {engagedc::%{_p}%} is set:
+	while metadata value "ECEngaged" of {_p} is set:
 		if {_p} is alive:
 			if {astralpower::%{_p}%} < 100:
 				add 2 to {astralpower::%{_p}%}
 				send action bar "<##6a5e9e>% {astralpower::%{_p}%}%" to {_p}
-				stop loop if {engagedc::%{_p}%} is not set
+				stop loop if metadata value "ECEngaged" of {_p} is not set
 		wait {_wait}
 on rightclick:
 	if player's tool is magenta dye:
 		if name of player's tool = "<##6a5e9e>Starsurge" or "<##6a5e9e>Gwiezdna Fala":
 			if {kartaname::%player%} = "Test Card":
 				if target of player is a living entity:
-					set {_target} to target of player
-					if {mob::%{_target}%} is true:
-						if {astralpower::%player%} >= 30:
-							set {_id} to line 18 of lore of {karta::%player%}
-							play sound "skill.cresselia.starsurgecast" with volume 4 and pitch 1 at player
-							remove 30 from {astralpower::%player%}
-							set {_crit} to 0 + ({crit::%player%}/50) + ({crit::%{_id}%}/50)
-							set {_damage} to 6 + ({obrazenia::%player%}/15) + ({obrazenia::%{_id}%}/15) + ({uniwersalnosc::%player%}/45) + ({uniwersalnosc::%{_id}%}/45)
-							set {_loc} to player's location
-							set {_target}'s last damage cause to sweep attack
-							set {_pid} to random 8 char string from charset `0-9`
-							drawArc particle "blockcrack", material magenta concrete powder, center {_loc}, target location of {_target}, id "%{_pid}%", rainbowMode false, density 50, height 2, pitchMultiplier 1, visibleRange 30
-							set {lastdmgcauseEN::%{_target}%} to "<##6a5e9e>Starsurge"
-							set {lastdmgcause::%{_target}%} to "<##6a5e9e>Gwiezdna Fala"
-							set {lastdmgcauselore::%{_target}%::*} to {_lore}
-							set {lastdmgcauseloreEN::%{_target}%::*} to {_loreEN}
-							set {element::%{_p}%} to "Astral"
-							chance of {_crit}%:
-								set {_damage} to {_damage}*2
-							make player damage {_target} by {_damage}*2
-							play sound "skill.cresselia.starsurgeimpact" with volume 4 and pitch 1 at {_target}
-							if {starsurgestacks::%player%::%{_target}%} is not set:
-								set {starsurgestacks::%player%::%{_target}%} to 0
+					if CanUseAbility(player) != false:
+						set {_target} to target of player
+						if {mob::%{_target}%} is true:
+							if {astralpower::%player%} >= 30:
+								set {_id} to line 19 of lore of {karta::%player%}
+								play sound "skill.cresselia.starsurgecast" with volume 4 and pitch 1 at player
+								remove 30 from {astralpower::%player%}
+								set {_crit} to 0 + ({criticalhit::%player%}/50) + ({crit::%{_id}%}/50)
+								set {_damage} to 6 + ({damage::%player%}/15) + ({obrazenia::%{_id}%}/15) + ({versatility::%player%}/45) + ({uniwersalnosc::%{_id}%}/45)
+								set {_loc} to player's location
+								set {_target}'s last damage cause to sweep attack
+								set {_pid} to random 8 char string from charset `0-9`
+								drawArc particle "blockcrack", material magenta concrete powder, center {_loc}, target location of {_target}, id "%{_pid}%", rainbowMode false, density 50, height 2, pitchMultiplier 1, visibleRange 30
+								set metadata value "LastDamageCauseEN" of {_target} to "<##6a5e9e>Starsurge"
+								set metadata value "LastDamageCause" of {_target} to "<##6a5e9e>Gwiezdna Fala"
+								set {lastdmgcauselore::%{_target}%::*} to {_lore}
+								set {lastdmgcauseloreEN::%{_target}%::*} to {_loreEN}
+								set metadata value "Element" of {_p} to "Astral"
+								chance of {_crit}%:
+									set {_damage} to {_damage}*2
+								make player damage {_target} by {_damage}*2
+								play sound "skill.cresselia.starsurgeimpact" with volume 4 and pitch 1 at {_target}
+								if {starsurgestacks::%player%::%{_target}%} is not set:
+									set {starsurgestacks::%player%::%{_target}%} to 0
+								else:
+									if {starsurgestacks::%player%::%{_target}%} < 2:
+										add 1 to {starsurgestacks::%player%::%{_target}%}
+									set {czasstarsurge::%player%::%{_target}%} to 30 seconds
+									if {starsurgebonus::%player%::%{_target}%} is not set:
+										set {starsurgebonus::%player%::%{_target}%} to true
+								set {_starsurgebonus} to 1+(0.15*{starsurgestacks::%player%::%{_target}%})
+								set {_damage} to {_damage}*{_starsurgebonus}
+								make player damage {_target} by {_damage}*2
+								StarsurgeBonus(player, {_target})
+								wait 0.2 seconds
+								stopEffect "%{_pid}%"
 							else:
-								if {starsurgestacks::%player%::%{_target}%} < 2:
-									add 1 to {starsurgestacks::%player%::%{_target}%}
-								set {czasstarsurge::%player%::%{_target}%} to 30 seconds
-								if {starsurgebonus::%player%::%{_target}%} is not set:
-									set {starsurgebonus::%player%::%{_target}%} to true
-							set {_starsurgebonus} to 1+(0.15*{starsurgestacks::%player%::%{_target}%})
-							set {_damage} to {_damage}*{_starsurgebonus}
-							make player damage {_target} by {_damage}*2
-							StarsurgeBonus(player, {_target})
-							wait 0.2 seconds
-							stopEffect "%{_pid}%"
-						else:
-							if {language::%player%} = "English":
-								send action bar "<##6a5e9e>You must have 30 Astral Power to use this ability." to player
-							else:
-								send action bar "<##6a5e9e>Musisz mieć 30 Astralnej Mocy, by móc użyć tej umiejętności." to player
-							play sound "entity.villager.no" with volume 3 and pitch 1 to player
+								if {language::%player%} = "English":
+									send action bar "<##6a5e9e>You must have 30 Astral Power to use this ability." to player
+								else:
+									send action bar "<##6a5e9e>Musisz mieć 30 Astralnej Mocy, by móc użyć tej umiejętności." to player
+								play sound "entity.villager.no" with volume 3 and pitch 1 to player
 			else:
 				if {language::%player%} = "English":
 					send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to player
@@ -123,43 +124,44 @@ on rightclick:
 	else if player's tool is purple dye:
 		if name of player's tool = "<##6a5e9e>Starfall" or "<##6a5e9e>Spadające Gwiazdy":
 			if {kartaname::%player%} = "Test Card":
-				if {astralpower::%player%} >= 50:
-					remove 50 from {astralpower::%player%}
-					play sound "skill.cresselia.starfall" with volume 5 and pitch 1 at player
-					set {_pospiech} to 1 + (({pospiech::%player%}/25) + ({pospiech::%{_id}%}/25))/100
-					set {_wait} to "%1/{_pospiech}% seconds" parsed as timespan
-					loop all living entities in radius 60 around the player:
-						if loop-entity is not a player:
-							if {mob::%loop-entity%} is true:
-								add loop-entity to {_enemies::*}
-					if {_enemies::*} is set:
-						set {_duration} to now
-						while (difference between {_duration} and now) < 8 seconds:
-							set {_j} to a random element of {_enemies::*}
-							set {_x} to location of block below highest solid block at {_j}
-							set {_xy} to ((y-coordinate of {_x}) - (y-coordinate of {_j}))
-							if {_x} is not set:
-								set {_int} to a random number between 15 and 20
-								set {_x} to block {_int} blocks above {_j}
-							else if (y-coordinate of {_x}) >= (y-coordinate of block at {_j}):
-								set {_h} to a random number between ({_xy}*0.67) and {_xy}
-								set {_x} to (y-coordinate of {_j}) + {_h}
-							set {_loc} to location of {_j}
-							set y-coordinate of {_loc} to {_x}
-							spawn a shulker bullet at {_loc}
-							silence last spawned shulker bullet
-							push last spawned shulker bullet (vector from last spawned shulker bullet to {_j}) with speed (0.2*{_pospiech})
-							set metadata value "starshooter" of last spawned shulker bullet to player
-							#play sound "entity.firework_rocket.launch" with volume 2.3 and pitch -1 at last spawned shulker bullet
-							wait {_wait}
-							stop loop if (difference between {_duration} and now) > 8 seconds
-							#WSZYSCY LOSOWO
-				else:
-					if {language::%player%} = "English":
-						send action bar "<##6a5e9e>You must have 50 Astral Power to use this ability." to player
+				if CanUseAbility(player) != false:
+					if {astralpower::%player%} >= 50:
+						remove 50 from {astralpower::%player%}
+						play sound "skill.cresselia.starfall" with volume 5 and pitch 1 at player
+						set {_pospiech} to 1 + (({haste::%player%}/4) + ({pospiech::%{_id}%}/4))/100
+						set {_wait} to "%1/{_pospiech}% seconds" parsed as timespan
+						loop all living entities in radius 60 around the player:
+							if loop-entity is not a player:
+								if {mob::%loop-entity%} is true:
+									add loop-entity to {_enemies::*}
+						if {_enemies::*} is set:
+							set {_duration} to now
+							while (difference between {_duration} and now) < 8 seconds:
+								set {_j} to a random element of {_enemies::*}
+								set {_x} to location of block below highest solid block at {_j}
+								set {_xy} to ((y-coordinate of {_x}) - (y-coordinate of {_j}))
+								if {_x} is not set:
+									set {_int} to a random number between 15 and 20
+									set {_x} to block {_int} blocks above {_j}
+								else if (y-coordinate of {_x}) >= (y-coordinate of block at {_j}):
+									set {_h} to a random number between ({_xy}*0.67) and {_xy}
+									set {_x} to (y-coordinate of {_j}) + {_h}
+								set {_loc} to location of {_j}
+								set y-coordinate of {_loc} to {_x}
+								spawn a shulker bullet at {_loc}
+								silence last spawned shulker bullet
+								push last spawned shulker bullet (vector from last spawned shulker bullet to {_j}) with speed (0.2*{_pospiech})
+								set metadata value "starshooter" of last spawned shulker bullet to player
+								#play sound "entity.firework_rocket.launch" with volume 2.3 and pitch -1 at last spawned shulker bullet
+								wait {_wait}
+								stop loop if (difference between {_duration} and now) > 8 seconds
+								#WSZYSCY LOSOWO
 					else:
-						send action bar "<##6a5e9e>Musisz mieć 50 Astralnej Mocy, by móc użyć tej umiejętności." to player
-					play sound "entity.villager.no" with volume 3 and pitch 1 to player
+						if {language::%player%} = "English":
+							send action bar "<##6a5e9e>You must have 50 Astral Power to use this ability." to player
+						else:
+							send action bar "<##6a5e9e>Musisz mieć 50 Astralnej Mocy, by móc użyć tej umiejętności." to player
+						play sound "entity.villager.no" with volume 3 and pitch 1 to player
 			else:
 				if {language::%player%} = "English":
 					send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to player
@@ -170,53 +172,54 @@ on rightclick:
 		if name of player's tool = "<##6a5e9e>Innervate" or "<##6a5e9e>Gwiezdne Pobudzenie":
 			if {kartaname::%player%} = "Test Card":
 				if cooldown "innervate%player%" is finished:
-					set {_id} to line 18 of lore of {karta::%player%}
-					set {_pospiech} to 1 + (({pospiech::%player%}/25) + ({pospiech::%{_id}%}/25))/100
-					set {_cd} to "%180/{_pospiech}% seconds" parsed as timespan
-					set {_target} to target player of player
-					if {_target} is set:
-						create cooldown "innervate%player%" for {_cd}
-						set {_lastusedability} to metadata value "lastusedability" of {_target}
-						set {_cdreduction} to 40 seconds
-						if {_lastusedability} = "Icy Veins" or "Lodowe Żyły":
-							if {icyveins::use::%{_target}%} > {_cdreduction}:
-								remove {_cdreduction} from {icyveins::use::%{_target}%}
-								set {icyveins::cooldown::%{_target}%} to difference between {icyveins::use::%{_target}%} and now
+					if CanUseAbility(player) != false:
+						set {_id} to line 19 of lore of {karta::%player%}
+						set {_pospiech} to 1 + (({haste::%player%}/4) + ({pospiech::%{_id}%}/4))/100
+						set {_cd} to "%180/{_pospiech}% seconds" parsed as timespan
+						set {_target} to target player of player
+						if {_target} is set:
+							create cooldown "innervate%player%" for {_cd}
+							set {_lastusedability} to metadata value "lastusedability" of {_target}
+							set {_cdreduction} to 40 seconds
+							if {_lastusedability} = "Icy Veins" or "Lodowe Żyły":
+								if {icyveins::use::%{_target}%} > {_cdreduction}:
+									remove {_cdreduction} from {icyveins::use::%{_target}%}
+									set {icyveins::cooldown::%{_target}%} to difference between {icyveins::use::%{_target}%} and now
+								else:
+									remove {icyveins::use::%{_target}%} from {icyveins::use::%{_target}%}
+									set {icyveins::cooldown::%{_target}%} to difference between {icyveins::use::%{_target}%} and now
+							else if {_lastusedability} = "Rain of Lava" or "Deszcz Lawy":
+								if cooldown "wildfire%{_target}%" > {_cdreduction}:
+									remove {_cdreduction} from cooldown "wildfire%{_target}%"
+								else:
+									set {_cdreduction} to cooldown "wildfire%{_target}%"
+									remove {_cdreduction} from cooldown "wildfire%{_target}%"
 							else:
-								remove {icyveins::use::%{_target}%} from {icyveins::use::%{_target}%}
-								set {icyveins::cooldown::%{_target}%} to difference between {icyveins::use::%{_target}%} and now
-						else if {_lastusedability} = "Rain of Lava" or "Deszcz Lawy":
-							if cooldown "wildfire%{_target}%" > {_cdreduction}:
-								remove {_cdreduction} from cooldown "wildfire%{_target}%"
+								set {_ability} to {_lastusedability} in lowercase
+								replace all " " in {_ability} with ""
+								if {_ability} = "stopionalawa":
+									set {_ability} to "moltenlava"
+								else if {_ability} = "wybuchlawy":
+									set {_ability} to "lavaburst"
+								else if {_ability} = "deszczlawy":
+									set {_ability} to "rainoflava"
+								else if {_ability} = "gwiezdnepobudzenie":
+									set {_ability} to "innervate"
+								else if {_ability} = "płomiennabariera":
+									set {_ability} to "flamebarrier"
+								else if {_ability} = "nocnecięcie":
+									set {_ability} to "nightslash"
+								else if {_ability} = "kulablaskuksiężyca":
+									set {_ability} to "moonlightorb"
+								if cooldown "%{_ability}%%{_target}%" > {_cdreduction}:
+									remove {_cdreduction} from cooldown "%{_ability}%%{_target}%"
+								else:
+									set {_cdreduction} to cooldown "%{_ability}%%{_target}%"
+									remove {_cdreduction} from cooldown "%{_ability}%%{_target}%"
+							if {language::%{_target}%} = "English":
+								send "<##6a5e9e>Innervate lowered the cooldown of your %{_lastusedability}% <##6a5e9e>by %{_cdreduction}% seconds!" to {_target}
 							else:
-								set {_cdreduction} to cooldown "wildfire%{_target}%"
-								remove {_cdreduction} from cooldown "wildfire%{_target}%"
-						else:
-							set {_ability} to {_lastusedability} in lowercase
-							replace all " " in {_ability} with ""
-							if {_ability} = "stopionalawa":
-								set {_ability} to "moltenlava"
-							else if {_ability} = "wybuchlawy":
-								set {_ability} to "lavaburst"
-							else if {_ability} = "deszczlawy":
-								set {_ability} to "rainoflava"
-							else if {_ability} = "gwiezdnepobudzenie":
-								set {_ability} to "innervate"
-							else if {_ability} = "płomiennabariera":
-								set {_ability} to "flamebarrier"
-							else if {_ability} = "nocnecięcie":
-								set {_ability} to "nightslash"
-							else if {_ability} = "kulablaskuksiężyca":
-								set {_ability} to "moonlightorb"
-							if cooldown "%{_ability}%%{_target}%" > {_cdreduction}:
-								remove {_cdreduction} from cooldown "%{_ability}%%{_target}%"
-							else:
-								set {_cdreduction} to cooldown "%{_ability}%%{_target}%"
-								remove {_cdreduction} from cooldown "%{_ability}%%{_target}%"
-						if {language::%{_target}%} = "English":
-							send "<##6a5e9e>Innervate lowered the cooldown of your %{_lastusedability}% <##6a5e9e>by %{_cdreduction}% seconds!" to {_target}
-						else:
-							send "<##6a5e9e>Innervate zmniejszył cooldown %{_lastusedability}% <##6a5e9e>o %{_cdreduction}% sekund!" to {_target}
+								send "<##6a5e9e>Innervate zmniejszył cooldown %{_lastusedability}% <##6a5e9e>o %{_cdreduction}% sekund!" to {_target}
 				else: 
 					cancel event
 					if {tekstcd::%player%} = true:
