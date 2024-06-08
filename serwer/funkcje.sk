@@ -288,7 +288,7 @@ function cardLevelup(p: player, xp: number, e: entity):
 			#add 0.2/({_xp}*(1-(0.05*{_dif}))) to {exp::%{_p}%}
 			addPlayerXP({_p}, 0.2/({_xp}*(1-(0.05*{_dif}))))
 		else:
-			add 0 to {_exp::%{_p}%}
+			add 0 to {exp::%{_p}%}
 		play sound "minecraft:entity.experience_orb.pickup" with volume 2 and pitch 1 to {_p}
 		#broadcast "%{exp::%{_p}%}% xp player"
 	UpdateScoreboard({_p})
@@ -332,90 +332,6 @@ function cardLevelup(p: player, xp: number, e: entity):
 			set tag "Level" of nbt of loop-item to {_cardLevel}
 			set {karta::%{_p}%} to loop-item
 			stop loop
-	clear {_exp}
-	loop {asyst::%uuid of {_e}%::*}:
-		clear {_dif}
-		set {_player} to loop-value parsed as entity
-		if {_player} is not {_p}:
-			#broadcast {_player}
-			set {_id} to uncolored line 19 of lore of {karta::%{_player}%}
-			replace all "Id: " in {_id} with ""
-			set {_card} to {karta::%{_player}%}
-			load yaml "plugins/Skript/playerdata/karty/%uncolored name of {_card}%/%{_id}%.yml" as "cardLvlup-%{_player}%"
-			set {_cardLevel} to yaml value "Card.Level" in "cardLvlup-%{_player}%"
-			set {_cardXp} to yaml value "Card.Exp" in "cardLvlup-%{_player}%"
-			set {_cardXpAboveLimit} to yaml value "Card.XP Above Limit" in "cardLvlup-%{_player}%"
-			set {_maxLevel} to 50
-			set {_exp} to {_xp}
-			if {_cardLevel} = 0:
-				set {_cardLevel} to 1
-			set {_requiredExp} to (2 ^ (2.5*({_cardLevel}/{_maxLevel})+(round({_cardLevel}/({_maxLevel}/10), 0))+sqrt({_cardLevel}/(5))))+{_maxLevel}*{_cardLevel}*3
-			if {_mobLevel} is set:
-				if {_cardLevel} > {_mobLevel}:
-					set {_dif} to ({_cardLevel}-{_mobLevel})
-				else:
-					set {_dif} to 0
-			else:
-				set {_exp} to 0
-			if {_dif} is set:
-				if {_dif} < 20:
-					#broadcast "%{_exp}% BEFORE"
-					set {_exp} to {_exp} * {_requiredExp}
-					#broadcast "%{_exp}% AFTER"
-					set {_exp} to {_exp}*(1-(0.05*{_dif}))*0.5
-				else if {_dif} >= 20:
-					set {_exp} to 0
-			if {_cardLevel} < tag "MaxLevel" of nbt of {_card}:
-				if {_exp} > 0:
-					add {_exp} to {_cardXp}
-			else:
-				if {_exp} > 0:
-					add {_exp} to {_cardXpAboveLimit}
-			if {_exp} > 0:
-				if {_dif} < 20:
-					#add 0.2/({_xp}*((1-(0.05*{_dif}))*0.5)) to {exp::%{_player}%}
-					addPlayerXP({_player}, 0.2/({_xp}*((1-(0.05*{_dif}))*0.5)))
-				else:
-					add 0 to {_exp::%{_player}%}
-				play sound "minecraft:entity.experience_orb.pickup" with volume 2 and pitch 1 to {_player}
-			UpdateScoreboard({_player})
-			#broadcast "%{_exp}% XP %{_requiredExp}% Required XP ASSIST"
-			if {_cardxp} >= {_requiredExp}:
-				remove {_requiredExp} from {_cardXp}
-				set {_levelCard} to {_cardLevel}
-				add 1 to {_levelCard}
-				set {_cardLevel} to {_levelCard}
-				add 1 to {poziomykarty::%{_player}%}
-				play sound "minecraft:entity.player.levelup" with volume 2 and pitch 1 to {_player}
-				if {language::%{_player}%} = "English":
-					send "&eYour card advanced to Level %{_cardLevel}%!" to {_player}
-				else:
-					send "&eTwoja karta awansowała do Poziomu %{_cardLevel}%!" to {_player}
-			set yaml value "Card.Level" in "cardLvlup-%{_player}%" to {_cardLevel}
-			set yaml value "Card.Exp" in "cardLvlup-%{_player}%" to {_cardXP}
-			set yaml value "Card.XP Above Limit" in "cardLvlup-%{_player}%" to {_cardXpAboveLimit}
-			save yaml "cardLvlup-%{_player}%"
-			unload yaml "cardLvlup-%{_player}%"
-			send "&e+%{_exp}% XP from %name of {_e}%" to {_player}
-			loop all items in the inventory of {_player}:
-				if line 19 of lore of loop-item = line 19 of lore of {karta::%{_player}%}:
-					if {language::%{_player}%} = "English":
-						if {_cardLevel} = tag "MaxLevel" of nbt of {_card}:
-							set line 2 of lore of loop-item to "&7Level: %{kartacolor::%{_player}%}%%{_cardLevel}% &7| &7Exp: %{kartacolor::%{_player}%}%MAX"
-						else:
-							set line 2 of lore of loop-item to "&7Level: %{kartacolor::%{_player}%}%%{_cardLevel}% &7| &7Exp: %{kartacolor::%{_player}%}%%{_cardXp}%"
-					else:
-						if {_cardLevel} = tag "MaxLevel" of nbt of {_card}:
-							set line 2 of lore of loop-item to "&7Poziom: %{kartacolor::%{_player}%}%%{_cardLevel}% &7| &7Exp: %{kartacolor::%{_player}%}%MAX"
-						else:
-							set line 2 of lore of loop-item to "&7Poziom: %{kartacolor::%{_player}%}%%{_cardLevel}% &7| &7Exp: %{kartacolor::%{_player}%}%%{_cardXp}%"
-					set tag "Level" of nbt of loop-item to {_cardLevel}
-					set {karta::%{_player}%} to loop-item
-					stop loop
-		clear {_id}
-		clear {_player}
-		clear {_exp}
-	#clear {asyst::%uuid of {_e}%::*}
 
 function SetCardIcon(p: player):
 	set {ikonkakarta::%{_p}%} to tag "CardIcon" of nbt of {_p}'s tool
