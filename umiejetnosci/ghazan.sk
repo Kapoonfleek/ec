@@ -532,49 +532,57 @@ function MoltenLava(p: player, radius: number, cdd: number, pospiech: number, wa
 			set {_Eventblock} to block under target block of {_p}
 	MagmaCheck({_p})
 	set {_duration} to 1 minute
-
 	#MOLTEN INSTABILITY
 	loop {_loreheart::*}:
 		loop-value contains "Molten Instability":
 			add "%(2*{trait::Ghazan::Molten Instability::%{_p}%})% seconds" parsed as timespan to {_duration}
-	loop {_radius} times:
-		if loop-number = rounded {_radius}:
-			set {_num} to {_radius}
-		else:
-			set {_num} to loop-number
-		loop all blocks in radius {_num} around {_Eventblock}:
-			if (y-coordinate of loop-block) >= (y-coordinate of {_Eventblock}):
-				if "%regions at loop-block%" does not contain "spawn":
-					if loop-block is solid:
-						if loop-block is not bedrock:
-							if loop-block is not a chest:
-								if loop-block is not a trapped chest:
-									if {magma::%{_p}%::*} does not contain loop-block:
-										set {_blocks::*} to {_blocks::*} and (type of loop-block)
-										set {_loc::*} to {_loc::*} and (location of loop-block)
-										set block at loop-block to basalt
-										set {magma::%{_p}%::*} to {magma::%{_p}%::*} and loop-block
-										make all players see block at loop-block as magma block
-										add 1 to {_index}
-										if {_index} is divisible by 3:
-											wait 1 tick
-	#loop {_loc::*}:
-	#	if block at loop-value is basalt:
-	#		make all players see block at loop-value as magma block
-	#MagmaCheck({_p})
-	set {_remainingDuration} to {_duration}
-	set {_count} to {magmaareacount::%{_p}%}
-	while {_remainingDuration} > 0 seconds:
-		wait 1 second
-		remove 1 second from {_remainingDuration}
-		if metadata value "RefreshMoltenLava%{_count}%" of {_p} is set:
-			clear metadata value "RefreshMoltenLava%{_count}%" of {_p}
-			set {_remainingDuration} to {_duration}
-	remove 1 from {magmaareacount::%{_p}%}
-	loop {_loc::*}:
-		set block at loop-value to {_blocks::%loop-index%}
-		remove loop-value from {magma::%{_p}%::*}
-	play sound "block.lava.extinguish" with volume 4 and pitch 2 at {_loc::1}
+	#Allowed placement
+	set {_allowedRegions::*} to "ExpAreaMayan in world areny", "dreamcatcherfightarea1 in world areny", "expowiskolod in world areny", "siegeofspawn in world areny"
+	if region at {_Eventblock} is set:
+		loop regions at {_Eventblock}:
+			if {_allowedRegions::*} contains "%loop-value%":
+				set {_canPlace} to true
+				stop loop
+	else:
+		set {_canPlace} to true
+	if {_canPlace} is true:
+		loop {_radius} times:
+			if loop-number = rounded {_radius}:
+				set {_num} to {_radius}
+			else:
+				set {_num} to loop-number
+			loop all blocks in radius {_num} around {_Eventblock}:
+				if (y-coordinate of loop-block) >= (y-coordinate of {_Eventblock}):
+					if "%regions at loop-block%" does not contain "spawn":
+						if loop-block is solid:
+							if loop-block is not bedrock:
+								if loop-block is not a chest:
+									if loop-block is not a trapped chest:
+										if metadata value "MoltenLava%{_p}%" of loop-block is not set:
+											set {_blocks::*} to {_blocks::*} and (type of loop-block)
+											set {_loc::*} to {_loc::*} and (location of loop-block)
+											set block at loop-block to basalt
+											set metadata value "MoltenLava%{_p}%" of loop-block to true
+											add 1 to {_index}
+											if {_index} is divisible by 3:
+												wait 1 tick
+		loop {_loc::*}:
+			if block at loop-value is basalt:
+				make all players see block at loop-value as magma block
+		#MagmaCheck({_p})
+		set {_remainingDuration} to {_duration}
+		set {_count} to {magmaareacount::%{_p}%}
+		while {_remainingDuration} > 0 seconds:
+			wait 1 second
+			remove 1 second from {_remainingDuration}
+			if metadata value "RefreshMoltenLava%{_count}%" of {_p} is set:
+				clear metadata value "RefreshMoltenLava%{_count}%" of {_p}
+				set {_remainingDuration} to {_duration}
+		remove 1 from {magmaareacount::%{_p}%}
+		loop {_loc::*}:
+			set block at loop-value to {_blocks::%loop-index%}
+			clear metadata value "MoltenLava%{_p}%" of loop-block
+		play sound "block.lava.extinguish" with volume 4 and pitch 2 at {_loc::1}
 
 function BonusLavaBurst(p: player, x: entity):
 	if {lavaburstbonus::%{_p}%::%{_x}%} is true:
@@ -624,38 +632,36 @@ function Magma(p: player):
 		replace all "second" and "seconds" in {_wait} with "sekund"
 	set {_lore} to "&8Umiejętność%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdd}% sekund%nl%&7Użycie: &fPPM%nl%<##b03228>Zamienia teren w stopioną lawę. Przeciwnicy%nl%<##b03228>znajdujący się w Stopionej Lawie otrzymują%nl%&f%{_damage}% <##b03228>obrażeń <##ff4d00>Lawy <##b03228>co &f%{_wait}%<##b03228>."
 	set {_loreEN} to "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdd}% seconds%nl%&7Use: &fRMB%nl%<##b03228>Turns target terrain into molten lava.%nl%<##b03228>Enemies standing in Molten Lava receive &f%{_damage}%%nl%<##ff4d00>Lava <##b03228>damage every &f%{_wait}%<##b03228>."
-	loop all entities in radius 100 around {_p}:
+	loop all entities in radius 100 around {_p} where [metadata value "MoltenLava%{_p}%" of (block under input) is set]:
 		set {_custom} to tag "custom" of nbt of loop-entity
 		if tag "ECMob" of {_custom} is set:
-			if block under loop-entity is basalt:
-				if {magma::%{_p}%::*} contains block under loop-entity:
-					set metadata value "Element" of {_p} to "Lava"
-					set loop-entity's last damage cause to sweep attack
-					set metadata value "LastDamageCauseEN" of loop-entity to "<##b03228>Molten Lava"
-					set metadata value "LastDamageCause" of loop-entity to "<##b03228>Stopiona Lawa"
-					set metadata value "LastDamageCauseLoreEN" of loop-entity to {_loreEN}
-					set metadata value "LastDamageCauseLore" of loop-entity to {_lore}
-					if {lavafury::%{_p}%} > 0:
-						set {_damage} to {_damage}*1.2
-						remove 1 from {lavafury::%{_p}%}
-						set {lavasurge::%{_p}%} to true
-						if {guiscale::%{_p}%} = 4:
-							send title " " with subtitle "          " to {_p} for 1 minute with fade in 0.25 second and fade out 0.0 second
-						else:
-							send title " " with subtitle "                    " to {_p} for 1 minute with fade in 0.25 second and fade out 0.0 second
-						if {lavafury::%{_p}%} = 0:
-							clear {lavafury::%{_p}%}
-					chance of {_crit}%:
-						set {_damage} to {_damage}*2
-					make {_p} damage loop-entity by {_damage}*2
-					play sound "entity.player.hurt" with volume 1.5 and pitch 1 at loop-entity
-					#LAVA SURGE
-					chance of {_chance}%:
-						set {lavasurge::%{_p}%} to true
-						if {guiscale::%{_p}%} = 4:
-							send title " " with subtitle "          " to {_p} for 1 minute with fade in 0.25 second and fade out 0.0 second
-						else:
-							send title " " with subtitle "                    " to {_p} for 1 minute with fade in 0.25 second and fade out 0.0 second
+			set metadata value "Element" of {_p} to "Lava"
+			set loop-entity's last damage cause to sweep attack
+			set metadata value "LastDamageCauseEN" of loop-entity to "<##b03228>Molten Lava"
+			set metadata value "LastDamageCause" of loop-entity to "<##b03228>Stopiona Lawa"
+			set metadata value "LastDamageCauseLoreEN" of loop-entity to {_loreEN}
+			set metadata value "LastDamageCauseLore" of loop-entity to {_lore}
+			if {lavafury::%{_p}%} > 0:
+				set {_damage} to {_damage}*1.2
+				remove 1 from {lavafury::%{_p}%}
+				set {lavasurge::%{_p}%} to true
+				if {guiscale::%{_p}%} = 4:
+					send title " " with subtitle "          " to {_p} for 1 minute with fade in 0.25 second and fade out 0.0 second
+				else:
+					send title " " with subtitle "                    " to {_p} for 1 minute with fade in 0.25 second and fade out 0.0 second
+				if {lavafury::%{_p}%} = 0:
+					clear {lavafury::%{_p}%}
+			chance of {_crit}%:
+				set {_damage} to {_damage}*2
+			make {_p} damage loop-entity by {_damage}*2
+			play sound "entity.player.hurt" with volume 1.5 and pitch 1 at loop-entity
+			#LAVA SURGE
+			chance of {_chance}%:
+				set {lavasurge::%{_p}%} to true
+				if {guiscale::%{_p}%} = 4:
+					send title " " with subtitle "          " to {_p} for 1 minute with fade in 0.25 second and fade out 0.0 second
+				else:
+					send title " " with subtitle "                    " to {_p} for 1 minute with fade in 0.25 second and fade out 0.0 second
 						
 #Transforms the ground into molten rocks
 #Melts the ground around target area. Enemies inside take 0.5 damage every one second.
@@ -674,18 +680,14 @@ function Ascendance(p: player, duration: timespan):
 			set {_furtherBeyond} to true
 	else:
 		add {_duration} to {ascendanceDuration::%{_p}%}
-		loop all entities in radius 100 around {_p}:
+		loop all entities in radius 100 around {_p} where [metadata value "MoltenLava%{_p}%" of (block under input) is set]:
 			if tag "custom;ECMob" of nbt of loop-entity is set:
-				if block under loop-entity is basalt:
-					if {magma::%{_p}%::*} contains block under loop-entity:
-						LavaBurst({_p}, loop-entity, 1)
+				LavaBurst({_p}, loop-entity, 1)
 		stop
 
-	loop all entities in radius 100 around {_p}:
+	loop all entities in radius 100 around {_p} where [metadata value "MoltenLava%{_p}%" of (block under input) is set]:
 		if tag "custom;ECMob" of nbt of loop-entity is set:
-			if block under loop-entity is basalt:
-				if {magma::%{_p}%::*} contains block under loop-entity:
-					LavaBurst({_p}, loop-entity, 1)
+			LavaBurst({_p}, loop-entity, 1)
 
 	while metadata value "Ascendance" of {_p} is set:
 		#broadcast {ascendanceDuration::%{_p}%}
@@ -889,10 +891,9 @@ function LavaBurst(p: player, x: entity, multiplier: number):
 			add ((1*{trait::Ghazan::Molten Blast::%{_p}%})/100) to {_bonuscritdmg}
 	set {_critmultiplier} to 2 + {_bonuscritdmg}
 	set metadata value "Element" of {_p} to "Lava"
-	if block under {_x} is basalt:
-		if {magma::%{_p}%::*} contains block under {_x}:
-			set {_check} to true
-			set {_damage} to {_damage}*{_critmultiplier}
+	if metadata value "MoltenLava%{_p}%" of block under {_x} is set:
+		set {_check} to true
+		set {_damage} to {_damage}*{_critmultiplier}
 	if {_check} is not set:
 		chance of {_crit}%:
 			set {_damage} to {_damage}*{_critmultiplier}
