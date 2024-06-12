@@ -607,6 +607,14 @@ on inventory click:
                             play sound "entity.player.levelup" with volume 2 and pitch 0.15 to player
                             if {_gearSlot} does not contain "Artifact":
                                 set {_gearSlot} to tag "GearSlot" of nbt of {_gearItem}
+                            else:
+                                set {_artifactSet} to uncolored line 3 of lore of {_gearItem}
+                                set {_artifactSetCount} to tag {_artifactSet} of nbt of player's tool
+                                remove 1 from {_artifactSetCount}
+                                if {_artifactSetCount} = 0:
+                                    clear tag {_artifactSet} of nbt of player's tool
+                                else:
+                                    set tag {_artifactSet} of nbt of player's tool to {_artifactSetCount}
                             if line 19 of lore of {karta::%player%} contains "Id: ":
                                 set {_id} to uncolored line 19 of lore of {karta::%player%}
                                 replace all "Id: " in {_id} with ""
@@ -725,15 +733,6 @@ on inventory click:
             delete {_lore::%size of {_lore::*}%}
             set lore of {_slot} to {_lore::*}
             set metadata tag "GearConfirm" of player to chest inventory with 3 rows named "Gear - Confirm"
-            if tag "ArtifactType" of nbt of {_slot} is not set:
-                if line 1 of lore of {_slot} contains "Flower Artifact":
-                    set tag "ArtifactType" of nbt of {_slot} to "Flower Artifact"
-                else if line 1 of lore of {_slot} contains "Orb Artifact":
-                    set tag "ArtifactType" of nbt of {_slot} to "Orb Artifact"
-                else if line 1 of lore of {_slot} contains "Phial Artifact":
-                    set tag "ArtifactType" of nbt of {_slot} to "Phial Artifact"
-                else if line 1 of lore of {_slot} contains "Scroll Artifact":
-                    set tag "ArtifactType" of nbt of {_slot} to "Scroll Artifact"
             set slot 11 of metadata tag "GearConfirm" of player to {_slot}
             set slot 15 of metadata tag "GearConfirm" of player to lime glass pane named "&aConfirm?" with lore "&7Click here to confirm the process and%nl%&7equip this item.%nl%&7This item will be removed from your inventory.%nl% %nl%&c&l(&4&l!&c&l) &c&nWarning!&c &oThis item will become Cardbound%nl%&cwhen equipped."
             open metadata tag "GearConfirm" of player to player
@@ -744,8 +743,18 @@ on inventory click:
             cancel event
         if event-slot is 15:
             set {_gearItem} to slot 11 of metadata tag "GearConfirm" of player
+            set {_gearItemRemove} to slot 11 of metadata tag "GearConfirm" of player
+            if tag "ArtifactType" of nbt of {_gearItem} is not set:
+                if line 1 of lore of {_gearItem} contains "Flower Artifact":
+                    set tag "ArtifactType" of nbt of {_gearItem} to "Flower Artifact"
+                else if line 1 of lore of {_gearItem} contains "Orb Artifact":
+                    set tag "ArtifactType" of nbt of {_gearItem} to "Orb Artifact"
+                else if line 1 of lore of {_gearItem} contains "Phial Artifact":
+                    set tag "ArtifactType" of nbt of {_gearItem} to "Phial Artifact"
+                else if line 1 of lore of {_gearItem} contains "Scroll Artifact":
+                    set tag "ArtifactType" of nbt of {_gearItem} to "Scroll Artifact"
             clear metadata tag "GearConfirm" of player
-            remove {_gearItem} from player
+            remove {_gearItemRemove} from player
             teleport the player to player's location
             play sound "block.chest.close" with volume 2 and pitch 1.3 to player
             play sound "entity.player.levelup" with volume 2 and pitch 0.15 to player
@@ -796,8 +805,21 @@ on inventory click:
                     set {_checkSlot} to slot 32 of metadata tag "gearcard" of player
                 else if {_gearSlot} = "Scroll Artifact":
                     set {_checkSlot} to slot 41 of metadata tag "gearcard" of player
+                if {_gearSlot} contains "Artifact":
+                    set {_artifactSet} to uncolored line 3 of lore of {_gearItem}
+                    set {_artifactSetCount} to tag {_artifactSet} of nbt of player's tool
+                    add 1 to {_artifactSetCount}
+                    set tag {_artifactSet} of nbt of player's tool to {_artifactSetCount}
                 if {_checkSlot} != air:
                     giveItem(player, {_checkSlot})
+                    if tag "Artifact" of nbt of {_checkSlot} is set:
+                        set {_artifactSet} to uncolored line 3 of lore of {_checkSlot}
+                        set {_artifactSetCount} to tag {_artifactSet} of nbt of player's tool
+                        remove 1 from {_artifactSetCount}
+                        if {_artifactSetCount} = 0:
+                            clear tag {_artifactSet} of nbt of player's tool
+                        else:
+                            set tag {_artifactSet} of nbt of player's tool to {_artifactSetCount}
                 loop yaml nodes with keys "Card.Gear.%{_gearSlot}%.Stats" from "cardGear-%player%":
                     set {_loopStatAmount} to yaml value "Card.Gear.%{_gearSlot}%.Stats.%loop-value%" in "cardGear-%player%"
                     set {_statNbt} to tag "Stats;%loop-value%" of nbt of player's tool
