@@ -546,6 +546,14 @@ on inventory click:
                     else if event-slot = 39:
                         set {_gearSlot} to "Ring"
                         set metadata value "RingSlot" of player to 2
+                    else if event-slot = 14:
+                        set {_gearSlot} to "Flower Artifact"
+                    else if event-slot = 23:
+                        set {_gearSlot} to "Orb Artifact"
+                    else if event-slot = 32:
+                        set {_gearSlot} to "Phial Artifact"
+                    else if event-slot = 41:
+                        set {_gearSlot} to "Scroll Artifact"
                     if {_gearSlot} is set:
                         set metadata value "CardGearSlot" of player to chest inventory with 1 row named "Gear Slot - %{_gearSlot}%"
                         set slot 4 of metadata value "CardGearSlot" of player to black glass pane named "&f%{_gearSlot}%"
@@ -554,6 +562,10 @@ on inventory click:
                 else:
                     if event-slot != air:
                         if tag "GearSlot" of nbt of event-slot is set:
+                            set {_slot} to event-slot
+                        else if tag "Artifact" of nbt of event-slot is set:
+                            set {_slot} to event-slot
+                        if {_slot} is set:
                             set {_gearItem} to event-slot
                             clear metadata tag "GearConfirm" of player
                             if event-slot = 10:
@@ -582,10 +594,19 @@ on inventory click:
                             else if event-slot = 39:
                                 set {_gearSlot} to "Ring"
                                 set metadata value "RingSlot" of player to 2
+                            else if event-slot = 14:
+                                set {_gearSlot} to "Flower Artifact"
+                            else if event-slot = 23:
+                                set {_gearSlot} to "Orb Artifact"
+                            else if event-slot = 32:
+                                set {_gearSlot} to "Phial Artifact"
+                            else if event-slot = 41:
+                                set {_gearSlot} to "Scroll Artifact"
                             teleport the player to player's location
                             play sound "block.chest.close" with volume 2 and pitch 1.3 to player
                             play sound "entity.player.levelup" with volume 2 and pitch 0.15 to player
-                            set {_gearSlot} to tag "GearSlot" of nbt of {_gearItem}
+                            if {_gearSlot} does not contain "Artifact":
+                                set {_gearSlot} to tag "GearSlot" of nbt of {_gearItem}
                             if line 19 of lore of {karta::%player%} contains "Id: ":
                                 set {_id} to uncolored line 19 of lore of {karta::%player%}
                                 replace all "Id: " in {_id} with ""
@@ -654,7 +675,14 @@ on inventory click:
                 play sound "block.chest.close" with volume 2 and pitch 1.1 to player
                 loop all items in the player's inventory:
                     if (item amount of loop-item) = 1:
-                        if tag "GearSlot" of nbt of loop-item = (uncolored name of event-slot):
+                        if uncolored name of event-slot does not contain "Artifact":
+                            if tag "GearSlot" of nbt of loop-item = (uncolored name of event-slot):    
+                                set {_item} to loop-item
+                        else:
+                            if tag "Artifact" of nbt of loop-item is set:
+                                if (line 1 of lore of loop-item) contains (uncolored name of event-slot):
+                                    set {_item} to loop-item
+                        if {_item} is set:
                             set slot {_slotIndex} of metadata value "gearEquip" of player to loop-item
                             set {_itemLevel} to (tag "ItemLevel" of nbt of loop-item)
                             if {_cardLevel} >= round(0.6*{_itemLevel}, 0):
@@ -678,6 +706,7 @@ on inventory click:
                                 add "%nl%&c&oCard level is too low." to lore of slot {_slotIndex} of metadata value "gearEquip" of player
                             add 1 to {_slotIndex}
                             add 1 to {_items}
+                        clear {_item}
                 if {_slotIndex} > 0:
                     open metadata value "gearEquip" of player to player
                 else:
@@ -696,6 +725,15 @@ on inventory click:
             delete {_lore::%size of {_lore::*}%}
             set lore of {_slot} to {_lore::*}
             set metadata tag "GearConfirm" of player to chest inventory with 3 rows named "Gear - Confirm"
+            if tag "ArtifactType" of nbt of {_slot} is not set:
+                if line 1 of lore of {_slot} contains "Flower Artifact":
+                    set tag "ArtifactType" of nbt of {_slot} to "Flower Artifact"
+                else if line 1 of lore of {_slot} contains "Orb Artifact":
+                    set tag "ArtifactType" of nbt of {_slot} to "Orb Artifact"
+                else if line 1 of lore of {_slot} contains "Phial Artifact":
+                    set tag "ArtifactType" of nbt of {_slot} to "Phial Artifact"
+                else if line 1 of lore of {_slot} contains "Scroll Artifact":
+                    set tag "ArtifactType" of nbt of {_slot} to "Scroll Artifact"
             set slot 11 of metadata tag "GearConfirm" of player to {_slot}
             set slot 15 of metadata tag "GearConfirm" of player to lime glass pane named "&aConfirm?" with lore "&7Click here to confirm the process and%nl%&7equip this item.%nl%&7This item will be removed from your inventory.%nl% %nl%&c&l(&4&l!&c&l) &c&nWarning!&c &oThis item will become Cardbound%nl%&cwhen equipped."
             open metadata tag "GearConfirm" of player to player
@@ -711,7 +749,10 @@ on inventory click:
             teleport the player to player's location
             play sound "block.chest.close" with volume 2 and pitch 1.3 to player
             play sound "entity.player.levelup" with volume 2 and pitch 0.15 to player
-            set {_gearSlot} to tag "GearSlot" of nbt of {_gearItem}
+            if tag "Artifact" of nbt of {_gearItem} is not set:
+                set {_gearSlot} to tag "GearSlot" of nbt of {_gearItem}
+            else if tag "Artifact" of nbt of {_gearItem} is set:
+                set {_gearSlot} to "%tag "ArtifactType" of nbt of {_gearItem}%"
             if line 19 of lore of {karta::%player%} contains "Id: ":
                 set {_id} to uncolored line 19 of lore of {karta::%player%}
                 replace all "Id: " in {_id} with ""
@@ -747,6 +788,14 @@ on inventory click:
                     set {_checkSlot} to slot 30 of metadata tag "gearcard" of player
                 else if {_gearSlot} = "Boots":
                     set {_checkSlot} to slot 37 of metadata tag "gearcard" of player
+                else if {_gearSlot} = "Flower Artifact":
+                    set {_checkSlot} to slot 14 of metadata tag "gearcard" of player
+                else if {_gearSlot} = "Orb Artifact":
+                    set {_checkSlot} to slot 23 of metadata tag "gearcard" of player
+                else if {_gearSlot} = "Phial Artifact":
+                    set {_checkSlot} to slot 32 of metadata tag "gearcard" of player
+                else if {_gearSlot} = "Scroll Artifact":
+                    set {_checkSlot} to slot 41 of metadata tag "gearcard" of player
                 if {_checkSlot} != air:
                     giveItem(player, {_checkSlot})
                 loop yaml nodes with keys "Card.Gear.%{_gearSlot}%.Stats" from "cardGear-%player%":
