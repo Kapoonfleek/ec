@@ -71,9 +71,11 @@ command /linkmob:
 	trigger:
 		if target of player is a living entity:
 			set {_x} to player's target
-			if {poziommob::%{_x}%} is set:
-				set {_link2EN} to "&7Type: &6%{_x}%%nl%&7UUID: &6%uuid of {_x}%%nl%&7Level: &6%{poziommob::%{_x}%}%%nl%&7Exp Yield: &6%{expyield::%{_x}%}%%nl%&7HP: &6%health of {_x}%/&6%max health of {_x}%"
-				set {_link2} to "&7Typ: &6%{_x}%%nl%&7UUID: &6%uuid of {_x}%%nl%&7Poziom: &6%{poziommob::%{_x}%}%%nl%&7Exp Yield: &6%{expyield::%{_x}%}%%nl%&7HP: &6%health of {_x}%/&6%max health of {_x}%"
+			if tag "custom;ECLvl" of nbt of {_x} is set:
+				set {_mobLevel} to tag "custom;ECLvl" of nbt of {_x}
+			if {_mobLevel} is set:
+				set {_link2EN} to "&7Type: &6%{_x}%%nl%&7UUID: &6%uuid of {_x}%%nl%&7Level: &6%{_mobLevel}%%nl%&7HP: &6%health of {_x}%/&6%max health of {_x}%"
+				set {_link2} to "&7Typ: &6%{_x}%%nl%&7UUID: &6%uuid of {_x}%%nl%&7Poziom: &6%{_mobLevel}%%nl%&7HP: &6%health of {_x}%/&6%max health of {_x}%"
 			else:
 				set {_link2EN} to "&7Type: &6%{_x}%%nl%&7UUID: &6%uuid of {_x}%%nl%&7HP: &6%health of {_x}%/&6%max health of {_x}%"
 				set {_link2} to "&7Typ: &6%{_x}%%nl%&7UUID: &6%uuid of {_x}%%nl%&7HP: &6%health of {_x}%/&6%max health of {_x}%"
@@ -84,6 +86,8 @@ command /linkmob:
 				set {_name} to {_x}
 			else:
 				set {_name} to name of {_x}
+			if {_mobLevel} is set:
+				set {_name} to "%{_name}% &7(&fLvl. %{_mobLevel}%"
 			loop all players:
 				if {language::%loop-player%} = "English":
 					send formatted "&8[&e&lLINK&r&8] &8[&e%{poziom::%player%}% Lvl&8] &8<&e%{pseudonim::%player%}%&8> <tooltip:%{_link2EN}%>&7(&r<tooltip:%{_link2EN}%>%{_name}%&7)" to loop-players	
@@ -92,18 +96,40 @@ command /linkmob:
 					
 command /linksign:
 	trigger:
-		if target block of player is a sign:
+		if target block of player is sign:
+			set {_sign} to target block of player
 			loop all players:
 				if {language::%loop-player%} = "English":
 					send formatted "&8[&e&lLINK&r&8] &8[&e%{poziom::%player%}% Lvl&8] &8<&e%{pseudonim::%player%}%&8> &eLinked a sign:" to loop-players
 				else:
 					send formatted "&8[&e&lLINK&r&8] &8[&e%{poziom::%player%}% Lvl&8] &8<&e%{pseudonim::%player%}%&8> &eZlinkował tabliczkę:" to loop-players
 				set {_block} to target block of player
-				loop 4 times:
-					if line (loop-number) of {_block} is set:
-						if line (loop-number) of {_block} is not " " or "":
-							set {_line} to formatted line (loop-number) of {_block}
+				if tag "front_text;messages" of nbt of {_block} is set:
+					set {_text::*} to tag "front_text;messages" of nbt of {_block}
+				if tag "back_text;messages" of nbt of {_block} is set:
+					set {_textBack::*} to tag "back_text;messages" of nbt of {_block}
+				set {_index} to 0
+				if {_text::*} is set:
+					loop {_text::*}:
+						add 1 to {_index}
+						set {_line} to tag "text" of nbt of loop-value-2
+						if {_line} != " " or "":
+							set {_line} to formatted {_line}
 							if {language::%loop-player%} = "English":
-								send formatted "&8(&eSign&8) &8%loop-number%. &e%{_line}%" to loop-player
+								send formatted "&8(&eSign&8) &8[&eFront&8] &8Line %{_index}%. &e%{_line}%" to loop-player
 							else:
-								send formatted "&8(&eTabliczka&8) &8%loop-number%. &e%{_line}%" to loop-player
+								send formatted "&8(&eTabliczka&8) &8[&ePrzód&8] &8Linia %{_index}%. &e%{_line}%" to loop-player
+						clear {_line}
+				set {_index} to 0
+				if {_textBack::*} is set:
+					send " " to loop-player
+					loop {_textBack::*}:
+						add 1 to {_index}
+						set {_line} to tag "text" of nbt of loop-value-2
+						if {_line} != " " or "":
+							set {_line} to formatted {_line}
+							if {language::%loop-player%} = "English":
+								send formatted "&8(&eSign&8) &8[&eBack&8] &8Line %{_index}%. &e%{_line}%" to loop-player
+							else:
+								send formatted "&8(&eTabliczka&8) &8[&eTył&8] Linia &8%{_index}%. &e%{_line}%" to loop-player
+						clear {_line}
