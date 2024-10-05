@@ -783,7 +783,11 @@ function ShadowWordDeathAbilityCast(p: player):
         if CanUseAbility({_p}) != false:
             set {_target} to Target({_p}, 100, false)
             if {_target} is set:
-                if 0.2*({_target}'s max health) >= {_target}'s health:
+                if tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Reaper of Souls":
+                    set {_hpRequired} to 0.35
+                else:
+                    set {_hpRequired} to 0.2
+                if {_hpRequired}*({_target}'s max health) >= {_target}'s health:
                     if metadata value "ShadowWordDeathCharges" of {_p} > 0:
                         if cooldown "Shadow Word: Pain%{_p}%" is finished:
                             if cooldown "Shadow Word: Death%{_p}%" is finished:
@@ -836,6 +840,8 @@ function ShadowWordDeathAbilityCast(p: player):
                                         set {_damage} to {_damage}*2
                                     make {_p} damage {_target} by {_damage}*2
                                     play sound "skill.therold.shadow_word_death" with volume 3 and pitch 1 at {_p}
+                                    play sound "skill.therold.shadow_word_death_cast" with volume 3 and pitch 1 at {_p}
+                                    play sound "skill.therold.shadow_word_void" with volume 3 and pitch 1 at {_p}
                                     play sound "skill.therold.shadowcast" with volume 3 and pitch 1 at {_p}
                                     draw 10 dust using dustOption(rgb(77, 54, 138), 1) at location above {_target} with offset vector(0.4, 0.5, 0.4) with extra 0.03
                                     if {_charges} > 0:
@@ -871,9 +877,10 @@ function ShadowWordDeathAbilityCast(p: player):
                 else:
                     if {tekstcd::%{_p}%} = true:
                         if {language::%{_p}%} = "English":
-                            send "<##462566>Target's health must be &f<20%% <##462566>to use this ability." to {_p}
+                            send "<##462566>Target's health must be &f<%{_hpRequired}%%% <##462566>to use this ability." to {_p}
                         else:
-                            send "<##462566>Ilość zdrowia celu musi być niższa niż &f20%%<##462566>, aby móc użyć tej umiejętności." to {_p}
+                            send "<##462566>Ilość zdrowia celu musi być niższa niż &f%{_hpRequired}%%%<##462566>, aby móc użyć tej umiejętności." to {_p}
+                        play sound "block.glass.break" with volume 2 and pitch 0 to {_p}
                     stop
     else:
         if {language::%{_p}%} = "English":
@@ -924,7 +931,10 @@ function ExitVoidform(p: player):
     clear metadata value "Voidform" of {_p}
     remove levitation from {_p}
     if tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Lingering Insanity":
-        LingeringInsanity({_p}, {hasteVoidform::%{_p}%})
+        set {lingeringInsanityHaste::%{_p}%} to {hasteVoidform::%{_p}%}
+        if metadata value "LingeringInsanity" of {_p} is not set:
+            set metadata value "LingeringInsanity" of {_p} to true
+            LingeringInsanity({_p})
     else:
         clear {hasteVoidform::%{_p}%}
     clear metadata value "Voidform Stacks" of {_p}
@@ -1270,11 +1280,11 @@ function ShadowyApparitionFloat(p: player, apparition: entity, target: entity):
         wait 5 ticks
         stop loop if {_target} is not alive
     if {_target} is alive:
-        set {_damage} to 1 + ({mastery::%{_p}%}/32)
+        set {_damage} to (0.8 + (({damage::%{_p}%}/88) + ({versatility::%{_p}%}/264) + {intellect::%{_p}%}/44))
         if metadata value "Voidform" of {_p} is set:
             set {_damage} to {_damage}*1.2
         set {_target}'s last damage cause to sweep attack
-        set {_lore} to "&8Mastery Bonus%nl%<##613e82>When your Shadow Word: Pain damage%nl%<##613e82>over time critically strikes, you also create%nl%<##613e82>a shadowy version of yourself that floats%nl%<##613e82>towards the target and deals &f%{_damage}% <##613e82>damage."
+        set {_lore} to "&8Passive Ability%nl%&fNo cast%nl%&7Cooldown: &fnone%nl%&7Use: &fPassive%nl%<##613e82>When your Shadow Word: Pain damage%nl%<##613e82>over time critically strikes, you also create%nl%<##613e82>a shadowy version of yourself that floats%nl%<##613e82>towards the target and deals &f%{_damage}% <##613e82>damage."
         set metadata value "Element" of {_p} to "Ghost"
         set metadata value "LastDamageCauseEN" of {_target} to "<##462566>Shadowy Apparitions"
         set metadata value "LastDamageCause" of {_target} to "<##462566>Cieniste Aparycje"
@@ -1378,15 +1388,17 @@ function VoidRay(p: player):
                 clear metadata value "VoidRayStacks" of {_p}
                 stop loop 
                 
-function LingeringInsanity(p: player, haste: number):
-    while {_haste} > 0:
+function LingeringInsanity(p: player):
+    while {lingeringInsanityHaste::%{_p}%} > 0:
         if {hasteVoidform::%{_p}%} - 4 > 0:
-            remove 4 from {hasteVoidform::%{_p}%}
+            set {hasteVoidform::%{_p}%} to {hasteVoidform::%{_p}%}- 4
         else:
             set {hasteVoidform::%{_p}%} to 0
-        remove 4 from {_haste}
-        broadcast "%{hasteVoidform::%{_p}%}% Haste voidform, %{_haste}% Haste number"
+        set {lingeringInsanityHaste::%{_p}%} to {lingeringInsanityHaste::%{_p}%} - 4
+        broadcast "%{hasteVoidform::%{_p}%}% Haste voidform, %{lingeringInsanityHaste::%{_p}%}% Haste number"
         wait 2 seconds
+    clear metadata value "LingeringInsanity" of {_p}
+    clear {lingeringInsanityHaste::%{_p}%}
 
 function ShadowWordDeathRecharge(p: player, cd: timespan):
     wait {_cd}
