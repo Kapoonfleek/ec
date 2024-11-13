@@ -2,7 +2,11 @@ function VoidEruptionAbilityCast(p: player):
     if {kartaname::%{_p}%} = "Brother Therold":
         if CanUseAbility({_p}) != false:
             if metadata value "casting" of {_p} is not set:
-                if {insanity::%{_p}%} >= 90:
+                if tag "Talents;Row 5" of nbt of {karta::%{_p}%} = "Legacy of the Void":
+                    set {_requiredInsanity} to 60
+                else:
+                    set {_requiredInsanity} to 90
+                if {insanity::%{_p}%} >= {_requiredInsanity}:
                     set {_target} to Target({_p}, 100, false)
                     if {_target} is set:
                         if cooldown "Shadow Word: Pain%{_p}%" is finished:
@@ -10,7 +14,10 @@ function VoidEruptionAbilityCast(p: player):
                                 if cooldown "Global Cooldown Interrupted Cast%{_p}%" is finished:
                                     set {_id} to line 19 of lore of {karta::%{_p}%}
                                     set {_pospiech} to 1 + (({haste::%{_p}%}/4))/100
-                                    set {_casttime} to "%round((2/{_pospiech}), 1)% seconds" parsed as timespan
+                                    set {_baseCasttime} to 2
+                                    if tag "Talents;Row 5" of nbt of {karta::%{_p}%} = "Legacy of the Void":
+                                        set {_baseCasttime} to {_baseCasttime}*0.6 
+                                    set {_casttime} to "%round(({_baseCasttime}/{_pospiech}), 1)% seconds" parsed as timespan
                                     if metadata value "cast" of {_p} is not set:
                                         set metadata value "casttimemax" of {_p} to {_casttime}
                                         set metadata value "lastspell" of {_p} to {_p}'s tool's name
@@ -24,10 +31,12 @@ function VoidEruptionAbilityCast(p: player):
                                                 stop sound "skill.therold.mindflay_channel" for all players
                                             set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
                                             set {_insanityDrain} to 6 + 0.68*{_voidformStacks}
+                                            set {_insanityInfo} to "Insanity: %round({insanity::%{_p}%}, 0)%"
                                             if metadata value "Voidform" of {_p} is set:
-                                                set {_insanityInfo} to "| Insanity: %round({insanity::%{_p}%}, 0)%   %round({_insanityDrain}, 1)%p/s    %{_voidformStacks}%"
-                                            else:
-                                                set {_insanityInfo} to "| Insanity: %round({insanity::%{_p}%}, 0)%"
+                                                set {_insanityInfo} to "%{_insanityInfo}%   %round({_insanityDrain}, 1)%p/s    %{_voidformStacks}%"
+                                            if tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Lingering Insanity":
+                                                if {lingeringInsanityHaste::%{_p}%} is set:
+                                                    set {_insanityInfo} to "%{_insanityInfo}% |  %{lingeringInsanityHaste::%{_p}%}/4%%% "
                                             if metadata value "cast" of {_p} is not set:
                                                 clear metadata value "casting" of {_p}
                                                 stop
@@ -36,10 +45,10 @@ function VoidEruptionAbilityCast(p: player):
                                                 set {_cst} to "%{_casttime}%"
                                                 replace all "seconds" and "second" in {_cst} with "sekund"
                                                 if {language::%{_p}%} = "English":
-                                                    send action bar "Casting... %{_cst}% %{_insanityInfo}%" to {_p}
+                                                    send action bar "Casting... %{_cst}% | %{_insanityInfo}%" to {_p}
                                                 else:
                                                     replace all "seconds" and "second" in {_cst} with "sekund"
-                                                    send action bar "Rzucanie Zaklęcia... %{_insanityInfo}%" to {_p}
+                                                    send action bar "Rzucanie Zaklęcia... %{_cst}% | %{_insanityInfo}%" to {_p}
                                                 wait 0.1 seconds
                                                 remove 0.1 seconds from {_casttime}
                                             else:
@@ -68,7 +77,7 @@ function VoidEruptionAbilityCast(p: player):
                                         if loop-item is purple dye named "<##613e82>Void Eruption" with nbt from "{CustomModelData:9,VoidEruption:1b}":
                                             set {_cdVoidbolt} to "%4.5/{_pospiech}% seconds" parsed as timespan
                                             set {_dmgVoidbolt} to (3 + (({damage::%{_p}%}/15) + ({versatility::%{_p}%}/45)))
-                                            set loop-item to black dye named "<##613e82>Void Bolt" with lore "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdVoidbolt}%%nl%&7Use: &fRMB%nl%<##613e82>Sends a bolt of pure void energy at the%nl%<##613e82>enemy, causing &f%{_dmgVoidbolt}% <##431d53>Ghost <##613e82>damage and%nl%<##613e82>extending the duration of Shadow Word: Pain%nl%<##613e82>and Vampiric Touch to their original duration.%nl%<##613e82>Requires <##8165a6>Voidform<##613e82>.%nl% %nl%&fGenerates 16 Insanity." with nbt from "{CustomModelData:3,VoidBolt:1b}"
+                                            set loop-item to black dye named "<##613e82>Void Bolt" with lore "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdVoidbolt}%%nl%&7Use: &fRMB%nl%<##613e82>Sends a bolt of pure void energy at the%nl%<##613e82>enemy, causing &f%{_dmgVoidbolt}% <##431d53>Ghost <##613e82>damage and%nl%<##613e82>extending the duration of <##8165a6>Shadow Word: Pain%nl%<##613e82>and <##8165a6>Vampiric Touch <##613e82>to their original duration.%nl%<##613e82>Requires <##8165a6>Voidform<##613e82>.%nl% %nl%&fGenerates 16 Insanity." with nbt from "{CustomModelData:3,VoidBolt:1b}"
                                     set {_lore} to join lore of {_p}'s tool by nl
                                     apply levitation 0.5 without particles to {_p} for 1 day
                                     loop all entities in radius 8 around {_target}:
@@ -78,7 +87,7 @@ function VoidEruptionAbilityCast(p: player):
                                                     if tag "custom;ECMob" of nbt of loop-entity is set:
                                                         if CheckIfDotted({_p}, loop-entity) is true:
                                                             VoidEruptionVisual({_p}, loop-entity)
-                                                            set {_damage} to (4 + (({damage::%{_p}%}/10) + ({versatility::%{_p}%}/30) + {intellect::%{_p}%}/5))
+                                                            set {_damage} to (4 + (({damage::%{_p}%}/10) + ({versatility::%{_p}%}/30) + {intellect::%{_p}%}/5)) * (1.096 + (({mastery::%{_p}%}/2.5)/100))
                                                             set loop-entity's last damage cause to sweep attack
                                                             set metadata value "LastDamageCauseEN" of loop-entity to "<##462566>Void Eruption"
                                                             set metadata value "LastDamageCause" of loop-entity to "<##462566>Erupcja Pustki"
@@ -99,7 +108,12 @@ function VoidEruptionAbilityCast(p: player):
                                             add 4 to {hasteVoidform::%{_p}%}
                                         ExitVoidform({_p}) if {insanity::%{_p}%} = 0
                                         stop if {insanity::%{_p}%} = 0
-                                        send action bar "Insanity: %round({insanity::%{_p}%}, 0)%   %round({_insanityDrain}, 1)%p/s    %{_voidformStacks}%" to {_p}
+                                        set {_insanityInfo} to "Insanity: %round({insanity::%{_p}%}, 0)%"
+                                        set {_insanityInfo} to "%{_insanityInfo}%   %round({_insanityDrain}, 1)%p/s    %{_voidformStacks}%"
+                                        if tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Lingering Insanity":
+                                            if {lingeringInsanityHaste::%{_p}%} is set:
+                                                set {_insanityInfo} to "%{_insanityInfo}% |  %{lingeringInsanityHaste::%{_p}%}/4%%% "
+                                        send action bar {_insanityInfo} to {_p}
                                         wait 1 second
                             else: 
                                 if {tekstcd::%{_p}%} = true:
@@ -163,11 +177,11 @@ function VoidBoltAbilityCast(p: player):
                                     GrantInsanity({_p}, 16)
                                     UpdateInsanity({_p})
                                     set {_crit} to 0 + ({criticalhit::%{_p}%}/10)
-                                    set {_damage} to (4.5 + (({damage::%{_p}%}/15) + ({versatility::%{_p}%}/45) + {intellect::%{_p}%}/7.5))
+                                    set {_damage} to (4.5 + (({damage::%{_p}%}/15) + ({versatility::%{_p}%}/45) + {intellect::%{_p}%}/7.5)) * (1.096 + (({mastery::%{_p}%}/2.5)/100))
                                     if metadata value "Voidform" of {_p} is set:
                                         set {_damage} to {_damage}*1.2
                                     set {_target}'s last damage cause to sweep attack
-                                    set {_lore} to "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cd}%%nl%&7Use: &fRMB%nl%<##613e82>Sends a bolt of pure void energy at the%nl%<##613e82>enemy, causing &f%{_damage}% <##431d53>Ghost <##613e82>damage and%nl%<##613e82>extending the duration of Shadow Word: Pain%nl%<##613e82>and Vampiric Touch to their original duration.%nl%<##613e82>Requires Voidform.%nl% %nl%&fGenerates 16 Insanity."
+                                    set {_lore} to "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cd}%%nl%&7Use: &fRMB%nl%<##613e82>Sends a bolt of pure void energy at the%nl%<##613e82>enemy, causing &f%{_damage}% <##431d53>Ghost <##613e82>damage and%nl%<##613e82>extending the duration of <##8165a6>Shadow Word: Pain%nl%<##613e82>and <##8165a6>Vampiric Touch <##613e82>to their original duration.%nl%<##613e82>Requires <##8165a6>Voidform<##613e82>.%nl% %nl%&fGenerates 16 Insanity."
                                     set metadata value "LastDamageCauseEN" of {_target} to "<##462566>Void Bolt"
                                     set metadata value "LastDamageCause" of {_target} to "<##462566>Bełt Pustki"
                                     set metadata value "LastDamageCauseLore" of {_target} to {_lore}
@@ -226,7 +240,7 @@ function MindBlastAbilityCast(p: player):
                 if metadata value "casting" of {_p} is not set:
                     set {_target} to Target({_p}, 100, false)
                     if {_target} is set:
-                        if metadata value "MindBlastCharges" of {_p} > 0:
+                        if isCastableTherold({_p}) = true:
                             if cooldown "Shadow Word: Pain%{_p}%" is finished:
                                 if cooldown "Shadow Word: Death%{_p}%" is finished:
                                     if cooldown "Global Cooldown Interrupted Cast%{_p}%" is finished:
@@ -235,61 +249,68 @@ function MindBlastAbilityCast(p: player):
                                         set {_casttime} to "%round((1.5/{_pospiech}), 1)% seconds" parsed as timespan
                                         set {_casttimeText} to {_casttime}
                                         set {_cd} to "%9/{_pospiech}% seconds" parsed as timespan
-                                        if metadata value "cast" of {_p} is not set:
-                                            set metadata value "casttimemax" of {_p} to {_casttime}
-                                            play sound "skill.therold.mindblast_precast" with volume 3 and pitch 1 at {_p}
-                                            set metadata value "casting" of {_p} to true
-                                            if metadata value "channeling" of {_p} is set:
-                                                clear metadata value "channeling" of {_p}
-                                                StopCastSoundTherold({_p})
-                                            set metadata value "lastspell" of {_p} to {_p}'s tool's name
-                                            set metadata value "cast" of {_p} to {_casttime}
-                                            while metadata value "casting" of {_p} = true:
-                                                set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
-                                                set {_insanityDrain} to 6 + 0.68*{_voidformStacks}
-                                                if metadata value "Voidform" of {_p} is set:
-                                                    set {_insanityInfo} to "| Insanity: %round({insanity::%{_p}%}, 0)%   %round({_insanityDrain}, 1)%p/s    %{_voidformStacks}%"
-                                                else:
-                                                    set {_insanityInfo} to "| Insanity: %round({insanity::%{_p}%}, 0)%"
-                                                if metadata value "cast" of {_p} is not set:
-                                                    clear metadata value "casting" of {_p}
-                                                    stop
-                                                if {_casttime} > 0 seconds:
-                                                    set metadata value "casttimeleft" of {_p} to {_casttime}
-                                                    set {_cst} to "%{_casttime}%"
-                                                    replace all "seconds" and "second" in {_cst} with "sekund"
-                                                    if {language::%{_p}%} = "English":
-                                                        send action bar "Casting... %{_cst}% %{_insanityInfo}%" to {_p}
-                                                    else:
+                                        if metadata value "ShadowyInsight" of {_p} != true:
+                                            if metadata value "cast" of {_p} is not set:
+                                                set metadata value "casttimemax" of {_p} to {_casttime}
+                                                play sound "skill.therold.mindblast_precast" with volume 3 and pitch 1 at {_p}
+                                                set metadata value "casting" of {_p} to true
+                                                if metadata value "channeling" of {_p} is set:
+                                                    clear metadata value "channeling" of {_p}
+                                                    StopCastSoundTherold({_p})
+                                                set metadata value "lastspell" of {_p} to {_p}'s tool's name
+                                                set metadata value "cast" of {_p} to {_casttime}
+                                                while metadata value "casting" of {_p} = true:
+                                                    set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
+                                                    set {_insanityDrain} to 6 + 0.68*{_voidformStacks}
+                                                    set {_insanityInfo} to "Insanity: %round({insanity::%{_p}%}, 0)%"
+                                                    if metadata value "Voidform" of {_p} is set:
+                                                        set {_insanityInfo} to "%{_insanityInfo}%   %round({_insanityDrain}, 1)%p/s    %{_voidformStacks}%"
+                                                    if tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Lingering Insanity":
+                                                        if {lingeringInsanityHaste::%{_p}%} is set:
+                                                            set {_insanityInfo} to "%{_insanityInfo}% |  %{lingeringInsanityHaste::%{_p}%}/4%%% "
+                                                    if metadata value "cast" of {_p} is not set:
+                                                        clear metadata value "casting" of {_p}
+                                                        stop
+                                                    if {_casttime} > 0 seconds:
+                                                        set metadata value "casttimeleft" of {_p} to {_casttime}
+                                                        set {_cst} to "%{_casttime}%"
                                                         replace all "seconds" and "second" in {_cst} with "sekund"
-                                                        send action bar "Rzucanie Zaklęcia... %{_insanityInfo}%" to {_p}
-                                                    wait 0.1 seconds
-                                                    remove 0.1 seconds from {_casttime}
-                                                else:
-                                                    clear metadata value "casting" of {_p}
-                                                    if {language::%{_p}%} = "English":
-                                                        send action bar "" to {_p}
+                                                        if {language::%{_p}%} = "English":
+                                                            send action bar "Casting... %{_cst}% | %{_insanityInfo}%" to {_p}
+                                                        else:
+                                                            replace all "seconds" and "second" in {_cst} with "sekund"
+                                                            send action bar "Rzucanie Zaklęcia... %{_cst}% | %{_insanityInfo}%" to {_p}
+                                                        wait 0.1 seconds
+                                                        remove 0.1 seconds from {_casttime}
                                                     else:
-                                                        send action bar "" to {_p}
-                                        else:
-                                            stop
-                                        clear metadata value "casting" of {_p}
-                                        clear metadata value "cast" of {_p}
-                                        clear metadata value "casttimeleft" of {_p}
-                                        clear metadata value "casttimemax" of {_p}
-                                        stop sound "skill.therold.mindblast_precast" for all players
-                                        if {_casttime} > 0 seconds:
-                                            if {language::%{_p}%} = "English":
-                                                send action bar "&cInterrupted" to {_p}
+                                                        clear metadata value "casting" of {_p}
+                                                        if {language::%{_p}%} = "English":
+                                                            send action bar "" to {_p}
+                                                        else:
+                                                            send action bar "" to {_p}
                                             else:
-                                                send action bar "&cPrzerwano" to {_p}
-                                            stop
-                                        set {_charges} to metadata value "MindBlastCharges" of {_p}
-                                        remove 1 from {_charges}
-                                        set metadata value "MindBlastCharges" of {_p} to {_charges}
-                                        if tag "Constellation;CONSTELLATIONTWO" of nbt of {karta::%{_p}%} is not set:
-                                            create cooldown "Mind Blast%{_p}%" for {_cd}
-                                        MindBlastRecharge({_p}, {_cd})
+                                                stop
+                                            clear metadata value "casting" of {_p}
+                                            clear metadata value "cast" of {_p}
+                                            clear metadata value "casttimeleft" of {_p}
+                                            clear metadata value "casttimemax" of {_p}
+                                            stop sound "skill.therold.mindblast_precast" for all players
+                                            if {_casttime} > 0 seconds:
+                                                if {language::%{_p}%} = "English":
+                                                    send action bar "&cInterrupted" to {_p}
+                                                else:
+                                                    send action bar "&cPrzerwano" to {_p}
+                                                stop
+                                            set {_charges} to metadata value "MindBlastCharges" of {_p}
+                                            remove 1 from {_charges}
+                                            set metadata value "MindBlastCharges" of {_p} to {_charges}
+                                            if tag "Constellation;CONSTELLATIONTWO" of nbt of {karta::%{_p}%} is not set:
+                                                create cooldown "Mind Blast%{_p}%" for {_cd}
+                                            MindBlastRecharge({_p}, {_cd})
+                                        else:
+                                            clear metadata value "ShadowyInsight" of {_p}
+                                            set {_charges} to metadata value "MindBlastCharges" of {_p}
+                                            send title " " with subtitle " " to {_p} for 1 second with fade in 0.0 second and fade out 0.0 second
                                         set {_insanity} to 12
                                         if tag "Talents;Row 1" of nbt of {karta::%{_p}%} = "Fortress of the Mind":
                                             set {_insanity} to {_insanity}*1.2
@@ -301,7 +322,7 @@ function MindBlastAbilityCast(p: player):
                                         draw 20 dust using dustOption(rgb(41, 22, 92), 1) at {_target}'s head with offset vector(0.35, 0.45, 0.35) with extra 0.03
                                         if {_target} is alive:
                                             set {_crit} to 0 + ({criticalhit::%{_p}%}/10)
-                                            set {_damage} to (4.5 + (({damage::%{_p}%}/20) + ({versatility::%{_p}%}/60) + {intellect::%{_p}%}/10))
+                                            set {_damage} to (4.5 + (({damage::%{_p}%}/20) + ({versatility::%{_p}%}/60) + {intellect::%{_p}%}/10)) * (1.096 + (({mastery::%{_p}%}/2.5)/100))
                                             if metadata value "Voidform" of {_p} is set:
                                                 set {_damage} to {_damage}*1.2
                                             if tag "Talents;Row 1" of nbt of {karta::%{_p}%} = "Fortress of the Mind":
@@ -399,14 +420,14 @@ function ShadowWordPainAbilityCast(p: player):
                                     send action bar "&cPrzerwano" to {_p}
                             set metadata value "lastspell" of {_p} to {_p}'s tool's name
                             set {_crit} to 0 + ({criticalhit::%{_p}%}/10)
-                            set {_damage} to (0.6 + (({damage::%{_p}%}/45) + ({versatility::%{_p}%}/135) + {intellect::%{_p}%}/22.5))
+                            set {_damage} to (0.6 + (({damage::%{_p}%}/45) + ({versatility::%{_p}%}/135) + {intellect::%{_p}%}/22.5)) * (1.096 + (({mastery::%{_p}%}/2.5)/100))
                             set {_SWPDuration} to 14
-                            set {_damageSWPTicks} to (1 + (({damage::%{_p}%}/42) + ({versatility::%{_p}%}/126) + {intellect::%{_p}%}/21))
+                            set {_damageSWPTicks} to (1 + (({damage::%{_p}%}/42) + ({versatility::%{_p}%}/126) + {intellect::%{_p}%}/21)) * (1.096 + (({mastery::%{_p}%}/2.5)/100))
                             if metadata value "Voidform" of {_p} is set:
                                 set {_damage} to {_damage}*1.2
                                 set {_damageSWPTicks} to {_damageSWPTicks}*1.2
                             set {_target}'s last damage cause to sweep attack
-                            set {_lore} to "&8Ability%nl%&fInstant cast%nl%&7Global Cooldown: &f%{_cd}%%nl%&7Use: &fRMB%nl%<##613e82>A word of darkness that causes%nl%&f%{_damage}% <##431d53>Ghost <##613e82>damage instantly, and an%nl%<##613e82>additional &f%(round({_SWPDuration}/(2/{_pospiech}), 0))*{_damageSWPTicks}% <##431d53>Ghost <##613e82>damage over &f%{_SWPDuration}% sec<##613e82>.%nl% %nl%&fGenerates 3 Insanity."
+                            set {_lore} to "&8Ability%nl%&fInstant cast%nl%&7Global Cooldown: &f%{_cd}%%nl%&7Use: &fRMB%nl%<##613e82>A word of darkness that causes%nl%&f%{_damage}% <##431d53>Ghost <##613e82>damage instantly, and an%nl%<##613e82>additional &f%(round({_SWPDuration}/(2/{_pospiech}), 0))*{_damageSWPTicks}% <##431d53>Ghost <##613e82>damage over%nl%&f%{_SWPDuration}% sec<##613e82>.%nl% %nl%&fGenerates 3 Insanity."
                             set metadata value "LastDamageCauseEN" of {_target} to "<##462566>Shadow Word: Pain"
                             set metadata value "LastDamageCause" of {_target} to "<##462566>Shadow Word: Pain"
                             set metadata value "LastDamageCauseLore" of {_target} to {_lore}
@@ -553,10 +574,12 @@ function VampiricTouchAbilityCast(p: player):
                                         while metadata value "casting" of {_p} = true:
                                             set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
                                             set {_insanityDrain} to 6 + 0.68*{_voidformStacks}
+                                            set {_insanityInfo} to "Insanity: %round({insanity::%{_p}%}, 0)%"
                                             if metadata value "Voidform" of {_p} is set:
-                                                set {_insanityInfo} to "| Insanity: %round({insanity::%{_p}%}, 0)%   %round({_insanityDrain}, 1)%p/s    %{_voidformStacks}%"
-                                            else:
-                                                set {_insanityInfo} to "| Insanity: %round({insanity::%{_p}%}, 0)%"
+                                                set {_insanityInfo} to "%{_insanityInfo}%   %round({_insanityDrain}, 1)%p/s    %{_voidformStacks}%"
+                                            if tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Lingering Insanity":
+                                                if {lingeringInsanityHaste::%{_p}%} is set:
+                                                    set {_insanityInfo} to "%{_insanityInfo}% |  %{lingeringInsanityHaste::%{_p}%}/4%%% "
                                             if metadata value "cast" of {_p} is not set:
                                                 clear metadata value "casting" of {_p}
                                                 stop
@@ -565,10 +588,10 @@ function VampiricTouchAbilityCast(p: player):
                                                 set metadata value "casttimeleft" of {_p} to {_casttime}
                                                 replace all "seconds" and "second" in {_cst} with "sekund"
                                                 if {language::%{_p}%} = "English":
-                                                    send action bar "Casting... %{_cst}% %{_insanityInfo}%" to {_p}
+                                                    send action bar "Casting... %{_cst}% | %{_insanityInfo}%" to {_p}
                                                 else:
                                                     replace all "seconds" and "second" in {_cst} with "sekund"
-                                                    send action bar "Rzucanie Zaklęcia... %{_insanityInfo}%" to {_p}
+                                                    send action bar "Rzucanie Zaklęcia... %{_cst}% | %{_insanityInfo}%" to {_p}
                                                 wait 0.1 seconds
                                                 remove 0.1 seconds from {_casttime}
                                             else:
@@ -642,7 +665,7 @@ function ShadowWordVoidAbilityCast(p: player):
                 if metadata value "casting" of {_p} is not set:
                     set {_target} to Target({_p}, 100, false)
                     if {_target} is set:
-                        if metadata value "ShadowWordVoidCharges" of {_p} > 0:
+                        if isCastableTherold({_p}) = true:
                             if cooldown "Shadow Word: Pain%{_p}%" is finished:
                                 if cooldown "Shadow Word: Death%{_p}%" is finished:
                                     if cooldown "Global Cooldown Interrupted Cast%{_p}%" is finished:
@@ -651,71 +674,79 @@ function ShadowWordVoidAbilityCast(p: player):
                                         set {_casttime} to "%round((1.5/{_pospiech}), 1)% seconds" parsed as timespan
                                         set {_casttimeText} to {_casttime}
                                         set {_cd} to "%9/{_pospiech}% seconds" parsed as timespan
-                                        if metadata value "cast" of {_p} is not set:
-                                            set metadata value "casttimemax" of {_p} to {_casttime}
-                                            play sound "skill.therold.mindblast_precast" with volume 3 and pitch 1 at {_p}
-                                            set metadata value "casting" of {_p} to true
-                                            if metadata value "channeling" of {_p} is set:
-                                                clear metadata value "channeling" of {_p}
-                                                StopCastSoundTherold({_p})
-                                            set metadata value "lastspell" of {_p} to {_p}'s tool's name
-                                            set metadata value "cast" of {_p} to {_casttime}
-                                            while metadata value "casting" of {_p} = true:
-                                                set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
-                                                set {_insanityDrain} to 6 + 0.68*{_voidformStacks}
-                                                if metadata value "Voidform" of {_p} is set:
-                                                    set {_insanityInfo} to "| Insanity: %round({insanity::%{_p}%}, 0)%   %round({_insanityDrain}, 1)%p/s    %{_voidformStacks}%"
-                                                else:
-                                                    set {_insanityInfo} to "| Insanity: %round({insanity::%{_p}%}, 0)%"
-                                                if metadata value "cast" of {_p} is not set:
-                                                    clear metadata value "casting" of {_p}
-                                                    stop
-                                                if {_casttime} > 0 seconds:
-                                                    set metadata value "casttimeleft" of {_p} to {_casttime}
-                                                    set {_cst} to "%{_casttime}%"
-                                                    replace all "seconds" and "second" in {_cst} with "sekund"
-                                                    if {language::%{_p}%} = "English":
-                                                        send action bar "Casting... %{_cst}% %{_insanityInfo}%" to {_p}
-                                                    else:
+                                        if metadata value "ShadowyInsight" of {_p} != true:
+                                            if metadata value "cast" of {_p} is not set:
+                                                set metadata value "casttimemax" of {_p} to {_casttime}
+                                                play sound "skill.therold.shadow_word_void_precast" with volume 3 and pitch 1 at {_p}
+                                                set metadata value "casting" of {_p} to true
+                                                if metadata value "channeling" of {_p} is set:
+                                                    clear metadata value "channeling" of {_p}
+                                                    StopCastSoundTherold({_p})
+                                                set metadata value "lastspell" of {_p} to {_p}'s tool's name
+                                                set metadata value "cast" of {_p} to {_casttime}
+                                                while metadata value "casting" of {_p} = true:
+                                                    set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
+                                                    set {_insanityDrain} to 6 + 0.68*{_voidformStacks}
+                                                    set {_insanityInfo} to "Insanity: %round({insanity::%{_p}%}, 0)%"
+                                                    if metadata value "Voidform" of {_p} is set:
+                                                        set {_insanityInfo} to "%{_insanityInfo}%   %round({_insanityDrain}, 1)%p/s    %{_voidformStacks}%"
+                                                    if tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Lingering Insanity":
+                                                        if {lingeringInsanityHaste::%{_p}%} is set:
+                                                            set {_insanityInfo} to "%{_insanityInfo}% |  %{lingeringInsanityHaste::%{_p}%}/4%%% "
+                                                    if metadata value "cast" of {_p} is not set:
+                                                        clear metadata value "casting" of {_p}
+                                                        stop
+                                                    if {_casttime} > 0 seconds:
+                                                        set metadata value "casttimeleft" of {_p} to {_casttime}
+                                                        set {_cst} to "%{_casttime}%"
                                                         replace all "seconds" and "second" in {_cst} with "sekund"
-                                                        send action bar "Rzucanie Zaklęcia... %{_insanityInfo}%" to {_p}
-                                                    wait 0.1 seconds
-                                                    remove 0.1 seconds from {_casttime}
-                                                else:
-                                                    clear metadata value "casting" of {_p}
-                                                    if {language::%{_p}%} = "English":
-                                                        send action bar "" to {_p}
+                                                        if {language::%{_p}%} = "English":
+                                                            send action bar "Casting... %{_cst}% | %{_insanityInfo}%" to {_p}
+                                                        else:
+                                                            replace all "seconds" and "second" in {_cst} with "sekund"
+                                                            send action bar "Rzucanie Zaklęcia... %{_cst}% | %{_insanityInfo}%" to {_p}
+                                                        wait 0.1 seconds
+                                                        remove 0.1 seconds from {_casttime}
                                                     else:
-                                                        send action bar "" to {_p}
-                                        else:
-                                            stop
-                                        clear metadata value "casting" of {_p}
-                                        clear metadata value "cast" of {_p}
-                                        clear metadata value "casttimeleft" of {_p}
-                                        clear metadata value "casttimemax" of {_p}
-                                        stop sound "skill.therold.mindblast_precast" for all players
-                                        if {_casttime} > 0 seconds:
-                                            if {language::%{_p}%} = "English":
-                                                send action bar "&cInterrupted" to {_p}
+                                                        clear metadata value "casting" of {_p}
+                                                        if {language::%{_p}%} = "English":
+                                                            send action bar "" to {_p}
+                                                        else:
+                                                            send action bar "" to {_p}
                                             else:
-                                                send action bar "&cPrzerwano" to {_p}
-                                            stop
-                                        set {_charges} to metadata value "ShadowWordVoidCharges" of {_p}
-                                        remove 1 from {_charges}
-                                        set metadata value "ShadowWordVoidCharges" of {_p} to {_charges}
-                                        ShadowWordVoidRecharge({_p}, {_cd})
+                                                stop
+                                            clear metadata value "casting" of {_p}
+                                            clear metadata value "cast" of {_p}
+                                            clear metadata value "casttimeleft" of {_p}
+                                            clear metadata value "casttimemax" of {_p}
+                                            stop sound "skill.therold.mindblast_precast" for all players
+                                            if {_casttime} > 0 seconds:
+                                                if {language::%{_p}%} = "English":
+                                                    send action bar "&cInterrupted" to {_p}
+                                                else:
+                                                    send action bar "&cPrzerwano" to {_p}
+                                                stop
+                                            set {_charges} to metadata value "ShadowWordVoidCharges" of {_p}
+                                            remove 1 from {_charges}
+                                            set metadata value "ShadowWordVoidCharges" of {_p} to {_charges}
+                                            ShadowWordVoidRecharge({_p}, {_cd})
+                                        else:
+                                            clear metadata value "ShadowyInsight" of {_p}
+                                            set {_charges} to metadata value "ShadowWordVoidCharges" of {_p}
+                                            send title " " with subtitle " " to {_p} for 1 second with fade in 0.0 second and fade out 0.0 second
                                         set {_insanity} to 15
                                         if tag "Talents;Row 1" of nbt of {karta::%{_p}%} = "Fortress of the Mind":
                                             set {_insanity} to {_insanity}*1.2
                                         GrantInsanity({_p}, {_insanity})
                                         UpdateInsanity({_p})
-                                        play sound "skill.therold.shadow_word_void" with volume 3 and pitch 1 at {_p}
+                                        play sound "skill.therold.shadow_word_void_cast" with volume 3 and pitch 1 at {_p}
+                                        play sound "skill.therold.shadow_word_void_impact" with volume 3 and pitch 1 at {_p}
                                         play sound "skill.therold.shadowcast" with volume 3 and pitch 1 at {_p}
                                         draw 24 dust using dustOption(rgb(95, 72, 156), 1) at {_target}'s head with offset vector(0.42, 0.5, 0.42) with extra 0.04
                                         draw 24 dust using dustOption(rgb(41, 22, 92), 1) at {_target}'s head with offset vector(0.37, 0.45, 0.37) with extra 0.04
                                         if {_target} is alive:
                                             set {_crit} to 0 + ({criticalhit::%{_p}%}/10)
-                                            set {_damage} to (5 + (({damage::%{_p}%}/18) + ({versatility::%{_p}%}/54)) + ({intellect::%{_p}%}/9))
+                                            set {_damage} to (5 + (({damage::%{_p}%}/18) + ({versatility::%{_p}%}/54)) + ({intellect::%{_p}%}/9)) * (1.096 + (({mastery::%{_p}%}/2.5)/100))
                                             if metadata value "Voidform" of {_p} is set:
                                                 set {_damage} to {_damage}*1.2
                                             if tag "Talents;Row 1" of nbt of {karta::%{_p}%} = "Fortress of the Mind":
@@ -730,6 +761,7 @@ function ShadowWordVoidAbilityCast(p: player):
                                                     set lore of loop-item to {_lore}
                                                     if {_charges} > 0:
                                                         set item amount of loop-item to {_charges}
+                                                        create cooldown "Shadow Word: Void%{_p}%" for {_cd}
                                                     else:
                                                         set the cooldown of loop-item for {_p} to {_cd}
                                                     stop loop
@@ -841,7 +873,7 @@ function ShadowWordDeathAbilityCast(p: player):
                                     make {_p} damage {_target} by {_damage}*2
                                     play sound "skill.therold.shadow_word_death" with volume 3 and pitch 1 at {_p}
                                     play sound "skill.therold.shadow_word_death_cast" with volume 3 and pitch 1 at {_p}
-                                    play sound "skill.therold.shadow_word_void" with volume 3 and pitch 1 at {_p}
+                                    play sound "skill.therold.shadow_word_death_impact" with volume 3 and pitch 1 at {_p}
                                     play sound "skill.therold.shadowcast" with volume 3 and pitch 1 at {_p}
                                     draw 10 dust using dustOption(rgb(77, 54, 138), 1) at location above {_target} with offset vector(0.4, 0.5, 0.4) with extra 0.03
                                     if {_charges} > 0:
@@ -889,6 +921,57 @@ function ShadowWordDeathAbilityCast(p: player):
             send "&8[&6Earthcraft&8] &6Nie masz wybranej wymaganej karty, by móc użyć tej umiejętności." to {_p}
         play sound "block.glass.break" with volume 3 and pitch 0 to {_p}
 
+function SurrenderToMadnessAbilityCast(p: player):
+    if {kartaname::%{_p}%} = "Brother Therold":
+        if CanUseAbility({_p}) != false:
+            set {_target} to Target({_p}, 100, false)
+            if {_target} is set:
+                if metadata value "Voidform" of {_p} is set:
+                    if cooldown "Shadow Word: Pain%{_p}%" is finished:
+                        if cooldown "Surrender To Madness%{_p}%" is finished:
+                            if cooldown "Shadow Word: Death%{_p}%" is finished:
+                                if cooldown "Global Cooldown Interrupted Cast%{_p}%" is finished:
+                                    set {_id} to line 19 of lore of {karta::%{_p}%}
+                                    set {_cd} to 1 minute
+                                    set the cooldown of {_p}'s held item for {_p} to {_cd}
+                                    create cooldown "Surrender To Madness%{_p}%" for {_cd}
+                                    set metadata value "SurrenderToMadness" of {_p} to true
+                                    play sound "skill.therold.void_eruption_cast" with volume 3 and pitch 1 at {_p}
+                                    play sound "skill.therold.surrender_to_madness" with volume 3 and pitch 1 at {_p}
+                                    play sound "entity.wither.spawn" with volume 3 and pitch 0 at {_p}
+                            else: 
+                                if {tekstcd::%{_p}%} = true:
+                                    set {_cdd} to cooldown "Shadow Word: Death%{_p}%"
+                                    if {language::%{_p}%} = "English":
+                                        send "<##462566>You must wait &f%{_cdd}%<##462566> to use this ability." to {_p}
+                                    else:
+                                        send "<##462566>Musisz odczekać &f%{_cdd}%<##462566>, aby użyć tej umiejętności." to {_p}
+                                stop
+                        else: 
+                            if {tekstcd::%{_p}%} = true:
+                                set {_cdd} to cooldown "Shadow Word: Pain%{_p}%"
+                                if {language::%{_p}%} = "English":
+                                    send "<##462566>You must wait &f%{_cdd}%<##462566> to use this ability." to {_p}
+                                else:
+                                    send "<##462566>Musisz odczekać &f%{_cdd}%<##462566>, aby użyć tej umiejętności." to {_p}
+                            stop
+                    else: 
+                        if {tekstcd::%{_p}%} = true:
+                            set {_cdd} to cooldown "Surrender To Madness%{_p}%"
+                            if {language::%{_p}%} = "English":
+                                send "<##462566>You must wait &f%{_cdd}%<##462566> to use this ability." to {_p}
+                            else:
+                                send "<##462566>Musisz odczekać &f%{_cdd}%<##462566>, aby użyć tej umiejętności." to {_p}
+                        stop
+                else:
+                    if {tekstcd::%{_p}%} = true:
+                        set {_cdd} to cooldown "Surrender To Madness%{_p}%"
+                        if {language::%{_p}%} = "English":
+                            send "<##462566>You must be in <##8165a6>Voidform <##462566>to use this ability." to {_p}
+                        else:
+                            send "<##462566>Musisz być w <##8165a6>Formie Pustki<##462566>, by użyć tej umiejętności." to {_p}
+                    stop
+
 on right click:
     if player's tool is purple dye named "<##613e82>Void Eruption" with nbt from "{CustomModelData:9,VoidEruption:1b}":
         cancel event
@@ -926,26 +1009,56 @@ on right click:
         ShadowWordDeathAbilityCast(player)
         if metadata value "ShadowWordDeathCharges" of player is not set:
             set metadata value "ShadowWordDeathCharges" of player to 2
+    else if 1 of player's tool is popped chorus fruit named "<##613e82>Surrender to Madness" with nbt from "{CustomModelData:3,SurrenderToMadness:1b}":
+        cancel event
+        SurrenderToMadnessAbilityCast(player)
 
 function ExitVoidform(p: player):
     clear metadata value "Voidform" of {_p}
     remove levitation from {_p}
     if tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Lingering Insanity":
-        set {lingeringInsanityHaste::%{_p}%} to {hasteVoidform::%{_p}%}
+        set {lingeringInsanityHaste::%{_p}%} to (metadata value "Voidform Stacks" of {_p})*4
+        set {hasteVoidform::%{_p}%} to (metadata value "Voidform Stacks" of {_p})*4
         if metadata value "LingeringInsanity" of {_p} is not set:
             set metadata value "LingeringInsanity" of {_p} to true
             LingeringInsanity({_p})
     else:
         clear {hasteVoidform::%{_p}%}
+    if {language::%{_p}%} = "English":
+        send "&fYou exit  Voidform with %metadata value "Voidform Stacks" of {_p}% stacks." to {_p}
+    else:
+        send "&fWyszedłeś z  Formy Pustki z %metadata value "Voidform Stacks" of {_p}% stackami." to {_p}
     clear metadata value "Voidform Stacks" of {_p}
     set {_pospiech} to 1 + (({haste::%{_p}%}/4))/100
-    set {_casttime} to "%round((2/{_pospiech}), 1)% seconds" parsed as timespan
-    set {_damage} to (4 + (({damage::%{_p}%}/10) + ({versatility::%{_p}%}/30) + {intellect::%{_p}%}/5))
+    set {_baseCasttime} to 2
+    if tag "Talents;Row 5" of nbt of {karta::%{_p}%} = "Legacy of the Void":
+        set {_baseCasttime} to {_baseCasttime}*0.6 
+    set {_casttime} to "%round(({_baseCasttime}/{_pospiech}), 1)% seconds" parsed as timespan
+    set {_damage} to (4 + (({damage::%{_p}%}/10) + ({versatility::%{_p}%}/30) + {intellect::%{_p}%}/5)) * (1.096 + (({mastery::%{_p}%}/2.5)/100))
     loop all items in the inventory of {_p}:
         if loop-item is black dye named "<##613e82>Void Bolt" with nbt from "{CustomModelData:3,VoidBolt:1b}":
-            set loop-item to purple dye named "<##613e82>Void Eruption" with lore "&8Ultimate Ability%nl%&f%{_casttime}% cast%nl%&7No cooldown%nl%&7Use: &fRMB%nl%<##613e82>Releases an explosive blast of pure void%nl%<##613e82>energy, activating <##8165a6>Voidform <##613e82>and causing &f%{_damage}%%nl%<##431d53>Ghost <##613e82>damage to all enemies afflicted by%nl%<##613e82>your Shadow Word: Pain or Vampiric Touch.%nl% %nl%<##613e82>During <##8165a6>Voidform<##613e82>, this ability is replaced%nl%<##613e82>by Void Bolt.%nl% %nl%&fRequires 90 Insanity to activate." with nbt from "{CustomModelData:9,VoidEruption:1b}"
+            set loop-item to purple dye named "<##613e82>Void Eruption" with lore "&8Ultimate Ability%nl%&f%{_casttime}% cast%nl%&7No cooldown%nl%&7Use: &fRMB%nl%<##613e82>Releases an explosive blast of pure void%nl%<##613e82>energy, activating <##8165a6>Voidform <##613e82>and causing &f%{_damage}%%nl%<##431d53>Ghost <##613e82>damage to all enemies afflicted by%nl%<##613e82>your <##8165a6>Shadow Word: Pain <##613e82>or <##8165a6>Vampiric Touch.%nl% %nl%<##613e82>During <##8165a6>Voidform<##613e82>, this ability is replaced%nl%<##613e82>by Void Bolt.%nl% %nl%&fRequires 90 Insanity to activate." with nbt from "{CustomModelData:9,VoidEruption:1b}"
+    if metadata value "SurrenderToMadness" of {_p} = true:
+        clear metadata value "SurrenderToMadness" of {_p}
+        set {_lore} to "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &f10 minutes%nl%&7Use: &fRMB%nl%&7Talent Ability%nl%<##613e82>Surrender your soul to the Old Gods, sacrificing%nl%<##613e82>your soul for ultimate power.%nl% %nl%<##613e82>All your <##8165a6>Insanity<##613e82>-generating abilities generate%nl%&f200%% <##613e82>more <##8165a6>Insanity <##613e82>until you exit <##8165a6>Voidform<##613e82>.%nl% %nl%<##613e82>Then you die. Horribly."
+        set {_p}'s last damage cause to sweep attack
+        set metadata value "Element" of {_p} to "Ghost"
+        set metadata value "LastDamageCauseEN" of {_p} to "<##462566>Surrender to Madness"
+        set metadata value "LastDamageCause" of {_p} to "<##462566>Poddanie Szaleństwu"
+        set metadata value "LastDamageCauseLore" of {_p} to {_lore}
+        set metadata value "LastDamageCauseLoreEN" of {_p} to {_lore}
+        make {_p} damage {_p} by 0.01
+        kill {_p}
+        loop all players:
+            if {language::%loop-player%} = "English":
+                send " %{_p}% fell to madness." to loop-player
+            else:
+                send " %{_p}% poddał się szaleństwu." to loop-player
+
 
 function GrantInsanity(p: player, num: number):
+    if metadata value "SurrenderToMadness" of {_p} is true:
+        set {_num} to {_num}*3
     add {_num} to {insanity::%{_p}%}
     if {insanity::%{_p}%} > 100:
         set {insanity::%{_p}%} to 100
@@ -953,10 +1066,13 @@ function GrantInsanity(p: player, num: number):
 function UpdateInsanity(p: player):
     set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
     set {_insanityDrain} to 6 + 0.68*{_voidformStacks}
+    set {_insanityText} to "Insanity: %round({insanity::%{_p}%}, 0)%"
     if metadata value "Voidform" of {_p} is set:
-        send action bar "Insanity: %round({insanity::%{_p}%}, 0)%   %round({_insanityDrain}, 1)%p/s    %{_voidformStacks}%" to {_p}
-    else:
-        send action bar "Insanity: %round({insanity::%{_p}%}, 0)%" to {_p}
+        set {_insanityText} to "%{_insanityText}%   %round({_insanityDrain}, 1)%p/s    %{_voidformStacks}%"
+    if tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Lingering Insanity":
+        if {lingeringInsanityHaste::%{_p}%} is set:
+            set {_insanityText} to "%{_insanityText}%   |  %{lingeringInsanityHaste::%{_p}%}/4%%% "
+    send action bar {_insanityText} to {_p}
 
 function VoidEruptionVisual(p: player, target: entity):
     set {_offX} to a random number between -4 and 4
@@ -979,7 +1095,7 @@ function ShadowWordPain(p: player, target: entity):
             set {_pospiech} to 1 + (({haste::%{_p}%}/4) + ({hasteVoidform::%{_p}%}/4))/100
             set {_crit} to 0 + ({criticalhit::%{_p}%}/10)
             set {_SWPDuration} to 14
-            set {_damage} to (1 + (({damage::%{_p}%}/42) + ({versatility::%{_p}%}/126) + {intellect::%{_p}%}/21))
+            set {_damage} to (1 + (({damage::%{_p}%}/42) + ({versatility::%{_p}%}/126) + {intellect::%{_p}%}/21)) * (1.096 + (({mastery::%{_p}%}/2.5)/100))
             if metadata value "Voidform" of {_p} is set:
                 set {_damage} to {_damage}*1.2
             loop all items in the inventory of {_p}:
@@ -988,13 +1104,15 @@ function ShadowWordPain(p: player, target: entity):
                     if metadata value "Voidform" of {_p} is set:
                         set {_instantDamage} to {_instantDamage}*1.2
                     set {_gcd} to "%1.5/{_pospiech}% seconds" parsed as timespan
-                    set {_lore} to "&8Ability%nl%&fInstant cast%nl%&7Global Cooldown: &f%{_gcd}%%nl%&7Use: &fRMB%nl%<##613e82>A word of darkness that causes%nl%&f%{_instantDamage}% <##431d53>Ghost <##613e82>damage instantly, and an%nl%<##613e82>additional &f%(round({_SWPDuration}/(2/{_pospiech}), 0))*{_damage}% <##431d53>Ghost <##613e82>damage over &f%{_SWPDuration}% sec<##613e82>.%nl% %nl%&fGenerates 3 Insanity."
+                    set {_lore} to "&8Ability%nl%&fInstant cast%nl%&7Global Cooldown: &f%{_gcd}%%nl%&7Use: &fRMB%nl%<##613e82>A word of darkness that causes%nl%&f%{_instantDamage}% <##431d53>Ghost <##613e82>damage instantly, and an%nl%<##613e82>additional &f%(round({_SWPDuration}/(2/{_pospiech}), 0))*{_damage}% <##431d53>Ghost <##613e82>damage over%nl%&f%{_SWPDuration}% sec<##613e82>.%nl% %nl%&fGenerates 3 Insanity."
                     set lore of loop-item to {_lore}
                 else if loop-item = purple dye named "<##613e82>Shadowy Apparitions" with nbt from "{CustomModelData:3,ShadowyApparitions:1b}":
-                    set {_shadowyApparitionsDamage} to 1 + ({mastery::%{_p}%}/32)
+                    set {_shadowyApparitionsDamage} to (0.8 + (({damage::%{_p}%}/88) + ({versatility::%{_p}%}/264) + {intellect::%{_p}%}/44))
+                    if tag "Talents;Row 4" of nbt of {karta::%{_p}%} = "Auspicious Spirits":
+                        set {_shadowyApparitionsDamage} to {_shadowyApparitionsDamage}*2
                     if metadata value "Voidform" of {_p} is set:
                         set {_shadowyApparitionsDamage} to {_shadowyApparitionsDamage}*1.2
-                    set lore of loop-item to "&8Mastery Bonus%nl%<##613e82>When your Shadow Word: Pain damage%nl%<##613e82>over time critically strikes, you also create%nl%<##613e82>a shadowy version of yourself that floats%nl%<##613e82>towards the target and deals &f%{_shadowyApparitionsDamage}% <##613e82>damage."
+                    set lore of loop-item to "&8Passive Ability%nl%&fNo cast%nl%&7Cooldown: &fnone%nl%&7Use: &fPassive%nl%<##613e82>When your <##8165a6>Shadow Word: Pain <##613e82>damage%nl%<##613e82>over time critically strikes, you also create%nl%<##613e82>a shadowy version of yourself that floats%nl%<##613e82>towards the target and deals &f%{_shadowyApparitionsDamage}% <##431d53>Ghost%nl%<##613e82>damage."
             set {_target}'s last damage cause to sweep attack
             chance of {_crit}%:
                 set {_damage} to {_damage}*2
@@ -1005,6 +1123,9 @@ function ShadowWordPain(p: player, target: entity):
             set metadata value "LastDamageCauseLore" of {_target} to {_lore}
             set metadata value "LastDamageCauseLoreEN" of {_target} to {_lore}
             make {_p} damage {_target} by {_damage}*2
+            if tag "Talents;Row 4" of nbt of {karta::%{_p}%} = "Shadowy Insight":
+                chance of 4%:
+                    ShadowyInsight({_p})
             set {_tickTime} to "%2/{_pospiech}% seconds" parsed as timespan
             wait {_tickTime}
         else:
@@ -1067,18 +1188,20 @@ function MindFlayTicks(p: player, target: entity, cast: number):
             make {_p} damage {_target} by {_damage}*2
         set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
         set {_insanityDrain} to 6 + 0.68*{_voidformStacks}
+        set {_insanityInfo} to "Insanity: %round({insanity::%{_p}%}, 0)%"
         if metadata value "Voidform" of {_p} is set:
-            set {_insanityInfo} to "| Insanity: %round({insanity::%{_p}%}, 0)%   %round({_insanityDrain}, 1)%p/s    %{_voidformStacks}%"
-        else:
-            set {_insanityInfo} to "| Insanity: %round({insanity::%{_p}%}, 0)%"
-        send action bar "Channeling... %{_casttime}*(4-{_totalTicks})% seconds %{_insanityInfo}%" to {_p}
+            set {_insanityInfo} to "%{_insanityInfo}%   %round({_insanityDrain}, 1)%p/s    %{_voidformStacks}%"
+        if tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Lingering Insanity":
+            if {lingeringInsanityHaste::%{_p}%} is set:
+                set {_insanityInfo} to "%{_insanityInfo}% |  %{lingeringInsanityHaste::%{_p}%}/4%%% "
+        send action bar "Channeling... %{_casttime}*(4-{_totalTicks})% seconds | %{_insanityInfo}%" to {_p}
         wait {_tickTime}
         add 1 to {_totalTicks}
         if {_totalTicks} >= 4:
             stop sound "skill.therold.mindflay_channel" for all players
             stop sound "skill.therold.mindflay_channel_whisper" for all players
             clear metadata value "channeling" of {_p}
-            send action bar "Channeling... %{_casttime}*(4-{_totalTicks})% seconds %{_insanityInfo}%" to {_p}
+            send action bar "Channeling... %{_casttime}*(4-{_totalTicks})% seconds | %{_insanityInfo}%" to {_p}
         stop loop if {_target} is not alive
 
 function MindFlay(p: player, target: entity, cast: number):
@@ -1090,7 +1213,7 @@ function MindFlay(p: player, target: entity, cast: number):
         set {_tickTime} to "%{_casttime}% seconds" parsed as timespan
         set metadata value "channeltime" of {_p} to {_cast}
         if {_target} is alive:
-            set {_damage} to (0.6 + (({damage::%{_p}%}/105) + ({versatility::%{_p}%}/315) + {intellect::%{_p}%}/52.5))
+            set {_damage} to (0.6 + (({damage::%{_p}%}/105) + ({versatility::%{_p}%}/315) + {intellect::%{_p}%}/52.5)) * (1.096 + (({mastery::%{_p}%}/2.5)/100))
             if metadata value "VoidRayStacks" of {_p} is set:
                 set {_voidRayStacksDamageBonus} to 1 + (0.1*metadata value "VoidRayStacks" of {_p})
                 set {_damage} to {_damage}*{_voidRayStacksDamageBonus}
@@ -1103,7 +1226,7 @@ function MindFlay(p: player, target: entity, cast: number):
             GrantInsanity({_p}, {_insanity})
             set {_lore} to "&8Ability%nl%&fChanneled%nl%&7No cooldown%nl%&7Use: &fRMB%nl%<##613e82>Assaults the target's mind with Shadow%nl%<##613e82>energy, causing &f%{_damage}*(rounded up 3/(({_cast}/4)/{_pospiech}))% <##431d53>Ghost <##613e82>damage over%nl%&f%{_cast}% sec <##613e82>and slowing their movement speed%nl%<##613e82>by &f50%%<##613e82>.%nl% %nl%&fGenerates %2*(rounded up 3/(({_cast}/4)/{_pospiech}))% Insanity over the duration."
             loop all items in the inventory of {_p}:
-                if loop-item = cyan dye named "<##613e82>Mind Flay":
+                if loop-item = cyan dye named "<##613e82>Mind Flay" with nbt from "{CustomModelData:3,MindFlay:1b}":
                     set lore of loop-item to {_lore}
                     stop loop
             set {_target}'s last damage cause to sweep attack
@@ -1131,10 +1254,12 @@ function MindFlay(p: player, target: entity, cast: number):
                 add {_potion} to potion effects of {_target}
         set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
         set {_insanityDrain} to 6 + 0.68*{_voidformStacks}
+        set {_insanityInfo} to "Insanity: %round({insanity::%{_p}%}, 0)%"
         if metadata value "Voidform" of {_p} is set:
-            set {_insanityInfo} to "| Insanity: %round({insanity::%{_p}%}, 0)%   %round({_insanityDrain}, 1)%p/s    %{_voidformStacks}%"
-        else:
-            set {_insanityInfo} to "| Insanity: %round({insanity::%{_p}%}, 0)%"
+            set {_insanityInfo} to "%{_insanityInfo}%   %round({_insanityDrain}, 1)%p/s    %{_voidformStacks}%"
+        if tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Lingering Insanity":
+            if {lingeringInsanityHaste::%{_p}%} is set:
+                set {_insanityInfo} to "%{_insanityInfo}% |  %{lingeringInsanityHaste::%{_p}%}/4%%% "
         if {_castBar} is not set:
             MindFlayCast({_p}, 3 seconds, {_target})
             set {_castBar} to true
@@ -1154,15 +1279,17 @@ function MindFlayCast(p: player, seconds: timespan, target: entity):
     while metadata value "channeling" of {_p} is set:
         set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
         set {_insanityDrain} to 6 + 0.68*{_voidformStacks}
+        set {_insanityInfo} to "Insanity: %round({insanity::%{_p}%}, 0)%"
         if metadata value "Voidform" of {_p} is set:
-            set {_insanityInfo} to "| Insanity: %round({insanity::%{_p}%}, 0)%   %round({_insanityDrain}, 1)%p/s    %{_voidformStacks}%"
-        else:
-            set {_insanityInfo} to "| Insanity: %round({insanity::%{_p}%}, 0)%"
-        send action bar "Channeling... %{_seconds}% %{_insanityInfo}%" to {_p}
+            set {_insanityInfo} to "%{_insanityInfo}%   %round({_insanityDrain}, 1)%p/s    %{_voidformStacks}%"
+        if tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Lingering Insanity":
+            if {lingeringInsanityHaste::%{_p}%} is set:
+                set {_insanityInfo} to "%{_insanityInfo}% |  %{lingeringInsanityHaste::%{_p}%}/4%%% "
+        send action bar "Channeling... %{_seconds}% | %{_insanityInfo}%" to {_p}
         wait 0.1 seconds
         remove 0.1 second from {_seconds}
         stop loop if {_target} is not alive
-    send action bar "Channeling... 0 seconds %{_insanityInfo}%" to {_p}
+    send action bar "Channeling... 0 seconds | %{_insanityInfo}%" to {_p}
 
 function VampiricTouch(p: player, target: entity):
     set {_id} to line 19 of lore of {karta::%{_p}%}
@@ -1171,7 +1298,9 @@ function VampiricTouch(p: player, target: entity):
             set {_pospiech} to 1 + (({haste::%{_p}%}/4) + ({hasteVoidform::%{_p}%}/4))/100
             set {_VPTDuration} to 18
             set {_crit} to 0 + ({criticalhit::%{_p}%}/10)
-            set {_damage} to (1.5 + (({damage::%{_p}%}/36) + ({versatility::%{_p}%}/108) + {intellect::%{_p}%}/18))
+            set {_damage} to (1.5 + (({damage::%{_p}%}/36) + ({versatility::%{_p}%}/108) + {intellect::%{_p}%}/18)) * (1.096 + (({mastery::%{_p}%}/2.5)/100))
+            if tag "Talents;Row 4" of nbt of {karta::%{_p}%} = "San'Layn":
+                set {_damage} to {_damage}*1.2
             if metadata value "Voidform" of {_p} is set:
                 set {_damage} to {_damage}*1.2
             loop all items in the inventory of {_p}:
@@ -1188,6 +1317,8 @@ function VampiricTouch(p: player, target: entity):
                 set {_damage} to {_damage}*2
             make {_p} damage {_target} by {_damage}*2
             set {_heal} to 0.2*{_damage}
+            if tag "Talents;Row 4" of nbt of {karta::%{_p}%} = "San'Layn":
+                set {_heal} to {_heal}*1.2
             if {_p} is alive:
                 if {_heal} > ((max health of {_p}) - (health of {_p})):
                     set {_heal} to ((max health of {_p}) - (health of {_p}))
@@ -1242,18 +1373,19 @@ function VampiricTouchRefresh(p: player, target: entity):
             set metadata value "Vampiric Touch - Refresh-%{_p}%" of {_target} to true
 
 function ShadowyApparitionSpawn(p: player, target: entity):
-    spawn 1 bee at {_p} with nbt from "{Silent:1b}"
-    set the name of last spawned bee to "Shadowy Apparition"
-    set tag "custom;ECSummoned" of nbt of last spawned bee to "%{_p}%"
-    set {_shadowyApparition} to last spawned bee
-    ShadowyApparitionFloat({_p}, {_shadowyApparition}, {_target})
-    ShadowyApparitionVisual({_shadowyApparition})
-    play sound "skill.therold.shadowy_apparitions" with volume 2 and pitch 1 at {_p}
-    if cooldown "Shadowy Apparition Sound-%{_p}%" is finished:
-        set {_pitch} to a random number between 0.8 and 1.1
-        play sound "skill.therold.shadowy_apparitions_whisper" with volume 2 and pitch {_pitch} at {_p}
-        set {_random} to a random number between 1 and 1.5
-        create cooldown "Shadowy Apparition Sound-%{_p}%" for ("%{_random}% seconds" parsed as timespan)
+    if {_p}'s world = {_target}'s world:
+        spawn 1 bee at {_p} with nbt from "{Silent:1b}"
+        set the name of last spawned bee to "Shadowy Apparition"
+        set tag "custom;ECSummoned" of nbt of last spawned bee to "%{_p}%"
+        set {_shadowyApparition} to last spawned bee
+        ShadowyApparitionFloat({_p}, {_shadowyApparition}, {_target})
+        ShadowyApparitionVisual({_shadowyApparition})
+        play sound "skill.therold.shadowy_apparitions" with volume 2 and pitch 1 at {_p}
+        if cooldown "Shadowy Apparition Sound-%{_p}%" is finished:
+            set {_pitch} to a random number between 0.8 and 1.1
+            play sound "skill.therold.shadowy_apparitions_whisper" with volume 2 and pitch {_pitch} at {_p}
+            set {_random} to a random number between 1 and 1.5
+            create cooldown "Shadowy Apparition Sound-%{_p}%" for ("%{_random}% seconds" parsed as timespan)
     #stop
     #set {_l} to location 0.3 blocks below {_p}'s head
     #set {_l} to location 0.4 blocks right of {_l}
@@ -1281,16 +1413,23 @@ function ShadowyApparitionFloat(p: player, apparition: entity, target: entity):
         stop loop if {_target} is not alive
     if {_target} is alive:
         set {_damage} to (0.8 + (({damage::%{_p}%}/88) + ({versatility::%{_p}%}/264) + {intellect::%{_p}%}/44))
+        if tag "Talents;Row 4" of nbt of {karta::%{_p}%} = "Auspicious Spirits":
+            set {_damage} to {_damage}*2
+            GrantInsanity({_p}, 3)
+            UpdateInsanity({_p})
         if metadata value "Voidform" of {_p} is set:
             set {_damage} to {_damage}*1.2
         set {_target}'s last damage cause to sweep attack
-        set {_lore} to "&8Passive Ability%nl%&fNo cast%nl%&7Cooldown: &fnone%nl%&7Use: &fPassive%nl%<##613e82>When your Shadow Word: Pain damage%nl%<##613e82>over time critically strikes, you also create%nl%<##613e82>a shadowy version of yourself that floats%nl%<##613e82>towards the target and deals &f%{_damage}% <##613e82>damage."
+        set {_lore} to "&8Passive Ability%nl%&fNo cast%nl%&7Cooldown: &fnone%nl%&7Use: &fPassive%nl%<##613e82>When your <##8165a6>Shadow Word: Pain <##613e82>damage%nl%<##613e82>over time critically strikes, you also create%nl%<##613e82>a shadowy version of yourself that floats%nl%<##613e82>towards the target and deals &f%{_damage}% <##431d53>Ghost%nl%<##613e82>damage."
         set metadata value "Element" of {_p} to "Ghost"
         set metadata value "LastDamageCauseEN" of {_target} to "<##462566>Shadowy Apparitions"
         set metadata value "LastDamageCause" of {_target} to "<##462566>Cieniste Aparycje"
         set metadata value "LastDamageCauseLore" of {_target} to {_lore}
         set metadata value "LastDamageCauseLoreEN" of {_target} to {_lore}
         make {_p} damage {_target} by {_damage}*2
+        loop all items in the inventory of {_p}:
+            if loop-item = purple dye named "<##613e82>Shadowy Apparitions" with nbt from "{CustomModelData:3,ShadowyApparitions:1b}":
+                set lore of loop-item to {_lore}
     teleport {_apparition} to location(0, -100, 0)
     kill {_apparition}
 
@@ -1310,6 +1449,8 @@ function StopCastSoundTherold(p: player):
         stop sound "skill.therold.mindflay_channel_whisper" for all players
     else if {_ability} = "Vampiric Touch":
         stop sound "skill.therold.mindflay_channel_whisper" for all players
+    else if {_ability} = "Shadow Word: Void":
+        stop sound "skill.therold.shadow_word_void_precast" for all players
 
 function TheroldDamage(p: player, basevalue: number, damageStat: number, damageScaling: number, versStat: number, versScaling: number) :: number:
     set {_damage} to {_basevalue} + ({damage::%{_p}%}/{_damageScaling}) + ({versatility::%{_p}%}/{_versScaling})
@@ -1353,6 +1494,7 @@ function ShadowWordVoidRecharge(p: player, cd: timespan):
                 else:
                     set line 2 of lore of loop-item to "&f%{_charges}% Charges"
                 reset item cooldown of loop-item for {_p}
+                clear cooldown "Shadow Word: Void%{_p}%"
             else:
                 set line 2 of lore of loop-item to "&f%{_charges}% Charges"
             stop loop
@@ -1390,13 +1532,12 @@ function VoidRay(p: player):
                 
 function LingeringInsanity(p: player):
     while {lingeringInsanityHaste::%{_p}%} > 0:
+        wait 2 seconds
         if {hasteVoidform::%{_p}%} - 4 > 0:
-            set {hasteVoidform::%{_p}%} to {hasteVoidform::%{_p}%}- 4
+            set {hasteVoidform::%{_p}%} to {hasteVoidform::%{_p}%} - 4
         else:
             set {hasteVoidform::%{_p}%} to 0
         set {lingeringInsanityHaste::%{_p}%} to {lingeringInsanityHaste::%{_p}%} - 4
-        broadcast "%{hasteVoidform::%{_p}%}% Haste voidform, %{lingeringInsanityHaste::%{_p}%}% Haste number"
-        wait 2 seconds
     clear metadata value "LingeringInsanity" of {_p}
     clear {lingeringInsanityHaste::%{_p}%}
 
@@ -1418,6 +1559,37 @@ function ShadowWordDeathRecharge(p: player, cd: timespan):
                 set line 2 of lore of loop-item to "&f%{_charges}% Charges"
             stop loop
     
+function ShadowyInsight(p: player):
+    send title " " with subtitle "" to {_p} for 1 minute with fade in 0.25 second and fade out 0 second
+    set metadata value "ShadowyInsight" of {_p} to true
+    play sound "skill.therold.shadowy_insight_proc" with volume 2 and pitch 1 at {_p}
+    clear cooldown "Mind Blast%{_p}%"
+    clear cooldown "Shadow Word: Void%{_p}%"
+    set {_time} to 60 seconds
+    loop all items in the inventory of {_p}:
+        if 1 of loop-item = light gray dye named "<##613e82>Mind Blast" with nbt from "{CustomModelData:3,MindBlast:1b}":
+            reset item cooldown of loop-item for {_p}
+        else if 1 of loop-item = light gray dye named "<##613e82>Shadow Word: Void" with nbt from "{CustomModelData:4,ShadowWordVoid:1b}":
+            reset item cooldown of loop-item for {_p}
+    while metadata value "ShadowyInsight" of {_p} = true:
+        wait 1 second
+        remove 1 second from {_time}
+        stop loop if 0 seconds >= {_time}
+    send title " " with subtitle " " to {_p} for 1 second with fade in 0.0 second and fade out 0.0 second
+
+function isCastableTherold(p: player) :: boolean:
+    if metadata value "ShadowyInsight" of {_p} = true:
+        set {_castable} to true
+    else:
+        if tag "Talents;Row 1" of nbt of {karta::%{_p}%} = "Shadow Word: Void":
+            if metadata value "ShadowWordVoidCharges" of {_p} > 0:
+                set {_castable} to true
+        else:
+            if metadata value "MindBlastCharges" of {_p} > 0:
+                set {_castable} to true
+    if {_castable} is not set:
+        set {_castable} to false
+    return {_castable}
 on inventory click:
     if metadata value "Voidform" of player is set:
         if tag "VoidBolt" of nbt of event-slot is set:
