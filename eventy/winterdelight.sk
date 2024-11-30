@@ -7,6 +7,8 @@ on rightclick:
             set slot 4 of {_menu} to white glass pane named "&f✨ Event Pass Info" with lore "&fWhat is an Event Pass?%nl%&7Event Passes allow players to obtain lucrative %nl%&7and attractive rewards through simply playing%nl%&7and fulfilling Pass Missions.%nl% %nl%&fWhat kind of rewards can I expect?%nl%&7Players can expect to earn many cool rewards%nl%&7such as Star Shards, long-awaited Variants,%nl%&7pets, or even special new playable Cards.%nl% %nl%&fWhat is the maximum Pass level?%nl%&7The current maximum Pass Level reaches 50.%nl%&7Players can buy an upgraded version of the%nl%&7Event Pass to continue earning rewards beyond%nl%&7the maximum level until the end of the event."
             
             set metadata value "winterDelightEventPassMenuCurrentPage" of player to 1
+
+            play sound "music.winterdelight_theme" with volume 1 and pitch 1 to player
             
             open {_menu} to player
             eventPassMenuRefresh(player)
@@ -22,8 +24,12 @@ on rightclick:
 command /winterdelightpass:
     trigger:
         set {_itemCategory} to mini message from "<gradient:##dbf5ff:##6580ab>Winter Delight 2024 Event"
-        set {_lore} to "%{_itemCategory}%%nl%&7Join in on the magnificence of this year's%nl%<##a6d4e3>&oWinter Delight &7and watch as the northern%nl%&7lights settle above Earthcraft for a%nl%&7spectacle of joy and wonder and create a%nl%&7joyful ambience for everyone to celebrate%nl%&7and revel in.%nl% %nl%&7o Event pass progress: &f1&7/&f50%nl% %nl%&f&o> Right-click to open the event pass menu."
-        give player name tag named "<##a6d4e3>Winter Delight Event Pass" with lore {_lore} with nbt from "{CustomModelData:2,WinterDelightEventPass:1b,PassLevel:0}"
+        set {_lore} to "%{_itemCategory}%%nl%&7Join in on the magnificence of this year's%nl%<##a6d4e3>&oWinter Delight &7and watch as the northern%nl%&7lights settle above Earthcraft for a%nl%&7spectacle of joy and wonder and create a%nl%&7joyful ambience for everyone to celebrate%nl%&7and revel in.%nl% %nl%&7o Event pass progress: &f0&7/&f50%nl% %nl%&f&o> Right-click to open the event pass menu."
+       # give player name tag named "<##a6d4e3>Winter Delight Event Pass" with lore {_lore} with nbt from "{CustomModelData:2,WinterDelightEventPass:1b,PassLevel:0}"
+
+       # give player painting named "<##a6d4e3>Winter Delight Calendar" with lore "%{_itemCategory}%%nl%&7This item opens a calendar with presents%nl%&7left for you each day during the <##a6d4e3>&oWinter Delight%nl%&7event, showing you hints on where to look for%nl%&7them, as well as marking presents as claimed,%nl%&7unclaimed or not yet unlocked." with nbt from "{WinterDelightCalendar:1b}"
+       # give player compass named "<##a6d4e3>Winter Delight Compass" with lore "%{_itemCategory}%%nl%&7This item can help you track down%nl%&7unopened presents by showing you%nl%&7the directions, as well as the distance."
+        give player netherite ingot named "<##a6d4e3>Winter Delight Music Disc" with lore "%{_itemCategory}%%nl%&7This music disc was obtained from%nl%&7the &fEvent Pass &7during the &fWinter%nl%&fDelight Event&7.%nl% %nl%&7Right-click to &fplay &7the theme.%nl%&7Left-click to &fstop &7playing the theme.%nl% %nl%&7Duration: &f02:05%nl%&7Original title: &fBirds of Paradise%nl%&7Original composer: &fThomas J. Curran" with nbt from "{CustomModelData:3,WinterDelightMusicDisc:1b}"
 
 on inventory click:
     if event-inventory = (metadata tag "winterDelightEventPassMenu" of player):
@@ -40,12 +46,15 @@ on inventory click:
                     remove 1 from {_currentPage}
                     set metadata value "winterDelightEventPassMenuCurrentPage" of player to {_currentPage}
                     eventPassMenuRefresh(player)
+    else if event-inventory = metadata tag "winterDelightCalendarMenu" of player:
+        cancel event
             
 
 on inventory close:
     if event-inventory = (metadata tag "winterDelightEventPassMenu" of player):
         clear (metadata tag "winterDelightEventPassMenu" of player)
         clear metadata value "winterDelightEventPassMenuCurrentPage" of player
+        stop sound "music.winterdelight_theme" for player
 
 function eventPassMenuRefresh(p: player):
     if {_p}'s current inventory = metadata tag "winterDelightEventPassMenu" of {_p}:
@@ -91,99 +100,197 @@ function eventPassMenuRefresh(p: player):
 
 on rightclick:
     if player's tool is painting:
-        cancel event
-        if {language::%player%} = "English":
+        if player's name = "Pehrek":
+            cancel event
             set metadata tag "winterDelightCalendarMenu" of player to chest inventory with 4 rows named "Winter Delight Calendar"
             set {_menu} to metadata tag "winterDelightCalendarMenu" of player
-            
-            loop 31 times:
-                set slot (loop-number - 1) of {_menu} to red stained glass pane named "&fDecember %loop-number%" with lore "&7This present has not yet been%nl%&7unlocked."
+            if {language::%player%} = "English":
+        
+                loop 31 times:
+                    set slot (loop-number - 1) of {_menu} to red stained glass pane named "&fDecember %loop-number%" with lore "&7This present has not yet been%nl%&7unlocked."
 
-            set {_date::*} to now formatted human-readable split at " "
-            set {_yearMonthDay::*} to {_date::1} split at "-"
-            set {_num} to 1
-            loop {_yearMonthDay::*}:
-                set {_yearMonthDay::%{_num}%} to {_yearMonthDay::%{_num}%} parsed as number
-                add 1 to {_num}
-            
-            load yaml "plugins/Skript/playerdata/events/%uuid of player%.yml" as "winterDelight-%player%"
-            loop {_yearMonthDay::3} times:
-                if yaml value "Warps.%loop-number%.Claimed" in "winterDelight-%player%" is set:
-                    set slot (loop-number - 1) of {_menu} to lime stained glass pane named "&aDecember %loop-number%" with lore "&7This present has been claimed.%nl%&fFound in ...%nl%&7Coords..%nl%&7Reward"
-                else:
-                    set {_warp} to yaml value "Warps.%loop-number%.Warp" in "winterDelight-%player%"
-                    if {_warp} = "ap":
-                        set {_lore} to "&7&oThis technologically advanced and%nl%&7&omodern area hides not only secrets,%nl%&7&obut also today's present."
-                    else if {_warp} = "tp1":
-                        set {_lore} to "&7&oWinding and vast corridors laid%nl%&7&oin a major underground area will%nl%&7&olead you to today's present."
-                    else if {_warp} = "aquaisland":
-                        set {_lore} to "&7&oThis remote piece of land was%nl%&7&oonce used to hold a far-off secret%nl%&7&oencampement and store seized items."
-                    else if {_warp} = "ta1":
-                        set {_lore} to "&7&oNever tell anyone a member%nl%&7&oof the opposing team helped%nl%&7&obuild THIS."
-                    else if {_warp} = "ta2":
-                        set {_lore} to "&7&oI lied to everyone (myself included)%nl%&7&owhen I said I changed things around%nl%&7&oso that what I built wouldn't seem like%nl%&7&oa complete rip-off (it was)."
-                    else if {_warp} = "oldtarg2":
-                        set {_lore} to "&7&oThe year is 2017. I just got done%nl%&7&omining and earned just enough%nl%&7&oKlejnots to buy a {REDACTED}."
-                    else if {_warp} = "lila":
-                        set {_lore} to "&7&oHey, here's some Klejnots. Can you%nl%&7&obuild me a modern house that can%nl%&7&ofit several people? Lila:"
-                    else if {_warp} = "oldodnkopalnia":
-                        set {_lore} to "&7&oI got out of school early, yay!!!%nl%&7&oIt is time to go do my favourite%nl%&7&othing ever on Earthcraft."
-                    else if {_warp} = "egirls":
-                        set {_lore} to "&7&oPerson 1: We should build a base!%nl%&7&oPerson 2: Definitely!%nl%&7&oPerson 1: But make it exclude all {REDACTED}.%nl%&7&oPerson 3: Yeah, we hate them."
-                    else if {_warp} = "kot":
-                        set {_lore} to "&7&oI still have no clue what this is%nl%&7&obut it holds some legendary animal%nl%&7&oinside a sphere, or something."
-                    else if {_warp} = "oldimpreza":
-                        set {_lore} to "&7&oPARTY ON VODKA!!!!!!!!!!%nl%&7&o1 2 3 4"
-                    else if {_warp} = "osiedledupa":
-                        set {_lore} to "&7&oA wise choice for a team to settle%nl%&7&oright next to an appartment for rent%nl%&7&o(nobody would buy that ALEX)!!!"
-                    else if {_warp} = "skrzynki":
-                        set {_lore} to "&7&oWant to play a game? This time,%nl%&7&oinstead of hiding an item in a {REDACTED},%nl%&7&oI will hide a present right next to it."
-                    else if {_warp} = "tartak":
-                        set {_lore} to "&7&oWe will never find this place,%nl%&7&owill we."
-                    else if {_warp} = "trening":
-                        set {_lore} to "&7&oToday's present hides in a place%nl%&7&owhere one can practice their combat%nl%&7&oprowess."
-                    else if {_warp} = "wycieczka":
-                        set {_lore} to "&7&o- Grab a minecart, we're going%nl%&7&o on an adventure!%nl%&7&o- Alright! Where are we going?%nl%&7&o- Just follow me to the PKP.%nl%&7&o*2 minutes later*%nl%&7-&o Oh, okay..."
-                    else if {_warp} = "teatr":
-                        set {_lore} to "&7&oIt's on Saturdays."
-                    else if {_warp} = "oldkopalnia1":
-                        set {_lore} to "&7&oIconic, massive and holds many%nl%&7&owarps inside it. I miss it, can we%nl%&7&omake one of these again?"
-                    else if {_warp} = "osiedledeby":
-                        set {_lore} to "&7&oHouses way up in the clouds."
-                    else if {_warp} = "osiedlelodu":
-                        set {_lore} to "&7&oA very remote and very%nl%&7&ocold area."
-                    else if {_warp} = "oldbank":
-                        set {_lore} to "&7&oThis hall was once one of the most%nl%&7&ooftenly visited places on Earthcraft."
-                    else if {_warp} = "oldmagazynkapo":
-                        set {_lore} to "&7&oThis place holds a lot of history...%nl%&7&o... and items."
-                    else if {_warp} = "oldgry":
-                        set {_lore} to "&7&oQ: What's Kapo's nickname on Messenger?%nl%&7&o*Kapo44 joins the server**"
-                    else if {_warp} = "oldmuzeum":
-                        set {_lore} to "&7&oThis place was once used to recall%nl%&7&oand store history of the server."
-                    else if {_warp} = "oldspawn2":
-                        set {_lore} to "&7&oVast and spacious, some refused%nl%&7&oto visit this place because of%nl%&7&ohow laggy it got over time."
-                    else if {_warp} = "oldspawn":
-                        set {_lore} to "&7&oThe OG."
-                    else if {_warp} = "spawn":
-                        set {_lore} to "&7&oA central hub for all your%nl%&7&oplayer needs."
-                    else if {_warp} = "oldpkp":
-                        set {_lore} to "&7&oThe minecart to osiedle dupa%nl%&7&owill depart shortly. We are%nl%&7&osorry for the inconvenience."
-                    else if {_warp} = "oldstable":
-                        set {_lore} to "&7&oMy Panama can jump the highest!"
-                    else if {_warp} = "osiedleemilka":
-                        set {_lore} to "&7&oThis place had a vertical lift%nl%&7&oAND a hotel."
-                    else if {_warp} = "osiedlemelony":
-                        set {_lore} to "&7&oWho wouldn't want to live in a%nl%&7&oplace full of melons?!"
-                    set slot (loop-number - 1) of {_menu} to blue stained glass pane named "&fDecember %loop-number%" with lore "&7Unclaimed Present%nl% %nl%%{_lore}% %nl% %nl%&7Reward: &f?"
-                    clear {_lore}
-                    clear {_warp}
-            loop 5 times:            
-                set slot (30 + loop-number) of {_menu} to black stained glass pane named "&fJanuary %loop-number%" with lore "&7The event will end on January 1st."
-        else:
-            #Kręte koretarze poprowadzą cię...
-        unload yaml "winterDelight-%player%"
-        open {_menu} to player
+                set {_date::*} to now formatted human-readable split at " "
+                set {_yearMonthDay::*} to {_date::1} split at "-"
+                set {_num} to 1
+                loop {_yearMonthDay::*}:
+                    set {_yearMonthDay::%{_num}%} to {_yearMonthDay::%{_num}%} parsed as number
+                    add 1 to {_num}
+                
+                load yaml "plugins/Skript/playerdata/events/%uuid of player%.yml" as "winterDelight-%player%"
+                loop {_yearMonthDay::3} times:
+                    if yaml value "Warps.%loop-number%.Claimed" in "winterDelight-%player%" is set:
+                        set {_warp} to yaml value "Warps.%loop-number%.Warp" in "winterDelight-%player%"
+                        set {_coords} to yaml value "Warps.%loop-number%.Coords" in "winterDelight-%player%"
+                        set {_reward} to yaml value "Warps.%loop-number%.Reward" in "winterDelight-%player%"
+                        set {_coords} to yaml value "Warps.%loop-number%.Coords" in "winterDelight-%player%"
+                        set {_rewardAmount} to yaml value "Warps.%loop-number%.Reward Amount" in "winterDelight-%player%"
+                        set slot (loop-number - 1) of {_menu} to lime stained glass pane named "&aDecember %loop-number%" with lore "&7This present has been claimed.%nl%&7Found in: &f%{_warp}%%nl%&7Coords: &f%{_coords}%%nl%&7Reward: &f%{_rewardAmount}%x %{_reward}%"
+                    else:
+                        set {_warp} to yaml value "Warps.%loop-number%.Warp" in "winterDelight-%player%"
+                        if {_warp} = "ap":
+                            set {_lore} to "&7&oThis technologically advanced and%nl%&7&omodern area hides not only secrets,%nl%&7&obut also today's present."
+                        else if {_warp} = "tp1":
+                            set {_lore} to "&7&oWinding and vast corridors laid%nl%&7&oin a major underground area will%nl%&7&olead you to today's present."
+                        else if {_warp} = "aquaisland":
+                            set {_lore} to "&7&oThis remote piece of land was%nl%&7&oonce used to hold a far-off secret%nl%&7&oencampement and store seized items."
+                        else if {_warp} = "ta1":
+                            set {_lore} to "&7&oNever tell anyone a member%nl%&7&oof the opposing team helped%nl%&7&obuild THIS."
+                        else if {_warp} = "ta2":
+                            set {_lore} to "&7&oI lied to everyone (myself included)%nl%&7&owhen I said I changed things around%nl%&7&oso that what I built wouldn't seem like%nl%&7&oa complete rip-off (it was)."
+                        else if {_warp} = "oldtarg2":
+                            set {_lore} to "&7&oThe year is 2017. I just got done%nl%&7&omining and earned just enough%nl%&7&oKlejnots to buy a {REDACTED}."
+                        else if {_warp} = "lila":
+                            set {_lore} to "&7&oHey, here's some Klejnots. Can you%nl%&7&obuild me a modern house that can%nl%&7&ofit several people? Lila:"
+                        else if {_warp} = "oldodnkopalnia":
+                            set {_lore} to "&7&oI got out of school early, yay!!!%nl%&7&oIt is time to go do my favourite%nl%&7&othing ever on Earthcraft."
+                        else if {_warp} = "egirls":
+                            set {_lore} to "&7&oPerson 1: We should build a base!%nl%&7&oPerson 2: Definitely!%nl%&7&oPerson 1: But make it exclude all {REDACTED}.%nl%&7&oPerson 3: Yeah, we hate them."
+                        else if {_warp} = "kot":
+                            set {_lore} to "&7&oI still have no clue what this is%nl%&7&obut it holds some legendary animal%nl%&7&oinside a sphere, or something."
+                        else if {_warp} = "oldimpreza":
+                            set {_lore} to "&7&oPARTY ON VODKA!!!!!!!!!!%nl%&7&o1 2 3 4"
+                        else if {_warp} = "osiedledupa":
+                            set {_lore} to "&7&oA wise choice for a team to settle%nl%&7&oright next to an appartment for rent%nl%&7&o(nobody would buy that ALEX)!!!"
+                        else if {_warp} = "skrzynki":
+                            set {_lore} to "&7&oWant to play a game? This time,%nl%&7&oinstead of hiding an item in a {REDACTED},%nl%&7&oI will hide a present right next to it."
+                        else if {_warp} = "tartak":
+                            set {_lore} to "&7&oWe will never find this place,%nl%&7&owill we."
+                        else if {_warp} = "trening":
+                            set {_lore} to "&7&oToday's present hides in a place%nl%&7&owhere one can practice their combat%nl%&7&oprowess."
+                        else if {_warp} = "wycieczka":
+                            set {_lore} to "&7&o- Grab a minecart, we're going%nl%&7&o on an adventure!%nl%&7&o- Alright! Where are we going?%nl%&7&o- Just follow me to the PKP.%nl%&7&o*2 minutes later*%nl%&7-&o Oh, okay..."
+                        else if {_warp} = "kino":
+                            set {_lore} to "&7&oIt's on Saturdays."
+                        else if {_warp} = "oldkopalnia1":
+                            set {_lore} to "&7&oIconic, massive and holds many%nl%&7&owarps inside it. I miss it, can we%nl%&7&omake one of these again?"
+                        else if {_warp} = "osiedledeby":
+                            set {_lore} to "&7&oHouses way up in the clouds."
+                        else if {_warp} = "osiedlelodu":
+                            set {_lore} to "&7&oA very remote and very%nl%&7&ocold area."
+                        else if {_warp} = "oldbank":
+                            set {_lore} to "&7&oThis hall was once one of the most%nl%&7&ooftenly visited places on Earthcraft."
+                        else if {_warp} = "oldmagazynkapo":
+                            set {_lore} to "&7&oThis place holds a lot of history...%nl%&7&o...and items."
+                        else if {_warp} = "oldgry":
+                            set {_lore} to "&7&oQ: What's Kapo's nickname on Messenger?%nl%&7&o*Kapo44 joined the server*"
+                        else if {_warp} = "oldmuzeum":
+                            set {_lore} to "&7&oThis place was once used to recall%nl%&7&oand store the history of the server."
+                        else if {_warp} = "oldspawn2":
+                            set {_lore} to "&7&oVast and spacious, some refused%nl%&7&oto visit this place because of%nl%&7&ohow laggy it got over time."
+                        else if {_warp} = "oldspawn":
+                            set {_lore} to "&7&oThe OG."
+                        else if {_warp} = "spawn":
+                            set {_lore} to "&7&oA central hub for all your%nl%&7&oplayer needs."
+                        else if {_warp} = "oldpkp":
+                            set {_lore} to "&7&oThe minecart to osiedle dupa%nl%&7&owill depart shortly. We are%nl%&7&osorry for the inconvenience."
+                        else if {_warp} = "oldstable":
+                            set {_lore} to "&7&oMy Panama can jump the highest!"
+                        else if {_warp} = "osiedleemilka":
+                            set {_lore} to "&7&oThis place had a vertical lift%nl%&7&oAND a hotel."
+                        else if {_warp} = "osiedlemelony":
+                            set {_lore} to "&7&oWho wouldn't want to live in a%nl%&7&oplace full of melons?!"
+                        set slot (loop-number - 1) of {_menu} to blue stained glass pane named "&fDecember %loop-number%" with lore "&7Unclaimed Present%nl% %nl%%{_lore}% %nl% %nl%&7Reward: &f?"
+                        clear {_lore}
+                        clear {_warp}
+                loop 5 times:            
+                    set slot (30 + loop-number) of {_menu} to black stained glass pane named "&fJanuary %loop-number%" with lore "&7The event will end on January 1st."
+            else:
 
+                loop 31 times:
+                    set slot (loop-number - 1) of {_menu} to red stained glass pane named "&fGrudzień %loop-number%" with lore "&7Ten prezent nie został jeszcze%nl%&7odblokowany."
+
+                set {_date::*} to now formatted human-readable split at " "
+                set {_yearMonthDay::*} to {_date::1} split at "-"
+                set {_num} to 1
+                loop {_yearMonthDay::*}:
+                    set {_yearMonthDay::%{_num}%} to {_yearMonthDay::%{_num}%} parsed as number
+                    add 1 to {_num}
+                
+                load yaml "plugins/Skript/playerdata/events/%uuid of player%.yml" as "winterDelight-%player%"
+                loop {_yearMonthDay::3} times:
+                    if yaml value "Warps.%loop-number%.Claimed" in "winterDelight-%player%" is set:
+                        set {_warp} to yaml value "Warps.%loop-number%.Warp" in "winterDelight-%player%"
+                        set {_coords} to yaml value "Warps.%loop-number%.Coords" in "winterDelight-%player%"
+                        set {_reward} to yaml value "Warps.%loop-number%.Reward" in "winterDelight-%player%"
+                        set {_coords} to yaml value "Warps.%loop-number%.Coords" in "winterDelight-%player%"
+                        set {_rewardAmount} to yaml value "Warps.%loop-number%.Reward Amount" in "winterDelight-%player%"
+                        set slot (loop-number - 1) of {_menu} to lime stained glass pane named "&aGrudzień %loop-number%" with lore "&7Odebrano ten prezent.%nl%&7Znaleziono w: &f%{_warp}%%nl%&7Koordy: &f%{_coords}%%nl%&7Nagroda: &f%{_rewardAmount}%x %{_reward}%"
+                    else:
+                        set {_warp} to yaml value "Warps.%loop-number%.Warp" in "winterDelight-%player%"
+                        if {_warp} = "ap":
+                            set {_lore} to "&7&oTo technologicznie zaawansowane i%nl%&7&omodernistyczne miejsce chowa nie tylko,%nl%&7&osekrety, ale również dzisiejszy prezent."
+                        else if {_warp} = "tp1":
+                            set {_lore} to "&7&oKręte i rozległe korytarze w%nl%&7&odużych podziemiach zaprowadzą cię%nl%&7&odo dzisiejszego prezentu."
+                        else if {_warp} = "aquaisland":
+                            set {_lore} to "&7&oTen odległy kawałek ziemi był%nl%&7&oniegdyś używany jako tajna miejscówka%nl%&7&oi przechowywał przechwycone przedmioty."
+                        else if {_warp} = "ta1":
+                            set {_lore} to "&7&oNie mów nikomu, że członek przeciwnej%nl%&7&odrużyny pomógł zbudować nam TO."
+                        else if {_warp} = "ta2":
+                            set {_lore} to "&7&oSkłamałam wszystkim i sobie, kiedy%nl%&7&opowiedziałam że zmieniłam parę rzeczy w%nl%&7&omojej budowli, żeby nie wyglądała jak totalny%nl%&7&orip-off (wyglądała)."
+                        else if {_warp} = "oldtarg2":
+                            set {_lore} to "&7&oJest rok 2017. Właśnie skończyłem%nl%&7&okopać i wykopałem wystarczającą ilość%nl%&7&oKlejnotów, by kupić {REDACTED}."
+                        else if {_warp} = "lila":
+                            set {_lore} to "&7&oHej, masz tu trochę Klejnotów.%nl%&7&oMogłabyś zbudować mi dom, który pomieści%nl%&7&okilka osób? Lila:"
+                        else if {_warp} = "oldodnkopalnia":
+                            set {_lore} to "&7&oDzisiaj wcześniej wyszedłem ze szkoły!!!%nl%&7&oCzas na robienie mojej ulubionej%nl%&7&orzeczy na Earthcraft."
+                        else if {_warp} = "egirls":
+                            set {_lore} to "&7&oOsoba 1: Powinniśmy zbudować bazę!%nl%&7&oOsoba 2: Definitywnie!%nl%&7&oOsoba 1: Ale {REDACTED} nie mają wstępu.%nl%&7&oOsoba 3: No właśnie, nienawidzimy ich."
+                        else if {_warp} = "kot":
+                            set {_lore} to "&7&oDalej nie mam pojęcia co to jest%nl%&7&oale w tej kuli ponoć znajduje się tu%nl%&7&ojakiś legendarny zwierzak."
+                        else if {_warp} = "oldimpreza":
+                            set {_lore} to "&7&oIMPREZA NA WUDCE!!!!!!!!!%nl%&7&o1 2 3 4"
+                        else if {_warp} = "osiedledupa":
+                            set {_lore} to "&7&oZbudowanie bazy obok mieszkania na%nl%&7&owynajem to był bardzo dobry pomysł%nl%&7&o(nikt by tego nie kupił ALEX)!!!"
+                        else if {_warp} = "skrzynki":
+                            set {_lore} to "&7&oChcecie zagrać w minigrę?%nl%&7&oTym razem, zamiast chować prezdmiot w {REDACTED},%nl%&7&oschowam prezent obok niej."
+                        else if {_warp} = "tartak":
+                            set {_lore} to "&7&oNigdy tego miejsca nie znajdziemy."
+                        else if {_warp} = "trening":
+                            set {_lore} to "&7&oDzisiejszy prezent chowa się tam,%nl%&7&ogdzie można ćwiczyć swoje umiejętności%nl%&7&obitewne."
+                        else if {_warp} = "wycieczka":
+                            set {_lore} to "&7&o- Weź minecart, idziemy na przygodę!%nl%&7&o- Okej, gdzie jedziemy?%nl%&7&o- Chodź za mną na PKP.%nl%&7&o*2 minuty później*%nl%&7-&o Oh, okej..."
+                        else if {_warp} = "kino":
+                            set {_lore} to "&7&oOdbywa się w soboty."
+                        else if {_warp} = "oldkopalnia1":
+                            set {_lore} to "&7&oIkoniczna i ogromna, znajduje się%nl%&7&ow niej dużo warpów. Tęsknie%nl%&7&oza nią, czy możemy zrobić taką nową."
+                        else if {_warp} = "osiedledeby":
+                            set {_lore} to "&7&oDomy wysoko w chmurach."
+                        else if {_warp} = "osiedlelodu":
+                            set {_lore} to "&7&oBardzo oddalone i zimne miejsce."
+                        else if {_warp} = "oldbank":
+                            set {_lore} to "&7&oTa hala była niegdyś jednym z najbardziej%nl%&7&oodwiedzanych miejsc na Earthcraft."
+                        else if {_warp} = "oldmagazynkapo":
+                            set {_lore} to "&7&oTo miejsce trzyma dużo historii...%nl%&7&o...i przedmiotów."
+                        else if {_warp} = "oldgry":
+                            set {_lore} to "&7&oQ: Jaki pseudonim ma Kapo na grupie?%nl%&7&o*Kapo44 joined the server*"
+                        else if {_warp} = "oldmuzeum":
+                            set {_lore} to "&7&oW tym miejscu była kiedyś przechowywana%nl%&7&oi zapisywana historia serwera."
+                        else if {_warp} = "oldspawn2":
+                            set {_lore} to "&7&oWielki i przestrzenny, gracze przestali%nl%&7&oodwiedzać to miejsce przez to jak%nl%&7&obardzo zaczęło lagować."
+                        else if {_warp} = "oldspawn":
+                            set {_lore} to "&7&oOG."
+                        else if {_warp} = "spawn":
+                            set {_lore} to "&7&oGłówne miejsce na wszystkie twoje%nl%&7&ograczowe potrzeby."
+                        else if {_warp} = "oldpkp":
+                            set {_lore} to "&7&oMinecart na osiedle dupa odjedzie%nl%&7&oza kilka chwil. Przepraszamy za%nl%&7&owszelkie kłopoty."
+                        else if {_warp} = "oldstable":
+                            set {_lore} to "&7&oMoja Panama potrafi skakać najwyżej!"
+                        else if {_warp} = "osiedleemilka":
+                            set {_lore} to "&7&oTo miejsce miało windę%nl%&7&oORAZ hotel."
+                        else if {_warp} = "osiedlemelony":
+                            set {_lore} to "&7&oKto nie chciałby mieszkać%nl%&7&ow miejscu pełnym melonów?!"
+                        set slot (loop-number - 1) of {_menu} to blue stained glass pane named "&fGrudzień %loop-number%" with lore "&7Nieodebrany prezent%nl% %nl%%{_lore}% %nl% %nl%&7Nagroda: &f?"
+                        clear {_lore}
+                        clear {_warp}
+                loop 5 times:            
+                    set slot (30 + loop-number) of {_menu} to black stained glass pane named "&fStyczeń %loop-number%" with lore "&7To wydarzenie zakończy się 1szego stycznia."
+            unload yaml "winterDelight-%player%"
+            open {_menu} to player
+    else if player's tool = leather horse armor:
+        spawn 1 pig at player with nbt from "{Silent:1b}"
+        set name of last spawned pig to "winterpet"
+        set tag "custom;WinterPet" of nbt of last spawned pig to true
+        WinterPetAmbientSounds(last spawned pig)
     else if player's tool = compass:
         set {_date::*} to now formatted human-readable split at " "
         set {_yearMonthDay::*} to {_date::1} split at "-"
@@ -191,39 +298,204 @@ on rightclick:
         loop {_yearMonthDay::*}:
             set {_yearMonthDay::%{_num}%} to {_yearMonthDay::%{_num}%} parsed as number
             add 1 to {_num}
-
+        
         if {_yearMonthDay::2} = 11:
-            if metadata value "WinterDelightPresentSelected" of player is set:
-                load yaml "plugins/Skript/playerdata/events/%uuid of player%.yml" as "winterDelight-%player%"
-                loop {_yearMonthDay::3} times:
-                    if yaml value "Warps.%loop-number%.Claimed" in "winterDelight-%player%" is not set:
-                        set {_coords} to yaml value "Warps.%loop-number%.Coords" in "winterDelight-%player%"
-                        set {_rotation} to yaml value "Warps.%loop-number%.Rotation" in "winterDelight-%player%"  
-                        add {_coords} to {_coords::*}
-                        add {_rotation} to {_rotation::*}       
-                unload yaml "winterDelight-%player%"
+            load yaml "plugins/Skript/playerdata/events/%uuid of player%.yml" as "winterDelight-%player%"
+            load yaml "plugins/Skript/playerdata/events/winterdelight.yml" as "winterDelightYml-%player%"
+            loop {_yearMonthDay::3} times:
+                if yaml value "Warps.%loop-number%.Claimed" in "winterDelight-%player%" is not set:
+                    set {_coords} to yaml value "Warps.%loop-number%.Coords" in "winterDelight-%player%"
+                    set {_coordsList::%{_coords}%} to distance between player and {_coords}
+                    clear {_coords}
+            unload yaml "winterDelight-%player%"
+            unload yaml "winterDelightYml-%player%"
+            set {_indices::*} to all indices of {_coordsList::*}
+            set {_index} to 1
+            set {_size} to 31
+            if {_size} < 0:
+                set {_reversed} to true
+                set {_size} to ({_size} * (-1))
+            loop {_indices::*}:
+                set {_values::%{_index}%} to {_coordsList::%loop-value%}
+                set {_indexes::%{_index}%} to "%loop-value%"
+                add 1 to {_index}
+            if {_size} > (size of {_indexes::*}):
+                set {_size} to (size of {_indexes::*})
+            loop {_size} times:
+                loop {_values::*}:
+                    if {_max} is not set:
+                        set {_max} to loop-value-2
+                        set {_index} to loop-index
+                    else:
+                        if {_reversed} is not true:
+                            if loop-value-2 < {_max}:
+                                set {_max} to loop-value-2
+                                set {_index} to loop-index
+                        else:
+                            if loop-value-2 > {_max}:
+                                set {_max} to loop-value-2
+                                set {_index} to loop-index
+                set {_var} to "%{_max}%"
+                add {_var} to {_return::*}
+                add {_indexes::%{_index}%} to {_coords::*}
+                delete {_indexes::%{_index}%}, {_values::%{_index}%}, {_max} and {_index}
+            replace all "world:" in {_coords::1} with ""
+            set {_coordsLoc::*} to {_coords::1} split at ","
+            set {_in} to 1
+            loop {_coordsLoc::*}:
+                set {_coordsLoc::%{_in}%} to {_coordsLoc::%{_in}%} parsed as number
+                add 1 to {_in}
+            
+            set compass target of player to location({_coordsLoc::1}, {_coordsLoc::2}, {_coordsLoc::3}, world "%player's world%")
+            play sound "entity.chicken.egg" with volume 2 and pitch 0.65 to player
+            play sound "entity.snowball.throw" with volume 2 and pitch 0 to player
+            if {language::%player%} = "English":
+                if {_return::1} is set:
+                    send action bar "Distance: %{_return::1}%" to player
+                else:
+                    send action bar "&cNo nearby presents could be found." to player
+            else:
+                if {_return::1} is set:
+                    send action bar "Dystans: %{_return::1}%" to player
+                else:
+                    send action bar "&cNie znaleziono pobliskich prezentów." to player
+
     if player's name = "Pehrek":
         if clicked block = player head:
+            newGiftSpawn()
+
+            stop
+            delete yaml "plugins/Skript/playerdata/events/%uuid of player%.yml"
+            playerGiftYaml(player)
             send block data of clicked block to player
             send location of clicked block to player
         
         
 
-function newGiftSpawn(p: player):
-    #Treasure compass that leads to the presents location
-    #Gifts do not disappear
-    #Reward list equal to the warp
-    #On joni make player see block at coord as gift
+        #Block clicking in calendar
+        #Music in pass
+        #Music in calendar
+        #Opening gifts + sound (pickup na low pitch, pop  present?) success, one of those POP things that make sounds for birthdays
+        #Gift opening animation? if time
 
-    load yaml "plugins/Skript/playerdata/events/%uuid of {_p}%.yml" as "winterDelight-%{_p}%"
-    if yaml value "Warps" in "winterDelight-%{_p}%" is not set:
-        set {_warpList::*} to "ap | 1013, 67, -775, 5 | Sage's Exp. Book | 6", "aquaisland | -4414, 66, -583, 0 | Luxurious Chest | 30", "tp1 | 77, 19, 377, 6 | Secret Wonders Booster | 10"
-        set {_warpList::*} to {_warpList::*} and "ta1 | 642, 25, -1096, 10 | Majestic Dawn Booster | 10", "ta2 | 1104, 30, -769, 6 | Klejnot | 300", "oldtarg2 | 734, 63, -126, 10 | Unseen Forces Booster | 10", "lila | 391, 88, -278, 15 | Star Shard | 3"
-        set {_warpList::*} to {_warpList::*} and "oldodnkopalnia | 794, 63, -1461, 10 | Essence Bundle | 1", "egirls | -450, 19, -1087, 2 | x | x", "kot | 1077, 59, -1187, 9 | x | x", "oldimpreza | 65, 59, -34, 2 | x | x", "osiedledupa | 104, 23, 348, 14 | x | x", "skrzynki | 970, 24, 7, 2 | x | x"
-        set {_warpList::*} to {_warpList::*} and "tartak | x | x | x", "trening | x | x | x", "wycieczka | x | x | x", "kino | x | x | x", "oldkopalnia1 | x | x | x", "osiedledeby | x | x | x", "osiedlelodu | x | x | x",
-        set {_warpList::*} to {_warpList::*} and "oldbank | x | x | x", "oldmagazynkapo | x | x | x", "oldgry | x | x | x", "oldmuzeum | x | x | x", "oldspawn2 | x | x | x", "oldspawn | x | x | x"
-        set {_warpList::*} to {_warpList::*} and "spawn | x | x | x", "oldpkp | x | x | x", "oldstable | x | x | x", "osiedleemilka | x | x | x", "osiedlemelony | x | x | x"
-        set {_warpList::*} to shuffled {_warpList::*}
+function SnowfallOnSpawn():
+    while amount of online players > 0:
+        stop loop if amount of online players = 0
+        set {_intensity} to a random integer between 1 and 5
+        loop {_intensity} times:
+            Snowfall()
+        wait 50 seconds
+
+function Snowfall():
+    loop 400 times:
+        set {_x} to a random number between -1263.0 and -1124.0
+        set {_z} to a random number between -1923.0 and -1788.0
+        set {_y} to a random number between 60.0 and 135.0
+        SnowfallSpawn(location({_x}, {_y}, {_z}, world "world"))
+        if loop-number is divisible by 4:
+            wait 1 tick
+
+function SnowfallSpawn(loc: location):
+    set {_targetLoc} to block 30 below {_loc}
+    loop round(distance between {_loc} and {_targetLoc}) / 0.1 times:
+        set {_targetLoc} to location 0.1 below {_loc}
+        set {_vec} to vector between {_loc} and {_targetLoc}
+        set vector length of {_vec} to loop-value * 0.1
+        draw 1 of poof at {_loc} ~ {_vec}
+        wait 3 ticks
+
+function AkasakaArthurSnowFight():
+    if amount of online players = 1:
+        set {_akasaka} to "c50e5999-6070-43c5-b8d7-fdf59851f6f7"
+        set {_akasaka} to {_akasaka} parsed as entity
+        apply slowness 9999 without particles to {_akasaka} for 2 months
+        set {_arthur} to "8a35ea83-59bd-47a7-b124-e3b482c38ec4"
+        set {_arthur} to {_arthur} parsed as entity
+        disguise {_arthur} as "Arthur"
+        disguise {_akasaka} as "Akasaka"
+        while amount of online players > 0:
+            stop loop if amount of online players = 0
+            set {_x} to a random integer between 1 and 2
+            set {_wait} to a random number between 0.5 and 3.25
+            if {_x} = 1:
+                make {_akasaka} swing their hand
+                set {_z} to {_akasaka}
+                set {_y} to {_arthur}
+            else if {_x} = 2:
+                make {_arthur} swing their hand
+                set {_z} to {_arthur}
+                set {_y} to {_akasaka}
+            spawn 1 snowball at block above {_z}
+            make {_z} look at {_y}
+            push last spawned snowball (vector from {_z} to {_y}) with speed 1
+            SnowFightTrail(last spawned snowball)
+            play sound "entity.snowball.throw" with volume 1.5 and pitch 0 at {_z}
+            if {_count} is divisible by 4:
+                set {_randomDialogue} to a random integer between 1 and 4
+                if {_randomDialogue} = 1:
+                    dialogue("&f💬 You're good at this!", location 1.5 above {_arthur}'s head, 0 seconds, 2.5 seconds)
+                else if {_randomDialogue} = 2:
+                    if {_y} = {_akasaka}:
+                        dialogue("&f💬 Try to throw harder next time!", location 1.5 above {_akasaka}'s head, 0 seconds, 2.5 seconds)
+                    else:
+                        dialogue("&f💬 Hehe", location 1.5 above {_akasaka}'s head, 0 seconds, 2.5 seconds)
+                else if {_randomDialogue} = 3:
+                    dialogue("&f💬 Dodge this!", location 1.5 above {_z}'s head, 0 seconds, 2.5 seconds)
+                else:
+                    dialogue("&f💬 Ow!", location 1.5 above {_y}'s head, 0 seconds, 2.5 seconds)
+            chance of 40%:
+                set {_random} to a random integer between 1 and 2
+                if {_random} = 1:
+                    SnowFightDodge({_z})
+                else:
+                    push {_y} upwards with speed 0.52
+                    chance of 30%:
+                        SnowFightDoubleJump({_y})
+            chance of 30%:
+                push {_z} upwards with speed 0.52
+                chance of 30%:
+                    SnowFightDoubleJump({_z})
+            wait ("%{_wait}% seconds" parsed as timespan)
+            add 1 to {_count}
+
+function SnowFightDodge(e: entity):
+    make {_e}'s disguise sneak
+    set {_x} to a random number between 0.5 and 1.2
+    wait "%{_x}% seconds" parsed as timespan
+    make {_e}'s disguise not sneak    
+
+function SnowFightDoubleJump(e: entity):
+    set {_x} to a random number between 0.5 and 0.7
+    wait "%{_x}% seconds" parsed as timespan
+    push {_e} upwards with speed 0.52
+
+function SnowFightTrail(e: entity):
+    while {_e} is alive:
+        draw 1 snowflake at {_e}
+        wait 1 tick
+
+function WinterPetAmbientSounds(e: entity):
+    while {_e} is alive:
+        set {_wait} to a random number between 5 and 12
+        play sound "pet.winterpet_ambient" with volume 2 and pitch 1 at {_e}
+        wait "%{_wait}% seconds" parsed as timespan
+import:
+    net.citizensnpcs.api.CitizensAPI
+    net.citizensnpcs.trait.SkinTrait
+
+function getNPC(e: entity) :: javaobject:
+    return CitizensAPI.getNPCRegistry().getNPC({_e})
+    
+function newGiftSpawn():
+    #Create a file if it does not exist yet
+    load yaml "plugins/Skript/playerdata/events/winterdelight.yml" as "winterDelight"
+    if 1 != 2:
+        set {_warpList::*} to "ap | 1013.5, 67, -775.5, 5 | Sage's Exp. Book | 6", "aquaisland | -4414.5, 66, -583.5, 0 | Luxurious Chest | 30", "tp1 | 77.5, 19, 377.5, 6 | Secret Wonders Booster | 10"
+        set {_warpList::*} to {_warpList::*} and "ta1 | 642.5, 25, -1096.5, 10 | Majestic Dawn Booster | 10", "ta2 | 1104.5, 30, -769.5, 6 | Klejnot | 300", "oldtarg2 | 734.5, 63, -126.5, 10 | Unseen Forces Booster | 10", "lila | 391.5, 88, -278.5, 15 | Star Shard | 3"
+        set {_warpList::*} to {_warpList::*} and "oldodnkopalnia | 794.5, 63, -1461.5, 10 | Essence Bundle | 1", "egirls | -450.5, 19, -1087.5, 2 | Crafty Delphoxite ★★★ | 1", "kot | 1077.5, 59, -1187.5, 9 | Stardust | 500", "oldimpreza | 65.5, 59, -34.5, 2 | Star Shard | 3", "osiedledupa | 104.5, 23, 348.5, 14 | Achroite ★★★ | 1", "skrzynki | 970.5, 24, 7.5, 2 | Luxurious Chest | 30"
+        set {_warpList::*} to {_warpList::*} and "tartak | -5597.5, 73, -456.5, 14 | Enchanted Prismatic Lens | 1", "wycieczka | 331.5, 73, 12.5, 6 | Cosmic Flux | 1000", "kino | 107.5, 14, 492.5, 10 | Essence Bundle | 1", "oldkopalnia1 | 71.5, 16, 392.5, 14 | Diamond Shard | 10", "osiedledeby | 1308.5, 81, -55.5, 2 | Random Boost | 2", "oldbank | 663.5, 65, -203.5, 3 | Klejnot | 300", "osiedlelodu | 3495714.5, 72, 1906.5, 10 | Artifact Box ★★★★★ | 1"
+        set {_warpList::*} to {_warpList::*} and "oldmagazynkapo | 395.5, 84, -257.5, 14 | Gemstone Bundle | 1", "oldgry | -590.5, 246, -735.5, 6 | Obsidian | 50", "oldspawn2 | -1026.5, 70, -1344.5, 14 | Wildcard | 1", "oldmuzeum | -979.5, 76, -1417.5, 6 | Enchanted Prismatic Lens | 1", "oldspawn | 139.5, 73, 260.5, 7 | Token of Gratitude | 5"
+        set {_warpList::*} to {_warpList::*} and "spawn | -1140.5, 64, -1895.5, 6 | Star Shard | 8", "oldpkp | 54.5, 18, 486.5, 14 | Ice Essence | 30", "oldstable | 1301.5, 64, -1800.5, 9 | Jar of Experience | 250", "osiedleemilka | 64.5, 30, 400.5, 6 | Tempestium Ore | 40", "osiedlemelony | -1004.5, 35, -1368.5, 14 | Sage's Exp. Book | 6", "trening | -184.5, 67, -2303.5, 10 | Artifact Box ★★★★★ | 1"
         set {_count} to 1
         loop {_warpList::*}:
             set {_presentList::*} to loop-value split at " | "
@@ -239,11 +511,64 @@ function newGiftSpawn(p: player):
                 set {_location} to location({_locationList::1}, {_locationList::2}, {_locationList::3}, world "world")
             else:
                 set {_location} to location({_locationList::1}, {_locationList::2}, {_locationList::3}, world "world_the_end")
+            set yaml value "Warps.%{_count}%.Warp" in "winterDelight" to {_warp}
+            set yaml value "Warps.%{_count}%.Coords" in "winterDelight" to {_location}
+            set yaml value "Warps.%{_count}%.Rotation" in "winterDelight" to {_locationList::4}
+            set yaml value "Warps.%{_count}%.Reward" in "winterDelight" to {_reward}
+            set yaml value "Warps.%{_count}%.Reward Amount" in "winterDelight" to {_rewardAmount}
+            add 1 to {_count}
+        save yaml "winterDelight"
+    
+    #Spawn a new gift
+    set {_date::*} to now formatted human-readable split at " "
+    set {_yearMonthDay::*} to {_date::1} split at "-"
+    set {_num} to 1
+    loop {_yearMonthDay::*}:
+        set {_yearMonthDay::%{_num}%} to {_yearMonthDay::%{_num}%} parsed as number
+        add 1 to {_num}
+    loop 31 times:
+        set {_location} to yaml value "Warps.%loop-number%.Coords" in "winterDelight"
+        set {_rotation} to yaml value "Warps.%loop-number%.Rotation" in "winterDelight"
+        set block at {_location} to player head
+        add nbt from "{SkullOwner:{Id:[I;804551991,1350192958,-1370858896,1897451698],Properties:{textures:[{Value:""eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZjY2NTFlN2JmYWY1ZTMyMjliM2M2OWY4MTc3MGEyMTBiMjEwNDE3ODNiMjAyZGE3Nzc0MDU1YjQ1ZDdhMWJkMyJ9fX0=""}]}}}" to nbt of block at {_location}
+        set block data tag "rotation" of block at {_location} to {_rotation}
+    
+    save yaml "winterDelight"
+    unload yaml "winterDelight"
+
+function playerGiftYaml(p: player):
+    #Treasure compass that leads to the presents location
+    #Gifts do not disappear
+    #Reward list equal to the warp
+    #On joni make player see block at coord as gift
+    #Artifact Box
+    #Achroite, Primary stat + mobility gem
+    #Essence Bundle
+    #Gemstone Bundle
+
+    load yaml "plugins/Skript/playerdata/events/%uuid of {_p}%.yml" as "winterDelight-%{_p}%"
+    if yaml value "Warps" in "winterDelight-%{_p}%" is not set:
+        set {_warpList::*} to "ap | 1013, 67, -775, 5", "aquaisland | -4414, 66, -583, 0", "tp1 | 77, 19, 377, 6"
+        set {_warpList::*} to {_warpList::*} and "ta1 | 642, 25, -1096, 10", "ta2 | 1104, 30, -769, 6", "oldtarg2 | 734, 63, -126, 10", "lila | 391, 88, -278, 15"
+        set {_warpList::*} to {_warpList::*} and "oldodnkopalnia | 794, 63, -1461, 10", "egirls | -450, 19, -1087, 2", "kot | 1077, 59, -1187, 9", "oldimpreza | 65, 59, -34, 2", "osiedledupa | 104, 23, 348, 14", "skrzynki | 970, 24, 7, 2"
+        set {_warpList::*} to {_warpList::*} and "tartak | -5597, 73, -456, 14", "wycieczka | 331, 73, 12, 6", "kino | 107, 14, 492, 10", "oldkopalnia1 | 71, 16, 392, 14", "osiedledeby | 1308, 81, -55, 2", "oldbank | 663, 65, -203, 3", "osiedlelodu | 3495714, 72, 1906, 10"
+        set {_warpList::*} to {_warpList::*} and "oldmagazynkapo | 395, 84, -257, 14", "oldgry | -590, 246, -735, 6", "oldspawn2 | -1026, 70, -1344, 14", "oldmuzeum | -979, 76, -1417, 6", "oldspawn | 139, 73, 260, 7"
+        set {_warpList::*} to {_warpList::*} and "spawn | -1140, 64, -1895, 6", "oldpkp | 54, 18, 486, 14", "oldstable | 1301, 64, -1800, 9", "osiedleemilka | 64, 30, 400, 6", "osiedlemelony | -1004, 35, -1368, 14", "trening | -184, 67, -2303, 10"
+        set {_count} to 1
+        loop {_warpList::*}:
+            set {_presentList::*} to loop-value split at " | "
+            set {_warp} to {_presentList::1}
+            set {_locationList::*} to {_presentList::2} split at ", "
+            set {_num} to 1
+            loop {_locationList::*}:
+                set {_locationList::%{_num}%} to {_locationList::%{_num}%} parsed as number
+                add 1 to {_num}
+            if {_warp} != "oldimpreza":
+                set {_location} to location({_locationList::1}, {_locationList::2}, {_locationList::3}, world "world")
+            else:
+                set {_location} to location({_locationList::1}, {_locationList::2}, {_locationList::3}, world "world_the_end")
             set yaml value "Warps.%{_count}%.Warp" in "winterDelight-%{_p}%" to {_warp}
             set yaml value "Warps.%{_count}%.Coords" in "winterDelight-%{_p}%" to {_location}
-            set yaml value "Warps.%{_count}%.Rotation" in "winterDelight-%{_p}%" to {_locationList::4}
-            set yaml value "Warps.%{_count}%.Reward" in "winterDelight-%{_p}%" to {_reward}
-            set yaml value "Warps.%{_count}%.Reward Amount" in "winterDelight-%{_p}%" to {_rewardAmount}
             add 1 to {_count}
         broadcast "Saved"
         
@@ -253,24 +578,6 @@ function newGiftSpawn(p: player):
         clear yaml value "Klejnot" in "winterDelight-%{_p}%"
     save yaml "winterDelight-%{_p}%"
     unload yaml "winterDelight-%{_p}%"
-    stop
-    set yaml value "Warps" in "keystone-%{_keystoneId}%" to {_keystonename}
-    set yaml value "Dungeon.Keystone Level" in "keystone-%{_keystoneId}%" to {_keystoneLevel}
-    loop {_affixes::*}:
-        if loop-value contains ":":
-            set {_affix} to loop-value
-            if {_affixDesc::*} is set:
-                set {_affixDesc} to join {_affixDesc::*} by " "
-                set yaml value "Dungeon.Affixes.%{_affix}%" in "keystone-%{_keystoneId}%" to {_affixDesc}
-                clear {_affixDesc::*}
-                clear {_affixDesc}
-            set yaml value "Dungeon.Affixes.%loop-value%" in "keystone-%{_keystoneId}%" to ""
-        else:
-            add loop-value to {_affixDesc::*}
-        if loop-value = last element of {_affixes::*}:
-            set {_affixDesc} to join {_affixDesc::*} by " "
-            set yaml value "Dungeon.Affixes.%{_affix}%" in "keystone-%{_keystoneId}%" to {_affixDesc}
-    set yaml value "Dungeon.Instance ID" in "keystone-%{_keystoneId}%" to {_keystoneId}
 
 
 #Palette 1
