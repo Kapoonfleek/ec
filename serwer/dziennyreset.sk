@@ -49,7 +49,7 @@ function findSecondsUntil(hour: number, minutes: number = 0, seconds: number = 0
 every 10 minutes:
 	# every day at 8:00
 	# since we check every 10 minutes, if we're within 10 minutes of 8:00, we should wait and trigger at 8:00 exactly
-	set {_seconds} to findSecondsUntil(5 + 0.91 + (2/300))
+	set {_seconds} to findSecondsUntil(8 + 0.91 + (2/300))
 	if {_seconds} < 600:
 		wait "%{_seconds}% seconds" parsed as timespan
 		runAt6Announcement()
@@ -57,7 +57,7 @@ every 10 minutes:
 	# every day at 20:00
 	# technically this could be delayed by up to 10 minutes, but since 20:00 is 12 hours after 8:00, it doesn't matter
 	# just be aware that this behavior exists
-	set {_seconds} to findSecondsUntil(6)
+	set {_seconds} to findSecondsUntil(8)
 	if {_seconds} < 600:
 		wait "%{_seconds}% seconds" parsed as timespan
 		runAt6()
@@ -94,7 +94,6 @@ function runAt6Announcement():
 on skript start:
 	wait 2 ticks
 	set {-dungeons} to 0
-	clear {dailyResetSoon}
 	execute console command "gamerule naturalRegeneration false"
 	load yaml "plugins/Skript/serverstats/stats.yml" as "serverstats"
 	if {dziennyreset} is true:
@@ -206,12 +205,16 @@ on skript start:
 	#	clear {leaderboard::*}
 	clear {dmgdealt::*}
 	wait 2 seconds
+	clear {dailyResetSoon}
 	execute console command "sk reload systemy/walki"
 	execute console command "cwr regen groveofimmemorialruins"
 	execute console command "cwr confirm"
+	if getDayMonth("month") = 12:
+		newGiftSpawn()
 			
 on skript stop:
 	clear {discordCodes::*}
+	clear {dailyResetSoon}
 	set {expAreaMayanMobs} to 0
 	clear {expAreaMayan}
 	loop all offline players where [metadata value "dungeon" of input is set]:
@@ -229,7 +232,7 @@ on skript stop:
 		clear {-dungeonBosses%loop-number%}
 	unload yaml "keystoneIds"
 	DungeonStatsFileAverageUpdate()
-	loop all entities where [input is in region "ExpAreaMayan"]:
+	loop all entities where [input's world = "groveofimmemorialruins"]:
 		if loop-entity is not a player:
 			kill loop-entity
 	clear {lingeringInsanityHaste::*}
@@ -242,7 +245,13 @@ on skript stop:
 	#	kill loop-value
 	#clear {standard::*}
 on join:
+	if player is invulnerable:
+		make player vulnerable
 	wait 2 seconds
+	if getDayMonth("month") = 12:
+		AkasakaArthurSnowFight()
+		SnowfallOnSpawn()
+		playerGiftYaml(player)
 	execute console command "noinvincibility on"
 	if {dresetwiad::%player%} = true:
 		set {dresetwiad::%player%} to false
@@ -262,7 +271,7 @@ on join:
 			send "&d=== Weekly reset ===" to player
 			send "&dWeekly rewards are awaiting you in The Grand Vault!" to player
 			send "&dWork Orders have been reset!" to player
-			send "&dCard rotation in Stellar Chest has changed!" to player
+			send "&dCard rotation in the Stellar Chest has changed!" to player
 		else:
 			send "&d=== Tygodniowy reset nastąpił! ===" to player
 			send "&dNagrody czekają na ciebie w Wielkim Skarbcu!" to player
