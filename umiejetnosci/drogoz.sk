@@ -1,0 +1,215 @@
+on rightclick:
+    if player's tool is green dye named "<##4c873e>Salvo" with nbt from "{CustomModelData:14}":
+        if cooldown "Salvo%player%" is finished:
+            set cooldown "Salvo%player%" to 5 seconds
+            set {_pi} to 1
+            play sound "skill.drogoz.rocket_launcher_echo" with volume 0.8 and pitch {_pi} at player
+            loop 6 times:
+                DrogozRocketMissile(player, "Salvo")
+                push player backwards with speed 0.2
+                wait 0.2 seconds
+                add 0.1 to {_pi}
+    else if player's tool is orange dye with nbt from "{CustomModelData:10}":
+        broadcast "B"
+        set {_tar} to target of player
+        if {_tar} is not player:
+            if {_tar} is set:
+                if cooldown "DragonPunch%player%" is finished:
+                    set cooldown "DragonPunch%player%" to 10 seconds
+                    play sound "skill.drogoz.dragon_punch" with volume 4 and pitch 1 at player
+                    play sound "skill.drogoz.dragon_punch_voice" with volume 4 and pitch 1 at player
+                    play sound "skill.drogoz.dragon_punch_background" with volume 4 and pitch 1 at player
+                    
+                    push player upwards with velocity 2
+                    wait 1 second
+                    set {_speed} to 0.1
+                    while distance between player and {_tar} > 2:
+                        add 1 to {_loopcount}
+                        stop loop if {_loopcount} = 150
+                        push player (direction from player to {_tar}) with speed {_speed}
+                        if {_speed} < 3:
+                            add 0.02 to {_speed}
+                        draw 1 flame particle at player
+                        draw 1 smoke particle at player
+                        wait 1 tick
+                    
+                
+    else if player's tool is wheat:
+        push player upwards with velocity 2
+        play sound "skill.drogoz.drogoz_thrust_takeoff" with volume 2.5 and pitch 1 at player
+        set {_pi} to 1
+        loop 3 times:
+            play sound "skill.drogoz.drogoz_thrust" with volume 2.5 and pitch {_pi} at player
+            add 0.1 to {_pi}
+            wait 2 ticks
+    #else if player's tool is yellow dye:
+        #push player upwards with velocity 0.4
+        #push player in player's direction with speed 0.05
+    else if player's tool is golden horse armor:
+        if cooldown "RocketMissile%player%" is finished:
+            set cooldown "RocketMissile%player%" to 1 second
+            DrogozRocketMissile(player, "Normal")
+            loop all players in radius 60 around player:
+                if distance between player and loop-player < 30:
+                    play sound "skill.drogoz.rocket_launcher_echo" with volume 0.8 and pitch 0.95 to loop-player
+                else:
+                    play sound "skill.drogoz.rocket_launcher_far" with volume 0.8 and pitch 1 to loop-player
+    else if player's tool is brown dye named "<##4c873e>Fire Spit" with nbt from "{CustomModelData:5}":
+        spawn large fireball at location 1.2 above player
+        set {_fireball} to last spawned large fireball
+        set tag "ExplosionPower" of nbt of {_fireball} to false
+
+        push {_fireball} in player's direction with velocity 0.001
+        play sound "skill.drogoz.fire_spit_loop" with volume 0.25 and pitch 1 at {_fireball}
+        set tag "custom;DrogozFireball" of nbt of {_fireball} to true
+        play sound "skill.drogoz.fire_spit_deploy_reverb" with volume 1 and pitch 1 at {_fireball}
+
+
+on projectile hit:
+    if tag "custom;DrogozMissile" of nbt of event-projectile is set:
+        draw 1 explosion particle at event-location
+        set {_loc} to event-location
+        DrogozMissileSound({_loc})
+        draw 4 smoke particle at location 0.05 above event-location with offset vector(0.9, 0.8, 0.9) with extra 0.2
+        set {_uuid} to tag "custom;DrogozMissilePlayer" of nbt of event-projectile
+        set {_player} to {_uuid} parsed as a player
+        DrogozMissileDamage(event-location, event-projectile, {_player})
+       
+    else if tag "custom;DrogozFireball" of nbt of event-projectile is set:
+        broadcast "PUSZCZALSKA"
+        play sound "skill.drogoz.fire_spit_deploy" with volume 3 and pitch 1 at event-location
+        play sound "skill.drogoz.fire_spit_impact" with volume 3 and pitch 1 at event-location
+        stop sound "skill.drogoz.fire_spit_loop" for all players in radius 60 around event-location
+
+on projectile collide:
+    if tag "custom;DrogozMissile" of nbt of event-projectile is set:
+        if tag "custom;ECMob" of nbt of event-entity is set:
+            set {_nbt} to nbt of event-projectile
+            set {_uuid} to tag "custom;DrogozMissilePlayer" of nbt of event-projectile
+            set {_player} to {_uuid} parsed as a player
+            DrogozMissileDamage(location of event-entity, event-projectile, {_player})
+        else:
+            cancel event
+
+command /drogoz:
+    trigger:
+        if player's name = "Pehrek" or "nishikoru":
+            #give player green dye named "<##4c873e>Salvo" with lore "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &f20 seconds%nl%&7Use: &fRMB%nl%<##4c873e>Loads all your rockets into your launcher%nl%<##4c873e>and unleashes them for a rapid-fire barrage,%nl%<##4c873e>dealing &f2.5 <##4c873e>damage per rocket and &oReloading<##4c873e>." with nbt from "{CustomModelData:14}"
+            #give player orange dye named "<##4c873e>Dragon Punch" with lore "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &f4 minutes%nl%&7Use: &fRMB%nl%<##4c873e>Unleash your fury to jet through the air and%nl%<##4c873e>hunt down an enemy to deal massive damage to.%nl%<##4c873e>Deals &f30 <##4c873e>damage to the enemy you make contact%nl%<##4c873e>with." with nbt from "{CustomModelData:10}"
+            #give player brown dye named "<##4c873e>Fire Spit" with lore "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &f8 seconds%nl%&7Use: &fRMB%nl%<##4c873e>Spit a flammable orb and shoot it to deal &f3 <##4c873e>damage%nl%<##4c873e>to enemies and weaken them to further attacks for%nl%&f5 seconds<##4c873e>, increasing their damage taken from your%nl%<##4c873e>abilties by &f30%%." with nbt from "{CustomModelData:5}"
+            give player yellow dye named "<##4c873e>Thrust" with lore "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &f30 seconds%nl%&7Use: &fRMB%nl%<##4c873e>Jet upwards into the air."
+            Fire explosive rockets to decimate an area, dealing 85 damage.
+            Press SHIFT to reload? talent that allows automatic reloading? automatic reloading baseline?
+
+
+
+function HomingMissileSpawn(p: player, target: entity):
+    spawn 1 bee at {_p} with nbt from "{Silent:1b}"
+    set the name of last spawned bee to "Homing Missile"
+    set tag "custom;ECSummoned" of nbt of last spawned bee to "%{_p}%"
+    set {_homingMissile} to last spawned bee
+    set {_disguise} to a new armor stand disguise
+    set helmet of disguise {_disguise} to stick named "Drogoz Missile"
+    disguise {_homingMissile} as {_disguise}
+    make {_homingMissile}'s disguise invisible
+    make {_homingMissile}'s disguise small
+    set flying speed of {_homingMissile} to 3
+    execute console command "/disguuid %uuid of {_homingMissile}% armor_stand setHelmet setCustomNameVisible false"
+    HomingMissileFloat({_p}, {_homingMissile}, {_target})
+    HomingMissileVisual({_homingMissile})
+    play sound "skill.drogoz.drogoz_thrust" with volume 0.4 and pitch 2 at {_p}
+    play sound "skill.drogoz.drogoz_land" with volume 0.6 and pitch 2 at {_p}
+    play sound "skill.drogoz.drogoz_thrust_takeoff" with volume 0.6 and pitch 2 at {_p}
+
+function HomingMissileFloat(p: player, homingMissile: entity, target: entity):
+    while distance between {_homingMissile} and {_target} > 2:
+        {_homingMissile}.setFlower(null)
+        push {_homingMissile} in {_homingMissile}'s direction with speed 0.0975
+        make {_homingMissile} pathfind to {_target}
+        wait 5 ticks
+        stop loop if {_target} is not alive
+    if {_target} is alive:
+        set {_damage} to 1 + ({damage::%{_p}%}/60) + ({versatility::%{_p}%}/180) + ({primarystat::%{_p}%}/30)
+        set {_target}'s last damage cause to sweep attack
+        set {_lore} to "Homing Missiles"
+        set metadata value "Element" of {_p} to "Fight"
+        set metadata value "LastDamageCauseEN" of {_target} to "<##4c873e>Homing Missile"
+        set metadata value "LastDamageCause" of {_target} to "<##4c873e>Homing Missile"
+        set metadata value "LastDamageCauseLore" of {_target} to {_lore}
+        set metadata value "LastDamageCauseLoreEN" of {_target} to {_loreEN}
+        make {_p} damage {_target} by {_damage}*2
+        play sound "skill.drogoz.rocket_launcher_shoot_far" with volume 3 and pitch 1.75 at {_target}
+    teleport {_homingMissile} to location(0, -100, 0)
+    kill {_homingMissile}
+
+function HomingMissileVisual(homingMissile: entity):
+    while {_homingMissile} is alive:
+        draw 1 flame particle at location 0.3 above {_homingMissile} with offset vector(0.125, 0.125, 0.125) with extra 0.03
+        draw 1 smoke particle at location 0.3 above {_homingMissile} with offset vector(0.125, 0.125, 0.125) with extra 0.03
+        wait 1 tick
+
+function RocketMissileTrail(p: player, missile: entity):
+    RocketMissileDestroy({_missile})
+    while {_missile} is alive:
+        draw 1 flame particle at {_missile} with offset vector(0.1, 0.1, 0.1) with extra 0.015
+        draw 1 smoke particle at {_missile} with offset vector(0.15, 0.1, 0.15) with extra 0.05
+        wait 1 tick
+
+function RocketMissileDestroy(rocketMissile: entity):
+    wait 12 seconds
+    kill {_rocketMissile}
+
+function DrogozRocketMissile(p: player, type: text):
+    shoot snowball from {_p}
+    set item of last shot snowball to stick named "Drogoz Missile"
+    draw 1 flame particle at last shot snowball
+    set {_missile} to last shot snowball
+    set tag "custom;DrogozMissile" of nbt of {_missile} to true
+    set tag "custom;DrogozMissilePlayer" of nbt of {_missile} to uuid of {_p}
+    if {_type} = "Salvo":
+        set tag "custom;DrogozMissileType" of nbt of {_missile} to {_type}
+    RocketMissileTrail({_p}, {_missile})
+
+function DrogozMissileSound(loc: location):
+    wait 2 ticks
+    loop all players in radius 60 around {_loc}:
+        if distance between loop-player and {_loc} < 30:
+            play sound "skill.drogoz.rocket_launcher" with volume 0.8 and pitch 1 to loop-player
+        else:
+            play sound "skill.drogoz.rocket_launcher_reverb" with volume 0.8 and pitch 1 to loop-player
+
+function DrogozMissileDupeDamageAvoid(e: entity, missile: entity):
+    set metadata value uuid of {_missile} of {_e} to true
+    wait 8 ticks
+    clear metadata value uuid of {_missile} of {_e}
+
+function DrogozMissileDamage(loc: location, missile: entity, player: player):
+    loop all entities in radius 4 around {_loc}:
+        if tag "custom;ECMob" of nbt of loop-entity is set:
+            if metadata value uuid of {_missile} of loop-entity is not set:
+                DrogozMissileDupeDamageAvoid(loop-entity, {_missile})
+                set {_crit} to 0 + ({criticalhit::%{_player}%}/10)
+                if tag "custom;DrogozMissileType" of nbt of {_missile} = "Salvo":
+                    set {_damage} to 2.5 + ({damage::%{_player}%}/36) + ({versatility::%{_player}%}/108) + ({primarystat::%{_player}%}/18)
+                    set {_lore} to "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &f20 seconds%nl%&7Use: &fRMB%nl%<##4c873e>Loads all your rockets into your launcher%nl%<##4c873e>and unleashes them for a rapid-fire barrage,%nl%<##4c873e>dealing &f2.5 <##4c873e>damage per rocket and &oReloading<##4c873e>."
+                    set {_loreEN} to "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &f20 seconds%nl%&7Use: &fRMB%nl%<##4c873e>Loads all your rockets into your launcher%nl%<##4c873e>and unleashes them for a rapid-fire barrage,%nl%<##4c873e>dealing &f2.5 <##4c873e>damage per rocket and &oReloading<##4c873e>."
+                    set {_lastDmgCauseEN} to "<##4c873e>Salvo"
+                    set {_lastDmgCause} to "<##4c873e>Salwa"
+                else:
+                    set {_damage} to 3 + ({damage::%{_player}%}/30) + ({versatility::%{_player}%}/90) + ({primarystat::%{_player}%}/15)
+                    set {_lastDmgCauseEN} to "<##4c873e>Rocket Launcher"
+                    set {_lastDmgCause} to "<##4c873e>Wyrzutnia Rakietowa"
+                chance of {_crit}%:
+                    set {_damage} to {_damage}*2
+                LoreUpdate({_player}, {_lore}, {_loreEN}, {_lastDmgCause}, {_lastDmgCauseEN})
+                set loop-entity's last damage cause to sweep attack
+                set metadata value "LastDamageCauseEN" of loop-entity to {_lastDmgCauseEN}
+                set metadata value "LastDamageCause" of loop-entity to {_lastDmgCause}
+                set metadata value "LastDamageCauseLoreEN" of loop-entity to {_loreEN}
+                set metadata value "LastDamageCauseLore" of loop-entity to {_lore}
+                set metadata value "Element" of {_player} to "Fight"
+                make {_player} damage loop-entity by {_damage}*2
+                chance of 20%:
+                    HomingMissileSpawn({_player}, loop-entity)
+                    broadcast "&oI only call you..."
+
