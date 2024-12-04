@@ -132,7 +132,11 @@ on rightclick:
 										if tag "Talents;Row 5" of nbt of {karta::%player%} = "Further Beyond":
 											set {_chance} to 6
 										chance of {_chance}%:
-											Ascendance(player, 6 seconds)
+											if tag "Constellation;Let the World Watch" of nbt of {karta::%player%} is set:
+												set {_ascendanceDuration} to "%6*1.33% seconds" parsed as timespan
+											else:
+												set {_ascendanceDuration} to 6 seconds
+											Ascendance(player, {_ascendanceDuration})
 
 									if metadata value "Ascendance" of player is not set:
 										set the cooldown of player's held item for player to {_cd}
@@ -198,9 +202,9 @@ on rightclick:
 						set the cooldown of player's held item for player to {_cd}
 						set metadata value "cast" of player to true
 						if tag "Talents;Row 5" of nbt of {karta::%player%} = "Skytear":
-							set {_wait} to 0.25 seconds
+							set {_tick} to 0.25 seconds
 						else:
-							set {_wait} to 0.5 seconds
+							set {_tick} to 0.5 seconds
 						push the player upwards with speed 2
 						wait 0.2 seconds
 						set {wildfire::%player%} to true
@@ -210,8 +214,15 @@ on rightclick:
 							set {_bonusDamage} to 20
 							if tag "Talents;Row 5" of nbt of {karta::%player%} = "Further Beyond":
 								add 10 to {_bonusDamage}
+							if tag "Constellation;Let the World Watch" of nbt of {karta::%player%} is set:
+								set {_asc} to "%{_wait}%"
+								replace all " seconds" and " second" in {_asc} with ""
+								set {_asc} to {_asc} parsed as number
+								set {_ascendanceDuration} to "%{_asc}*1.33% seconds" parsed as timespan
+							else:
+								set {_ascendanceDuration} to {_wait}
 							add {_bonusDamage} to {damage::%player%}
-							Ascendance(player, 60 seconds)
+							Ascendance(player, {_ascendanceDuration})
 						while {wildfire::%player%} is true:
 							stop loop if {wildfire::%player%} is not true
 							stop loop if metadata value "cast" of player is not true
@@ -222,10 +233,9 @@ on rightclick:
 							set {_x} to a random element of {_ent::*}
 							clear {_ent::*}
 							LavaBurst(player, {_x}, 1)
-							wait {_wait}
+							wait {_tick}
 						if tag "Talents;Row 2" of nbt of {karta::%player%} = "Lava Will Rain":
 							remove {_bonusDamage} from {damage::%player%}
-							clear metadata value "Ascendance" of player
 						if metadata value "cast" of player is not true:
 							if {language::%player%} = "English":
 								send action bar "&cInterrupted" to player
@@ -307,7 +317,11 @@ on rightclick:
 						LoreUpdate(player, {_lore}, {_loreEN}, "<##b03228>Wyniesienie", "<##b03228>Ascendance")
 						if cooldown "Ascendance%player%" is finished:
 							set cooldown "Ascendance%player%" to {_cd}
-							Ascendance(player, 18 seconds)
+							if tag "Constellation;Let the World Watch" of nbt of {karta::%player%} is set:
+								set {_ascendanceDuration} to "%18*1.33% seconds" parsed as timespan
+							else:
+								set {_ascendanceDuration} to 18 seconds
+							Ascendance(player, {_ascendanceDuration})
 						else: 
 							cancel event
 							if {tekstcd::%player%} = true:
@@ -775,7 +789,10 @@ function LavaBurst(p: player, x: entity, multiplier: number):
 			clear {lavakeeper::%{_p}%}
 
 	if metadata value "Ascendance" of {_p} is set:
-		set {_damage} to {_damage} * (1 + ({_crit}/100))
+		if tag "Constellation;Let the World Watch" of nbt of {karta::%{_p}%} is set:
+			set {_damage} to {_damage} * (1 + ({_crit}/50))
+		else:
+			set {_damage} to {_damage} * (1 + ({_crit}/100))
 
 	set {_chance} to 10
 	#LAVA IMBUED
@@ -897,12 +914,15 @@ function LavaBurst(p: player, x: entity, multiplier: number):
 	if {_check} is not set:
 		chance of {_crit}%:
 			set {_damage} to {_damage}*{_critmultiplier}
+
+	
 	make {_p} damage {_x} by {_damage}*2
 	if tag "Talents;Row 5" of nbt of {karta::%{_p}%} = "Rolling Magma":
 		remove 0.75 seconds from cooldown "Lava Wave%{_p}%"
 		remove 0.75 seconds from cooldown "Lavakeeper%{_p}%"
 		remove 0.75 seconds from cooldown "Lavafury%{_p}%"
 	BonusLavaBurst({_p}, {_x})
+
 	#VOLCANIC INFERNO
 	wait 1 tick
 	loop {_loreheart::*}:
@@ -959,6 +979,47 @@ function WildfireSpin(p: player):
 		else:
 			remove 8 from {_num}
 		wait 1 tick
+
+function MasterHeritage(p: player, target: entity, damageLava: number):
+	set {_pospiech} to 1 + ({haste::%{_p}%}/4)
+	set {_ticks} to rounded 4/{_pospiech}
+	set {_damage} to 0.1*{_damageLava}
+	if metadata value "Master Heritage-%{_p}%" of {_target} is not set:
+		set metadata value "Master Heritage-%{_p}%" of {_target} to {_ticks}
+		set metadata value "Master Heritage Total Damage-%{_p}%" of {_target} to {_damage}
+		set metadata value "Master Heritage Remaining Damage-%{_p}%"
+		wait 1 tick
+		while metadata value "Master Heritage-%{_p}%" of {_target} > 0:
+			if {_target} is alive:
+				set {_pospiech} to 1 + ({haste::%{_p}%}/4)
+				set {_crit} to 0 + ({criticalhit::%{_p}%}/10)
+				set {_duration} to 14
+				set {_damage} to (metadata value "Master Heritage Total Damage-%{_p}%" of {_target})/{_ticks}
+				broadcast {_damage}
+				set {_target}'s last damage cause to sweep attack
+				set metadata value "Element" of {_p} to "Ghost"
+				set metadata value "LastDamageCauseEN" of {_target} to "<##b03228>Lava Languish"
+				set metadata value "LastDamageCause" of {_target} to "<##b03228>Popieląca Lawa"
+				set metadata value "LastDamageCauseLore" of {_target} to {_lore}
+				set metadata value "LastDamageCauseLoreEN" of {_target} to {_lore}
+				make {_p} damage {_target} by {_damage}*2
+				set {_tickTime} to "%1/{_pospiech}% seconds" parsed as timespan
+				set {_ticksTotal} to metadata value "Master Heritage-%{_p}%" of {_target}
+				remove 1 from {_ticksTotal}
+				set metadata value "Master Heritage-%{_p}%" of {_target} to {_ticksTotal}
+				if metadata value "Master Heritage Refreshed-%{_p}%" of {_target} is set:
+				wait {_tickTime}
+			else:
+				clear metadata value "Master Heritage-%{_p}%" of {_target}
+				clear metadata value "Master Heritage Total Damage-%{_p}%" of {_target}
+				stop loop
+		clear metadata value "Master Heritage-%{_p}%" of {_target}
+		clear metadata value "Master Heritage Total Damage-%{_p}%" of {_target}
+	else:
+		set metadata value "Master Heritage Refreshed-%{_p}%" of {_target} to true
+
+
+
 	
 #Wersja 1 - lava burst w losowego wroga co 0.5 sekund
 #Wersja 2 - lava burst we wszystkich wrogów w pobliżu co x sekund
