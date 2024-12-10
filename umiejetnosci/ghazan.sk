@@ -161,7 +161,10 @@ on rightclick:
 							clear {lavasurge::%player%}
 							set {lavaimbued::%player%} to true
 							AbilityUse(player, "Lava Burst")
-							LavaBurst(player, {_target}, 1)
+							if tag "Constellation;Deeptremor" of nbt of {karta::%player%} is set:
+								LavaBurst(player, {_target}, 1.18)
+							else:
+								LavaBurst(player, {_target}, 1)
 							send title " " with subtitle " " for 1 second with fade in 0 second and fade out 0 second
 							if metadata value "Lava Wave" of player is set:
 								clear metadata value "Lava Wave" of player
@@ -206,6 +209,9 @@ on rightclick:
 						else:
 							set {_tick} to 0.5 seconds
 						push the player upwards with speed 2
+
+						if tag "Constellation;Unstoppable Heat" of nbt of {karta::%player%} is set:
+							set {_shield} to UnstoppableHeatShield(player)
 						wait 0.2 seconds
 						set {wildfire::%player%} to true
 						WildfireDuration(player)
@@ -225,7 +231,8 @@ on rightclick:
 							Ascendance(player, {_ascendanceDuration})
 						while {wildfire::%player%} is true:
 							stop loop if {wildfire::%player%} is not true
-							stop loop if metadata value "cast" of player is not true
+							if metadata value "UnstoppableHeatShield" of {_p} is not set:
+								stop loop if metadata value "cast" of player is not true
 							loop all entities in radius 40 around the player:
 								if tag "custom;ECMob" of nbt of loop-entity is set:
 									if metadata value "ECPulled" of loop-entity is set:
@@ -233,7 +240,17 @@ on rightclick:
 							set {_x} to a random element of {_ent::*}
 							clear {_ent::*}
 							LavaBurst(player, {_x}, 1)
+							if {_shield} is set:
+								draw 8 falling lava particle at location above player with offset vector(1.25, 0.5, 1.25) with extra 0.015
+								send action bar "<##b03228> SHIELD: &f%{tarcza::%uuid of player%}%" to player
 							wait {_tick}
+						if {_shield} is set:
+							if {tarcza::%uuid of player%} - {_shield} > 0:
+								remove {_shield} from {tarcza::%uuid of player%}
+							else:
+								clear {tarcza::%uuid of player%}
+							clear metadata value "UnstoppableHeatShield" of player
+							clear {tarczavar::%{_uuid}%}
 						if tag "Talents;Row 2" of nbt of {karta::%player%} = "Lava Will Rain":
 							remove {_bonusDamage} from {damage::%player%}
 						if metadata value "cast" of player is not true:
@@ -385,7 +402,9 @@ on rightclick:
 								set {_crit} to 0 + ({criticalhit::%player%}/10)
 								set {_damage} to 3 + ({damage::%player%}/35) + ({versatility::%player%}/105) + ({primarystat::%player%}/17.5)
 								chance of {_crit}%:
-									set {_damage} to {_damage}*2
+									if tag "Constellation;Perpetual Burn" of nbt of {karta::%player%} is set:
+										PerpetualBurn(player)
+									set {_damage} to {_damage}*GhazanCritDamage(player)
 								play sound "skill.ghazan.lava_burst_impact" with volume 4 and pitch 2 at {_target}
 								set {_lore} to "&8Umiejętność Talentu%nl%&fInstant cast%nl%&7Cooldown: &f1 minute%nl%&7Use: &fRMB%nl%<##b03228>Blast your target with a Lava Wave, which%nl%<##b03228>deals &f%{_damage}% <##ff3014>Lava <##b03228>damage <##b03228>and applies Molten Lava%nl%<##b03228>upon reaching its target.%nl% %nl%<##b03228>Your next Lava Burst will also hit all targets%nl%<##b03228>affected by Molten Lava for 80%% of normal damage."
 								set {_loreEN} to "&8Talent Ability%nl%&fInstant cast%nl%&7Cooldown: &f1 minute%nl%&7Use: &fRMB%nl%<##b03228>Blast your target with a Lava Wave, which%nl%<##b03228>deals &f%{_damage}% <##ff3014>Lava <##b03228>damage <##b03228>and applies Molten Lava%nl%<##b03228>upon reaching its target.%nl% %nl%<##b03228>Your next Lava Burst will also hit all targets%nl%<##b03228>affected by Molten Lava for 80%% of normal damage."
@@ -472,7 +491,9 @@ on rightclick:
 								set {_crit} to 0 + ({criticalhit::%player%}/10)
 								set {_damage} to 5 + ({damage::%player%}/18) + ({versatility::%player%}/36) + ({primarystat::%player%}/9)
 								chance of {_crit}%:
-									set {_damage} to {_damage}*2
+									if tag "Constellation;Perpetual Burn" of nbt of {karta::%player%} is set:
+										PerpetualBurn(player)
+									set {_damage} to {_damage}*GhazanCritDamage(player)
 							else: 
 								cancel event
 								if {tekstcd::%player%} = true:
@@ -666,7 +687,9 @@ function Magma(p: player):
 				if {lavafury::%{_p}%} = 0:
 					clear {lavafury::%{_p}%}
 			chance of {_crit}%:
-				set {_damage} to {_damage}*2
+				if tag "Constellation;Perpetual Burn" of nbt of {karta::%{_p}%} is set:
+					PerpetualBurn({_p})
+				set {_damage} to {_damage}*GhazanCritDamage({_p})
 			make {_p} damage loop-entity by {_damage}*2
 			play sound "entity.player.hurt" with volume 1.5 and pitch 1 at loop-entity
 			#LAVA SURGE
@@ -767,7 +790,7 @@ function WildfireDuration(p: player):
 	wait {_wait}
 	clear {wildfire::%{_p}%}
 	
-function LavaBurst(p: player, x: entity, multiplier: number):
+function LavaBurst(p: player, x: entity, multiplier: number, replicated: boolean = false):
 	set {_id} to line 19 of lore of {karta::%{_p}%}
 	set {_crit} to 0 + ({criticalhit::%{_p}%}/10)
 	set {_damage} to 2 + ({damage::%{_p}%}/37) + ({versatility::%{_p}%}/111) + ({primarystat::%{_p}%}/18.5)
@@ -890,30 +913,38 @@ function LavaBurst(p: player, x: entity, multiplier: number):
 	play sound "skill.ghazan.lava_burst_impact" with volume 4 and pitch 1 at {_x}
 	if {wildfire::%{_p}%} is true:
 		set {_x}'s last damage cause to sweep attack
-		set metadata value "LastDamageCauseEN" of {_x} to "<##b03228>Rain of Lava"
-		set metadata value "LastDamageCause" of {_x} to "<##b03228>Deszcz Lawy"
+		if {_replicated} is not true:
+			set metadata value "LastDamageCauseEN" of {_x} to "<##b03228>Rain of Lava"
+			set metadata value "LastDamageCause" of {_x} to "<##b03228>Deszcz Lawy"
+		else:
+			set metadata value "LastDamageCauseEN" of {_x} to "<##b03228>Rain of Lava (Echo)"
+			set metadata value "LastDamageCause" of {_x} to "<##b03228>Deszcz Lawy (Echo)"
 		set {_lore} to "&8Umiejętność%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdd}%%nl%&7Użycie: &fPPM%nl%<##b03228>Ghazan tworzy pokaz swoich umiejętności,%nl%<##b03228>wyrzucając się w powietrze i nieprzerwanie%nl%<##b03228>ciskając <##b03228>Wybuchem Lawy w pobliskich wrogów%nl%<##b03228>przez &f%{_wait}% sekund<##b03228>."
 		set {_loreEN} to "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdd}%%nl%&7Use: &fRMB%nl%<##b03228>Ghazan creates a display of his skill,%nl%<##b03228>throwing himself in the air and continously%nl%<##b03228>firing Lava Burst at nearby enemies for &f%{_wait}% seconds<##b03228>."
 		set metadata value "LastDamageCauseLoreEN" of {_x} to {_loreEN}
 		set metadata value "LastDamageCauseLore" of {_x} to {_lore}
 	else:
 		set {_x}'s last damage cause to sweep attack
-		set metadata value "LastDamageCauseEN" of {_x} to "<##b03228>Lava Burst"
-		set metadata value "LastDamageCause" of {_x} to "<##b03228>Wybuch Lawy"
+		if {_replicated} is not true:
+			set metadata value "LastDamageCauseEN" of {_x} to "<##b03228>Lava Burst"
+			set metadata value "LastDamageCause" of {_x} to "<##b03228>Wybuch Lawy"
+		else:
+			set metadata value "LastDamageCauseEN" of {_x} to "<##b03228>Lava Burst (Echo)"
+			set metadata value "LastDamageCause" of {_x} to "<##b03228>Wybuch Lawy (Echo)"
 		set metadata value "LastDamageCauseLoreEN" of {_x} to {_loreEN}
 		set metadata value "LastDamageCauseLore" of {_x} to {_lore}
-	#MOLTEN BLAST
-	loop {_loreheart::*}:
-		loop-value contains "Molten Blast":
-			add ((1*{trait::Ghazan::Molten Blast::%{_p}%})/100) to {_bonuscritdmg}
-	set {_critmultiplier} to 2 + {_bonuscritdmg}
+
 	set metadata value "Element" of {_p} to "Lava"
 	if metadata value "MoltenLava%{_p}%" of block under {_x} is set:
 		set {_check} to true
-		set {_damage} to {_damage}*{_critmultiplier}
+		if tag "Constellation;Perpetual Burn" of nbt of {karta::%{_p}%} is set:
+			PerpetualBurn({_p})
+		set {_damage} to {_damage}*GhazanCritDamage({_p})
 	if {_check} is not set:
 		chance of {_crit}%:
-			set {_damage} to {_damage}*{_critmultiplier}
+			if tag "Constellation;Perpetual Burn" of nbt of {karta::%{_p}%} is set:
+				PerpetualBurn({_p})
+			set {_damage} to {_damage}*GhazanCritDamage({_p})
 
 	
 	make {_p} damage {_x} by {_damage}*2
@@ -922,6 +953,11 @@ function LavaBurst(p: player, x: entity, multiplier: number):
 		remove 0.75 seconds from cooldown "Lavakeeper%{_p}%"
 		remove 0.75 seconds from cooldown "Lavafury%{_p}%"
 	BonusLavaBurst({_p}, {_x})
+
+	if tag "Constellation;Incineration" of nbt of {karta::%{_p}%} is set:
+		if {_replicated} is not true:
+			chance of 40%:
+				ReplicatedLavaBurst({_p}, {_x}, 0.2)
 
 	#VOLCANIC INFERNO
 	wait 1 tick
@@ -954,9 +990,16 @@ function LavaBurst(p: player, x: entity, multiplier: number):
 					set metadata value "LastDamageCauseLore" of loop-entity to "<##b03228>Otwiera wulkaniczną szczelinę pod celem,%nl%<##b03228>zadając &f%{_dmgfissure}% <##b03228>obrażeń <##ff3014>Lawy <##b03228>wszystkim wrogom%nl%<##b03228>w pobliżu."
 					set metadata value "LastDamageCauseLoreEN" of loop-entity to "<##b03228>Opens a volcanic fissure under%nl%<##b03228>the target, dealing &f%{_dmgfissure}% <##ff3014>Lava <##b03228>damage to all nearby%nl%<##b03228>enemies."
 					chance of {_crit}%:
-						set {_dmgfissure} to {_dmgfissure}*2
+						set {_dmgfissure} to {_dmgfissure}*GhazanCritDamage({_p})
 					make {_p} damage loop-entity by {_dmgfissure}*2
 	DamageDisplay({_x}, "&l<##b03228>%{_damage}% DMG", {_p})
+
+function ReplicatedLavaBurst(p: player, target: entity, multiplier: number):
+	set {_haste} to 1 + ({haste::%{_p}%}/4)
+	set {_wait} to "%1/{_haste}% seconds" parsed as timespan
+	wait {_wait}
+	wait 1 tick
+	LavaBurst({_p}, {_target}, {_multiplier}, true)
 
 function WildfireSpin(p: player):
 	if {_p}'s horizontal facing is north:
@@ -1018,8 +1061,71 @@ function MasterHeritage(p: player, target: entity, damageLava: number):
 	else:
 		set metadata value "Master Heritage Refreshed-%{_p}%" of {_target} to true
 
+function PerpetualBurn(p: player):
+	if metadata value "PerpetualBurnCount" of {_p} is not set:
+		set metadata value "PerpetualBurnCount" of {_p} to 0
+	if metadata value "PerpetualBurnCount" of {_p} < 10:
+		set {_perpetualBurnCount} to metadata value "PerpetualBurnCount" of {_p}
+		add 1 to {_perpetualBurnCount}
+		set metadata value "PerpetualBurnCount" of {_p} to {_perpetualBurnCount}
+
+	if metadata value "PerpetualBurn" of {_p} is not set:
+		set metadata value "PerpetualBurn" of {_p} to 20 seconds
+		while metadata value "PerpetualBurn" of {_p} > 0 seconds:
+			wait 1 second
+			set {_duration} to metadata value "PerpetualBurn" of {_p}
+			remove 1 second from {_duration}
+			set metadata value "PerpetualBurn" of {_p} to {_duration}
+			if 0 seconds >= metadata value "PerpetualBurn" of {_p}:
+				clear metadata value "PerpetualBurn" of {_p}
+				clear metadata value "PerpetualBurnCount" of {_p}
+				stop loop
+	else:
+		set metadata value "PerpetualBurn" of {_p} to 20 seconds
+
+function GhazanCritDamage(p: player) :: number:
+	set {_critdamage} to 2
+	if tag "Constellation;Perpetual Burn" of nbt of {karta::%{_p}%} is set:
+		set {_perpetualBurnCount} to metadata value "PerpetualBurnCount" of {_p}
+		set {_critdamage} to {_critdamage} + (0.02*{_perpetualBurnCount})
+
+	#MOLTEN BLAST
+	#Readd this portion when the Heart of Earthcraft is readded
+	if {_heart} is true:
+		loop {_loreheart::*}:
+			loop-value contains "Molten Blast":
+				add ((1*{trait::Ghazan::Molten Blast::%{_p}%})/100) to {_bonuscritdmg}
+
+	return {_critdamage}
+
+function UnstoppableHeatShield(p: player) :: number:
+	set {_crit} to 0 + ({criticalhit::%{_p}%}/10)
+	set {_shield} to 10 + {primarystat::%{_p}%}/8 + {utility::%{_p}%}/16 + {versatility::%{_p}%}/48
+
+	chance of {_crit}%:
+		set {_shield} to {_shield}*2
+
+	set metadata value "UnstoppableHeatShield" of {_p} to true
 
 
+	set {_uuid} to uuid of {_p}
+
+	set {tarczavar::%{_uuid}%} to true
+
+	if {tarcza::%{_uuid}%} > 0:
+		add {_shield} to {tarcza::%{_uuid}%}
+	else:
+		set {tarcza::%{_uuid}%} to {_shield}
+	set {_pid} to random 8 char string from charset `0-9`
+	set {-tarczacaster::%{_uuid}%} to "%{_p}%-%{_shield}%-%{_pid}%-Unstoppable Heat"
+	if {language::%{_p}%} = "English":
+		send formatted "%{kartacolor::%{_p}%}%%{_p}% &fshielded you. <tooltip:<##b03228>Unstoppable Heat%nl%%{_loreEN}%>(<##baff8c>+%{_shield}% Shield&f)" to {_i}
+	else:
+		send formatted "%{kartacolor::%{_p}%}%%{_p}% &fprzyznał ci tarczę. <tooltip:<##b03228>Niepowstrzymana Gorąc%nl%%{_lore}%>(<##baff8c>+%{_shield}% Shield&f)" to {_i}
+
+	send action bar "<##b03228> SHIELD: &f%{tarcza::%{_uuid}%}%" to {_p}
+
+	return {_shield}
 	
 #Wersja 1 - lava burst w losowego wroga co 0.5 sekund
 #Wersja 2 - lava burst we wszystkich wrogów w pobliżu co x sekund
