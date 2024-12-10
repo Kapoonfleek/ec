@@ -317,11 +317,12 @@ on inventory click:
                         set {_artifact} to {_item}
                         set {_upgradeLevel} to tag "Upgraded" of nbt of {_artifact}
                         set {_experience} to tag "Experience" of nbt of {_artifact}
+                        set {_starLevel} to tag "StarLevel" of nbt of {_artifact}
                         #add "%nl%&f&oYou are upgrading this item." to lore of {_item}
                         set slot 13 of metadata tag "papitoUpgradeItem" of player to {_item}
                         if {_type} = "Artifact":
                             set {_requiredExp} to ArtifactReqExp({_item})
-                            loop 25 times:
+                            loop {_starlevel}*5 times:
                                 if tag "Upgraded" of nbt of {_item} + 1 <= 25:
                                     if loop-number < 6:
                                         add ArtifactReqExp({_item}) to {_requiredExp5Levels}
@@ -343,7 +344,7 @@ on inventory click:
                         if {_stardustAmount} is not set:
                             set {_stardustAmount} to 0
                         if {_type} = "Artifact":
-                            set {_25minLvl} to 25
+                            set {_25minLvl} to 5*{_starLevel}
                             if {_upgradeLevel} + 5 < 26:
                                 set {_5} to {_upgradeLevel} + 5
                             else:
@@ -351,6 +352,8 @@ on inventory click:
                             set slot 31 of metadata tag "papitoUpgradeItem" of player to smoker named "&8Upgrading" with lore "&7&oThis process will cost you Stardust&7&o.%nl%&f1 EXP = 1 Stardust.%nl%&fA total of 768 EXP is required to fully%nl%&fupgrade an item.%nl% %nl%&fYou currently have %{_stardustAmount}% Stardust in your inventory." with nbt from "{CustomModelData:1}"    
                         else if {_type} = "Relic":
                             set {_25minLvl} to {_upgradeLevel} + 25
+                            if {_25minLvl} + 25 < 126:
+                                set {_25minLvl} to 25 - {_upgradeLevel}
                             if {_upgradeLevel} + 5 < 126:
                                 set {_5} to {_upgradeLevel} + 5
                             else:
@@ -363,7 +366,7 @@ on inventory click:
                             set slot 31 of metadata tag "papitoUpgradeItem" of player to smoker named "&8Upgrading" with lore "&7&oThis process will cost you Stardust&7&o.%nl%&f1 EXP = 1 Stardust.%nl%&fA total of 32000 EXP is required to fully%nl%&fupgrade an item.%nl% %nl%&fYou currently have %{_stardustAmount}% Stardust in your inventory." with nbt from "{CustomModelData:1}" 
                         set slot 21 of metadata tag "papitoUpgradeItem" of player to anvil named "&8Upgrade +1" with lore "&fUpgrade Level: +%{_upgradeLevel}% -> +%{_upgradeLevel}+1%%nl%&fEXP until Level: %{_requiredExp}%%nl%&fCost: %{_requiredExp}%"
                         set slot 22 of metadata tag "papitoUpgradeItem" of player to anvil named "&8Upgrade +5" with lore "&fUpgrade Level: +%{_upgradeLevel}% -> +%{_5}%%nl%&fEXP until Level: %{_requiredExp5Levels}%%nl%&fCost: %{_requiredExp5Levels}%"
-                        set slot 23 of metadata tag "papitoUpgradeItem" of player to anvil named "&8Upgrade +25" with lore "&fUpgrade Level: +%{_upgradeLevel}% -> +%{_25minLvl}%%nl%&fEXP until Level: %{_requiredExp25Levels}%%nl%&fCost: %{_requiredExp25Levels}%"
+                        set slot 23 of metadata tag "papitoUpgradeItem" of player to anvil named "&8Upgrade +%{_starLevel}*5%" with lore "&fUpgrade Level: +%{_upgradeLevel}% -> +%{_25minLvl}%%nl%&fEXP until Level: %{_requiredExp25Levels}%%nl%&fCost: %{_requiredExp25Levels}%"
                         set tag "StardustAmount" of nbt of slot 21 of metadata tag "papitoUpgradeItem" of player to {_requiredExp}
                         set tag "StardustAmount" of nbt of slot 22 of metadata tag "papitoUpgradeItem" of player to {_requiredExp5Levels}
                         set tag "StardustAmount" of nbt of slot 23 of metadata tag "papitoUpgradeItem" of player to {_requiredExp25Levels}
@@ -379,6 +382,7 @@ on inventory click:
         if event-slot = 21 or 22 or 23:
             play sound "block.anvil.place" with volume 5 and pitch 1.41 to player 
             set {_artifact} to slot 13 of player's current inventory
+            set {_starLevel} to tag "StarLevel" of {_artifact}
             #loop lore of {_item}:
             #    if loop-value does not contain "You are upgrading this item." or "Ulepszasz ten przedmiot.":
             #        add loop-value to {_lore::*}
@@ -407,14 +411,18 @@ on inventory click:
             if event-slot = 21:
                 set {_upgradeAmount} to 1
             else if event-slot = 22:
-                set {_upgradeAmount} to 5
+                if {_upgradeLevel} + {_upgradeAmount} !> 5*{_starLevel}:
+                    set {_upgradeAmount} to 5
+                else:
+                    set {_upgradeAmount} to 5*{_starLevel} - {_upgradeLevel}
             else:
-                set {_upgradeAmount} to 25
+                set {_upgradeAmount} to 5*{_starLevel}
             if {_upgradeLevel} + {_upgradeAmount} < 26:
                 set tag "Upgraded" of nbt of {_artifactUpgraded} to {_upgradeLevel} + {_upgradeAmount}
                 set tag "Experience" of nbt of {_artifactUpgraded} to {_experience} + {_stardustAmount}
             else:
                 set tag "Upgraded" of nbt of {_artifactUpgraded} to 25
+                set tag "Experience" of nbt of {_artifactUpgraded} to {_stardustAmount}
                 set {_loops} to 25-{_upgradeLevel}
                 loop {_loops} times:
                     add ArtifactReqExp({_artifact}) to {_experience}
