@@ -191,6 +191,18 @@ on rightclick:
 									if metadata value "UmbralInspiration" of player is set:
 										set {_damage} to {_damage}*1.3
 
+									if tag "Talents;Row 3" of nbt of {karta::%player%} = "Aetherial Kindling":
+										if metadata value "CelestialAlignment" of player is set:
+											if metadata value "AetherialKindlingExtension" of player is not set:
+												set metadata value "AetherialKindlingExtension" of player to 0
+											set {_aetherialKindlingExtension} to metadata value "AetherialKindlingExtension" of player
+											if {_aetherialKindlingExtension} < 27:
+												add 3 to {_aetherialKindlingExtension}
+												set {_celestialAlignment} to metadata value "AetherialKindlingExtension" of player
+												add 3 seconds to {_celestialAlignment}
+												set metadata value "AetherialKindlingExtension" of player to {_celestialAlignment}
+												set metadata value "AetherialKindlingExtension" of player to {_aetherialKindlingExtension}
+
 									set {_particleLoc} to location 1.758 above player
 									set {_shape} to a line from {_particleLoc} to location 1 above {_target}
 									set particle of {_shape} to item particle using magenta concrete powder
@@ -267,6 +279,19 @@ on rightclick:
 								else:
 									set {_pospiech} to 1 + (({haste::%player%}/4))/100
 								set {_wait} to "%1/{_pospiech}% seconds" parsed as timespan
+
+								if tag "Talents;Row 3" of nbt of {karta::%player%} = "Aetherial Kindling":
+									if metadata value "CelestialAlignment" of player is set:
+										if metadata value "AetherialKindlingExtension" of player is not set:
+											set metadata value "AetherialKindlingExtension" of player to 0
+										set {_aetherialKindlingExtension} to metadata value "AetherialKindlingExtension" of player
+										if {_aetherialKindlingExtension} < 27:
+											add 3 to {_aetherialKindlingExtension}
+											set {_celestialAlignment} to metadata value "AetherialKindlingExtension" of player
+											add 3 seconds to {_celestialAlignment}
+											set metadata value "AetherialKindlingExtension" of player to {_celestialAlignment}
+											set metadata value "AetherialKindlingExtension" of player to {_aetherialKindlingExtension}
+
 								loop all living entities in radius 60 around the player:
 									if loop-entity is not a player:
 										if tag "custom;ECMob" of nbt of loop-entity is set:
@@ -524,12 +549,19 @@ function Starfire(p: player, target: entity, astronomicalImpact: boolean = false
 		set {_damage} to 1.5 + (({damage::%{_p}%}/30) + ({versatility::%{_p}%}/90) + {primarystat::%{_p}%}/15)
 		set {_crit} to 0 + ({criticalhit::%{_p}%}/10)
 		if metadata value "CelestialAlignment" of {_p} is set:
-			set {_damage} to {_damage}*1.15
+			if tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Aetherial Kindling":
+				set {_damage} to {_damage}*1.15
 			add 15 to {_crit}
 		if {_astronomicalImpact} is true:
 			set {_damage} to {_damage}*1.6
 		if loop-value != {_target}:
-			set {_damage} to {_damage}*0.6
+			if tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Aetherial Kindling":
+				if metadata value "CelestialAlignment" of {_p} is set:
+					set {_damage} to {_damage}*(0.6*1.3)
+				else:
+					set {_damage} to {_damage}*0.6
+			else:
+				set {_damage} to {_damage}*0.6
 			StarfireVisual({_p}, loop-value)
 		else:
 			StarfireVisual({_p}, loop-value, true)
@@ -797,6 +829,7 @@ function CelestialAlignment(p: player, duration: timespan):
 				remove 150 from {criticalhit::%{_p}%}
 				remove 60 from {haste::%{_p}%}
 				AstronomicalImpact({_p})
+				clear metadata value "AetherialKindlingExtension" of {_p}
 				stop loop
 	else:
 		set {_timeRemaining} to metadata value "CelestialAlignment" of {_p}
