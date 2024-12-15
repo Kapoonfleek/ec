@@ -90,8 +90,12 @@ on inventory click:
                     else:
                         drop {_dustamount} of {_carddust} at player
                     set {_xp} to {_xp}*{bonusxp::ench::%player%}
-                    set {_xp} to addPlayerXP(player, {_xp})
-                    add {_xp} to {exp::enchantowanie::%player%}
+                    set {_otxpAfterMultiplier} to addPlayerXP(player, {_xp})
+                    add {_otxpAfterMultiplier} to {exp::enchantowanie::%player%}
+                    if {_otxpAfterMultiplier} > {_xp}:
+                        set {_xpmsg} to "&8(+%{_otxpAfterMultiplier}% XP) (&fx%{_otxpAfterMultiplier}/{_xp}%&7)"
+                    else:
+                        set {_xpmsg} to "&8(+%{_otxpAfterMultiplier}% XP)"
                     EnchantowanieLevelUp(player)
                     play sound "entity.player.levelup" with volume 3 and pitch 0 at player
                     play sound "block.glass.break"  with volume 3 and pitch 1.2 at player
@@ -100,7 +104,12 @@ on inventory click:
                     set metadata value "disenchanted" of player to metadata value "disenchanted" of player + 1
                     if metadata value "disenchantxp" of player is not set:
                         set metadata value "disenchantxp" of player to 0
-                    set metadata value "disenchantxp" of player to metadata value "disenchantxp" of player + {_xp}
+                    set metadata value "disenchantxp" of player to metadata value "disenchantxp" of player + {_otxpAfterMultiplier}
+                    set {_disenchantXP} to metadata value "disenchantxp" of player
+                    if {_otxpAfterMultiplier} > {_xp}:
+                        set metadata value "disenchantxpmessage" of player to "&6%{_disenchantXP}% XP &7(&fx%{_otxpAfterMultiplier}/{_xp}%&7)"
+                    else:
+                        set metadata value "disenchantxpmessage" of player to "&6%{_disenchantXP}% XP"
     if event-inventory = (metadata tag "enchant" of player):
         cancel event
         if event-slot is between 0 and 53:
@@ -155,12 +164,6 @@ function isPickaxe(t: item, t2: text, p: player):
         set {_o::*} to {_t2} split at " "
         if {_o::3} = "I":
             set {_xp} to 50*{bonusxp::ench::%{_p}%}
-        if {language::%{_p}%} = "English":
-            set {_dise} to "&f&oClick to enchant Tool, Artifact or Relic."
-            set {_msg} to "&7Successfuly enchanted your pickaxe with &6%{_t2}%&7! (&6+%{_xp}% XP&7)"
-        else:
-            set {_dise} to "&f&oKliknij by zenchantować Narzędzie, Artefakt, lub Relikt."
-            set {_msg} to "&7Pomyślnie zaklnięto kilof zaklęciem &6%{_t2}%&7! (&6+%{_xp}% XP&7)"
         loop all items in the inventory of {_p}:
             set {_e} to loop-item
             set {_d} to loop-item with lore (lore of loop-item) and {_dise}
@@ -168,8 +171,18 @@ function isPickaxe(t: item, t2: text, p: player):
                 set lore of loop-item to "&7%uncolored {_t2}%" and (lore of loop-item)
                 set tag "Enchant;%uncolored {_t2}%" of nbt of loop-item to 1
                 stop loop
-        set {_xp} to addPlayerXP({_p}, {_xp})
-        add {_xp} to {exp::enchantowanie::%{_p}%}
+        set {_otxpAfterMultiplier} to addPlayerXP({_p}, {_xp})
+        add {_otxpAfterMultiplier} to {exp::enchantowanie::%{_p}%}
+        if {_otxpAfterMultiplier} > {_xp}:
+            set {_xpmsg} to "&7(&6+%{_otxpAfterMultiplier}% XP&7) (&fx%{_otxpAfterMultiplier}/{_xp}%&7)"
+        else:
+            set {_xpmsg} to "&7(&6+%{_otxpAfterMultiplier}% XP&7)"
+        if {language::%{_p}%} = "English":
+            set {_dise} to "&f&oClick to enchant Tool, Artifact or Relic."
+            set {_msg} to "&7Successfuly enchanted your pickaxe with &6%{_t2}%&7! %{_xpmsg}%"
+        else:
+            set {_dise} to "&f&oKliknij by zenchantować Narzędzie, Artefakt, lub Relikt."
+            set {_msg} to "&7Pomyślnie zaklnięto kilof zaklęciem &6%{_t2}%&7! %{_xpmsg}%"
         send "&8[&6Earthcraft&8] %{_msg}%" to {_p}
         play sound "block.enchantment_table.use" with volume 4 and pitch 1 at {_p}
         teleport {_p} to {_p}'s location
@@ -178,10 +191,11 @@ on inventory close:
         if metadata value "disenchanted" of player is not 0:
             set {_x} to metadata value "disenchanted" of player
             set {_xp} to metadata value "disenchantxp" of player
+            set {_msg} to metadata value "disenchantxpmessage" of player
             if {language::%player%} = "English":
-                send "&8[&6Earthcraft&8] &7Successfully disenchanted &6%{_x}% &7cards for &6%{_xp}% XP&7!" to player
+                send "&8[&6Earthcraft&8] &7Successfully disenchanted &6%{_x}% &7cards for &6%{_msg}%&7!" to player
             else:
-                send "&8[&6Earthcraft&8] &7Pomyślnie zdisenchantowano &6%{_x}% &7kart i otrzymano &6%{_xp}% XP&7!" to player
+                send "&8[&6Earthcraft&8] &7Pomyślnie zdisenchantowano &6%{_x}% &7kart i otrzymano &6%{_msg}%&7!" to player
             clear metadata value "disenchanted" of player
             clear metadata value "disenchantxp" of player
     if event-inventory = metadata tag "enchantbooks" of player:
