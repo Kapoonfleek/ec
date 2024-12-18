@@ -2,50 +2,272 @@ on rightclick:
     if player's tool is name tag:
         if tag "WinterDelightEventPass" of nbt of player's tool is set:
             if player's name = "Pehrek":
+                if tag "PassExp" of nbt of player's tool is not set:
+                    set tag "PassExp" of nbt of player's tool to 0
                 if 1 = 1:
                     set metadata tag "winterDelightEventPassMenu" of player to chest inventory with 4 rows named "&f ✨ Winter Delight Event Pass"
                     set {_menu} to metadata tag "winterDelightEventPassMenu" of player
                     
-                    set slot 4 of {_menu} to white glass pane named "&f✨ Event Pass Info" with lore "&fWhat is an Event Pass?%nl%&7Event Passes allow players to obtain lucrative %nl%&7and attractive rewards through simply playing%nl%&7and fulfilling Pass Missions.%nl% %nl%&fWhat kind of rewards can I expect?%nl%&7Players can expect to earn many cool rewards%nl%&7such as Star Shards, long-awaited Variants,%nl%&7pets, or even special new playable Cards.%nl% %nl%&fWhat is the maximum Pass level?%nl%&7The current maximum Pass Level reaches 50.%nl%&7Players can buy an upgraded version of the%nl%&7Event Pass to continue earning rewards beyond%nl%&7the maximum level until the end of the event."
+                    set slot 4 of {_menu} to white glass pane named "&f✨ Event Pass Info" with lore "&fWhat is an Event Pass?%nl%&7Event Passes allow players to obtain lucrative%nl%&7and attractive rewards through simply playing%nl%&7and fulfilling Pass Missions.%nl% %nl%&fWhat kind of rewards can I expect?%nl%&7Players can expect to earn many cool rewards%nl%&7such as Star Shards, long-awaited Variants,%nl%&7pets, or even special new playable Cards.%nl% %nl%&fWhat is the maximum Pass level?%nl%&7The current maximum Pass Level reaches 50." #%nl%&7Players can buy an upgraded version of the%nl%&7Event Pass to continue earning rewards beyond%nl%&7the maximum level until the end of the event."
                     
                     set metadata value "winterDelightEventPassMenuCurrentPage" of player to 1
 
-                    #play sound "music.winterdelight_theme" with volume 1 and pitch 1 to player
+                    play sound "music.winterdelight_theme" with volume 1 and pitch 1 to player
 
-                    #.yml files with missions, on daily join randomize them
-                    set {_missions} to 3
-                    if {_missions} is set:
-                        set slots 20, 22 and 24 of {_menu} to name tag named "&fMission" with nbt from "{CustomModelData:2}"
-                    
-                    set name of slot 20 of {_menu} to "&fGingerbread Hunt"
-                    set lore of slot 22 of {_menu} to "&7Mission text"
+                    set slot 20 of {_menu} to matchMission(player, 1)
+                    set slot 22 of {_menu} to matchMission(player, 2)
+                    set slot 24 of {_menu} to matchMission(player, 3)
                 else if 1 = 2:
                     set metadata tag "winterDelightEventPassMenu" of player to chest inventory with 4 rows named "&f ✨ Przepustka Zimowego Zachwytu"
                     set {_menu} to metadata tag "winterDelightEventPassMenu" of player
                     
-                    set slot 4 of {_menu} to white glass pane named "&f✨ Event Pass Info" with lore "&fWhat is an Event Pass?%nl%&7Event Passes allow players to obtain lucrative %nl%&7and attractive rewards through simply playing%nl%&7and fulfilling Pass Missions.%nl% %nl%&fWhat kind of rewards can I expect?%nl%&7Players can expect to earn many cool rewards%nl%&7such as Star Shards, long-awaited Variants,%nl%&7pets, or even special new playable Cards.%nl% %nl%&fWhat is the maximum Pass level?%nl%&7The current maximum Pass Level reaches 50.%nl%&7Players can buy an upgraded version of the%nl%&7Event Pass to continue earning rewards beyond%nl%&7the maximum level until the end of the event."
+                    set slot 4 of {_menu} to white glass pane named "&f✨ Informacje o Przepustce" with lore "&fCzym jest Przepustka?%nl%&7Przepustki pozwalają graczom na zdobywanie%nl%&7lukratywnych i atrakcyjnych nagród poprzed granie%nl%&7i wypełnianie przepustkowych misji.%nl% %nl%&fJakich nagród mogę się spodziewać?%nl%&7Gracze mogą spodziewać się wielu ciekawych nagród,%nl%&7na przykład Odłamki Gwiazd, długo wyczekiwane Warianty,%nl%&7zwierzaki, lub nawet specjalne nowe grywalne Karty.%nl% %nl%&fJaki jest maksymalny poziom Przepustki?%nl%&7Aktualny maksymalny poziom Przepustki wynosi 50." #%nl%&7Players can buy an upgraded version of the%nl%&7Event Pass to continue earning rewards beyond%nl%&7the maximum level until the end of the event."
                     
                     set metadata value "winterDelightEventPassMenuCurrentPage" of player to 1
 
-                    #play sound "music.winterdelight_theme" with volume 1 and pitch 1 to player
+                    play sound "music.winterdelight_theme" with volume 1 and pitch 1 to player
 
-                    #.yml files with missions, on daily join randomize them
-                    set {_missions} to 3
-                    if {_missions} is set:
-                        set slots 20, 22 and 24 of {_menu} to name tag named "&fMission" with nbt from "{CustomModelData:2}"
-                    
-                    set name of slot 20 of {_menu} to "&fGingerbread Hunt"
-                    set lore of slot 22 of {_menu} to "&7Mission text"
-                    
+                    set slot 20 of {_menu} to matchMission(player, 1)
+                    set slot 22 of {_menu} to matchMission(player, 2)
+                    set slot 24 of {_menu} to matchMission(player, 3)
                 open {_menu} to player
                 eventPassMenuRefresh(player)
 
             else:
                 send "&fConstruction is taking place here right now, please check later!" to player
 
+function winterDelightPassAddXP(p: player, xp: number):
+    if {winterDelightPassLEVEL::%{_p}%} < 50:
+        loop all items in the inventory of {_p}:
+            if tag "WinterDelightEventPass" of nbt of loop-item is set:
+                add {_xp} to {winterDelightPassEXP::%{_p}%}
+                if {winterDelightPassEXP::%{_p}%} >= 1000*({winterDelightPassLEVEL::%{_p}%}) * (1 + (({winterDelightPassLEVEL::%{_p}%}-1))/20):
+                    remove 1000*({winterDelightPassLEVEL::%{_p}%}) * (1 + (({winterDelightPassLEVEL::%{_p}%}-1))/20) from {winterDelightPassEXP::%{_p}%}
+                    add 1 to {winterDelightPassLEVEL::%{_p}%}
+                    winterDelightPassReward({_p})
+                    set tag "PassLevel" of nbt of loop-item to {winterDelightPassLEVEL::%{_p}%}
+                    set tag "PassExp" of nbt of loop-item to {winterDelightPassEXP::%{_p}%}
+                    loop all players:
+                        if {language::%loop-player%} = "English":
+                            send "&f❊ <##b3e0ff>%player% &freached Level %{winterDelightPassLEVEL::%{_p}%}% on the <##a6d4e3>Winter Delight Event Pass&f!" to loop-player
+                        else:
+                            send "&f❊ <##b3e0ff>%player% &fosiągnał Poziom %{winterDelightPassLEVEL::%{_p}%}% na <##a6d4e3>Przepustce Zimowego Zachwytu&f!" to loop-player
+                        play sound "pass.winterdelight.levelup" with volume 5 and pitch 1.24 to loop-player
+                        play sound "pass.winterdelight.levelup.shimmering" with volume 5 and pitch 1 to loop-player
+                        play sound "entity.player.levelup" with volume 5 and pitch 1.36 to loop-player
+                    if {winterDelightPassLEVEL::%{_p}%} = 50:
+                        play sound "ui.toast.challenge_complete" with volume 5 and pitch 1.2 at {_p}
+                        add 1 to {winterDelightPassCompleted::%{_p}%}
+                        achievement("winterDelightPassCompleted", player, 1, "osiagniecie.winterDelightPassCompleted2024", "Ukończ przepustkę Zimowego Zachwytu 2024 osiągając 50 Poziom.", "Przepustka Zimowego Zachwytu 2024", "Complete the Winter Delight Event Pass 2024 by reaching Level 50.", "Winter Delight Event Pass 2024")
+                stop loop
+
+function matchMission(p: player, mission: integer) :: item:
+    set {_item} to name tag with nbt from "{CustomModelData:2}"
+    load yaml "plugins/Skript/playerdata/events/%uuid of {_p}%.yml" as "winterDelight-%{_p}%"
+    set {_name} to yaml value "Missions.%{_mission}%.Name" in "winterDelight-%{_p}%"
+    set {_desc} to yaml value "Missions.%{_mission}%.Description" in "winterDelight-%{_p}%"
+    set {_difficulty} to yaml value "Missions.%{_mission}%.Difficulty" in "winterDelight-%{_p}%"
+    set {_npc} to yaml value "Missions.%{_mission}%.Received From" in "winterDelight-%{_p}%"
+    unload yaml "winterDelight-%{_p}%"
+    set name of {_item} to "&f%{_name}%"
+    if {language::%{_p}%} = "English":
+        if {_difficulty} = "Low":
+            set {_difficulty} to "&aLow"
+        else if {_difficulty} = "Mid":
+            set {_difficulty} to "&eMedium"
+        else if {_difficulty} = "High":
+            set {_difficulty} to "&cHigh"
+        set lore of {_item} to "%{_difficulty}% Difficulty%nl% %nl%%{_desc}%%nl%&7Progress: &f0%nl% %nl%&7&o~Comissioned by &n%{_npc}%"
+    else:
+        if {_difficulty} = "Low":
+            set {_difficulty} to "&aNiski Poziom"
+        else if {_difficulty} = "Mid":
+            set {_difficulty} to "&eŚredni Poziom"
+        else if {_difficulty} = "High":
+            set {_difficulty} to "&cWysoki Poziom"
+        set lore of {_item} to "%{_difficulty}% Trudności%nl% %nl%%{_desc}%%nl%&7Progres: &f0%nl% %nl%&7&o~Zlecone przez &n%{_npc}%"
+    return {_item}
+
+function winterDelightPassReward(p: player):
+    set {_level} to {winterDelightPassLEVEL::%{_p}%}
+    set {_rewardNameList::*} to "150 Klejnotów", "3 Boostery Secret Wonders", "Książka Exp. Mędrca", "Odłamek Gwiazdy", "Losowy Boost", "300 Stardustu", "3 Boostery Unseen Forces", "3 Boostery Majestic Dawn"
+    set {_rewardNameListEN::*} to "150 Klejnot", "3 Secret Wonders Boosters", "Sage's Exp Books", "Star Shard", "Random Boost", "300 Stardust", "3 Unseen Forces Boosters", "3 Majestic Dawn Boosters"
+
+    set {_rewardNameList::*} to {_rewardNameList::*} and "30 Luksusowych Skrzynek", "Delphox Zimowego Zachwytu", "3 Boostery Secret Wonders", "2 Odłamki Gwiazdy", "3 Boostery Plasma Freeze", "Poranny Mróz"
+    set {_rewardNameListEN::*} to {_rewardNameListEN::*} and "30 Luxurious Chests", "Winter Delight Delphox", "3 Secret Wonders Boosters", "2 Star Shards", "3 Plasma Freeze Boosters", "Morning Frost"
+
+    if {language::%{_p}%} = "English":
+        if {_level} = 1:
+            giveItem({_p}, 150 of {klejnotEN})
+        else if {_level} = 2:
+            giveItem({_p}, 3 of {boostersecretwondersEN})
+        else if {_level} = 3:
+            giveItem({_p}, 3 of {sageexpbookEN})
+        else if {_level} = 4:
+            giveItem({_p}, 1 of {odlamekgwiazdyEN})
+        else if {_level} = 5:
+            set {_rng} to a random integer between 1 and 4
+            if {_rng} = 1:
+                set {_boost} to {jadeitowastatuetkaEN}
+            else if {_rng} = 2:
+                set {_boost} to {cytrynowelustroEN}
+            else if {_rng} = 3:
+                set {_boost} to {szafirowekostkiEN}
+            else:
+                set {_boost} to {turmalinowydiademEN}
+            giveItem({_p}, 1 of {_boost})
+        else if {_level} = 6:
+            giveItem({_p}, 300 of {stardustEN})
+        else if {_level} = 7:
+            giveItem({_p}, 3 of {boosterunseenforcesEN})
+        else if {_level} = 8:
+            giveItem({_p}, 3 of {boostermajesticdawnEN})
+        else if {_level} = 9:
+            giveItem({_p}, 30 of {skrzynkaluksusowaEN})
+        send "&fReceived <##b3e0ff>%{_rewardNameList::%{_level}%}% &ffor reaching <##b3e0ff>Level %{_level}% &fon the <##b3e0ff>Winter Delight Pass&f!" to {_p}
+    else:
+        if {_level} = 1:
+            giveItem({_p}, 150 of {klejnot})
+        else if {_level} = 2:
+            giveItem({_p}, 3 of {boostersecretwonders})
+        else if {_level} = 3:
+            giveItem({_p}, 3 of {sageexpbook})
+        else if {_level} = 4:
+            giveItem({_p}, 1 of {odlamekgwiazdy})
+        else if {_level} = 5:
+            set {_rng} to a random integer between 1 and 4
+            if {_rng} = 1:
+                set {_boost} to {jadeitowastatuetka}
+            else if {_rng} = 2:
+                set {_boost} to {cytrynowelustro}
+            else if {_rng} = 3:
+                set {_boost} to {szafirowekostki}
+            else:
+                set {_boost} to {turmalinowydiadem}
+            giveItem({_p}, 1 of {_boost})
+        else if {_level} = 6:
+            giveItem({_p}, 300 of {stardust})
+        else if {_level} = 7:
+            giveItem({_p}, 3 of {boosterunseenforces})
+        else if {_level} = 8:
+            giveItem({_p}, 3 of {boostermajesticdawn})
+        else if {_level} = 9:
+            giveItem({_p}, 30 of {skrzynkaluksusowa})
+        send "&fOtrzymano <##b3e0ff>%{_rewardNameList::%{_level}%}% &fza osiągnięcie <##b3e0ff>%{_level}% Poziomu &fna <##b3e0ff>Przepustce Zimowego Zachwytu&f!" to {_p}
+
+    play sound "entity.witch.drink" with volume 3 and pitch 2 to {_p}
+
+    
+        
+
+        #winterDelightMissionCreate(1, "Festive Mining", "Świąteczne Kopanie", "&7Mine &f{low} {mid} {high} &7stone or &f{low}/2 {mid}/2 {high}/2 &7deepslate.", "&7Wykop &f{low} {mid} {high} &7stone, lub &f{low}/2 {mid}/2 {high}/2 &7deepslate.", 500, 1000, 2000, "'Brodaty Zachary'")
+        #winterDelightMissionCreate(2, "Sleighing the Mobs", "Pokonywanie Potworów", "&7Slay &f{low} {mid} {high} &7mobs.", "&7Pokonaj &f{low} {mid} {high} &7potworów.", 60, 120, 220, "Owen")
+        #winterDelightMissionCreate(3, "Christmas Baubles", "Świąteczne Ozdoby", "&7Find &f{low} {mid} {high} &7Gemstones.", "&7Znajdź &f{low} {mid} {high} &7Kamieni Szlachetnych.", 15, 30, 50, "Zach")
+        #winterDelightMissionCreate(4, "Shoveling Snow", "Odśnieżanie", "&7Prospect &f{low} {mid} {high} &7stone or deepslate.", "&7Przeszukaj &f{low} {mid} {high} &7stone lub deepslate.", 15, 30, 50, "Arthur")
+        #winterDelightMissionCreate(5, "Winter Sparkles", "Zimowe Błyskotki", "&7Craft &f{low} {mid} {high} &7Uncommon Gems.", "&7Stwórz &f{low} {mid} {high} &7Niepospolitych Gemów.", 5, 10, 25, "Maria Louiza")
+        #winterDelightMissionCreate(6, "Mastering the Art", "Opanowywanie Umiejętności", "&7Use abilities &f{low} {mid} {high} &7times.", "&7Użyj umiejętności &f{low} {mid} {high} &7razy.", 250, 500, 750, "Balthazar")
+        #winterDelightMissionCreate(7, "Gaining Experience", "Zdobywanie Doświadczenia", "&7Earn &f{low} {mid} {high} &7EXP.", "&7Zdobądź &f{low} {mid} {high} &7punktów doświadczenia.", 10000, 20000, 40000, "Sedriah")
+        #winterDelightMissionCreate(8, "Happy Winter Delight!", "Wesołego Zimowego Zachwytu!", "&7Wish &f{low} {mid} {high} &7NPCs on spawn a Happy Winter Delight.", "&7Życz &f{low} {mid} {high} &7NPC wesołego Zimowego Zachwytu.", 10, 20, 30, "Shauna")
+        #winterDelightMissionCreate(9, "Abra Cadabra", "Abra Kadabra", "&7Disenchant &f{low} {mid} {high} &7Cards.", "&7Zdisenchantuj &f{low} {mid} {high} &7Kart.", 10, 20, 30, "Atticus")
+        #winterDelightMissionCreate(10, "Klejnots for Stavros", "Klejnoty dla Stavrosa", "&7Find &f{low} {mid} {high} &7Klejnots.", "&7Znajdź &f{low} {mid} {high} &7Klejnotów.", 10, 20, 30, "Stavros")
+        #winterDelightMissionCreate(11, "Essenceful", "Esencyjność", "&7Find &f{low} {mid} {high} &7{essence}s.", "&7Znajdź &f{low} {mid} {high} &7Esencji.", 10, 20, 30, "August")
+        #winterDelightMissionCreate(12, "Upgrading Artifacts", "Ulepszanie Artefaktów", "&7Upgrade Artifacts to a total of &f{low} {mid} {high} &7levels.", "&7Ulepsz Artefakty do łącznie &f{low} {mid} {high} &7poziomów.", 10, 25, 50, "'Papito'")
+        #winterDelightMissionCreate(13, "Chest Opening", "Opening Skrzynek", "&7Open &f{low} {mid} {high} &7Chests or Luxurious Chests.", "&7Otwórz &f{low} {mid} {high} &7skrzynek.", 30, 60, 80, "Soldier")
+        #winterDelightMissionCreate(14, "Boostermania", "Boosteromania", "&7Open &f{low} {mid} {high} &7Boosters.", "&7Otwórz &f{low} {mid} {high} &7Boosterów.", 3, 5, 8, "Starla")
+        #winterDelightMissionCreate(15, "Strength Training", "Trening", "&7Increase Card level by &f{low} {mid} {high}&7.", "&7Zaawansuj Kartę o łącznie &f{low} {mid} {high} &7poziomów.", 2, 5, 10, "Cornelia")
+        #winterDelightMissionCreate(16, "Progress", "Progres", "&7Increase Player level by &f{low} {mid} {high}&7.", "&7Zaawansuj Poziom Gracza o łącznie &f{low} {mid} {high} &7poziomów.", 1, 2, 3, "Dust Star")
+        #winterDelightMissionCreate(17, "My Precious Fish", "Moje Piękne Ryby!", "&7Fish up &f{low} {mid} {high} &7items.", "&7Złów &f{low} {mid} {high} &7przedmiotów.", 10, 25, 50, "Kad")
+        #winterDelightMissionCreate(18, "An Exquisite Find", "Wyśmienite Znalezisko", "&7Find &f{low} {mid} {high} &7Illimited Diamonds while prospecting.", "&7Znajdź &f{low} {mid} {high} &7Bezgranicznych Diamentów podczas przeszukiwania.", 1, 2, 3, "Czarek")
+        #winterDelightMissionCreate(19, "Magnus's Request", "Prośba Magnusa", "&7Find &f{low} {mid} {high} Ambers &7while mining.", "&7Znajdź &f{low} {mid} {high} &7Bursztynów podczas kopania.", 2, 4, 7, "Magnus")
+        #winterDelightMissionCreate(20, "Building the World", "Budowanie Świata", "&7Place &f{low} {mid} {high} &7blocks.", "&7Postaw &f{low} {mid} {high} &7bloków.", 200, 500, 900, "Perseus")
+
+function winterDelightRandomizeMissions(p: player):
+    load yaml "plugins/Skript/playerdata/events/winterdelightmissions.yml" as "winterDelightMissions"
+    load yaml "plugins/Skript/playerdata/events/%uuid of {_p}%.yml" as "winterDelight-%{_p}%"
+    set {_list::*} to integers between 1 and 20
+    set {_list::*} to shuffled {_list::*}
+    clear yaml value "Missions" in "winterDelight-%{_p}%"
+    set {_difficulties::*} to "Low", "Mid" and "High"
+    loop 3 times:
+        set {_randInt} to {_list::%loop-number%}
+        if {language::%{_p}%} = "English":
+            set {_name} to yaml value "Missions.%{_randInt}%.Name" in "winterDelightMissions"
+            set {_desc} to yaml value "Missions.%{_randInt}%.Description" in "winterDelightMissions"
+        else:
+            set {_name} to yaml value "Missions.%{_randInt}%.Name (Polish)" in "winterDelightMissions"
+            set {_desc} to yaml value "Missions.%{_randInt}%.Description (Polish)" in "winterDelightMissions"
+        set {_difficulty} to {_difficulties::%loop-number%}
+        
+        if {_desc} contains "{essence}":
+            set {_essence} to a random element of {esencjeEN::*}
+            replace all "{essence}" in {_desc} with (uncolored name of {_essence})
+        else if {_desc} contains "Esencji":
+            set {_essence} to a random element of {esencjeEN::*}
+            replace all "Esencji" in {_desc} with (uncolored name of {_essence})
+        
+        if {_difficulty} = "Low":
+            set {_req} to yaml value "Missions.%{_randInt}%.Requirements.Low" in "winterDelightMissions"
+            replace all "{high}/2" and "{mid}/2" in {_desc} with ""
+            replace all "{mid}" in {_desc} with ""
+            replace all "{high}" in {_desc} with ""
+            replace all "{high}&7." in {_desc} with ""
+            replace all "{low}/2" in {_desc} with "%{_req}/2%"
+            replace all "{low}" in {_desc} with "%{_req}%"
+        else if {_difficulty} = "Mid":
+            set {_req} to yaml value "Missions.%{_randInt}%.Requirements.Mid" in "winterDelightMissions"
+            replace all "{high}/2" and "{low}/2" in {_desc} with ""
+            replace all "{low}" in {_desc} with ""
+            replace all "{high}" in {_desc} with ""
+            replace all "{high}&7." in {_desc} with ""
+            replace all "{mid}/2" in {_desc} with "%{_req}/2%"
+            replace all "{mid}" in {_desc} with "%{_req}%"
+        else if {_difficulty} = "High":
+            set {_req} to yaml value "Missions.%{_randInt}%.Requirements.High" in "winterDelightMissions"
+            replace all "{low}/2" and "{mid}/2" in {_desc} with ""
+            replace all "{low}" in {_desc} with ""
+            replace all "{mid}" in {_desc} with ""
+            replace all "{high}/2" in {_desc} with "%{_req}/2%"
+            replace all "{high}" in {_desc} with "%{_req}%"
+        replace all "  " in {_desc} with ""
+        send {_desc} to {_p}
+
+        set {_npc} to yaml value "Missions.%{_randInt}%.Received From" in "winterDelightMissions"
+
+        set yaml value "Missions.%loop-number%.Name" in "winterDelight-%{_p}%" to {_name}
+        set yaml value "Missions.%loop-number%.Description" in "winterDelight-%{_p}%" to {_desc}
+        set yaml value "Missions.%loop-number%.Difficulty" in "winterDelight-%{_p}%" to {_difficulty}
+        set yaml value "Missions.%loop-number%.Requirement" in "winterDelight-%{_p}%" to {_req}
+        set yaml value "Missions.%loop-number%.Received From" in "winterDelight-%{_p}%" to {_npc}
+    save yaml "winterDelight-%{_p}%"
+    unload yaml "winterDelightMissions"
+    unload yaml "winterDelight-%{_p}%"
+
+function winterDelightMissionCreate(int: integer, name: text, namePL: text, description: text, descriptionPL: text, low: integer, mid: integer, high: integer, npc: text):
+    load yaml "plugins/Skript/playerdata/events/winterdelightmissions.yml" as "winterDelightMissions"
+    if yaml value "Missions.%{_int}%" in "winterDelightMissions" is not set:
+        set yaml value "Missions.%{_int}%.Name" in "winterDelightMissions" to {_name}
+        set yaml value "Missions.%{_int}%.Name (Polish)" in "winterDelightMissions" to {_namePL}
+        set yaml value "Missions.%{_int}%.Description" in "winterDelightMissions" to {_description}
+        set yaml value "Missions.%{_int}%.Description (Polish)" in "winterDelightMissions" to {_descriptionPL}
+        set yaml value "Missions.%{_int}%.Requirements.Low" in "winterDelightMissions" to {_low}
+        set yaml value "Missions.%{_int}%.Requirements.Mid" in "winterDelightMissions" to {_mid}
+        set yaml value "Missions.%{_int}%.Requirements.High" in "winterDelightMissions" to {_high}
+        set yaml value "Missions.%{_int}%.Received From" in "winterDelightMissions" to {_npc}
+    
+    save yaml "winterDelightMissions"
+    unload yaml "winterDelightMissions"
+    #Random 3 per day with daily reset
+    #Yaml with all missions
+    #Yaml components
+    # number 
+    # name=Cookie Mission
+    # description = blah%nl%Blah.Blah
+    #pass experience
+    #on mission complete add 1 to missions completed
+    #achievement for missions completed
 command /winterdelightpass:
     trigger:
-        set {_itemCategory} to mini message from "<gradient:##dbf5ff:##6580ab>Winter Delight 2024 Event"
+        broadcast "A"
         #spawn 1 pig at player with nbt from "{Silent:1b}"
         #set name of last spawned pig to "winterpet"
         #set tag "custom;WinterPet" of nbt of last spawned pig to true
@@ -84,7 +306,7 @@ function eventPassMenuRefresh(p: player):
     if {_p}'s current inventory = metadata tag "winterDelightEventPassMenu" of {_p}:
         set {_currentPage} to metadata value "winterDelightEventPassMenuCurrentPage" of {_p}
         set {_count} to 1
-        set {_passLevel} to 3
+        set {_passLevel} to 0
         loop 7 times:
             set slot 9 + {_count} of metadata tag "winterDelightEventPassMenu" of {_p} to air
             set {_currentIndex} to ({_currentPage}-1)*7 + {_count}
@@ -93,7 +315,7 @@ function eventPassMenuRefresh(p: player):
             #// blue/light gray glass pane = level not reach
             #// light blue glass pane = current level
             #// lime glass pane = claimed levels
-            if {_currentIndex} <= 50:
+            if {_currentIndex} <= 56:
                 #Add required EXP and a progres bar to the description
                 if {_currentIndex} > {_passLevel}:
                     set {_progress} to "&7Required XP: &f0&7/&f%1000*(({_currentPage}-1)*7 + {_count}) * (1 + ((({_currentPage}-1)*7 + {_count}-1))/20)%"
@@ -103,21 +325,150 @@ function eventPassMenuRefresh(p: player):
                 else:
                     set {_progress} to "&a&o✔ You have reached this level."
                     set {_item} to lime glass pane
+                #REPEATED REWARDS
                 #Klejnot
-                if {_currentIndex} = 1, 13, 17, 24, 32, 38, 41 or 48:
-                    set {_lore} to "      &f150x Klejnot  &f✨%nl%&f <##97ff6b>Currency  &f*%nl%&f*───-----─･ﾟ✧ﾟ･─-----───*%nl%&7Main server currency.%nl%&7Can be traded for a variety%nl%&7of items, or used for purchasing them."
+                if {_currentIndex} = 1, 17, 38 or 47:
+                    if {_currentIndex} = 1 or 17:
+                        set {_amount} to 150
+                    else if {_currentIndex} = 38:
+                        set {_amount} to 325
+                    else if {_currentIndex} = 47:
+                        set {_amount} to 500
+                    set {_lore} to "      &f%{_amount}%x Klejnot  &f✨%nl%&f <##97ff6b>Currency  &f*%nl%&f*───-----─･ﾟ✧ﾟ･─-----───*%nl%&7Main server currency.%nl%&7Can be traded for a variety%nl%&7of items, or used for purchasing them."
                     set {_flavortext} to "&f✨ &7A beloved, universally used and an%nl%&7all-purpose serving item of every%nl%&7player. Here to make you even wealthier!"
+                #Secret Wonders Booster
+                if {_currentIndex} = 2, 11 or 26:
+                    if {_currentIndex} = 2 or 11:
+                        set {_amount} to 3
+                    else:
+                        set {_amount} to 5
+                    set {_lore} to "      &f%{_amount}%x Secret Wonders Booster  &f✨%nl%&f &9Booster  &f*%nl%&f*───-----─･ﾟ✧ﾟ･─-----───*%nl%&7Booster containing one or more cards.%nl%&7May contain exclusive%nl%&7cards from this set."
+                    set {_flavortext} to "&f✨ &7Wonder what's inside these?"
+                #Majestic Dawn Booster
+                if {_currentIndex} = 8, 23 or 36:
+                    if {_currentIndex} = 8 or 23:
+                        set {_amount} to 3
+                    else:
+                        set {_amount} to 5
+                    set {_lore} to "      &f%{_amount}%x Majestic Dawn Booster  &f✨%nl%&f &9Booster  &f*%nl%&f*───-----─･ﾟ✧ﾟ･─-----───*%nl%&7Booster containing one or more cards.%nl%&7May contain exclusive%nl%&7cards from this set."
+                    set {_flavortext} to "&f✨ &7Wonder what's inside these?"
+                #Unseen Forces Booster
+                if {_currentIndex} = 7, 29 or 39:
+                    if {_currentIndex} = 7 or 29:
+                        set {_amount} to 3
+                    else:
+                        set {_amount} to 5
+                    set {_lore} to "      &f%{_amount}%x Unseen Forces Booster  &f✨%nl%&f &9Booster  &f*%nl%&f*───-----─･ﾟ✧ﾟ･─-----───*%nl%&7Booster containing one or more cards.%nl%&7May contain exclusive%nl%&7cards from this set."
+                    set {_flavortext} to "&f✨ &7Wonder what's inside these?"
+                #Plasma Freeze Booster
+                if {_currentIndex} = 13, 24 or 48:
+                    if {_currentIndex} = 13 or 24:
+                        set {_amount} to 3
+                    else:
+                        set {_amount} to 5
+                    set {_lore} to "      &f%{_amount}%x Plasma Freeze Booster  &f✨%nl%&f &9Booster  &f*%nl%&f*───-----─･ﾟ✧ﾟ･─-----───*%nl%&7Booster containing one or more cards.%nl%&7May contain exclusive%nl%&7cards from this set."
+                    set {_flavortext} to "&f✨ &7Wonder what's inside these?"
                 #Star Shard
-                else if {_currentIndex} = 4, 12, 18, 25, 33 or 42:
-                    set {_lore} to "      &f1x Star Shard  &f✨%nl%&f <##ff7878>Stellar Content  &f*%nl%&f*───-----─･ﾟ✧ﾟ･─-----───*%nl%&7Incredibly rare star shard awarded%nl%&7for the greatest feats, or found by the luckiest.%nl%&7Its energy is capable of activating the%nl%&7most enchanted places inaccessible to players..%nl%&7Serves as a key to the &cStellar Chest&7.%nl% %nl%&4&l(&c&l!&4&l) &cUse this item to open the%nl%&cStellar Chest."
+                else if {_currentIndex} = 4, 12, 19, 37 or 42:
+                    if {_currentIndex} = 4:
+                        set {_amount} to 1
+                    else if {_currentIndex} = 12 or 19:
+                        set {_amount} to 2
+                    else if {_currentIndex} = 37:
+                        set {_amount} to 3
+                    else if {_currentIndex} = 42:
+                        set {_amount} to 4
+                    set {_lore} to "      &f%{_amount}%x Star Shard  &f✨%nl%&f <##ff7878>Stellar Content  &f*%nl%&f*───-----─･ﾟ✧ﾟ･─-----───*%nl%&7Incredibly rare star shard awarded%nl%&7for the greatest feats, or found by the luckiest.%nl%&7Its energy is capable of activating the%nl%&7most enchanted places inaccessible to players..%nl%&7Serves as a key to the &cStellar Chest&7.%nl% %nl%&4&l(&c&l!&4&l) &cUse this item to open the%nl%&cStellar Chest."
                     set {_flavortext} to "&f✨ &7Make a wish and you shall receive%nl%&7what is destined for you."
-                else if {_currentIndex} = 3, 19, 28, 34 or 44:
-                    set {_lore} to "      &f3x Sage's Exp. Book  &f✨%nl%&f &8Experience Book  &f*%nl%&f*───-----─･ﾟ✧ﾟ･─-----───*%nl%&7Main server currency.%nl%&7Can be traded for a variety%nl%&7of items, or used for purchasing them."
-                    set {_flavortext} to "&f✨ &7A beloved, universally used and an%nl%&7all-purpose serving item of every%nl%&7player. Here to make you even wealthier!"
+                #Exp Book
+                else if {_currentIndex} = 3, 28, 34 or 44:
+                    if {_currentIndex} = 3:
+                        set {_amount} to 3
+                    else if {_currentIndex} = 28 or 34:
+                        set {_amount} to 4
+                    else if {_currentIndex} = 44:
+                        set {_amount} to 5
+                    set {_lore} to "      &f%{_amount}%x Sage's Exp. Book  &f✨%nl%&f <##e6812e>Experience Book  &f*%nl%&f*───-----─･ﾟ✧ﾟ･─-----───*%nl%&7Half of the words written in this book might%nl%&7seem incomprehensible, but you know that this%nl%&7book has been written by a person with the%nl%&7highest knowledge on the subject. Likely Atticus.%nl% %nl%&7Awards &f3000 Card Exp. &7or &f1500 Player Exp."
+                    set {_flavortext} to "&f✨ &7Study this item to quickly boost%nl%&7up your player or Card EXP!"
+                #Random Gemstone
+                else if {_currentIndex} = 15, 31 or 41:
+                    set {_lore} to "      &f1x Gemstone Bundle  &f✨%nl%&f <##66bbff>Gemstones  &f*%nl%&f*───-----─･ﾟ✧ﾟ･─-----───*%nl%&7This item contains &f100 &7random Gemstones!%nl% %nl%&a(&2&l!&a) &aRight-click to open this item"
+                    set {_flavortext} to "&f✨ &7Open this item for a great amount%nl%&7of Gemstones!"
+                #Random Boost
+                else if {_currentIndex} = 5, 27 or 45:
+                    set {_lore} to "      &f1x Random Boost  &f✨%nl%&f <##ff0d6e>Rank III Boost  &f*%nl%&f*───-----─･ﾟ✧ﾟ･─-----───*%nl%&7Contains a random &fRank III Boost&7.%nl%&7Possible items:%nl%&7- <##187a2f>Jade Statue%nl%&7- <##ff7926>Citrine Looking Glass%nl%&7- <##ff0d6e>Tourmaline Diadem%nl%&7- <##025b95>Sapphire Dice"
+                    set {_flavortext} to "&f✨ &7An awesome item for enhancing your%nl%&7gameplay experience and gaining bonus%nl%&7materials or EXP!"
+                #Stardust
+                else if {_currentIndex} = 6, 38, or 49:
+                    set {_lore} to "      &f300x Stardust  &f✨%nl%&f <##6518ba>S<##942cce>t<##a925d9>a<##f346d1>r<##f37646>d<##f38646>u<##f18d18>s<##f3d846>t  &f*%nl%&f*───-----─･ﾟ✧ﾟ･─-----───*%nl%&7Magical and valuable dust, which can be%nl%&7obtained from various different sources.%nl%&7Has many uses."
+                    set {_flavortext} to "&f✨ &7Magical item. Can be used to a.o.%nl%&7enhance Artifacts."
+                #Luxurious Chest
+                else if {_currentIndex} = 9, 21 or 31:
+                    set {_lore} to "      &f30x Luxurious Chest  &f✨%nl%&f &9Chest  &f*%nl%&f*───-----─･ﾟ✧ﾟ･─-----───*%nl%&7Mysterious chest acquired when mining.%nl%&7Contains a higher amount of valuable items%nl%&7than the normal chest."
+                    set {_flavortext} to "&f✨ &7Full of surprises!"
+                #Essence Bundle
+                else if {_currentIndex} = 16 or 33:
+                    set {_lore} to "      &f1x Essence Bundle  &f✨%nl%&f <##f55656>Essences  &f*%nl%&f*───-----─･ﾟ✧ﾟ･─-----───*%nl%&7This item contains &f16 &7of each Essence!%nl% %nl%<##b598d4>(&f&l!<##b598d4>) Right-click to open this item"
+                    set {_flavortext} to "&f✨ &7Open this item to receive a substantial%nl%&7amount of Essences!"
+                #SINGLE TIME REWARDS
+                #Jewelry Box
+                else if {_currentIndex} = 32:
+                    set {_lore} to "      &f1x Jewelry Box  &f✨%nl%&f <##b86554>Jewelry Item  &f*%nl%&f*───-----─･ﾟ✧ﾟ･─-----───*%nl%&7This premium Jewelry box was carefully crafted%nl%&7by Zach using high-quality Jewelcrafting methods%nl%&7and is only given out on special occasions.%nl% %nl%&7Open to obtain one of the following items at%nl%<##fdd002>Item Level 70&7. Items obtained will%nl%&7always have a &f &7Prismatic Socket:%nl%&7- <##632c99>Ring of Forbidden Techniques%nl%&7- <##e08b22>Cizin's Curse%nl%&7- <##50b55f>Spirit of the Woods%nl% %nl%&6&l(&e&l!&6&l) &eThis is an exclusive single-use item.%nl%&eClick to select one of three Ring items."
+                    set {_flavortext} to "&f✨ &7This exclusive jewelry box offers%nl%&7a high Item Level Ring item. Open to%nl%&7kickstart your gearing."
+                #Achroite
+                else if {_currentIndex} = 18:
+                    set {_lore} to "      &f1x Cut Achroite  &f✨%nl%&f <##90e0c4>Unique Design Gem  &f*%nl%&f*───-----─･ﾟ✧ﾟ･─-----───*%nl%&7This item contains a &e★★★ <##90e0c4>Cut Achroite&7,%nl%&7a potent <##0070dd>Rare Gem &7that increases a Card's%nl%&7primary stat!%nl%&cThis item is consumed upon use.%nl% %nl%&9(&3&l!&9) &3Right-click to select your preferred%nl%&3version of Cut Achroite."
+                    set {_flavortext} to "&f✨ &7This fine gem has a simple yet unique%nl%&7design. A flow of plasma energies can be%nl%&7felt when touching this gem."
+                #Wildcard
+                else if {_currentIndex} = 25:
+                    set {_lore} to "      &f1x Wildcard  &f✨%nl%&f <##d8b6fa>Card Selector  &f*%nl%&f*───-----─･ﾟ✧ﾟ･─-----───*%nl%&7A magically enchanted card that has%nl%&7your name engraved on its reverse.%nl% %nl%&7This special item is only distributed%nl%&7on the most special occassions.%nl%&7Choose wisely, as this item will be%nl%&7consumed upon use.%nl% %nl%<##d8b6fa>(<##885ad1>&l!<##d8b6fa>) <##d8b6fa>This is an exclusive single-use item.%nl%<##d8b6fa>Right-click to open a menu with selectable%nl%<##d8b6fa>Cards."
+                    set {_flavortext} to "&f✨ &7This exclusive Wildcard offers%nl%&7a possibility for players to unite%nl%&7with fate."
+                #Artifacts
+                else if {_currentIndex} = 14:
+                    set {_lore} to "      &f1x Morning Frost  &f✨%nl%&f <##ff8000>Legendary Flower Artifact  &f*%nl%&f*───-----─･ﾟ✧ﾟ･─-----───*%nl%&7Deepfrost Set%nl%<##fdd002>Item Level 70%nl% %nl%&f3-4x Random Stat%nl% %nl%<##73b7ff>2 Set Bonus: <##add8e6>Ice &7damage dealt is increased by &f15%%&7.%nl%<##73b7ff>4 Set Bonus: <##fca417> Critically Striking &7an enemy will grant%nl%&7you &f3%% &7Critical Damage for &f20 &7seconds. Each following%nl%<##fca417> Critical Hit &7will increase this bonus by an additional%nl%&f3%%&7, stacking up to &f12 &7times.%nl% %nl%&fUpgraded: +0%nl%&m&8-------------------------------------------%nl%&7Star Level: &e★★★★★%nl%&8&o(!) Every five upgrades raises a random substat%nl%&8&oby a random value. Five star artifacts%nl%&8&ostart with three substats and have a%nl%&8&o33.33%% chance to start with four."
+                    set {_flavortext} to "&f✨ &7This Artifact belongs to the Deepfrost Set and%nl%&7will have randomized stats."
+                else if {_currentIndex} = 22:
+                    set {_lore} to "      &f1x Glacial Heart  &f✨%nl%&f <##ff8000>Legendary Orb Artifact  &f*%nl%&f*───-----─･ﾟ✧ﾟ･─-----───*%nl%&7Deepfrost Set%nl%<##fdd002>Item Level 70%nl% %nl%&f3-4x Random Stat%nl% %nl%<##73b7ff>2 Set Bonus: <##add8e6>Ice &7damage dealt is increased by &f15%%&7.%nl%<##73b7ff>4 Set Bonus: <##fca417> Critically Striking &7an enemy will grant%nl%&7you &f3%% &7Critical Damage for &f20 &7seconds. Each following%nl%<##fca417> Critical Hit &7will increase this bonus by an additional%nl%&f3%%&7, stacking up to &f12 &7times.%nl% %nl%&fUpgraded: +0%nl%&m&8-------------------------------------------%nl%&7Star Level: &e★★★★★%nl%&8&o(!) Every five upgrades raises a random substat%nl%&8&oby a random value. Five star artifacts%nl%&8&ostart with three substats and have a%nl%&8&o33.33%% chance to start with four."
+                    set {_flavortext} to "&f✨ &7This Artifact belongs to the Deepfrost Set and%nl%&7will have randomized stats."
+                else if {_currentIndex} = 35:
+                    set {_lore} to "      &f1x Winter's Eon  &f✨%nl%&f <##ff8000>Legendary Phial Artifact  &f*%nl%&f*───-----─･ﾟ✧ﾟ･─-----───*%nl%&7Deepfrost Set%nl%<##fdd002>Item Level 70%nl% %nl%&f3-4x Random Stat%nl% %nl%<##73b7ff>2 Set Bonus: <##add8e6>Ice &7damage dealt is increased by &f15%%&7.%nl%<##73b7ff>4 Set Bonus: <##fca417> Critically Striking &7an enemy will grant%nl%&7you &f3%% &7Critical Damage for &f20 &7seconds. Each following%nl%<##fca417> Critical Hit &7will increase this bonus by an additional%nl%&f3%%&7, stacking up to &f12 &7times.%nl% %nl%&fUpgraded: +0%nl%&m&8-------------------------------------------%nl%&7Star Level: &e★★★★★%nl%&8&o(!) Every five upgrades raises a random substat%nl%&8&oby a random value. Five star artifacts%nl%&8&ostart with three substats and have a%nl%&8&o33.33%% chance to start with four."
+                    set {_flavortext} to "&f✨ &7This Artifact belongs to the Deepfrost Set and%nl%&7will have randomized stats."
+                else if {_currentIndex} = 46:
+                    set {_lore} to "      &f1x Icy Memorial  &f✨%nl%&f <##ff8000>Legendary Scroll Artifact  &f*%nl%&f*───-----─･ﾟ✧ﾟ･─-----───*%nl%&7Deepfrost Set%nl%<##fdd002>Item Level 70%nl% %nl%&f3-4x Random Stat%nl% %nl%<##73b7ff>2 Set Bonus: <##add8e6>Ice &7damage dealt is increased by &f15%%&7.%nl%<##73b7ff>4 Set Bonus: <##fca417> Critically Striking &7an enemy will grant%nl%&7you &f3%% &7Critical Damage for &f20 &7seconds. Each following%nl%<##fca417> Critical Hit &7will increase this bonus by an additional%nl%&f3%%&7, stacking up to &f12 &7times.%nl% %nl%&fUpgraded: +0%nl%&m&8-------------------------------------------%nl%&7Star Level: &e★★★★★%nl%&8&o(!) Every five upgrades raises a random substat%nl%&8&oby a random value. Five star artifacts%nl%&8&ostart with three substats and have a%nl%&8&o33.33%% chance to start with four."
+                    set {_flavortext} to "&f✨ &7This Artifact belongs to the Deepfrost Set and%nl%&7will have randomized stats."
+                #Delphox Variant
                 else if {_currentIndex} = 10:
-                    set {_lore} to "      <##82c3ff>Winter Delight Delphox%nl%&f <##ff8000>Legendary Variant%nl%&7a lot of text to describe this variant%nl%&7because the variant will be described%nl%&7and is really cool and bla bla.%nl% %nl%&f✨ This Variant features:%nl%&f- Custom VFX%nl%&f- New particle effects%nl%&f- New special icons%nl%&f- New sounds%nl%&f- New colour%nl%&f- New damage meter look"
-                    set {_flavortext} to "&f✨ &7A beloved, universally used and an%nl%&7all-purpose serving item of every%nl%&7player. Here to make you even wealthier!"
-                set slot 9 + {_count} of metadata tag "winterDelightEventPassMenu" of {_p} to {_item} named "&fLevel %({_currentPage}-1)*7 + {_count}%" with lore "%{_lore}%%nl% %nl%%{_flavortext}%%nl% %nl%%{_progress}%"
+                    set {_name} to mini message from "<gradient:##d4eaff:##82c3ff:##d4eaff:##82c3ff>Winter Delight Delphox"
+                    set {_var} to mini message from "<gradient:##d4eaff:##82c3ff:##d4eaff:##82c3ff>✨ This Variant Features:"
+                    set {_lore} to "      %{_name}%  &f✨%nl%&f <##ff8000>Legendary Variant  &f*%nl%&7A brand-new winter-themed variant for &fDelphox&7.%nl%&7Replaces &fDelphox's &7ability effects with a cold%nl%&7light blue winterfire and adds new icons, VFX%nl%&7and sounds.%nl% %nl%%{_var}%%nl%&f- 💫 Custom VFX%nl%&f- 🌠 New particle effects%nl%&f- ✧ New special icons%nl%&f- ♪ New sounds%nl%&f- ⭐ New colour%nl%&f- 🌟 New damage meter look"
+                    set {_flavortext} to "&f✨ &7Frostbite your enemies with this brand-new%nl%&7Legendary quality variant for Delphox."
+                #Cresselia Variant
+                else if {_currentIndex} = 40:
+                    set {_name} to mini message from "<gradient:##6a92f0:##fdfdff:##c8ff85:##e176ff>Winter Delight Cresselia"
+                    set {_var} to mini message from "<gradient:##6a92f0:##fdfdff:##c8ff85:##e176ff>✨ This Variant Features:"
+                    set {_lore} to "      %{_name}%  &f✨%nl%&f <##ff8000>Legendary Variant  &f*%nl%&7A brand-new aurora-themed variant for &fCresselia&7.%nl%&7Replaces &fCreselia's &7ability effects with a cold%nl%&7light blue winterfire and adds new icons, VFX%nl%&7and sounds.%nl% %nl%%{_var}%%nl%&f- 💫 Custom VFX%nl%&f- 🌠 New particle effects%nl%&f- ✧ New special icons%nl%&f- ♪ New sounds%nl%&f- ⭐ New colour%nl%&f- 🌟 New damage meter look"
+                    set {_flavortext} to "&f✨ &7Summon waves of northern lights themed%nl%&7shooting stars with this brand new%nl%&7Legendary quality variant for Cresselia."
+                #Shenhe Card
+                else if {_currentIndex} = 50:
+                    set {_lore} to "      <##8c9db9>Shenhe  &f✨%nl%&f &fLonesome Transcendence  &f*%nl%&f✨ &8Playable Card%nl%&7Shenhe is a <##e35959> Strength &7user that belongs%nl%&7to the <##add8e6>Ice &7element. She is a &fdedicated%nl%&fsupport &7and a perfect pair to all <##add8e6>Ice%nl%&7element Cards and is able to greatly%nl%&fbuff &7her allies with her abilities."
+                    set {_flavortext} to "&f✨ &7The daughter of an unnamed exorcist%nl%&7couple, Shenhe was taken in and raised%nl%&7as a disciple following a traumatic incident%nl%&7instigated by Shenhe's father during%nl%&7her childhood. "
+                #Winter Pet
+                else if {_currentIndex} = 30:
+                    set {_lore} to "      <##82c3ff>Winterhorn Pet  &f✨%nl%&f <##effc3f>Pet  &f*%nl%&7A fluffy companion to keep you warm and%nl%&7cozy in this snowy season, all while bringing%nl%&7a Christmas mood everywhere it goes."
+                    set {_flavortext} to "&f✨ &7The Winterhorn is a loyal companion.%nl%&7It lives in cold and snowy regions."
+                #Music Disc
+                else if {_currentIndex} = 20:
+                    set {_itemCategory} to mini message from "<gradient:##dbf5ff:##6580ab>Winter Delight 2024 Event"
+                    set {_lore} to "      <##a6d4e3>Winter Delight Music Disc  &f✨%nl%&f %{_itemCategory}%  &f*%nl%&7This music disc was obtained from%nl%&7the &fEvent Pass &7during the &fWinter%nl%&fDelight Event&7.%nl% %nl%&7Right-click to &fplay &7the theme.%nl%&7Left-click to &fstop &7playing the theme.%nl% %nl%&7Duration: &f02:05%nl%&7Original title: &fBirds of Paradise%nl%&7Original composer: &fThomas J. Curran"
+                    set {_flavortext} to "&f✨ &7This magical and enchanting soundtrack is%nl%&7the theme of this year's Winter Delight."
+                #Winterberry Beret Hat
+                else if {_currentIndex} = 43:
+                    set {_lore} to "      <##eb5e75>Winterberry Beret  &f✨%nl%&f <##ff965e>Cosmetic Item  &f*%nl%&7Show off your Christmas spirit with a%nl%&7festive beret. Your pet will surely be%nl%&7happy about the matching hats!"
+                    set {_flavortext} to "&f✨ &7Put on this festive beret and%nl%&7pretend you're the Santa."
+                if {_currentIndex} <= 50:
+                    set slot 9 + {_count} of metadata tag "winterDelightEventPassMenu" of {_p} to {_item} named "&fLevel %({_currentPage}-1)*7 + {_count}%" with lore "%{_lore}%%nl% %nl%%{_flavortext}%%nl% %nl%%{_progress}%"
+                else:
+                    set slot 9 + {_count} of metadata tag "winterDelightEventPassMenu" of {_p} to black stained glass pane named "&fEnd of Reward Track" with lore "&f✨ &7&oThis Event Pass ends at Level 50."
             add 1 to {_count}
 
         set {_nextPageMin} to ({_currentPage})*7+1
@@ -139,7 +490,6 @@ function eventPassMenuRefresh(p: player):
             set slot 17 of metadata tag "winterDelightEventPassMenu" of {_p} to air
         if {_currentPage} = 1:
             set slot 9 of metadata tag "winterDelightEventPassMenu" of {_p} to air
-
         set metadata tag "winterDelightEventPassMenu" of {_p} to {_p}'s current inventory
 
 on rightclick:
@@ -338,78 +688,79 @@ on rightclick:
             unload yaml "winterDelight"
             open {_menu} to player
     else if player's tool = compass:
-        set {_date::*} to now formatted human-readable split at " "
-        set {_yearMonthDay::*} to {_date::1} split at "-"
-        set {_num} to 1
-        loop {_yearMonthDay::*}:
-            set {_yearMonthDay::%{_num}%} to {_yearMonthDay::%{_num}%} parsed as number
-            add 1 to {_num}
-        
-        if {_yearMonthDay::2} = 12:
-            load yaml "plugins/Skript/playerdata/events/%uuid of player%.yml" as "winterDelight-%player%"
-            load yaml "plugins/Skript/playerdata/events/winterdelight.yml" as "winterDelightYml-%player%"
-            loop {_yearMonthDay::3} times:
-                if yaml value "Warps.%loop-number%.Claimed" in "winterDelight-%player%" is not set:
-                    set {_coords} to yaml value "Warps.%loop-number%.Coords" in "winterDelight-%player%"
-                    set {_coordsList::%{_coords}%} to distance between player and {_coords}
-                    clear {_coords}
-            unload yaml "winterDelight-%player%"
-            unload yaml "winterDelightYml-%player%"
-            set {_indices::*} to all indices of {_coordsList::*}
-            set {_index} to 1
-            set {_size} to 31
-            if {_size} < 0:
-                set {_reversed} to true
-                set {_size} to ({_size} * (-1))
-            loop {_indices::*}:
-                set {_values::%{_index}%} to {_coordsList::%loop-value%}
-                set {_indexes::%{_index}%} to "%loop-value%"
-                add 1 to {_index}
-            if {_size} > (size of {_indexes::*}):
-                set {_size} to (size of {_indexes::*})
-            loop {_size} times:
-                loop {_values::*}:
-                    if {_max} is not set:
-                        set {_max} to loop-value-2
-                        set {_index} to loop-index
-                    else:
-                        if {_reversed} is not true:
-                            if loop-value-2 < {_max}:
-                                set {_max} to loop-value-2
-                                set {_index} to loop-index
-                        else:
-                            if loop-value-2 > {_max}:
-                                set {_max} to loop-value-2
-                                set {_index} to loop-index
-                set {_var} to "%{_max}%"
-                add {_var} to {_return::*}
-                add {_indexes::%{_index}%} to {_coords::*}
-                delete {_indexes::%{_index}%}, {_values::%{_index}%}, {_max} and {_index}
-            replace all "world:" in {_coords::1} with ""
-            set {_coordsLoc::*} to {_coords::1} split at ","
-            set {_in} to 1
-            loop {_coordsLoc::*}:
-                set {_coordsLoc::%{_in}%} to {_coordsLoc::%{_in}%} parsed as number
-                add 1 to {_in}
+        if uncolored name of player's tool = "Winter Delight Compass":
+            set {_date::*} to now formatted human-readable split at " "
+            set {_yearMonthDay::*} to {_date::1} split at "-"
+            set {_num} to 1
+            loop {_yearMonthDay::*}:
+                set {_yearMonthDay::%{_num}%} to {_yearMonthDay::%{_num}%} parsed as number
+                add 1 to {_num}
             
-            set compass target of player to location({_coordsLoc::1}, {_coordsLoc::2}, {_coordsLoc::3}, world "%player's world%")
-            play sound "entity.chicken.egg" with volume 2 and pitch 0.65 to player
-            play sound "entity.snowball.throw" with volume 2 and pitch 0 to player
-            if {language::%player%} = "English":
-                if {_return::1} is set:
-                    send action bar "Distance: %{_return::1}%" to player
+            if {_yearMonthDay::2} = 12:
+                load yaml "plugins/Skript/playerdata/events/%uuid of player%.yml" as "winterDelight-%player%"
+                load yaml "plugins/Skript/playerdata/events/winterdelight.yml" as "winterDelightYml-%player%"
+                loop {_yearMonthDay::3} times:
+                    if yaml value "Warps.%loop-number%.Claimed" in "winterDelight-%player%" is not set:
+                        set {_coords} to yaml value "Warps.%loop-number%.Coords" in "winterDelight-%player%"
+                        set {_coordsList::%{_coords}%} to distance between player and {_coords}
+                        clear {_coords}
+                unload yaml "winterDelight-%player%"
+                unload yaml "winterDelightYml-%player%"
+                set {_indices::*} to all indices of {_coordsList::*}
+                set {_index} to 1
+                set {_size} to 31
+                if {_size} < 0:
+                    set {_reversed} to true
+                    set {_size} to ({_size} * (-1))
+                loop {_indices::*}:
+                    set {_values::%{_index}%} to {_coordsList::%loop-value%}
+                    set {_indexes::%{_index}%} to "%loop-value%"
+                    add 1 to {_index}
+                if {_size} > (size of {_indexes::*}):
+                    set {_size} to (size of {_indexes::*})
+                loop {_size} times:
+                    loop {_values::*}:
+                        if {_max} is not set:
+                            set {_max} to loop-value-2
+                            set {_index} to loop-index
+                        else:
+                            if {_reversed} is not true:
+                                if loop-value-2 < {_max}:
+                                    set {_max} to loop-value-2
+                                    set {_index} to loop-index
+                            else:
+                                if loop-value-2 > {_max}:
+                                    set {_max} to loop-value-2
+                                    set {_index} to loop-index
+                    set {_var} to "%{_max}%"
+                    add {_var} to {_return::*}
+                    add {_indexes::%{_index}%} to {_coords::*}
+                    delete {_indexes::%{_index}%}, {_values::%{_index}%}, {_max} and {_index}
+                replace all "world:" in {_coords::1} with ""
+                set {_coordsLoc::*} to {_coords::1} split at ","
+                set {_in} to 1
+                loop {_coordsLoc::*}:
+                    set {_coordsLoc::%{_in}%} to {_coordsLoc::%{_in}%} parsed as number
+                    add 1 to {_in}
+                
+                set compass target of player to location({_coordsLoc::1}, {_coordsLoc::2}, {_coordsLoc::3}, world "%player's world%")
+                play sound "entity.chicken.egg" with volume 2 and pitch 0.65 to player
+                play sound "entity.snowball.throw" with volume 2 and pitch 0 to player
+                if {language::%player%} = "English":
+                    if {_return::1} is set:
+                        send action bar "Distance: %{_return::1}%" to player
+                    else:
+                        send action bar "&cNo nearby presents could be found." to player
                 else:
-                    send action bar "&cNo nearby presents could be found." to player
+                    if {_return::1} is set:
+                        send action bar "Dystans: %{_return::1}%" to player
+                    else:
+                        send action bar "&cNie znaleziono pobliskich prezentów." to player
             else:
-                if {_return::1} is set:
-                    send action bar "Dystans: %{_return::1}%" to player
+                if {language::%player%} = "English":
+                    send action bar "&cNo nearby presents could be found." to player
                 else:
                     send action bar "&cNie znaleziono pobliskich prezentów." to player
-        else:
-            if {language::%player%} = "English":
-                send action bar "&cNo nearby presents could be found." to player
-            else:
-                send action bar "&cNie znaleziono pobliskich prezentów." to player
 
 on rightclick on pig:
     if tag "custom;WinterDelightKad" of nbt of clicked entity is set:
@@ -657,14 +1008,6 @@ function newGiftSpawn():
     unload yaml "winterDelight"
 
 function playerGiftYaml(p: player):
-    #Artifact Box
-    #Achroite, Primary stat + mobility gem
-    #Essence Bundle
-    #Gemstone Bundle
-    #Crafty Delphoxite
-    #Random Boost
-    #Wildcard
-
     load yaml "plugins/Skript/playerdata/events/%uuid of {_p}%.yml" as "winterDelight-%{_p}%"
     if yaml value "Warps" in "winterDelight-%{_p}%" is not set:
         set {_warpList::*} to "ap | 1013.5, 67.5, -775.5, 5", "aquaisland | -4414.5, 66.5, -583.5, 0", "tp1 | 77.5, 19.5, 377.5, 6"
@@ -733,7 +1076,51 @@ on rightclick on player head:
                         else if {_reward} = "Klejnot":
                             giveItem(player, {_rewardAmount} of {klejnotEN})
                         else if {_reward} = "Essence Bundle":
-                            send "Finish the rest here"
+                            set {_item} to shulker shell named "<##b598d4>Essence Bundle" with lore "<##f55656>Essences%nl%&7This item contains &f16%nl%&7of each Essence!%nl% %nl%<##b598d4>(&f&l!<##b598d4>) Right-click to%nl%<##b598d4>open this item" with nbt from "{HideFlags:124,EssenceBundle:1b}"
+                            giveItem(player, {_rewardAmount} of {_item})
+                        else if {_reward} = "Stardust":
+                            giveItem(player, {_rewardAmount} of {stardustEN})
+                        else if {_reward} = "Crafty Delphoxite ★★★":
+                            set {_delphoxite} to diamond named "<##0070dd>Crafty Delphoxite" with lore "&fAir Gem%nl%<##fca417>+19  Critical Hit%nl%<##19943e>+9  Haste%nl% %nl%&fQuality: &e★★★" with nbt from "{Gem:1b,Quality:""★★★"",CustomModelData:23,GemType:""Rare"",GemIcon:"""",Stats:{""Critical Hit"":19,Haste:9}}"
+                            giveItem(player, {_rewardAmount} of {_delphoxite})
+                        else if {_reward} = "Enchanted Prismatic Lens":
+                            set {_lens} to ender pearl named "<##7fb5ab>Enchanted Prismatic Lens" with lore "<##d1f6ff>Prismatic Item%nl%&7This Lens is used by the most dexterous%nl%&7Jewelcrafters to further advance their craft.%nl%&7Upgrades a Rare Gem to &e★★★ &7Quality.%nl% %nl%&7Quality: <##c2c2c2>★★"
+                            giveItem(player, {_rewardAmount} of {_lens})
+                        else if {_reward} = "Cosmic Flux":
+                            add {_rewardAmount} to {cosmicflux::%player%}
+                        else if {_reward} = "Diamond Shard":
+                            giveItem(player, {_rewardAmount} of {diamondshardEN})
+                        else if {_reward} = "Random Boost":
+                            set {_x} to a random integer between 1 and 4
+                            if {_x} = 1:
+                                set {_item} to {jadeitowastatuetkaEN}
+                            else if {_x} = 2:
+                                set {_item} to {cytrynowelustroEN}
+                            else if {_x} = 3:
+                                set {_item} to {turmalinowydiademEN}
+                            else if {_x} = 4:
+                                set {_item} to {szafirowekostkiEN}
+                            giveItem(player, {_rewardAmount} of {_item})
+                        else if {_reward} = "Artifact Box ★★★★★":
+                            send "a"
+                        else if {_reward} = "Gemstone Bundle":
+                            send "a"
+                        else if {_reward} = "Obsidian":
+                            giveItem(player, {_rewardAmount} of {obsydianEN})
+                        else if {_reward} = "Wildcard":
+                            set {_card} to paper named "<##885ad1>Wildcard" with lore "<##d8b6fa>Card Selector%nl%&7A magically enchanted card that has%nl%&7your name engraved on its reverse.%nl% %nl%&7This special item is only distributed%nl%&7on the most special occassions.%nl%&7Choose wisely, as this item will be%nl%&7consumed upon use.%nl% %nl%<##d8b6fa>(<##885ad1>&l!<##d8b6fa>) <##d8b6fa>This is an exclusive single-use item.%nl%<##d8b6fa>Right-click to open a menu with selectable%nl%<##d8b6fa>Cards." with nbt from "{CustomModelData:3,Wildcard:1b}"
+                            giveItem(player, {_rewardAmount} of {_card})
+                        else if {_reward} = "Token of Gratitude":
+                            giveItem(player, {_rewardAmount} of {tokenwdziecznosciEN})
+                        else if {_reward} = "Ice Essence":
+                            giveItem(player, {_rewardAmount} of {esencjaloduEN})
+                        else if {_reward} = "Jar of Experience":
+                            giveItem(player, {_rewardAmount} of {sloikzexpemEN})
+                        else if {_reward} = "Tempestium Ore":
+                            giveItem(player, {_rewardAmount} of {rudatempestiumEN})
+                        else if {_reward} = "Achroite ★★★":
+                            set {_achroite} to ender pearl named "<##90e0c4>Cut Achroite Case" with lore "<##6dadde>Unique Design Gem" and "&7This item contains a &e★★★ <##90e0c4>Cut Achroite&7,%nl%&7a potent <##0070dd>Rare Gem &7that increases a Card's%nl%&7primary stat!%nl%&cThis item is consumed upon use.%nl% %nl%&9(&3&l!&9) &3Right-click to select your preferred%nl%&3version of Cut Achroite."
+                            giveItem(player, {_rewardAmount} of {_achroite})
                         send "<##a6d4e3>Winter Delight &f> You obtain %{_rewardAmount}%x %{_reward}%!" to player
                             
                     else:
@@ -751,6 +1138,52 @@ on rightclick on player head:
                             giveItem(player, {_rewardAmount} of {odlamekgwiazdy})
                         else if {_reward} = "Klejnot":
                             giveItem(player, {_rewardAmount} of {klejnot})
+                        else if {_reward} = "Stardust":
+                            giveItem(player, {_rewardAmount} of {stardust})
+                        else if {_reward} = "Essence Bundle":
+                            set {_item} to shulker shell named "<##b598d4>Zestaw Esencji" with lore "<##f55656>Esencje%nl%&7Ten przedmiot zawiera &f16%nl%&7z każdej Esencji!%nl% %nl%<##b598d4>(&f&l!<##b598d4>) Kliknij prawym, by%nl%<##b598d4>otworzyć ten przedmiot" with nbt from "{HideFlags:124,EssenceBundle:1b}"
+                            giveItem(player, {_rewardAmount} of {_item})
+                        else if {_reward} = "Crafty Delphoxite ★★★":
+                            set {_delphoxite} to diamond named "<##0070dd>Crafty Delphoxite" with lore "&fPowietrzny Gem%nl%<##fca417>+19  Cios Krytyczny%nl%<##19943e>+9  Pośpiech%nl% %nl%&fJakość: &e★★★" with nbt from "{Gem:1b,Quality:""★★★"",CustomModelData:23,GemType:""Rare"",GemIcon:"""",Stats:{""Critical Hit"":19,Haste:9}}"
+                            giveItem(player, {_rewardAmount} of {_delphoxite})
+                        else if {_reward} = "Enchanted Prismatic Lens":
+                            set {_lens} to ender pearl named "<##7fb5ab>Zaklęta Pryzmatyczna Soczewka" with lore "<##d1f6ff>Pryzmatyczny Przedmiot%nl%&7Ta soczewka jest używana przez najbardziej%nl%&7wprawnych Jubilerów, by jeszcze lepiej ulepszać%nl%&7swoje dzieła.%nl%&7Ulepsza Rzadki Gem do &e★★★ &7Jakości.%nl% %nl%&7Jakość: <##c2c2c2>★★"
+                            giveItem(player, {_rewardAmount} of {_lens})
+                        else if {_reward} = "Cosmic Flux":
+                            add {_rewardAmount} to {cosmicflux::%player%}
+                        else if {_reward} = "Diamond Shard":
+                            giveItem(player, {_rewardAmount} of {diamondshard})
+                        else if {_reward} = "Random Boost":
+                            set {_x} to a random integer between 1 and 4
+                            if {_x} = 1:
+                                set {_item} to {jadeitowastatuetka}
+                            else if {_x} = 2:
+                                set {_item} to {cytrynowelustro}
+                            else if {_x} = 3:
+                                set {_item} to {turmalinowydiadem}
+                            else if {_x} = 4:
+                                set {_item} to {szafirowekostki}
+                            giveItem(player, {_rewardAmount} of {_item})
+                        else if {_reward} = "Artifact Box ★★★★★":
+                            send "a"
+                        else if {_reward} = "Gemstone Bundle":
+                            send "a"
+                        else if {_reward} = "Obsidian":
+                            giveItem(player, {_rewardAmount} of {obsydian})
+                        else if {_reward} = "Wildcard":
+                            set {_card} to paper named "<##885ad1>Dzika Karta" with lore "<##d8b6fa>Selekcjoner Kart%nl%&7Magicznie zaklęta karta z twoim%nl%&7imieniem wyrytym na jej rewersie.%nl% %nl%&7Tem specjalny przedmiot jest rozdawany%nl%&7tylko w najbardziej specjalne okazje.%nl%&7Wybierz mądrze, bowiem ten przedmiot%nl%&7zostanie zużyty przy kliknięciu.%nl% %nl%<##d8b6fa>(<##885ad1>&l!<##d8b6fa>) <##d8b6fa>Ten ekskluzywny przedmiot jest jednorazowy.%nl%<##d8b6fa>Kliknij prawym, by otworzyć menu z możliwymi%nl%<##d8b6fa>do wyboru kartami." with nbt from "{CustomModelData:3,Wildcard:1b}"
+                            giveItem(player, {_rewardAmount} of {_card})
+                        else if {_reward} = "Token of Gratitude":
+                            giveItem(player, {_rewardAmount} of {tokenwdziecznosci})
+                        else if {_reward} = "Ice Essence":
+                            giveItem(player, {_rewardAmount} of {esencjalodu})
+                        else if {_reward} = "Jar of Experience":
+                            giveItem(player, {_rewardAmount} of {sloikzexpem})
+                        else if {_reward} = "Tempestium Ore":
+                            giveItem(player, {_rewardAmount} of {rudatempestium})
+                        else if {_reward} = "Achroite ★★★":
+                            set {_achroite} to ender pearl named "<##90e0c4>Etui z Oszlifowanym Achroitem" with lore "<##6dadde>Gem Unikalnego Wzoru" and "&7Ten przedmiot zawiera &e★★★ <##90e0c4>Oszlifowany%nl%<##90e0c4>Achroit&7, <##0070dd>Rzadki Gem&7, który zwiększa%nl%&7główną statystykę karty!%nl%&cTen przedmiot zużywa się po kliknięciu.%nl% %nl%&9(&3&l!&9) &3Kliknij prawym, by wybrać preferowaną%nl%&3wersję Oszlifowanego Achroitu."
+                            giveItem(player, {_rewardAmount} of {_achroite})
                         send "<##a6d4e3>Zimowy Zachwyt &f> Znalazłeś %{_rewardAmount}%x %{_reward}%!" to player
                     play sound "entity.firework_rocket.launch" with volume 2 and pitch 1 at player
                     stop loop
@@ -845,6 +1278,7 @@ function giftOpenAnimation(e: entity, rotation: number):
     play sound "entity.experience_orb.pickup" with volume 2 and pitch 2 at {_e}
 
     kill {_e}
+    newGiftSpawn()
 
    #ACHIEVEMENT LVL 50
    #ALSO ADD ACHIEVEMENT FOR COMPLETING CALENDAR EVENT 
