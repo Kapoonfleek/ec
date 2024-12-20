@@ -64,14 +64,25 @@ function centeredText(text: string, length: integer) :: string:
 		add (getWidth(" ") + 1) to {_compensated}
 	return "%{_return}%%{_text}%"
 
-function addPlayerXP(p: player, xp: number, modifier: number = 1) :: number:
+function addPlayerXP(p: player, xp: number, modifier: number = 1, source: string = "general") :: number:
 	if {doubleXPFriday} is true:
 		set {_xp} to {_xp}*2
 	set {_xp} to {_xp}*{_modifier}
+	if {_source} = "mining":
+		if metadata value "SapphireDice" of {_p} is set:
+			set {_xp} to {_xp}*3
 	add {_xp} to {exp::%{_p}%}
 	playerCheckLevelUp({_p})
 	winterDelightPassAddXP({_p}, {_xp})
 	return {_xp}
+
+function addMiningXP(p: player, xp: number, modifier: number = 1):
+	if {poziomgornictwo::%{_p}%} < 50:
+		if {doubleXPFriday} is true:
+			set {_xp} to {_xp}*2
+		set {_xp} to {_xp}*{_modifier}
+		add {_xp} to {expgornictwo::%{_p}%}
+		miningProfession({_p})
 	
 function DamageHologram(p: entity, t: text):
 	#set {_r} to a random integer between 1 and 2
@@ -260,6 +271,8 @@ function hasEnoughItem(p: player, i: item, i2: item, a: integer) :: boolean:
 	else:
 		return false
 function cardLevelup(p: player, xp: number, e: entity):
+	if metadata value "SapphireDice" of {_p} is set:
+		set {_xp} to {_xp}*3
 	set {_exp} to {_xp}
 	set {_id} to uncolored line 19 of lore of {karta::%{_p}%}
 	replace all "Id: " in {_id} with ""
@@ -331,7 +344,14 @@ function cardLevelup(p: player, xp: number, e: entity):
 	set yaml value "Card.XP Above Limit" in "cardLvlup-%{_p}%" to {_cardXpAboveLimit}
 	save yaml "cardLvlup-%{_p}%"
 	unload yaml "cardLvlup-%{_p}%"
-	send "&e+%{_exp}% XP from %name of {_e}%" to {_p}
+	if {language::%{_p}%} = "English":
+		set {_from} to "from"
+	else:
+		set {_from} to "z"
+	if metadata value "SapphireDice" of {_p} is set:
+		send "&e+%{_exp}% XP %{_from}% %name of {_e}% (&fx3&e)" to {_p}
+	else:
+		send "&e+%{_exp}% XP %{_from}% %name of {_e}% (&fx3&e)" to {_p}
 	loop all items in the inventory of {_p}:
 		if line 19 of lore of loop-item = line 19 of lore of {karta::%{_p}%}:
 			if {language::%{_p}%} = "English":
