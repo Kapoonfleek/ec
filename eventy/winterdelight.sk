@@ -82,31 +82,84 @@ function matchMission(p: player, mission: integer) :: item:
     set {_desc} to yaml value "Missions.%{_mission}%.Description" in "winterDelight-%{_p}%"
     set {_difficulty} to yaml value "Missions.%{_mission}%.Difficulty" in "winterDelight-%{_p}%"
     set {_npc} to yaml value "Missions.%{_mission}%.Received From" in "winterDelight-%{_p}%"
+    set {_progress} to yaml value "Missions.%{_mission}%.Progress" in "winterDelight-%{_p}%"
+    if {_progress} is not set:
+        set {_progrses} to 0
     unload yaml "winterDelight-%{_p}%"
     set name of {_item} to "&f%{_name}%"
     if {language::%{_p}%} = "English":
         if {_difficulty} = "Low":
             set {_difficulty} to "&aLow"
-            set {_xp} to 600
+            set {_xp} to 300
         else if {_difficulty} = "Mid":
             set {_difficulty} to "&eMedium"
-            set {_xp} to 1450
+            set {_xp} to 900
         else if {_difficulty} = "High":
             set {_difficulty} to "&cHigh"
-            set {_xp} to 2200
-        set lore of {_item} to "%{_difficulty}% Difficulty%nl% %nl%%{_desc}%%nl%&7Progress: &f0%nl%&7EXP Reward: &f%{_xp}%%nl% %nl%&7&o~Comissioned by &n%{_npc}%"
+            set {_xp} to 1700
+        set {_xp} to {_xp} * (1 + {winterDelightPassLEVEL::%{_p}%}*0.05)
+        set lore of {_item} to "%{_difficulty}% Difficulty%nl% %nl%%{_desc}%%nl%&7Progress: &f%{_progress}%%nl%&7EXP Reward: &f%{_xp}%%nl% %nl%&7&o~Comissioned by &n%{_npc}%"
     else:
         if {_difficulty} = "Low":
             set {_difficulty} to "&aNiski Poziom"
-            set {_xp} to 600
+            set {_xp} to 300
         else if {_difficulty} = "Mid":
             set {_difficulty} to "&eŚredni Poziom"
-            set {_xp} to 1450
+            set {_xp} to 900
         else if {_difficulty} = "High":
             set {_difficulty} to "&cWysoki Poziom"
-            set {_xp} to 2200
-        set lore of {_item} to "%{_difficulty}% Trudności%nl% %nl%%{_desc}%%nl%&7Progres: &f0%nl%&7Nagroda EXP: &f%{_xp}%%nl% %nl%&7&o~Zlecone przez &n%{_npc}%"
+            set {_xp} to 1700
+        set {_xp} to {_xp} * (1 + {winterDelightPassLEVEL::%{_p}%}*0.05)
+        set lore of {_item} to "%{_difficulty}% Trudnośc%nl% %nl%%{_desc}%%nl%&7Progres: &f%{_progress}%%nl%&7Nagroda EXP: &f%{_xp}%%nl% %nl%&7&o~Zlecone przez &n%{_npc}%"
     return {_item}
+
+function getMission(p: player, mission: string, missionPL: string, value: number):
+    load yaml "plugins/Skript/playerdata/events/%uuid of {_p}%.yml" as "winterDelight-%{_p}%"
+    loop 3 times:
+        set {_name} to yaml value "Missions.%loop-value%.Name" in "winterDelight-%{_p}%"
+        if {_name} = {_mission} or {_missionPL}:
+            set {_difficulty} to yaml value "Missions.%loop-value%.Difficulty" in "winterDelight-%{_p}%"
+            set {_requirement} to yaml value "Missions.%loop-value%.Requirement" in "winterDelight-%{_p}%"
+
+            set {_progress} to yaml value "Missions.%loop-value%.Progress" in "winterDelight-%{_p}%"
+            if {_progress} is not set:
+                set {_progress} to 0
+            add 1 to {_progress}
+            if {_progress} >= {_requirement}:
+                clear yaml value "Missions.%loop-value%.Progress" in "winterDelight-%{_p}%"
+
+                if {_difficulty} = "Low":
+                    set {_xpReward} to 300
+                else if {_difficulty} = "Mid":
+                    set {_xpReward} to 900
+                else if {_difficulty} = "High":
+                    set {_xpReward} to 1700
+                set {_xpReward} to {_xpReward} * (1 + {winterDelightPassLEVEL::%{_p}%}*0.05)
+
+                winterDelightPassAddXP({_p}, {_xpReward})
+
+                load yaml "plugins/Skript/playerdata/events/stats/%uuid of {_p}%.yml" as "winterDelightStats-%{_p}%"
+                set {_missionscompleted} to yaml value "Stats.Winter Delight 2024.Missions Completed" in "winterDelightStats-%{_p}%"
+                if {_missionscompleted} is not set:
+                    set {_missionscompleted} to 0
+                add 1 to {_missionscompleted}
+                set yaml value "Stats.Winter Delight 2024.Missions Completed" in "winterDelightStats-%{_p}%" to {_missionscompleted}
+                save "winterDelightStats-%{_p}%"
+                unload "winterDelightStats-%{_p}%"
+
+                if {_missionscompleted} = 10:
+                    set {_yamlValue} to "Achievement.Winter Delight 2024.Winter Delight: 10 Missions"
+                    set {_yamlValuePL} to "Osiągnięcie.Zimowy Zachwyt 2024.Zimowy Zachwyt: 10 Misji"
+                    achievementYaml({_p}, "plugins/Skript/playerdata/events/achievements", "winterDelightAchievements", {_yamlValue}, {_yamlValuePL}, "Winter Delight: 10 Missions", "Zimowy Zachwyt: 10 Misji")
+                else if {_missionscompleted} = 50:
+                    set {_yamlValue} to "Achievement.Winter Delight 2024.Winter Delight: 50 Missions"
+                    set {_yamlValuePL} to "Osiągnięcie.Zimowy Zachwyt 2024.Zimowy Zachwyt: 50 Misji"
+                    achievementYaml({_p}, "plugins/Skript/playerdata/events/achievements", "winterDelightAchievements", {_yamlValue}, {_yamlValuePL}, "Winter Delight: 50 Missions", "Zimowy Zachwyt: 50 Misji")
+            else:
+                set yaml value "Missions.%loop-value%.Progress" in "winterDelight-%{_p}%" to {_progress}
+            stop loop
+    save yaml "winterDelight-%{_p}%"
+    unload yaml "winterDelight-%{_p}%"
 
 function winterDelightPassReward(p: player):
     set {_level} to {winterDelightPassLEVEL::%{_p}%}
@@ -144,7 +197,7 @@ function winterDelightPassReward(p: player):
             giveItem({_p}, 3 of {boostermajesticdawnEN})
         else if {_level} = 9:
             giveItem({_p}, 30 of {skrzynkaluksusowaEN})
-        send "&fReceived <##b3e0ff>%{_rewardNameList::%{_level}%}% &ffor reaching <##b3e0ff>Level %{_level}% &fon the <##b3e0ff>Winter Delight Pass&f!" to {_p}
+        send "&fReceived <##b3e0ff>%{_rewardNameListEN::%{_level}%}% &ffor reaching <##b3e0ff>Level %{_level}% &fon the <##b3e0ff>Winter Delight Pass&f!" to {_p}
     else:
         if {_level} = 1:
             giveItem({_p}, 150 of {klejnot})
@@ -183,7 +236,7 @@ function winterDelightPassReward(p: player):
         #winterDelightMissionCreate(1, "Festive Mining", "Świąteczne Kopanie", "&7Mine &f{low} {mid} {high} &7stone or &f{low}/2 {mid}/2 {high}/2 &7deepslate.", "&7Wykop &f{low} {mid} {high} &7stone, lub &f{low}/2 {mid}/2 {high}/2 &7deepslate.", 500, 1000, 2000, "'Brodaty Zachary'")
         #winterDelightMissionCreate(2, "Sleighing the Mobs", "Pokonywanie Potworów", "&7Slay &f{low} {mid} {high} &7mobs.", "&7Pokonaj &f{low} {mid} {high} &7potworów.", 60, 120, 220, "Owen")
         #winterDelightMissionCreate(3, "Christmas Baubles", "Świąteczne Ozdoby", "&7Find &f{low} {mid} {high} &7Gemstones.", "&7Znajdź &f{low} {mid} {high} &7Kamieni Szlachetnych.", 15, 30, 50, "Zach")
-        #winterDelightMissionCreate(4, "Shoveling Snow", "Odśnieżanie", "&7Prospect &f{low} {mid} {high} &7stone or deepslate.", "&7Przeszukaj &f{low} {mid} {high} &7stone lub deepslate.", 15, 30, 50, "Arthur")
+        #winterDelightMissionCreate(4, "Shoveling Snow", "Odśnieżanie", "&7Prospect &f{low} {mid} {high} &7stone or deepslate.", "&7Przeszukaj &f{low} {mid} {high} &7stone lub deepslate.", 750, 1300, 2450, "Arthur")
         #winterDelightMissionCreate(5, "Winter Sparkles", "Zimowe Błyskotki", "&7Craft &f{low} {mid} {high} &7Uncommon Gems.", "&7Stwórz &f{low} {mid} {high} &7Niepospolitych Gemów.", 5, 10, 25, "Maria Louiza")
         #winterDelightMissionCreate(6, "Mastering the Art", "Opanowywanie Umiejętności", "&7Use abilities &f{low} {mid} {high} &7times.", "&7Użyj umiejętności &f{low} {mid} {high} &7razy.", 250, 500, 750, "Balthazar")
         #winterDelightMissionCreate(7, "Gaining Experience", "Zdobywanie Doświadczenia", "&7Earn &f{low} {mid} {high} &7EXP.", "&7Zdobądź &f{low} {mid} {high} &7punktów doświadczenia.", 10000, 20000, 40000, "Sedriah")
@@ -200,7 +253,7 @@ function winterDelightPassReward(p: player):
         #winterDelightMissionCreate(18, "An Exquisite Find", "Wyśmienite Znalezisko", "&7Find &f{low} {mid} {high} &7Illimited Diamonds while prospecting.", "&7Znajdź &f{low} {mid} {high} &7Bezgranicznych Diamentów podczas przeszukiwania.", 1, 2, 3, "Czarek")
         #winterDelightMissionCreate(19, "Magnus's Request", "Prośba Magnusa", "&7Find &f{low} {mid} {high} Ambers &7while mining.", "&7Znajdź &f{low} {mid} {high} &7Bursztynów podczas kopania.", 2, 4, 7, "Magnus")
         #winterDelightMissionCreate(20, "Building the World", "Budowanie Świata", "&7Place &f{low} {mid} {high} &7blocks.", "&7Postaw &f{low} {mid} {high} &7bloków.", 200, 500, 900, "Perseus")
-
+		
 function winterDelightRandomizeMissions(p: player):
     load yaml "plugins/Skript/playerdata/events/winterdelightmissions.yml" as "winterDelightMissions"
     load yaml "plugins/Skript/playerdata/events/%uuid of {_p}%.yml" as "winterDelight-%{_p}%"
@@ -265,15 +318,15 @@ function winterDelightRandomizeMissions(p: player):
 
 function winterDelightMissionCreate(int: integer, name: text, namePL: text, description: text, descriptionPL: text, low: integer, mid: integer, high: integer, npc: text):
     load yaml "plugins/Skript/playerdata/events/winterdelightmissions.yml" as "winterDelightMissions"
-    if yaml value "Missions.%{_int}%" in "winterDelightMissions" is not set:
-        set yaml value "Missions.%{_int}%.Name" in "winterDelightMissions" to {_name}
-        set yaml value "Missions.%{_int}%.Name (Polish)" in "winterDelightMissions" to {_namePL}
-        set yaml value "Missions.%{_int}%.Description" in "winterDelightMissions" to {_description}
-        set yaml value "Missions.%{_int}%.Description (Polish)" in "winterDelightMissions" to {_descriptionPL}
-        set yaml value "Missions.%{_int}%.Requirements.Low" in "winterDelightMissions" to {_low}
-        set yaml value "Missions.%{_int}%.Requirements.Mid" in "winterDelightMissions" to {_mid}
-        set yaml value "Missions.%{_int}%.Requirements.High" in "winterDelightMissions" to {_high}
-        set yaml value "Missions.%{_int}%.Received From" in "winterDelightMissions" to {_npc}
+    #if yaml value "Missions.%{_int}%" in "winterDelightMissions" is not set:
+    set yaml value "Missions.%{_int}%.Name" in "winterDelightMissions" to {_name}
+    set yaml value "Missions.%{_int}%.Name (Polish)" in "winterDelightMissions" to {_namePL}
+    set yaml value "Missions.%{_int}%.Description" in "winterDelightMissions" to {_description}
+    set yaml value "Missions.%{_int}%.Description (Polish)" in "winterDelightMissions" to {_descriptionPL}
+    set yaml value "Missions.%{_int}%.Requirements.Low" in "winterDelightMissions" to {_low}
+    set yaml value "Missions.%{_int}%.Requirements.Mid" in "winterDelightMissions" to {_mid}
+    set yaml value "Missions.%{_int}%.Requirements.High" in "winterDelightMissions" to {_high}
+    set yaml value "Missions.%{_int}%.Received From" in "winterDelightMissions" to {_npc}
     
     save yaml "winterDelightMissions"
     unload yaml "winterDelightMissions"
