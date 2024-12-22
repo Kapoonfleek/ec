@@ -1,15 +1,15 @@
 on papi request for prefix "ec":
     if the identifier is "playerlevel":
         set the result to {poziom::%player%}
-    if the identifier is "playerexp":
+    else if the identifier is "playerexp":
         set the result to {exp::%player%}
-    if the identifier is "color":
+    else if the identifier is "color":
         set the result to "%{kolorek::%player%}%"
-    if the identifier is "health":
+    else if the identifier is "health":
         set the result to player's health
-    if the identifier is "playername":
+    else if the identifier is "playername":
         set the result to "&f%player's name%"
-    if the identifier is "card":
+    else if the identifier is "card":
         if line 19 of lore of {karta::%player%} contains "Id: ":
             set {_id} to uncolored line 19 of lore of {karta::%player%}
             replace all "Id: " in {_id} with ""
@@ -19,15 +19,28 @@ on papi request for prefix "ec":
             if {_level} is not set:
                 set the result to "-"
             else:
-                set the result to "%{ikonkakarta::%player%}% %uncolored name of {karta::%player%}% (Level %{_level}%)"
+                set the result to "%{ikonkakarta::%player%}% %uncolored name of {karta::%player%}%"
         else:
             set the result to "-"
-    if the identifier is "party":
+    else if the identifier is "cardlevel":
+        if line 19 of lore of {karta::%player%} contains "Id: ":
+            set {_id} to uncolored line 19 of lore of {karta::%player%}
+            replace all "Id: " in {_id} with ""
+            load yaml "plugins/Skript/playerdata/karty/%uncolored name of {karta::%player%}%/%{_id}%.yml" as "kartyPh-%player%"
+            set {_level} to yaml value "Card.Level" in "kartyPh-%player%"
+            unload yaml "kartyPh-%player%"
+            if {_level} is not set:
+                set the result to "-"
+            else:
+                set the result to "%{_level}%"
+        else:
+            set the result to "-"
+    else if the identifier is "party":
         if player is in a party:
             set the result to "&b[%name of party of player%] "
         else:
             set the result to ""
-    if the identifier is "date":
+    else if the identifier is "date":
         set {_data::*} to data() split at " "
         set {_timeAMPM::*} to {_data::1} split at ":"
         if ({_timeAMPM::1} parsed as number) >= 13:
@@ -36,9 +49,9 @@ on papi request for prefix "ec":
             set {_AorP} to "AM"
         set {_timeAMPM} to "%{_timeAMPM::1}%:%{_timeAMPM::2}%"
         set the result to "%{_data::1}% | %{_timeAMPM}% %{_AorP}%"
-    if the identifier is "health":
+    else if the identifier is "health":
         set the result to health of player
-    if the identifier is "tab":
+    else if the identifier is "tab":
         set {_name} to name of party of player
         if metadata value "ECEngaged" of player is set:
             if {_name} is set:
@@ -50,32 +63,111 @@ on papi request for prefix "ec":
                 set the result to "&8(%{kolorek::%player%}%&l%{poziom::%player%}%%{kolorek::%player%}%&l⭐&8) &r%player's name% &b[%{_name}%]"
             else:
                 set the result to "&8(%{kolorek::%player%}%&l%{poziom::%player%}%%{kolorek::%player%}%&l⭐&8) &r%player's name%"
-    if the identifier is "rank":
+    else if the identifier is "rank":
         if {rank::%player%} is set:
             set {_rank} to {rank::%player%}
         else:
             set {_rank} to "&8[&7Player&8]"
         set the result to {_rank}
-    if the identifier is "prefix":
+    else if the identifier is "prefix":
         set {_name} to name of party of player
         if {_name} is set:
             set the result to "&b[%{_name}%]&r "
         else:
             set the result to ""
-    if the identifier is "combat_1":
+    else if the identifier is "combat_1":
         set the result to placeholderDamage(player, 1)
-    if the identifier is "combat_2":
+    else if the identifier is "combat_2":
         set the result to placeholderDamage(player, 2)
-    if the identifier is "combat_3":
+    else if the identifier is "combat_3":
         set the result to placeholderDamage(player, 3)
-    if the identifier is "combat_4":
+    else if the identifier is "combat_4":
         set the result to placeholderDamage(player, 4)
-    if the identifier is "combat_5":
+    else if the identifier is "combat_5":
         set the result to placeholderDamage(player, 5)
-    if the identifier is "stardust":
+    else if the identifier is "stardust":
         set the result to {stardust::%player%}
-    if the identifier is "cosmicflux":
+    else if the identifier is "cosmicflux":
         set the result to {cosmicflux::%player%}
+    else if the identifier is "buff1":
+        if metadata value "ECEngaged" of player is set:
+            if {kartaname::%player%} = "Brother Therold":
+                if tag "Talents;Row 1" of nbt of {karta::%player%} = "Twist of Fate":
+                    if metadata value "TwistOfFateDuration" of player is set:
+                        set {_tofDuration} to seconds of metadata value "TwistOfFateDuration" of player
+                        set {_buff} to "&f Twist of Fate: %{_tofDuration}% sec"
+                    else:
+                        set {_buff} to " "
+        else:
+            set {_buff} to " "
+        set the result to {_buff}
+    else if the identifier is "buff2":
+        if metadata value "ECEngaged" of player is set:
+            if {kartaname::%player%} = "Brother Therold":
+                if tag "Talents;Row 3" of nbt of {karta::%player%} = "Void Ray":
+                    if metadata value "VoidRayDuration" of player is set:
+                        set {_voidRayDuration} to seconds of metadata value "VoidRayDuration" of player
+                        set {_voidRayStacks} to metadata value "VoidRayStacks" of player
+                        set {_buff} to "&f Void Ray: %{_voidRayDuration}% sec (%{_voidRayStacks}%)"
+                    else:
+                        set {_buff} to " "
+        else:
+            set {_buff} to " "
+        set the result to {_buff}
+    else if the identifier is "primarystat":
+        set {_health} to {health::%player%}
+        if {_health} is not set:
+            set {_health} to 0
+        if tag "PrimaryStat" of nbt of {karta::%player%} = "Intellect":
+            if {intellect::%player%} is not set:
+                set {_primaryStat} to 0
+            else:
+                set {_primaryStat} to {intellect::%player%}
+            set the result to "<##59c1e3> Intellect: &f%{_primaryStat}% "
+        else if tag "PrimaryStat" of nbt of {karta::%player%} = "Agility":
+            if {agility::%player%} is not set:
+                set {_primaryStat} to 0
+            else:
+                set {_primaryStat} to {agility::%player%}
+            set the result to "<##5ee359> &fAgility: %{_primaryStat}% &8| <##c0ff02> &fHealth: %{_health}%"
+        if tag "PrimaryStat" of nbt of {karta::%player%} = "Strength":
+            if {strength::%player%} is not set:
+                set {_primaryStat} to 0
+            else:
+                set {_primaryStat} to {strength::%player%}
+            set the result to "<##e35959> &fStength: %{_primaryStat}% &8| <##c0ff02> &fHealth: %{_health}%"
+    else if the identifier is "stats1":
+        set {_damage} to {damage::%player%}
+        set {_resistance} to {resistance::%player%}
+        if {_damage} is not set:
+            set {_damage} to 0
+        if {_resistance} is not set:
+            set {_resistance} to 0
+        set the result to "<##f74428> Damage: &f180"
+    else if the identifier is "stats2":
+        set {_mobility} to {mobility::%player%}
+        set {_utility} to {utility::%player%}
+        if {_mobility} is not set:
+            set {_mobility} to 0
+        if {_utility} is not set:
+            set {_utility} to 0
+        set the result to "<##ae78d0> Utility: &f91"
+    else if the identifier is "stats3":
+        set {_mobility} to {mobility::%player%}
+        set {_utility} to {utility::%player%}
+        if {_mobility} is not set:
+            set {_mobility} to 0
+        if {_utility} is not set:
+            set {_utility} to 0
+        set the result to "<##f53b98> Mastery: &f12"
+    else if the identifier is "stats4":
+        set {_mobility} to {mobility::%player%}
+        set {_utility} to {utility::%player%}
+        if {_mobility} is not set:
+            set {_mobility} to 0
+        if {_utility} is not set:
+            set {_utility} to 0
+        set the result to "<##19943e> Haste: &f25"
 
 function placeholderDamage(p: player, num: number) :: string:
     if metadata value "ECEngaged" of {_p} is set:

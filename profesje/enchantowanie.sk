@@ -1,8 +1,9 @@
 on load:
     set {enchanterstable} to enchanting table named "<##9854ba>Stół Enchantera" with lore "<##9f32cf>Zaklinanie%nl%&7Może zostać postawiony gdziekolwiek w świecie.%nl%&7Może zostać użyty do Zaklinania i%nl%&7Disenchantowania przedmiotów."
     set {enchanterstableEN} to enchanting table named "<##9854ba>Enchanter's Table" with lore "<##9f32cf>Enchanting%nl%&7Able to be placed anywhere in the world.%nl%&7Can be used to Enchant and Disenchant items."
-    set {carddust} to glowstone dust named "<##ffdf78>Card Dust" with lore "<##9f32cf>Zaklinanie%nl%&7Otrzymany z Disenchantowania Kart.%nl%&7Może zostać użyty do Zaklinania."
-    set {carddustEN} to glowstone dust named "<##ffdf78>Card Dust" with lore "<##9f32cf>Enchanting%nl%&7Obtained from Disenchanting Cards.%nl%&7Can be used for Enchanting."
+    set {_carddust} to mini message from "<gradient:##d6ff94:##70ffa1:##606df1:##3c59cd>Card Dust"
+    set {carddust} to glowstone dust named {_carddust} with lore "<##8f9ff2>✨ Materiał Zaklinania%nl%&7Otrzymany z Disenchantowania items.%nl%&7Może zostać użyty do m.in. Zaklinania." with nbt from "{CustomModelData:15}"
+    set {carddustEN} to glowstone dust named {_carddust} with lore "<##8f9ff2>✨ Enchanting Material%nl%&7Obtained from Disenchanting items.%nl%&7Can be used for a.o. Enchanting." with nbt from "{CustomModelData:15}"
     set {treasureseeker} to enchanted book named "<##9854ba>Treasure Seeker I" with lore "<##9f32cf>Enchant Kilofu%nl%&7Zwiększa szanse na znalezienie%nl%&7Klejnotu o 5%% za rangę.%nl%&7Enchanty wyższych rang wymagają poprzedniego%nl%&7poziomu enchantu na przedmiocie."
     set {moregemstones} to enchanted book named "<##9854ba>More Gemstones I" with lore "<##9f32cf>Enchant Kilofu%nl%&7Zwiększa szanse na znalezienie%nl%&7Kamieni Szlachetnych o 2.5%% za rangęk.%nl%&7Enchanty wyższych rang wymagają poprzedniego%nl%&7poziomu enchantu na przedmiocie."
     set {essencereaver} to enchanted book named "<##9854ba>Essence Reaver I" with lore "<##9f32cf>Enchant Kilofu%nl%&7Zwiększa szanse na znalezienie%nl%&7Esencji o 4%% za rangę.%nl%&7Enchanty wyższych rang wymagają poprzedniego%nl%&7poziomu enchantu na przedmiocie."
@@ -39,12 +40,11 @@ on leftclick on enchanting table:
             set {_dise} to "&f&oKliknij by zdisenchantować Kartę."
         set {_x} to 0
         loop all items in the player's inventory:
-            if line 18 of lore of loop-item contains "&8Dropped:" or "&8Wydropiono:":
-                if line 16 of lore of loop-item contains "&7Source:" or "&7Źródło:":
-                    set {_karta} to loop-item
-                    add "%nl%&f%{_dise}%" to lore of {_karta}
-                    set slot {_x} of (metadata tag "disenchant" of player) to 1 of {_karta}
-                    add 1 to {_x}
+            if line 16 of lore of loop-item contains "&7Source:" or "&7Źródło:":
+                set {_karta} to loop-item
+                add "%nl%&f%{_dise}%" to lore of {_karta}
+                set slot {_x} of (metadata tag "disenchant" of player) to 1 of {_karta}
+                add 1 to {_x}
                         
         wait 3 ticks
         open (metadata tag "disenchant" of player) to player
@@ -60,6 +60,8 @@ on inventory click:
                     set {_num} to index of event-slot
                     clear line 20 of lore of {_x}
                     clear line 19 of lore of {_x}
+                    if line 18 of lore of {_x} does not contain "&8":
+                        clear line 18 of lore of {_x}
                     set slot {_num} of player's current inventory to {_x} with lore (lore of {_x})
                     set {_rarity} to uncolored line 17 of lore of {_x}
                     if {_rarity} contains "Common" or "Częsta":
@@ -79,6 +81,8 @@ on inventory click:
                         add 1 to {disenchant::rare::%player%}
                     set {_xp} to {_dustamount}
                     remove 1 of {_x} from player's inventory
+                    if {winterDelightPassLEVEL::%player%} >= 0:
+                        getMission(player, "Abra Cadabra", "Abra Kadabra", 1)
                     set slot {_num} of player's current inventory to air
                     if {language::%player%} = "English":
                         set {_carddust} to {carddustEN}
@@ -89,8 +93,12 @@ on inventory click:
                     else:
                         drop {_dustamount} of {_carddust} at player
                     set {_xp} to {_xp}*{bonusxp::ench::%player%}
-                    set {_xp} to addPlayerXP(player, {_xp})
-                    add {_xp} to {exp::enchantowanie::%player%}
+                    set {_otxpAfterMultiplier} to addPlayerXP(player, {_xp})
+                    add {_otxpAfterMultiplier} to {exp::enchantowanie::%player%}
+                    if {_otxpAfterMultiplier} > {_xp}:
+                        set {_xpmsg} to "&8(+%{_otxpAfterMultiplier}% XP) (&fx%{_otxpAfterMultiplier}/{_xp}%&7)"
+                    else:
+                        set {_xpmsg} to "&8(+%{_otxpAfterMultiplier}% XP)"
                     EnchantowanieLevelUp(player)
                     play sound "entity.player.levelup" with volume 3 and pitch 0 at player
                     play sound "block.glass.break"  with volume 3 and pitch 1.2 at player
@@ -99,7 +107,12 @@ on inventory click:
                     set metadata value "disenchanted" of player to metadata value "disenchanted" of player + 1
                     if metadata value "disenchantxp" of player is not set:
                         set metadata value "disenchantxp" of player to 0
-                    set metadata value "disenchantxp" of player to metadata value "disenchantxp" of player + {_xp}
+                    set metadata value "disenchantxp" of player to metadata value "disenchantxp" of player + {_otxpAfterMultiplier}
+                    set {_disenchantXP} to metadata value "disenchantxp" of player
+                    if {_otxpAfterMultiplier} > {_xp}:
+                        set metadata value "disenchantxpmessage" of player to "&6%{_disenchantXP}% XP &7(&fx%{_otxpAfterMultiplier}/{_xp}%&7)"
+                    else:
+                        set metadata value "disenchantxpmessage" of player to "&6%{_disenchantXP}% XP"
     if event-inventory = (metadata tag "enchant" of player):
         cancel event
         if event-slot is between 0 and 53:
@@ -154,32 +167,38 @@ function isPickaxe(t: item, t2: text, p: player):
         set {_o::*} to {_t2} split at " "
         if {_o::3} = "I":
             set {_xp} to 50*{bonusxp::ench::%{_p}%}
-        if {language::%{_p}%} = "English":
-            set {_dise} to "&f&oClick to enchant Tool, Artifact or Relic."
-            set {_msg} to "&7Successfuly enchanted your pickaxe with &6%{_t2}%&7! (&6+%{_xp}% XP&7)"
-        else:
-            set {_dise} to "&f&oKliknij by zenchantować Narzędzie, Artefakt, lub Relikt."
-            set {_msg} to "&7Pomyślnie zaklnięto kilof zaklęciem &6%{_t2}%&7! (&6+%{_xp}% XP&7)"
         loop all items in the inventory of {_p}:
             set {_e} to loop-item
             set {_d} to loop-item with lore (lore of loop-item) and {_dise}
             if {_t} = {_d}:
                 set lore of loop-item to "&7%uncolored {_t2}%" and (lore of loop-item)
+                set tag "Enchant;%uncolored {_t2}%" of nbt of loop-item to 1
                 stop loop
-        set {_xp} to addPlayerXP({_p}, {_xp})
-        add {_xp} to {exp::enchantowanie::%{_p}%}
+        set {_otxpAfterMultiplier} to addPlayerXP({_p}, {_xp})
+        add {_otxpAfterMultiplier} to {exp::enchantowanie::%{_p}%}
+        if {_otxpAfterMultiplier} > {_xp}:
+            set {_xpmsg} to "&7(&6+%{_otxpAfterMultiplier}% XP&7) (&fx%{_otxpAfterMultiplier}/{_xp}%&7)"
+        else:
+            set {_xpmsg} to "&7(&6+%{_otxpAfterMultiplier}% XP&7)"
+        if {language::%{_p}%} = "English":
+            set {_dise} to "&f&oClick to enchant Tool, Artifact or Relic."
+            set {_msg} to "&7Successfuly enchanted your pickaxe with &6%{_t2}%&7! %{_xpmsg}%"
+        else:
+            set {_dise} to "&f&oKliknij by zenchantować Narzędzie, Artefakt, lub Relikt."
+            set {_msg} to "&7Pomyślnie zaklnięto kilof zaklęciem &6%{_t2}%&7! %{_xpmsg}%"
         send "&8[&6Earthcraft&8] %{_msg}%" to {_p}
         play sound "block.enchantment_table.use" with volume 4 and pitch 1 at {_p}
-        teleport {_p} to {_p}'s lcoation
+        teleport {_p} to {_p}'s location
 on inventory close:
     if event-inventory = metadata tag "disenchant" of player:
         if metadata value "disenchanted" of player is not 0:
             set {_x} to metadata value "disenchanted" of player
             set {_xp} to metadata value "disenchantxp" of player
+            set {_msg} to metadata value "disenchantxpmessage" of player
             if {language::%player%} = "English":
-                send "&8[&6Earthcraft&8] &7Successfully disenchanted &6%{_x}% &7cards for &6%{_xp}% XP&7!" to player
+                send "&8[&6Earthcraft&8] &7Successfully disenchanted &6%{_x}% &7cards for &6%{_msg}%&7!" to player
             else:
-                send "&8[&6Earthcraft&8] &7Pomyślnie zdisenchantowano &6%{_x}% &7kart i otrzymano &6%{_xp}% XP&7!" to player
+                send "&8[&6Earthcraft&8] &7Pomyślnie zdisenchantowano &6%{_x}% &7kart i otrzymano &6%{_msg}%&7!" to player
             clear metadata value "disenchanted" of player
             clear metadata value "disenchantxp" of player
     if event-inventory = metadata tag "enchantbooks" of player:

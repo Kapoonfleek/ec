@@ -13,7 +13,7 @@ function data() :: string:
 	set {_l::*} to "%{_t}%" split at "."
 	set {_x} to {_l::1}
 	set {_x} to {_x} parsed as number
-	add 2 to {_x}
+	add 1 to {_x}
 	if {_x} = 24:
 		set {_x} to 0
 	if {_x} = 25:
@@ -49,7 +49,7 @@ function findSecondsUntil(hour: number, minutes: number = 0, seconds: number = 0
 every 10 minutes:
 	# every day at 8:00
 	# since we check every 10 minutes, if we're within 10 minutes of 8:00, we should wait and trigger at 8:00 exactly
-	set {_seconds} to findSecondsUntil(5 + 0.91 + (2/300))
+	set {_seconds} to findSecondsUntil(7 + 0.91 + (2/300))
 	if {_seconds} < 600:
 		wait "%{_seconds}% seconds" parsed as timespan
 		runAt6Announcement()
@@ -57,7 +57,7 @@ every 10 minutes:
 	# every day at 20:00
 	# technically this could be delayed by up to 10 minutes, but since 20:00 is 12 hours after 8:00, it doesn't matter
 	# just be aware that this behavior exists
-	set {_seconds} to findSecondsUntil(6)
+	set {_seconds} to findSecondsUntil(8)
 	if {_seconds} < 600:
 		wait "%{_seconds}% seconds" parsed as timespan
 		runAt6()
@@ -94,7 +94,6 @@ function runAt6Announcement():
 on skript start:
 	wait 2 ticks
 	set {-dungeons} to 0
-	clear {dailyResetSoon}
 	execute console command "gamerule naturalRegeneration false"
 	load yaml "plugins/Skript/serverstats/stats.yml" as "serverstats"
 	if {dziennyreset} is true:
@@ -205,11 +204,17 @@ on skript start:
 	#	kill loop-value
 	#	clear {leaderboard::*}
 	clear {dmgdealt::*}
+	execute console command "mv load groveofimmemorialruins"
+	execute console command "keepchunks keepregion worldguard groveofimmemorialruins groveofimmemorialruins"
 	wait 2 seconds
+	clear {dailyResetSoon}
 	execute console command "sk reload systemy/walki"
+	execute console command "cwr regen groveofimmemorialruins"
+	execute console command "cwr confirm"
 			
 on skript stop:
 	clear {discordCodes::*}
+	clear {dailyResetSoon}
 	set {expAreaMayanMobs} to 0
 	clear {expAreaMayan}
 	loop all offline players where [metadata value "dungeon" of input is set]:
@@ -227,9 +232,11 @@ on skript stop:
 		clear {-dungeonBosses%loop-number%}
 	unload yaml "keystoneIds"
 	DungeonStatsFileAverageUpdate()
-	loop all entities where [input is in region "ExpAreaMayan"]:
+	loop all entities where [input's world = "groveofimmemorialruins"]:
 		if loop-entity is not a player:
 			kill loop-entity
+	clear {lingeringInsanityHaste::*}
+	clear {hasteVoidform::*}
 	#wait 2 ticks
 	#loop {leaderboard::*}:
 	#	kill loop-value
@@ -238,9 +245,20 @@ on skript stop:
 	#	kill loop-value
 	#clear {standard::*}
 on join:
+	if player is invulnerable:
+		make player vulnerable
+	if getDayMonth("month") = 12:
+		AkasakaArthurSnowFight()
+		playerGiftYaml(player)
+		WinterDelightDisguiseUpdate()
+		newGiftSpawn()
+		if amount of online players = 1:
+			SnowfallOnSpawn()
+		set {stellarrotation} to 2
 	wait 2 seconds
 	execute console command "noinvincibility on"
 	if {dresetwiad::%player%} = true:
+		winterDelightRandomizeMissions(player)
 		set {dresetwiad::%player%} to false
 		wait 1.5 seconds
 		if {language::%player%} = "English":
@@ -254,15 +272,58 @@ on join:
 	if {tresetwiad::%player%} = true:
 		set {tresetwiad::%player%} to false
 		wait 1.5 seconds
+		set {_x} to text from "https://worldtimeapi.org/api/timezone/Europe/Amsterdam"
 		if {language::%player%} = "English":
 			send "&d=== Weekly reset ===" to player
 			send "&dWeekly rewards are awaiting you in The Grand Vault!" to player
 			send "&dWork Orders have been reset!" to player
-			send "&dCard rotation in Stellar Chest has changed!" to player
+			send "&dCard rotation in the Stellar Chest has changed!" to player
+			if {_x} contains """day_of_week"":5":
+				send "&dBenefit from a Double EXP day today!" to player
+				doubleExpDayReminder(player)
 		else:
 			send "&d=== Tygodniowy reset nastąpił! ===" to player
 			send "&dNagrody czekają na ciebie w Wielkim Skarbcu!" to player
 			send "&dTwoje Zlecenia zostały zresetowane!" to player
 			send "&dRotacja Kart w Stelarnej Skrzynce się zmieniła!" to player
+			if {_x} contains """day_of_week"":5":
+				send "&dCiesz się dziś dniem Podwójnego EXP!" to player
+				doubleExpDayReminder(player)
 	if player's name = "kapoonfleek" or "llamadegree" or "Pehrek":
 		execute player command "noinvincibility on"
+
+on pickup:
+	if tag "custom;CantDespawn" of nbt of event-dropped item is set:
+		cancel event
+on item despawn:
+	if tag "custom;CantDespawn" of nbt of event-dropped item is set:
+		cancel event
+
+function notifyPlayerDailyReward(p: player):
+	while {dailyready::%{_p}%} != false:
+		wait 15 minutes
+		send " " to {_p}
+		send " " to {_p}
+		if {language::%{_p}%} = "English":
+			send formatted "Reminder: &o<##54d6ff>(<##a3dcff>&o!<##54d6ff>&o) <##a3dcff>&oYou have not yet claimed your daily reward. You can visit the &f&ospawn centre <##a3dcff>&oto do so. <command:/dailyrewardreminder hide><tooltip:&fHides the daily reward reminder for today.>&f(Click here to hide this message)" to {_p}
+		else:
+			send formatted "Przypomnienie: &o<##54d6ff>(<##a3dcff>&o!<##54d6ff>&o) <##a3dcff>&oNie odebrano jeszcze dzisiaj dziennej nagrody. Aby to zrobić, możesz odwiedzić &f&ocentrum spawnu<##a3dcff>&o! <command:/dailyrewardreminder hide><tooltip:&fChowa przypomnienie o dziennej nagrodzie na dziś.>&f(Kliknij tutaj, by schować wiadomość)" to {_p}
+		set {_pitch} to 1
+		loop 3 times:
+			play sound "block.note_block.cow_bell" with volume 3 and pitch {_pitch} to {_p}
+			play sound "block.note_block.basedrum" with volume 3 and pitch {_pitch} to {_p}
+			play sound "block.note_block.didgeridoo" with volume 3 and pitch {_pitch} to {_p}
+			add 0.334 to {_pitch}
+			wait 2 ticks
+		stop loop if metadata value "DailyRewardReminderHidden" of {_p} is set
+
+function doubleExpDayReminder(p: player):
+	wait 6 seconds
+	set {_dexp} to mini message from "<gradient:##daa3ff:##ff42fc>Double Exp Friday:"
+	if {language::%{_p}%} = "English":
+		set {_d2} to mini message from "<gradient:##daa3ff:##ff42fc>double EXP day"
+		send "&5(&d&l🫧&5) %{_dexp}% &fToday marks a %{_d2}%&f! Enjoy double player EXP from all sources!" to {_p}
+	else:
+		set {_d2} to mini message from "<gradient:##daa3ff:##ff42fc>dzień podwójnego EXP"
+		send "&5(&d&l🫧&5) %{_dexp}% &fDzisiaj odbywa się %{_d2}%&f! Ciesz się podwójnym EXP gracza ze wszystkich źródeł!" to {_p}
+	play sound "entity.player.levelup" with volume 2 and pitch 0.6 to {_p}

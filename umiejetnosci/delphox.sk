@@ -1,6 +1,4 @@
 #<##f0e359>
-variables:
-	{pcount::%player%} = 0
 
 on load:
 	set {traits::Delphox::*} to "Blaster Master", "Controlled Destruction", "Duplicative Incineration", "Fervent Flickering", "Fiery Rush", "Firefall", "Firestarter", "Pyroclasm", "Pyromaniac" and "Pyrotechnics"
@@ -59,232 +57,74 @@ on leave:
 on rightclick:
 	if name of player's tool = "<##e53311>Miotacz Płomieni" or "<##e53311>Flamethrower":
 		cancel event
-		set {_target} to Target(player, 100, false)
-		if {_target} is set:
+		if tag "Flamethrower" of nbt of player's tool is set:
+			set {_target} to Target(player, 100, false)
+			if {_target} is set:
+				if {kartaname::%player%} = "Delphox":
+					if CanUseAbility(player) != false:
+						cancel event
+						set {_haste} to 1 + (({haste::%player%}/4))/100 
+						set {_cd} to 14/{_haste}
+						set {_cd} to "%{_cd}% seconds" parsed as timespan
+
+						if cooldown "Flamethrower%player%-%uuid of {_target}%" is finished:
+
+							Blaze(player, {_target})
+
+							Flamethrower(player, {_target})
+
+							AbilityUse(player, "Flamethrower")
+
+						else:
+							cancel event
+							if {_target} is set:
+								if {tekstcd::%player%} is true:
+									if cooldown "FlamethrowerCDText%player%" is finished:
+										create cooldown "FlamethrowerCDText%player%" for 1 tick
+										set {_cdd} to cooldown "Flamethrower%player%-%uuid of {_target}%"
+										if {language::%player%} = "English":
+											send "<##d74327>You can't ignite that target for another %{_cdd}%" to player
+										else:
+											send "<##d74327>Nie można podpalić tego celu przez kolejne %{_cdd}%" to player
+						stop
+				else:
+					if {language::%player%} = "English":
+						send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to player
+					else:
+						send "&8[&6Earthcraft&8] &6Nie masz wybranej wymaganej karty, by móc użyć tej umiejętności." to player
+					play sound "block.glass.break" with volume 3 and pitch 0 to player
+	else if name of player's tool = "<##e53311>Heat Snap":
+		cancel event
+		if tag "HeatSnap" of nbt of player's tool is set:
 			if {kartaname::%player%} = "Delphox":
 				if CanUseAbility(player) != false:
-					cancel event
-					set {_id} to line 19 of lore of {karta::%player%}
-					set {_mistr2} to 2.5 + (({mastery::%player%}/200))
-					set {_crch} to ({criticalhit::%player%}/10) 
-					set {_pospiech} to 1 + (({haste::%player%}/4))/100 
-					set {_cd} to 13/{_pospiech}
-					set {_cdd} to {_cd}
-					set {_cd} to "%{_cd}% seconds" parsed as timespan
-					if player's chestplate is golden nugget:
-						if name of player's chestplate contains "Serce Earthcrafta" or "Heart of Earthcraft":
-							if line 30 of lore of player's chestplate contains player's name:
-								set {_loreheart::*} to lore of player's chestplate
-					if cooldown "miotaczplomieni%player%-%uuid of {_target}%" is finished:
-						#FIERY RUSH
-						loop {_loreheart::*}:
-							loop-value contains "Fiery Rush":
-								add (0.3*{trait::Delphox::Fiery Rush::%player%}) to {_firerush}
-						remove ("%{_firerush}% seconds" parsed as timespan) from {_cd}
-						create cooldown "miotaczplomieni%player%-%uuid of {_target}%" for {_cd}
-						#if target of player is not on fire:
-						#set {firstknockback::%{_target}%} to true
-						set {_dmg} to 5 + ({versatility::%player%}/90) + ({damage::%player%}/30) + {primarystat::%player%}/15
-						set {_dmgexl} to 3 + ({versatility::%player%}/180) + ({damage::%player%}/60) + {primarystat::%player%}/30
-						set {miotaczczas::%player%} to 1/((({_pospiech}-1)/1.5)+1)
-						set {_loops} to 4 + (rounded down (({haste::%player%}/150)))
-						set {_seku} to "%{miotaczczas::%player%} * {_loops}% seconds" parsed as timespan
-						set {miotaczburn::%{_target}%} to true
-						set {_loopign} to 1	
-						if {_firerush} is set:
-							add 2 to {_loops}
-						set {_lore} to "&8Umiejętność%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdd}% sekund na cel%nl%&7Użycie: &fPPM%nl%<##e53311>Podpala cel na &f%{miotaczczas::%player%} * {_loops}% sekund<##e53311>,%nl%<##e53311>zadając &f%{_dmg}/{_loops}% <##e53311>obrażeń <##ff4d00>Ognia%nl%<##e53311>co &f%{miotaczczas::%player%}% <##e53311>sekund."
-						set {_loreEN} to "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdd}% seconds per target%nl%&7Use: &fRMB%nl%<##e53311>Ignites the target for &f%{miotaczczas::%player%} * {_loops}% seconds<##e53311>,%nl%<##e53311>inflicting &f%{_dmg}/{_loops}% <##ff4d00>Fire <##e53311>damage%nl%<##e53311>every &f%{miotaczczas::%player%}% <##e53311>seconds."
-						set {_lorepozar} to "&8Umiejętność%nl%&fInstant cast%nl%&7Cooldown: &fbrak%nl%&7Użycie: &fPasywnie%nl%<##e53311>Co trzeci użyty Miotacz Płomieni%nl%<##e53311>zada &f%{_dmgexl}% <##e53311>obrażeń <##ff4d00>Ognia%nl%<##e53311>celowi i maksymalnie dwóm pobliskim wrogom."
-						set {_lorepozarEN} to "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &fnone%nl%&7Use: &fPassive%nl%<##e53311>Every third Flamethrower used%nl%<##e53311>deals &f%{_dmgexl}% <##ff4d00>Fire <##e53311>damage to the%nl%<##e53311>target and up to two nearby enemies."
-						if {language::%player%} = "English":
-							if name of player's tool does not contain "Flamethrower":
-								replace all "Miotacz Płomieni" in player's tool's name with "Flamethrower"
-							set lore of player's tool to {_loreEN}
-							loop all items in the inventory of player:
-								if name of loop-item contains "<##e53311>Pożar" or "<##e53311>Blaze":
-									set the name of loop-item to "<##e53311>Blaze"
-									set the lore of loop-item to {_lorepozarEN}
-						else:
-							if name of player's tool does not contain "Miotacz Płomieni":
-								replace all "Flamethrower" in player's tool's name with "Miotacz Płomieni"
-							set lore of player's tool to {_lore}
-							loop all items in the inventory of player:
-								if name of loop-item contains "<##e53311>Pożar" or "<##e53311>Blaze":
-									set the name of loop-item to "<##e53311>Pożar"
-									set the lore of loop-item to {_lorepozar}
-						#PYROMANIAC
-						loop {_loreheart::*}:
-							loop-value contains "Pyromaniac":
-								add (1.5*{trait::Delphox::Pyromaniac::%player%}) to {_pyromaniac}
-						#DUPLICATIVE INCINERATION
-						loop {_loreheart::*}:
-							loop-value contains "Duplicative Incineration":
-								add 1 to {_chancedp}
-						chance of {_chancedp}*(1*{trait::Delphox::Duplicative Incineration::%player%})%:
-							set {_loopign} to 2
-						loop {_loopign} times:
-							if loop-number = 1:
-								if {_loopign} = 2:
-									set {_seku} to "%2*({miotaczczas::%player%} * {_loops})% seconds" parsed as timespan
-								ignite {_target} for {_seku}
-							play sound "skill.delphox.flamethrower" with volume 1 and pitch 1 at player
-							add 1 to {pcount::%player%}
-							#PYROTECHNICS
-							if loop-number = 1:
-								loop {_loreheart::*}:
-									loop-value-2 contains "Pyrotechnics":
-										add 1 to {_chance}
-							chance of {_chance}*(5*{trait::Delphox::Pyrotechnics::%player%})%:
-								add 1 to {pcount::%player%}
-							#BLASTERMASTER
-							loop {_loreheart::*}:
-								loop-value-2 contains "Blaster Master":
-									add (20*{trait::Delphox::Blaster Master::%player%}) to {_blastermaster}
-							if {_blastermaster} is set:
-								if {blastermasterstacks::%player%} is not set:
-									set {blastermasterstacks::%player%} to 0
-								else:
-									add 1 to {blastermasterstacks::%player%}
-									add {_blastermaster} to {mastery::%player%}
-									set {_mistr2} to 2.5 + (({mastery::%player%}/200))
-									BlasterMaster(player)
-							#FIRESTARTER
-							if loop-number-1 = 1:
-								loop {_loreheart::*}:
-									loop-value-2 contains "Firestarter":
-										add (0.5*{trait::Delphox::Firestarter::%player%}) to {_firestartercd}
-										add (8.25*{trait::Delphox::Firestarter::%player%}) to {_firestartercrit}
-							#FERVENT FLICKERING
-								if loop-number = 1:
-									loop {_loreheart::*}:
-										loop-value-2 contains "Fervent Flickering":								
-											add (2*{trait::Delphox::Fervent Flickering::%player%}) to {_ferventchance}
-							if {pcount::%player%} >= 3:
-								#PYROCLASM
-								if {pyroclasm::%player%} is true:
-									set {_dmgexl} to {_dmgexl}*3.3
-									clear {pyroclasm::%player%}
-								chance of {_crch}%:
-									set {_crit} to true
-									set {_dmgexl} to {_dmgexl} * ({_mistr2} + ({pyromaniacstacks::%player%}/100))
-									set {critdmg::%{_target}%} to true
-									if {_pyromaniac} is set:
-										if {pyromaniacstacks::%player%} is not set:
-											set {pyromaniacstacks::%player%} to 0
-										else:
-											add {_pyromaniac} to {pyromaniacstacks::%player%}
-											set {czaspyromaniac::%player%} to 6 seconds
-											if {pyromaniacbonus::%player%} is not set:
-												set {pyromaniacbonus::%player%} to true
-								if {_crit} is not true:
-									clear {pyromaniacstacks::%player%}
-									clear {czaspyromaniac::%player%}
-								set {_target}'s last damage cause to sweep attack
-								set metadata value "LastDamageCauseEN" of {_target} to "<##d74327>Blaze"
-								set metadata value "LastDamageCause" of {_target} to "<##d74327>Pożar"
-								set metadata value "Element" of player to "Fire"
-								set metadata value "LastDamageCauseLoreEN" of {_target} to {_lorepozarEN}
-								set metadata value "LastDamageCauseLore" of {_target} to {_lorepozar}
-								make player damage {_target} by ({_dmgexl}*2)
-								if {_ferventchance} is set:
-									add {_ferventchance} to {_fervent}
-									add {_target} to {_ferventtargets::*}
-								if {_pyromaniac} is set:
-									Pyromaniac(player)
-								remove 3 from {pcount::%player%}
-								set {_s} to 0
-								play sound "item.firecharge.use" with volume 1 and pitch 1 at {_target}
-								loop 2 times:
-									set {_loop} to 4 + ({kontrolatlumu::%{_id}%}/50)
-									loop entities in radius {_loop} around {_target}:
-										if loop-entity is not {_target}:
-											if tag "custom;ECMob" of nbt of loop-entity is true:
-												if {_s} < 2:
-													add 1 to {_s}
-													set loop-entity's last damage cause to sweep attack
-													set metadata value "LastDamageCauseEN" of loop-entity to "<##d74327>Blaze"
-													set metadata value "LastDamageCause" of loop-entity to "<##d74327>Pożar"
-													set metadata value "Element" of player to "Fire"
-													set metadata value "LastDamageCauseLoreEN" of {_target} to {_lorepozarEN}
-													set metadata value "LastDamageCauseLore" of {_target} to {_lorepozar}
-													make player damage loop-entity by ({_dmgexl}*2)
-													if {_pyromaniac} is set:
-														Pyromaniac(player)
-													if {_ferventchance} is set:
-														add {_ferventchance} to {_fervent}
-														add loop-entity to {_ferventtargets::*}
-													wait 1 tick
-												else:
-													stop loop
-								if {_ferventchance} is set:
-									chance of {_fervent}%:
-										loop {_ferventtargets::*}:
-											remove 0.5 seconds from cooldown "miotaczplomieni%player%-%uuid of loop-value-2%"
-							wait 1 tick
-							set {_maxh} to max health of {_target}
-							set {_health} to health of {_target}
-							if {_health} >= (0.9*{_maxh}):	
-								if {_firestartercd} is set:
-									set {_firestartercd} to "%{_firestartercd}% seconds" parsed as timespan
-									if loop-number = 1:
-										remove {_firestartercd} from cooldown "miotaczplomieni%player%-%uuid of {_target}%"
-							else:
-								clear {_firestartercrit}
-							loop {_loops} times:
-								if {_target} is alive:
-									set {miotaczczas::%player%} to "%1/((({_pospiech}-1)/1.5)+1)% seconds" parsed as timespan
-									set {_dmg} to 5 + ({versatility::%player%}/90) + ({damage::%player%}/30) + {primarystat::%player%}/15
-									if loop-number-1 = 2:
-										set {_dmg} to {_dmg}*0.6
-									chance of ({_crch} + {_firestartercrit})%:
-										set {_crit} to true
-										set {_dmg} to {_dmg} * ({_mistr2} + ({pyromaniacstacks::%player%}/100))
-										set {critdmg::%{_target}%} to true
-										if {_pyromaniac} is set:
-											if {pyromaniacstacks::%player%} is not set:
-												set {pyromaniacstacks::%player%} to 0
-											else:
-												add {_pyromaniac} to {pyromaniacstacks::%player%}
-												set {czaspyromaniac::%player%} to 6 seconds
-												if {pyromaniacbonus::%player%} is not set:
-													set {pyromaniacbonus::%player%} to true
-									if {_crit} is not true:
-										clear {pyromaniacstacks::%player%}
-										clear {czaspyromaniac::%player%}
-									set {_target}'s last damage cause to sweep attack
-									set metadata value "LastDamageCauseEN" of {_target} to "<##d74327>Flamethrower"
-									set metadata value "LastDamageCause" of {_target} to "<##d74327>Miotacz Płomieni"
-									set metadata value "Element" of player to "Fire"
-									set metadata value "LastDamageCauseLoreEN" of {_target} to {_loreEN}
-									set metadata value "LastDamageCauseLore" of {_target} to {_lore}
-									make player damage {_target} by ({_dmg} * 2) / {_loops}
-									if {_pyromaniac} is set:
-										Pyromaniac(player) 
-									wait {miotaczczas::%player%}
-							clear {_fervent}
-							clear {_ferventtargets::*}
-						clear {miotaczburn::%{_target}%}
-						set {_yh} to "%{miotaczczas::%player%}%"
-						replace all " seconds" and "second" in {_yh} with ""
-						set {_sh} to {_yh} parsed as number
-						set {_jh} to {_loops}*{_sh}
-						set {_th} to "%{_jh}% seconds" parsed as timespan
-						set {czasmiotacza::%player%} to {_th}
-						set {_ir} to "%{miotaczczas::%player%}%"
-						replace all " seconds" and "second" in {_ir} with ""
-						set {miotaczcztekst::%player%} to {_ir}
-						stop
+					if cooldown "Heat Snap%player%" is finished:
+						set {_haste} to 1 + (({haste::%player%}/4))/100 
+						set {_cd} to "%45/{_haste}% seconds" parsed as timespan
+						set {_cdd} to 45/{_haste}
+
+						create cooldown "Heat Snap%player%" for {_cd}
+						set the cooldown of player's held item for player to {_cd}
+						AbilityUse(player, "Heat Snap")
+
+						play sound "skill.delphox.heatsnap" with volume 3 and pitch 1 at player
+
+						set {_lore} to "&8Umiejętność%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdd}% sekund%nl%&7Użycie: &fPPM&%nl%<##e53311>Otacza cię Płomienną Barierą,%nl%<##e53311>negując wszystkie obrażenia otrzymane przez%nl%<##e53311>kolejne &f%{_barrierDuration}% sekund<##e53311>."
+						set {_loreEN} to "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdd}% seconds%nl%&7Use: &fRMB%nl%<##e53311>Surrounds you in a Flame Barrier,%nl%<##e53311>negating any incoming damage for the next%nl%&f%{_blotekst}% seconds<##e53311>."
+						
+						translateAbility(player, "Heat Snap", "Pstryk Gorąca", "Heat Snap", {_lore}, {_loreEN})
+						
+						HeatSnap(player)
+
 					else:
 						cancel event
-						if {_target} is set:
-							if {tekstcd::%player%} is true:
-								set {_cdd} to cooldown "miotaczplomieni%player%-%uuid of {_target}%"
-								if {language::%player%} = "English":
-									send "<##d74327>You can't ignite that target for the next %{_cdd}%" to player
-								else:
-									send "<##d74327>Nie można podpalić tego celu przez kolejne %{_cdd}%" to player
-					stop
+						if {tekstcd::%player%} = true:
+							set {_cdd} to cooldown "Heat Snap%player%"
+							if {language::%player%} = "English":
+								send "<##e53311>You must wait &f%{_cdd}% <##e53311>to use this ability." to player
+							else:
+								send "<##e53311>Musisz odczekać &f%{_cdd}%<##e53311>, aby użyć tej umiejętności." to player
+						stop
 			else:
 				if {language::%player%} = "English":
 					send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to player
@@ -292,229 +132,71 @@ on rightclick:
 					send "&8[&6Earthcraft&8] &6Nie masz wybranej wymaganej karty, by móc użyć tej umiejętności." to player
 				play sound "block.glass.break" with volume 3 and pitch 0 to player
 							
-on rightclick:
-	if name of player's tool = "<##e53311>Miotacz Płomieni" or "<##e53311>Flamethrower":
-		if {mob::%target of player%} = true:
-			if {kartaname::%player%} = "Delphox":
-				if CanUseAbility(player) != false:
+	else if name of player's tool = "<##e53311>Inferno":
+		cancel event
+		if tag "Inferno" of nbt of player's tool is set:
+			if tag "Talents;Row 5" of nbt of {karta::%player%} != "Hot Spree":
+				if {kartaname::%player%} = "Delphox":
 					set {_target} to Target(player, 100, false)
 					if {_target} is set:
-						while cooldown "miotaczplomieni%player%-%uuid of {_target}%" is not finished:
-							if {_target} is alive:
-								set {_a} to cooldown "miotaczplomieni%player%-%uuid of {_target}%"
-								set {_h} to location of block above {_target}
-								increase {_h}'s y-coordinate by 1.2
-								display hologram "<##d74327>%{_a}%" at {_h} to player for 8 ticks
-							wait 32 ticks
+						if CanUseAbility(player) != false:
+							Inferno(player, {_target})
+							AbilityUse(player, "Inferno")
+				else:
+					if {language::%player%} = "English":
+						send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to player
+					else:
+						send "&8[&6Earthcraft&8] &6Nie masz wybranej wymaganej karty, by móc użyć tej umiejętności." to player
+					play sound "block.glass.break" with volume 3 and pitch 0 to player
 			else:
 				if {language::%player%} = "English":
-					send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to player
+					send "&8[&6Earthcraft&8] &6You can not use Inferno when you have Hot Spree talented." to player
 				else:
-					send "&8[&6Earthcraft&8] &6Nie masz wybranej wymaganej karty, by móc użyć tej umiejętności." to player
+					send "&8[&6Earthcraft&8] &6Nie możesz używać Inferno, gdy masz wybrany talent Hot Spree." to player
 				play sound "block.glass.break" with volume 3 and pitch 0 to player
-on rightclick:
-	if name of player's tool = "<##e53311>Inferno":
+
+	else if name of player's tool = "<##e53311>Płomienna Bariera" or "<##e53311>Flame Barrier":
 		cancel event
-		if {kartaname::%player%} = "Delphox":
-			set {_target} to Target(player, 100, false)
-			if {_target} is set:
+		if tag "FlameBarrier" of nbt of player's tool is set:
+			if {kartaname::%player%} = "Delphox":
 				if CanUseAbility(player) != false:
-					if CanUseAbility(player) != false:
-						set {_id} to line 19 of lore of {karta::%player%}
-						if player's chestplate is golden nugget:
-							if name of player's chestplate contains "Serce Earthcrafta" or "Heart of Earthcraft":
-								if line 30 of lore of player's chestplate contains player's name:
-									set {_loreheart::*} to lore of player's chestplate
-						set {_mistr2} to 2.5 + (({mastery::%player%}/200))
-						set {_crch} to ({criticalhit::%player%}/10)
-						if {miotaczburn::%{_target}%} is true:
-							set {_dmg} to 3.5 + ({versatility::%player%}/120) + ({damage::%player%}/40)  + ({primarystat::%player%}/20)
-							set {_stun} to "%2 + (({crowdcontrol::%player%}/60))% seconds" parsed as timespan
-							set {_stuntekst} to 2 + (({crowdcontrol::%player%}/60))
-							set {_explotekst} to 6 + ({versatility::%player%}/60) + ({damage::%player%}/20) + ({primarystat::%player%}/10)
-							#set {stunintdel::%player%} to 2 + (({crowdcontrol::%player%}/60) + ({kontrolatlumu::%{_id}%}/60))
-							#set {infs::%{_target}%::dmgcalc} to now
-							set {miotaczburn::%{_target}%} to false
-							set {_lore} to "&8Umiejętność%nl%&fInstant cast%nl%&7Cooldown: &fbrak%nl%&7Użycie: &fPPM&7/&fSHIFT%nl%<##e53311>Więzi przeciwnika podpalonego Miotaczem Płomieni%nl%<##e53311>w ognistym więzieniu, ogłuszając go na &f%{_stuntekst}% sekund%nl%<##e53311>i zadajac &f%{_dmg}% <##e53311>obrażeń <##ff4d00>Ognia<##e53311>.%nl% %nl%<##e53311>Kliknięcie Shiftem zdetonuje więzienie,%nl%<##e53311>zadając &f%{_explotekst}% <##e53311>damage <##ff4d00>Ognia <##e53311>i podrzucając wroga do góry."
-							set {_loreEN} to "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &fnone%nl%&7Use: &fRMB&7/&fSHIFT%nl%<##e53311>Imprisons the target affected by Flamethrower%nl%<##e53311>in a fiery prison, stunning them for &f%{_stun}%%nl%<##e53311>and inflicting &f%{_dmg}% <##ff4d00>Fire <##e53311>damage.%nl% %nl%<##e53311>Pressing Shift will detonate the prison,%nl%<##e53311>dealing &f%{_explotekst}% <##ff4d00>Fire <##e53311>damage and tossing the%nl%<##e53311>enemy into the air."
+
+					set {_haste} to 1 + (({haste::%player%}/4))/100 
+					set {_cd} to "%130/{_haste}% seconds" parsed as timespan
+					set {_cdd} to 130/{_haste}
+					set {_barrierDuration} to 6 + (({resistance::%player%}/25))
+
+					if cooldown "Flame Barrier%player%" is finished:
+						create cooldown "Flame Barrier%player%" for {_cd}
+						set the cooldown of player's held item for player to {_cd}
+						AbilityUse(player, "Flame Barrier")
+
+						set {_lore} to "&8Umiejętność%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdd}% sekund%nl%&7Użycie: &fPPM&%nl%<##e53311>Otacza cię Płomienną Barierą,%nl%<##e53311>negując wszystkie obrażenia otrzymane przez%nl%<##e53311>kolejne &f%{_barrierDuration}% sekund<##e53311>."
+						set {_loreEN} to "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdd}% seconds%nl%&7Use: &fRMB%nl%<##e53311>Surrounds you in a Flame Barrier,%nl%<##e53311>negating any incoming damage for the next%nl%&f%{_blotekst}% seconds<##e53311>."
+						
+						translateAbility(player, "Flame Barrier", "Płomienna Bariera", "Flame Barrier", {_lore}, {_loreEN})
+						
+						set {_duration} to "%{_barrierDuration}% seconds" parsed as timespan
+
+						set metadata value "Flame Barrier" of player to true
+						make player invulnerable
+						FlameBarrierInfo(player, {_duration})
+
+						play sound "block.beacon.power_select" with volume 5 and pitch 1 at player
+
+						wait {_duration}
+						make player vulnerable
+						clear metadata value "Flame Barrier" of player
+
+					else:
+						cancel event
+						if {tekstcd::%player%} = true:
+							set {_cdd} to cooldown "Flame Barrier%player%"
 							if {language::%player%} = "English":
-								set lore of player's tool to {_loreEN}
+								send "<##e53311>You must wait &f%{_cdd}% <##e53311>to use this ability." to player
 							else:
-								set lore of player's tool to {_lore}
-							#PYROMANIAC
-							loop {_loreheart::*}:
-								loop-value contains "Pyromaniac":
-									add (1.5*{trait::Delphox::Pyromaniac::%player%}) to {_pyromaniac}
-							chance of {_crch}%:
-								set {_crit} to true
-								set {_dmg} to {_dmg} * ({_mistr2} + ({pyromaniacstacks::%player%}/100))
-								set {critdmg::%{_target}%} to true
-								if {_pyromaniac} is set:
-									if {pyromaniacstacks::%player%} is not set:
-										set {pyromaniacstacks::%player%} to 0
-									else:
-										add {_pyromaniac} to {pyromaniacstacks::%player%}
-										set {czaspyromaniac::%player%} to 6 seconds
-										if {pyromaniacbonus::%player%} is not set:
-											set {pyromaniacbonus::%player%} to true
-							if {_crit} is not true:
-								clear {pyromaniacstacks::%player%}
-								clear {czaspyromaniac::%player%}
-							if {_target} is alive:
-								if canBeCCed({_target}) = true:
-									set {stun::%{_target}%} to true
-								set {_target}'s last damage cause to sweep attack
-								set metadata value "LastDamageCauseEN" of {_target} to "<##d74327>Inferno"
-								set metadata value "LastDamageCause" of {_target} to "<##d74327>Inferno"
-								set metadata value "Element" of player to "Fire"
-								set metadata value "LastDamageCauseLoreEN" of {_target} to {_loreEN}
-								set metadata value "LastDamageCauseLore" of {_target} to {_lore}
-								make player damage {_target} by {_dmg}*2
-								set {infernotarget::%{_target}%} to true
-								play sound "entity.illusioner.mirror_move" with volume 1 and pitch 1 at player
-								if {_pyromaniac} is set:
-									Pyromaniac(player)
-								#drawRings particle "flame", center {_target}, id "%{_target}%-%uuid of {_target}%", rainbowMode false, randomRotation true, animated false, radius 1, ringCount 4, ringDensity 10, visibleRange 100, pulseDelay 1
-								InfernoParticles({_target})
-								wait {_stun}
-								#clear {infs::%{_target}%::dmgcalc}
-								clear {infernotarget::%{_target}%}
-								clear {stun::%{_target}%}
-								stopEffect "%{_target}%-%uuid of {_target}%"
-		else:
-			if {language::%player%} = "English":
-				send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to player
-			else:
-				send "&8[&6Earthcraft&8] &6Nie masz wybranej wymaganej karty, by móc użyć tej umiejętności." to player
-			play sound "block.glass.break" with volume 3 and pitch 0 to player
-function InfernoParticles(target: entity):
-	while {infernotarget::%{_target}%} is true:
-		set {_shape} to sphere with radius 1
-		draw {_shape} at block above {_target}
-		wait 1 second
-on sneak toggle:
-	if name of player's tool = "<##e53311>Inferno":
-		if {kartaname::%player%} = "Delphox":
-			if CanUseAbility(player) != false:
-				set {_target} to Target(player, 100, false)
-				if {_target} is set:
-					set {_id} to line 19 of lore of {karta::%player%}
-					set {_mistr2} to 2.5 + (({mastery::%player%}/200))
-					set {_crch} to ({criticalhit::%player%}/10)
-					if player's chestplate is golden nugget:
-						if name of player's chestplate contains "Serce Earthcrafta" or "Heart of Earthcraft":
-							if line 30 of lore of player's chestplate contains player's name:
-								set {_loreheart::*} to lore of player's chestplate
-					if {infernotarget::%{_target}%} is true:
-						#SKALOWANIE Z KONTROLĄ TŁUMU
-						#set {_c} to "%difference between now and {infs::%{_target}%::dmgcalc}%"
-						#set {_d} to "%{_c}%"
-						#replace all " seconds" or " second" with "" in {_d}
-						#set {_e} to {_d} parsed as number
-						#set {_f} to {stunintdel::%player%} - {_e}
-						#set {_b} to "%{_f}% seconds" parsed as timespan
-						#set {_dmg} to (0.5 + {_uniwersalnosc}/44 + {_obrazenia}/32)*{_f}
-						set {_dmg} to 6 + ({versatility::%player%}/60) + ({damage::%player%}/20) + ({primarystat::%player%}/10)
-						set {infernotarget::%{_target}%} to false
-						clear {stun::%{_target}%}
-						stopEffect "%{_target}%-%uuid of {_target}%"
-						set {_knock} to 1 + ({crowdcontrol::%player%}/100)
-						set {_lore} to "&8Umiejętność%nl%&fInstant cast%nl%&7Cooldown: &fbrak%nl%&7Użycie: &fPPM&7/&fSHIFT%nl%<##e53311>Więzi przeciwnika podpalonego Miotaczem Płomieni%nl%<##e53311>w ognistym więzieniu, ogłuszając go na &f%{_stuntekst}% sekund%nl%<##e53311>i zadajac &f%{_dmg}% <##e53311>obrażeń <##ff4d00>Ognia<##e53311>.%nl% %nl%<##e53311>Kliknięcie Shiftem zdetonuje więzienie,%nl%<##e53311>zadając &f%{_explotekst}% <##e53311>damage <##ff4d00>Ognia <##e53311>i podrzucając wroga do góry."
-						set {_loreEN} to "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &fnone%nl%&7Use: &fRMB&7/&fSHIFT%nl%<##e53311>Imprisons the target affected by Flamethrower%nl%<##e53311>in a fiery prison, stunning them for &f%{_stun}%%nl%<##e53311>and inflicting &f%{_dmg}% <##ff4d00>Fire <##e53311>damage.%nl% %nl%<##e53311>Pressing Shift will detonate the prison,%nl%<##e53311>dealing &f%{_explotekst}% <##ff4d00>Fire <##e53311>damage and tossing the%nl%<##e53311>enemy into the air."
-						#PYROMANIAC
-						loop {_loreheart::*}:
-							loop-value contains "Pyromaniac":
-								add (1.5*{trait::Delphox::Pyromaniac::%player%}) to {_pyromaniac}
-						if {controlleddestruction::%player%} is set:
-							set {_dmg} to {_dmg} + {controlleddestruction::%player%}
-							set {_crch} to 100
-							clear {controlleddestruction::%player%}
-						if {_target} is alive:
-							chance of {_crch}%:
-								set {_crit} to true
-								set {_dmg} to {_dmg} * ({_mistr2} + ({pyromaniacstacks::%player%}/100))
-								set {critdmg::%{_target}%} to true
-								if {_pyromaniac} is set:
-									if {pyromaniacstacks::%player%} is not set:
-										set {pyromaniacstacks::%player%} to 0
-									else:
-										add {_pyromaniac} to {pyromaniacstacks::%player%}
-										set {czaspyromaniac::%player%} to 6 seconds
-										if {pyromaniacbonus::%player%} is not set:
-											set {pyromaniacbonus::%player%} to true
-							if {_crit} is not true:
-								clear {pyromaniacstacks::%player%}
-								clear {czaspyromaniac::%player%}
-							play sound "entity.dragon_fireball.explode" with volume 1 and pitch 1 at player
-							push {_target} upwards with velocity {_knock}
-							set {_target}'s last damage cause to sweep attack
-							set metadata value "LastDamageCauseEN" of {_target} to "<##d74327>Inferno (Explosion)"
-							set metadata value "LastDamageCause" of {_target} to "<##d74327>Inferno (Eksplozja)"
-							set metadata value "Element" of player to "Fire"
-							set metadata value "LastDamageCauseLoreEN" of {_target} to {_loreEN}
-							set metadata value "LastDamageCauseLore" of {_target} to {_lore}
-							make player damage {_target} by {_dmg} * 2
-							if {_pyromaniac} is set:
-								Pyromaniac(player)
-							#PYROCLASM
-							loop {_loreheart::*}:
-								loop-value contains "Pyroclasm":
-									add 1 to {_chance}
-							chance of {_chance}*(2.5*{trait::Delphox::Pyroclasm::%player%})%:
-								set {pyroclasm::%player%} to true
-							#FIREFALL
-							loop {_loreheart::*}:
-								loop-value contains "Firefall":
-									add (3*{trait::Delphox::Firefall::%player%}) to {_firefall}
-							if {_firefall} is set:
-								add 1 to {meteor::%player%}
-								if {meteor::%player%} >= 4:
-									remove 4 from {meteor::%player%}
-									if {meteor::%player%} = 0:
-										clear {meteor::%player%}
-									play sound "entity.creeper.primed" with volume 3 and pitch 1.5 at {_target}
-									set {_l} to location 20 blocks above {_target}'s head
-									set {_v} to vector between {_l} and {_target}'s head
-									loop round(distance between {_l} and {_target}) / 0.2 times:
-										set {_v} to vector between {_l} and {_target}'s head
-										set vector length of {_v} to loop-value * 0.2
-										draw 1 of dust using dustOption((rgb 224, 117, 22), 1) at {_l} ~ {_v}
-										draw 1 of dust using dustOption((rgb 224, 76, 47), 1) at {_l} ~ {_v}
-										draw 1 of dust using dustOption((rgb 135, 76, 65), 1) at {_l} ~ {_v}
-										#drawDot count 1, particle "redstone", RGB 224, 117, 22, center {_l} ~ {_v}, rainbowMode false, visibleRange 32, pulseDelay 0, keepFor 5 ticks
-										#drawDot count 1, particle "redstone", RGB 224, 76, 47, center {_l} ~ {_v}, rainbowMode false, visibleRange 32, pulseDelay 0, keepFor 5 ticks
-										#drawDot count 1, particle "redstone", RGB 135, 76, 65, center {_l} ~ {_v}, rainbowMode false, visibleRange 32, pulseDelay 0, keepFor 5 ticks
-										wait 1 tick
-									play sound "entity.dragon_fireball.explode" with volume 3 and pitch 0 at {_target}
-									chance of {_crch}%:
-										set {_crit} to true
-										set {_firefall} to {_firefall} * ({_mistr2} + ({pyromaniacstacks::%player%}/100))
-										if {_pyromaniac} is set:
-											if {pyromaniacstacks::%player%} is not set:
-												set {pyromaniacstacks::%player%} to 0
-											else:
-												add {_pyromaniac} to {pyromaniacstacks::%player%}
-												set {czaspyromaniac::%player%} to 6 seconds
-												if {pyromaniacbonus::%player%} is not set:
-													set {pyromaniacbonus::%player%} to true
-									if {_crit} is not true:
-										clear {pyromaniacstacks::%player%}
-										clear {czaspyromaniac::%player%}
-									loop all entities in radius 4 around {_target}:
-										if {mob::%loop-entity%} is true:
-											set loop-entity's last damage cause to sweep attack
-											set metadata value "LastDamageCause" of loop-entity to "<##e53311>Meteor"
-											set metadata value "LastDamageCauseEN" of loop-entity to "<##e53311>Meteor"
-											set metadata value "Element" of player to "Fire"
-											set metadata value "LastDamageCauseLoreEN" of loop-entity to "&7Every fourth detonated <##e53311>Inferno &7calls%nl%&7down a Meteor &7on your target,%nl%&7dealing &f%{_firefall}% <##ff4d00>Fire &7damage to all enemies nearby."
-											set metadata value "LastDamageCauseLore" of loop-entity to "&7Co czwarte zdetonowane <##e53311>Inferno &7przywołuje%nl%&7Meteor &7na twój cel, &7zadając &f%3*{_x6}% &7obrażeń%nl%<##ff4d00>Ognia &7wszystkim wrogom w pobliżu."
-											if {_crit} = true:
-												set {critdmg::%loop-entity%} to true
-											make player damage loop-entity by {_firefall}*2
-									if {_pyromaniac} is set:
-										Pyromaniac(player)
-									loop all blocks in radius 4 around {_target}:
-										show 1 large explosion at loop-block
+								send "<##e53311>Musisz odczekać &f%{_cdd}%<##e53311>, aby użyć tej umiejętności." to player
+						stop
 			else:
 				if {language::%player%} = "English":
 					send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to player
@@ -522,79 +204,400 @@ on sneak toggle:
 					send "&8[&6Earthcraft&8] &6Nie masz wybranej wymaganej karty, by móc użyć tej umiejętności." to player
 				play sound "block.glass.break" with volume 3 and pitch 0 to player
 
-on rightclick:
-	if name of player's tool = "<##e53311>Płomienna Bariera" or "<##e53311>Flame Barrier":
-		cancel event
-		if {kartaname::%player%} = "Delphox":
-			if CanUseAbility(player) != false:
-				set {_id} to line 19 of lore of {karta::%player%}
-				if player's chestplate is golden nugget:
-					if name of player's chestplate contains "Serce Earthcrafta" or "Heart of Earthcraft":
-						if line 30 of lore of player's chestplate contains player's name:
-							set {_loreheart::*} to lore of player's chestplate
-				set {_pospiech} to 1 + (({haste::%player%}/4))/100 
-				set {_cd} to "%130/{_pospiech}% seconds" parsed as timespan
-				set {_cdd} to 130/{_pospiech}
-				set {_blotekst} to rounded down 6 + (({resistance::%player%}/45) + ({wytrzymalosc::%{_id}%}/45))
-				if cooldown "płomiennabariera%player%" is finished:
-					create cooldown "płomiennabariera%player%" for {_cd}
-					set the cooldown of player's held item for player to {_cd}
-					set {_lore} to "&8Umiejętność%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdd}% sekund%nl%&7Użycie: &fPPM&%nl%<##e53311>Otacza cię Płomienną Barierą,%nl%<##e53311>negując wszystkie obrażenia otrzymane przez%nl%<##e53311>kolejne &f%{_blotekst}% sekund<##e53311>."
-					set {_loreEN} to "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdd}% seconds%nl%&7Use: &fRMB%nl%<##e53311>Surrounds you in a Flame Barrier,%nl%<##e53311>negating any incoming damage for the next%nl%&f%{_blotekst}% seconds<##e53311>."
-					if {language::%player%} = "English":
-						if name of player's tool does not contain "Flame Barrier":
-							replace all "Płomienna Bariera" in player's tool's name with "Flame Barrier"
-						set lore of player's tool to {_loreEN}
-					else:
-						if name of player's tool does not contain "Płomienna Bariera":
-							replace all "Flame Barrier" in player's tool's name with "Płomienna Bariera"
-						set lore of player's tool to {_lore}
-					set {_bsek} to "%6 + (({resistance::%player%}/45) + ({wytrzymalosc::%{_id}%}/45))% seconds" parsed as timespan
-					set {_bsek2} to {_bsek}
-					set {_blo} to rounded down 6 + (({resistance::%player%}/45) + ({wytrzymalosc::%{_id}%}/45))
-					#CONTROLLED DESTRUCTION
-					loop {_loreheart::*}:
-						loop-value contains "Controlled Destruction":
-							add (1.5*{trait::Delphox::Controlled Destruction::%player%}) to {_controlleddestruction}
-					if {_controlleddestruction} is set:
-						set {controlleddestruction::%player%} to {_controlleddestruction}
-					loop all blocks in radius 2.5 around the player:
-						show 1 flame at loop-block
-					replace all " seconds" in {_bsek} with " sekund"
-					set {bariera::%player%} to true
-					make player invulnerable
-					play sound "block.beacon.power_select" with volume 5 and pitch 1 at player
-					if {language::%player%} = "English":
-						send action bar "<##e53311>BARRIER &7(%{_bsek}%)" to player
-					else:
-						send action bar "<##e53311>BARIERA &7(%{_bsek}%)" to player
-					wait 1 second
-					loop {_blo} times:
-						remove 1 from {_blo}
-						if {language::%player%} = "English":
-							send action bar "<##e53311>BARRIER &7(%{_blo}% seconds)" to player
-						else:
-							send action bar "<##e53311>BARIERA &7(%{_blo}% seconds)" to player
-						wait 1 second
-					wait {_bsek2}
-					clear {bariera::%player%}
-					make player vulnerable
-				else:
-					cancel event
-					if {tekstcd::%player%} = true:
-						set {_cdd} to cooldown "płomiennabariera%player%"
-						if {language::%player%} = "English":
-							send "<##e53311>You must wait &f%{_cdd}% <##e53311>to use this ability." to player
-						else:
-							send "<##e53311>Musisz odczekać &f%{_cdd}%<##e53311>, aby użyć tej umiejętności." to player
-					stop
+on sneak toggle:
+	if {kartaname::%player%} = "Delphox":
+		if CanUseAbility(player) != false:
+			set {_target} to Target(player, 100, false)
+			if {_target} is set:
+				if metadata value "InfernoTarget" of {_target} is true:
+					InfernoDetonate(player, {_target})
+					AbilityUse(player, "Inferno (Detonate)")
+
+function InfernoParticles(target: entity):
+	while metadata value "InfernoTarget" of {_target} is true:
+		set {_shape} to sphere with radius 1
+		draw {_shape} at block above {_target}
+		wait 1 second
+
+function FlameBarrierInfo(p: player, duration: timespan):
+	while metadata value "Flame Barrier" of {_p} is set:
+		if metadata value "Blaze" of {_p} is set:
+			set {_blaze} to metadata value "Blaze" of {_p}
 		else:
-			if {language::%player%} = "English":
-				send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to player
-			else:
-				send "&8[&6Earthcraft&8] &6Nie masz wybranej wymaganej karty, by móc użyć tej umiejętności." to player
-			play sound "block.glass.break" with volume 3 and pitch 0 to player
+			set {_blaze} to 0
+		send action bar "%{_blaze}%  &f|  %{_duration}%" to {_p}
+		draw 40 flame at location above {_p} with offset vector(0.3, 0.4, 0.3) with extra 0.06
+		wait 1 second
+		remove 1 second from {_duration}
+
+function Blaze(p: player, target: entity, heatSnap: boolean = false):
+	set {_blaze} to metadata value "Blaze" of {_p}
+	add 1 to {_blaze}
+	if tag "Talents;Row 1" of nbt of {karta::%{_p}%} = "Pyrotechnics":
+		chance of 20%:
+			add 1 to {_blaze}
+	if tag "Talents;Row 4" of nbt of {karta::%{_p}%} = "Flame Cascade":
+		if {_heatSnap} is true:
+			set {_flameCascade} to true
+
+	set metadata value "Blaze" of {_p} to {_blaze}
+
+	set {_pitch} to 0.5 + 0.5*{_blaze}
+	play sound "entity.blaze.hurt" with volume 2 and pitch {_pitch} to {_p}
+
+	send action bar "%{_blaze}% " to {_p}
+
+	wait 1 tick
+	if metadata value "Blaze" of {_p} >= 3:
+		set {_blaze} to metadata value "Blaze" of {_p}
+		remove 3 from {_blaze}
+		set metadata value "Blaze" of {_p} to {_blaze}
+		send action bar "%{_blaze}% " to {_p}
+
+		set {_loopCount} to 0
+		set {_targetsAffected} to 3
+
+		play sound "item.firecharge.use" with volume 1 and pitch 1 at {_target}
+
+		set {_loopRadius} to 4 + ({crowdcontrol::%{_p}%}/50)
+		set {_entities::*} to LoopEntitiesAroundTarget({_target}, {_loopRadius}, true)
+
+		if tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Firespread":
+			add 2 to {_targetsAffected}
+			set {_targetsHit} to size of {_entities::*}
+			if {_targetsHit} > 5:
+				set {_targetsHit} to 5
+			set {_firespread} to 1 + 0.3*{_targetsHit}
+
+		loop {_entities::*}:
+			add 1 to {_loopCount}
+			set {_dmgBlaze} to 3 + ({versatility::%{_p}%}/180) + ({damage::%{_p}%}/60) + {primarystat::%{_p}%}/30
+			set {_mastery} to 2.5 + (({mastery::%{_p}%}/165))
+
+			if {_firespread} is set:
+				set {_dmgBlaze} to {_dmgBlaze} * {_firespread}
+			if {_flameCascade} is set:
+				set {_dmgBlaze} to {_dmgBlaze} * 1.7
+			if tag "Talents;Row 5" of nbt of {karta::%{_p}%} = "Wildfire":
+				set {_wildfireDamageAmp} to 1 + {wildfireDelphox::%{_p}%}/100
+				set {_dmgBlaze} to {_dmgBlaze} * {_wildfireDamageAmp}
+
+			chance of {_crit}%:
+				set {_dmgBlaze} to {_dmgBlaze} * {_mastery}
+				Kindling({_p})
+				CritVisual(loop-value)
+
+			set loop-value's last damage cause to sweep attack
+			set metadata value "LastDamageCauseEN" of loop-value to "<##d74327>Blaze"
+			set metadata value "LastDamageCause" of loop-value to "<##d74327>Pożar"
+			set metadata value "Element" of {_p} to "Fire"
+			set metadata value "LastDamageCauseLoreEN" of loop-value to {_lorepozarEN}
+			set metadata value "LastDamageCauseLore" of loop-value to {_lorepozar}
 			
+			make {_p} damage loop-value by ({_dmgBlaze}*2)
+			draw 20 flame at location above loop-value with offset vector(0.3, 0.6, 0.3) with extra 0.03
+			stop loop if {_loopCount} = {_targetsAffected}
+
+function HeatSnap(p: player):
+	set {_haste} to 1 + (({haste::%{_p}%}/4))/100 
+	set {_cd} to 14/{_haste}
+	set {_cd} to "%{_cd}% seconds" parsed as timespan
+	loop all entities in radius 40 around {_p} where [metadata value "RecentlyDamagedDelphox%{_p}%" of input is set]:
+
+		clear cooldown "Flamethrower%{_p}%-%uuid of loop-entity%"
+		create cooldown "Flamethrower%{_p}%-%uuid of loop-entity%" for {_cd}
+		
+		Blaze({_p}, loop-entity, true)
+
+		Flamethrower({_p}, loop-entity)
+
+		Inferno({_p}, loop-entity)
+
+function Kindling(p: player):
+	if tag "Talents;Row 2" of nbt of {karta::%{_p}%} = "Kindling":
+		remove 1 second from cooldown "Heat Snap%{_p}%"
+		loop all items in the inventory of {_p}:
+			if tag "HeatSnap" of nbt of loop-item is set:
+				set the cooldown of loop-item for {_p} to cooldown "Heat Snap%{_p}%"
+				stop loop
+
+function Flamethrower(p: player, target: entity):
+	set {_haste} to 1 + (({haste::%{_p}%}/4))/100 
+	set {_cd} to 14/{_haste}
+	set {_hasteModifier} to 1/{_haste}
+	if tag "Talents;Row 2" of nbt of {karta::%{_p}%} = "Flame Accelerant":
+		if metadata value "DelphoxFlamethrowerUsed" of {_p} is not set:
+			FlameAccelerant({_p}, {_cd})
+			set {_cd} to {_cd}*0.5
+			set {_flameAccelerant} to true
+			set {_hasteModifier} to {_hasteModifier}*0.7
+	set {_cdd} to {_cd}
+	set {_cd} to "%{_cd}% seconds" parsed as timespan
+
+	set {_damage} to 1.25 + ({versatility::%{_p}%}/360) + ({damage::%{_p}%}/120) + {primarystat::%{_p}%}/60
+	set {_dmgBlaze} to 3 + ({versatility::%{_p}%}/180) + ({damage::%{_p}%}/60) + {primarystat::%{_p}%}/30
+
+	if tag "Talents;Row 5" of nbt of {karta::%{_p}%} = "Hot Spree":
+		set {_hotSpreeCount} to metadata value "HotSpree" of {_p}
+		add 1 to {_hotSpreeCount}
+		if {_hotSpreeCount} = 3:
+			set {_hotSpree} to true
+			set {_damage} to {_damage} * 1.5
+			set {_hotSpreeCount} to -1
+			play sound "skill.delphox.hotspree" with volume 1.2 and pitch 1 to {_p}
+			
+		set metadata value "HotSpree" of {_p} to {_hotSpreeCount}
+	
+	if {_hotSpree} != true:
+		create cooldown "Flamethrower%{_p}%-%uuid of {_target}%" for {_cd}
+
+	if tag "Talents;Row 5" of nbt of {karta::%{_p}%} = "Hot Spree":
+		set {_damage} to {_damage}*1.6
+
+	set {_baseDuration} to 4
+	set {_seconds} to rounded {_baseDuration}/{_hasteModifier}
+
+	set metadata value "FlamethrowerBurn" of {_target} to true
+
+	set {_lore} to "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &fnone%nl%&7Use: &fRMB%nl%<##e53311>Ignites the target for &f%{_seconds}% sec<##e53311>, inflicting &f%{_damage}% <##ff4d00>Fire%nl%<##e53311>damage every &f%{_hasteModifier}% sec <##e53311>for a total of &f%{_damage}*{_seconds}% <##ff4d00>Fire <##e53311>damage.%nl%<##e53311>When Flamethrower is used, it cannot be used on%nl%<##e53311>the same target for the next &f%{_cdd}% sec<##e53311>."
+	set {_lorepozar} to "&8Passive Ability%nl%&fInstant cast%nl%&7Cooldown: &fnone%nl%&7Use: &fPassive%nl%<##e53311>Every third Flamethrower used deals%nl%&f3 <##ff4d00>Fire <##e53311>damage to the target and up to%nl%<##e53311>&ftwo <##e53311>nearby enemies around the target."
+	
+	set {_lorepozarEN} to "&8Passive Ability%nl%&fInstant cast%nl%&7Cooldown: &fnone%nl%&7Use: &fPassive%nl%<##e53311>Every third Flamethrower used deals%nl%&f%{_dmgBlaze}% <##ff4d00>Fire <##e53311>damage to the target and up to%nl%<##e53311>&ftwo <##e53311>nearby enemies around the target."
+	set {_loreEN} to "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &fnone%nl%&7Use: &fRMB%nl%<##e53311>Ignites the target for &f%{_seconds}% sec<##e53311>, inflicting &f%{_damage}% <##ff4d00>Fire%nl%<##e53311>damage every &f%{_hasteModifier}% sec <##e53311>for a total of &f%{_damage}*{_seconds}% <##ff4d00>Fire <##e53311>damage.%nl%<##e53311>When Flamethrower is used, it cannot be used on%nl%<##e53311>the same target for the next &f%{_cdd}% sec<##e53311>."
+	
+	translateAbility({_p}, "Blaze", "Pożar", "Blaze", {_lore}, {_loreEN})
+	play sound "skill.delphox.flamethrower" with volume 2 and pitch 1 at {_target}
+						
+	if metadata value "FlamethrowerTicks%{_p}%" of {_target} is not set:
+		set metadata value "FlamethrowerTicks%{_p}%" of {_target} to {_seconds}
+		if {_flameAccelerant} is true:
+			set metadata value "FlameAccelerantTicks" of {_p} to {_seconds}
+		if {_hotSpree} is true:
+			set metadata value "HotSpreeTicks" of {_p} to {_seconds}
+		ignite {_target} for "%{_seconds}% seconds" parsed as timespan
+		while metadata value "FlamethrowerTicks%{_p}%" of {_target} > 0:
+			if {_target} is alive:
+				set {_damage} to 1.25 + ({versatility::%{_p}%}/360) + ({damage::%{_p}%}/120) + {primarystat::%{_p}%}/60
+				set {_mastery} to 2.5 + (({mastery::%{_p}%}/165))
+				set {_crit} to ({criticalhit::%{_p}%}/10) 
+				set {_haste} to  1 + (({haste::%{_p}%}/4))/100 
+				set {_wait} to "%1/{_haste}% seconds" parsed as timespan
+
+				set {_ticks} to metadata value "FlamethrowerTicks%{_p}%" of {_target}
+				remove 1 from {_ticks}
+				set metadata value "FlamethrowerTicks%{_p}%" of {_target} to {_ticks}
+
+				if tag "Talents;Row 5" of nbt of {karta::%{_p}%} = "Hot Spree":
+					set {_damage} to {_damage}*1.6
+
+				if tag "Talents;Row 1" of nbt of {karta::%{_p}%} = "Firestarter":
+					if health of {_target} >= (0.9 * max health of {_target}):
+						set {_crit} to 100
+						set {_damage} to {_damage} * 1.5
+
+				if {_flameAccelerant} is true:
+					if metadata value "FlameAccelerantTicks" of {_p} > 0:
+						set {_flameAccelerantTicks} to metadata value "FlameAccelerantTicks" of {_p}
+						remove 1 from {_flameAccelerantTicks}
+						set metadata value "FlameAccelerantTicks" of {_p} to {_flameAccelerantTicks}
+						set {_damage} to {_damage}*2.2
+
+				if tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Oxidizing Flame":
+					chance of 20%:	
+						play sound "entity.creeper.primed" with volume 1 and pitch 2 at {_target}
+						set {_damage} to {_damage}*1.3
+
+				if {_hotSpree} is true:
+					if metadata value "HotSpreeTicks" of {_p} > 0:
+						set {_hotSpreeTicks} to metadata value "HotSpreeTicks" of {_p}
+						remove 1 from {_hotSpreeTicks}
+						set metadata value "HotSpreeTicks" of {_p} to {_hotSpreeTicks}
+						set {_damage} to {_damage}*1.5
+						broadcast "Yes"
+
+				chance of {_crit}%:
+					set {_damage} to {_damage} * ({_mastery})
+					Kindling({_p})
+					CritVisual({_target})
+
+				if tag "Talents;Row 5" of nbt of {karta::%{_p}%} = "Wildfire":
+					if {wildfireDelphox::%{_p}%} is not set:
+						set {wildfireDelphox::%{_p}%} to 0
+					if {wildfireDelphox::%{_p}%} < 600:
+						add 1 to {wildfireDelphox::%{_p}%}
+				
+				if tag "Talents;Row 4" of nbt of {karta::%{_p}%} = "Will-o-Wisp":
+					chance of 10%:	
+						WilloWisp({_p}, {_target})
+
+				set {_target}'s last damage cause to sweep attack
+				set metadata value "LastDamageCauseEN" of {_target} to "<##d74327>Flamethrower"
+				set metadata value "LastDamageCause" of {_target} to "<##d74327>Miotacz Płomieni"
+				set metadata value "Element" of {_p} to "Fire"
+				set metadata value "LastDamageCauseLoreEN" of {_target} to {_loreEN}
+				set metadata value "LastDamageCauseLore" of {_target} to {_lore}
+				make {_p} damage {_target} by {_damage}*2
+				DelphoxRecentlyDamaged({_p}, {_target})
+			else:
+				stop loop
+			wait {_wait}
+
+		clear metadata value "FlamethrowerBurn" of {_target}
+		clear metadata value "FlamethrowerDuration%{_p}%" of {_target}
+		clear metadata value "FlamethrowerTicks%{_p}%" of {_target}
+
+	else:
+		set {_ticks} to {_seconds}
+		set {_ticksTarget} to metadata value "FlamethrowerTicks%{_p}%" of {_target}
+		add {_ticks} to {_ticksTarget}
+		set metadata value "FlamethrowerTicks%{_p}%" of {_target} to {_ticksTarget}
+		extinguish {_target}
+		ignite {_target} for "%{_ticksTarget}% seconds" parsed as timespan			
+
+function Inferno(p: player, target: entity):
+	set {_mastery} to 2.5 + (({mastery::%{_p}%}/165))
+	set {_crit} to ({criticalhit::%{_p}%}/10)
+	if metadata value "FlamethrowerBurn" of {_target} is true:
+		set {_damage} to 3.5 + ({versatility::%{_p}%}/114) + ({damage::%{_p}%}/38)  + ({primarystat::%{_p}%}/19)
+		set {_stun} to "%2 + (({crowdcontrol::%{_p}%}/60))% seconds" parsed as timespan
+		set {_stuntekst} to 2 + (({crowdcontrol::%{_p}%}/60))
+		set {_explotekst} to 6 + ({versatility::%{_p}%}/52.5) + ({damage::%{_p}%}/17.5) + ({primarystat::%{_p}%}/8.75)
+
+		clear metadata value "FlamethrowerBurn" of {_target}
+
+		set {_lore} to "&8Umiejętność%nl%&fInstant cast%nl%&7Cooldown: &fbrak%nl%&7Użycie: &fPPM&7/&fSHIFT%nl%<##e53311>Więzi przeciwnika podpalonego Miotaczem Płomieni%nl%<##e53311>w ognistym więzieniu, ogłuszając go na &f%{_stuntekst}% sekund%nl%<##e53311>i zadajac &f%{_damage}% <##e53311>obrażeń <##ff4d00>Ognia<##e53311>.%nl% %nl%<##e53311>Kliknięcie Shiftem zdetonuje więzienie,%nl%<##e53311>zadając &f%{_explotekst}% <##e53311>damage <##ff4d00>Ognia <##e53311>i podrzucając wroga do góry."
+		set {_loreEN} to "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &fnone%nl%&7Use: &fRMB&7/&fSHIFT%nl%<##e53311>Imprisons the target affected by Flamethrower%nl%<##e53311>in a fiery prison, stunning them for &f%{_stun}%%nl%<##e53311>and inflicting &f%{_damage}% <##ff4d00>Fire <##e53311>damage.%nl% %nl%<##e53311>Pressing Shift will detonate the prison,%nl%<##e53311>dealing &f%{_explotekst}% <##ff4d00>Fire <##e53311>damage and tossing the%nl%<##e53311>enemy into the air."
+		
+		translateAbility({_p}, "Inferno", "Inferno", "Inferno", {_lore}, {_loreEN})
+
+		if {_target} is alive:
+			if canBeCCed({_target}) = true:
+				InfernoStun({_p}, {_target})
+
+			set metadata value "InfernoTarget" of {_target} to true
+
+			chance of {_crit}%:
+				set {_damage} to {_damage} * {_mastery}
+				Kindling({_p})
+				CritVisual({_target})
+
+			set {_target}'s last damage cause to sweep attack
+			set metadata value "LastDamageCauseEN" of {_target} to "<##d74327>Inferno"
+			set metadata value "LastDamageCause" of {_target} to "<##d74327>Inferno"
+			set metadata value "Element" of {_p} to "Fire"
+			set metadata value "LastDamageCauseLoreEN" of {_target} to {_loreEN}
+			set metadata value "LastDamageCauseLore" of {_target} to {_lore}
+			make {_p} damage {_target} by {_damage}*2
+			play sound "entity.illusioner.mirror_move" with volume 1 and pitch 1 at {_p}
+			InfernoParticles({_target})
+
+function InfernoDetonate(p: player, target: entity):
+	set {_mastery} to 2.5 + (({mastery::%{_p}%}/165))
+	set {_crit} to ({criticalhit::%{_p}%}/10)
+
+	set {_damage} to 6 + ({versatility::%{_p}%}/60) + ({damage::%{_p}%}/20) + ({primarystat::%{_p}%}/10)
+	set metadata value "InfernoTarget" of {_target} to false
+
+	clear {stun::%{_target}%}
+	clear metadata value "InfernoStun%{_p}%" of {_target}
+	
+	set {_knock} to 1 + ({crowdcontrol::%{_p}%}/100)
+
+	set {_lore} to "&8Umiejętność%nl%&fInstant cast%nl%&7Cooldown: &fbrak%nl%&7Użycie: &fPPM&7/&fSHIFT%nl%<##e53311>Więzi przeciwnika podpalonego Miotaczem Płomieni%nl%<##e53311>w ognistym więzieniu, ogłuszając go na &f%{_stuntekst}% sekund%nl%<##e53311>i zadajac &f%{_dmg}% <##e53311>obrażeń <##ff4d00>Ognia<##e53311>.%nl% %nl%<##e53311>Kliknięcie Shiftem zdetonuje więzienie,%nl%<##e53311>zadając &f%{_explotekst}% <##e53311>damage <##ff4d00>Ognia <##e53311>i podrzucając wroga do góry."
+	set {_loreEN} to "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &fnone%nl%&7Use: &fRMB&7/&fSHIFT%nl%<##e53311>Imprisons the target affected by Flamethrower%nl%<##e53311>in a fiery prison, stunning them for &f%{_stun}%%nl%<##e53311>and inflicting &f%{_dmg}% <##ff4d00>Fire <##e53311>damage.%nl% %nl%<##e53311>Pressing Shift will detonate the prison,%nl%<##e53311>dealing &f%{_explotekst}% <##ff4d00>Fire <##e53311>damage and tossing the%nl%<##e53311>enemy into the air."
+	
+	translateAbility({_p}, "Inferno", "Inferno", "Inferno", {_lore}, {_loreEN})
+
+	play sound "entity.dragon_fireball.explode" with volume 1 and pitch 1 at {_p}
+	push {_target} upwards with velocity {_knock}
+
+	chance of {_crit}%:
+		set {_damage} to {_damage} * {_mastery}
+		Kindling({_p})
+		CritVisual({_target})
+
+	set {_target}'s last damage cause to sweep attack
+	set metadata value "LastDamageCauseEN" of {_target} to "<##d74327>Inferno (Detonate)"
+	set metadata value "LastDamageCause" of {_target} to "<##d74327>Inferno (Detonacja)"
+	set metadata value "Element" of {_p} to "Fire"
+	set metadata value "LastDamageCauseLoreEN" of {_target} to {_loreEN}
+	set metadata value "LastDamageCauseLore" of {_target} to {_lore}
+	make {_p} damage {_target} by {_damage} * 2
+	
+function InfernoStun(p: player, target: entity):
+	set {_stunDuration} to "%2 + (({crowdcontrol::%{_p}%}/60))% seconds" parsed as timespan
+	if metadata value "InfernoStun%{_p}%" of {_target} is not set:
+		set metadata value "InfernoStun%{_p}%" of {_target} to {_stunDuration}
+		while metadata value "InfernoStun%{_p}%" of {_target} > 0 seconds:
+			wait 1 second
+			set {_duration} to metadata value "InfernoStun%{_p}%" of {_target}
+			remove 1 second from {_duration}
+			set metadata value "InfernoStun%{_p}%" of {_target} to {_duration}
+			if 0 seconds >= metadata value "InfernoStun%{_p}%" of {_target}:
+				clear metadata value "InfernoStun%{_p}%" of {_target}
+				clear {stun::%{_target}%}
+				clear metadata value "InfernoTarget" of {_target}
+				stop loop
+	else:
+		set metadata value "InfernoStun%{_p}%" of {_target} to {_stunDuration}
+
+function DelphoxRecentlyDamaged(p: player, target: entity):
+	if metadata value "RecentlyDamagedDelphox%{_p}%" of {_target} is not set:
+		set metadata value "RecentlyDamagedDelphox%{_p}%" of {_target} to 20 seconds
+		while metadata value "RecentlyDamagedDelphox%{_p}%" of {_target} > 0 seconds:
+			wait 1 second
+			set {_duration} to metadata value "RecentlyDamagedDelphox%{_p}%" of {_target}
+			remove 1 second from {_duration}
+			set metadata value "RecentlyDamagedDelphox%{_p}%" of {_target} to {_duration}
+			if 0 seconds >= metadata value "RecentlyDamagedDelphox%{_p}%" of {_target}:
+				clear metadata value "RecentlyDamagedDelphox%{_p}%" of {_target}
+				stop loop
+	else:
+		set metadata value "RecentlyDamagedDelphox%{_p}%" of {_target} to 20 seconds
+
+function FlameAccelerant(p: player, cd: number):
+	if metadata value "DelphoxFlamethrowerUsed" of {_p} is not set:
+		set metadata value "DelphoxFlamethrowerUsed" of {_p} to "%{_cd}% seconds" parsed as timespan
+		while metadata value "DelphoxFlamethrowerUsed" of {_p} > 0 seconds:
+			wait 1 second
+			set {_duration} to metadata value "DelphoxFlamethrowerUsed" of {_p}
+			remove 1 second from {_duration}
+			set metadata value "DelphoxFlamethrowerUsed" of {_p} to {_duration}
+			if 0 seconds >= metadata value "DelphoxFlamethrowerUsed" of {_p}:
+				clear metadata value "DelphoxFlamethrowerUsed" of {_p}
+				stop loop
+	else:
+		set metadata value "DelphoxFlamethrowerUsed" of {_p} to "%{_cd}% seconds" parsed as timespan
+
+function WilloWisp(p: player, target: entity):
+	play sound "skill.delphox.willowisp" with volume 1.5 and pitch 1 at {_target}
+
+	if {_target} is alive:
+		if metadata value "FlamethrowerTicks%{_p}%" of {_target} is set:
+			set {_ticks} to metadata value "FlamethrowerTicks%{_p}%" of {_target}
+			add 1 to {_ticks}
+			set metadata value "FlamethrowerTicks%{_p}%" of {_target} to {_ticks}
+
+	set {_damage} to 1.25 + ({versatility::%{_p}%}/420) + ({damage::%{_p}%}/140) + {primarystat::%{_p}%}/70
+	set {_mastery} to 2.5 + (({mastery::%{_p}%}/165))
+	set {_crit} to ({criticalhit::%{_p}%}/10)
+	set {_lore} to "&8Umiejętność%nl%&fInstant cast%nl%&7Cooldown: &fbrak%nl%&7Użycie: &fPPM&7/&fSHIFT%nl%<##e53311>Więzi przeciwnika podpalonego Miotaczem Płomieni%nl%<##e53311>w ognistym więzieniu, ogłuszając go na &f%{_stuntekst}% sekund%nl%<##e53311>i zadajac &f%{_dmg}% <##e53311>obrażeń <##ff4d00>Ognia<##e53311>.%nl% %nl%<##e53311>Kliknięcie Shiftem zdetonuje więzienie,%nl%<##e53311>zadając &f%{_explotekst}% <##e53311>damage <##ff4d00>Ognia <##e53311>i podrzucając wroga do góry."
+	set {_loreEN} to "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &fnone%nl%&7Use: &fRMB&7/&fSHIFT%nl%<##e53311>Imprisons the target affected by Flamethrower%nl%<##e53311>in a fiery prison, stunning them for &f%{_stun}%%nl%<##e53311>and inflicting &f%{_dmg}% <##ff4d00>Fire <##e53311>damage.%nl% %nl%<##e53311>Pressing Shift will detonate the prison,%nl%<##e53311>dealing &f%{_explotekst}% <##ff4d00>Fire <##e53311>damage and tossing the%nl%<##e53311>enemy into the air."
+	
+	chance of {_crit}%:
+		set {_damage} to {_damage} * {_mastery}
+		CritVisual({_target})
+
+	wait 1 tick
+
+	set {_target}'s last damage cause to sweep attack
+	set metadata value "LastDamageCauseEN" of {_target} to "<##d74327>Will-o-Wisp"
+	set metadata value "LastDamageCause" of {_target} to "<##d74327>Ognik"
+	set metadata value "Element" of {_p} to "Fire"
+	set metadata value "LastDamageCauseLoreEN" of {_target} to {_loreEN}
+	set metadata value "LastDamageCauseLore" of {_target} to {_lore}
+	make {_p} damage {_target} by {_damage} * 2
+
 function BlasterMaster(p: player):
 	if {blastermasterstacks::%{_p}%} > 0:
 		if {_p}'s chestplate is golden nugget:
@@ -626,22 +629,3 @@ function Pyromaniac(p: player):
 			else:
 				clear {pyromaniacstacks::%{_p}%}
 				stop loop
-
-on damage:
-	if damage cause is burn:
-		if {miotaczburn::%victim%} is true:
-			cancel event
-	if {bariera::%victim%} is true:
-		set damage to 0
-		cancel event
-		#if attacker is a player:
-		#	set {_h} to location of block above victim
-			#if {language::%attacker%} = "English":
-			#	display hologram "<##e53311>BLOCK" at {_h} to attacker for 0.75 seconds
-			#else:
-			#	display hologram "<##e53311>BLOK" at {_h} to attacker for 0.75 seconds
-
-on entity knockback:
-	if knockback attacker is a player:
-		if {lastdmgcause::%knockback victim%} = "<##d74327>Miotacz Płomieni" or "<##d74327>Inferno (Wybuch)" or "<##d74327>Inferno":
-			cancel event

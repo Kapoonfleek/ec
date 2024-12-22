@@ -12,6 +12,8 @@ on death:
 		clear drops
 	if tag "custom;ECExpAreaMayanMob" of nbt of victim is set:
 		if attacker is a player:
+			if {winterDelightPassLEVEL::%attacker%} >= 0:
+				getMission(attacker, "Sleighing the Mobs", "Pokonywanie Potworów", 1)
 			set {_id} to uncolored line 19 of lore of {karta::%attacker%}
 			replace all "Id: " in {_id} with ""
 			load yaml "plugins/Skript/playerdata/karty/%{kartaname::%attacker%}%/%{_id}%.yml" as "cardExpAreaMayanXP-%attacker%"
@@ -29,6 +31,8 @@ on death:
 			remove uuid of attacker from {asyst::%uuid of victim%::*}
 			if size of {asyst::%uuid of victim%::*} > 0:
 				loop {asyst::%uuid of victim%::*}:
+					if {winterDelightPassLEVEL::%loop-value%} >= 0:
+						getMission(loop-value, "Sleighing the Mobs", "Pokonywanie Potworów", 1)
 					set {_p} to loop-value parsed as a player
 					set {_id} to uncolored line 19 of lore of {karta::%{_p}%}
 					replace all "Id: " in {_id} with ""
@@ -76,6 +80,7 @@ on death:
 		clear {lavaburststacks::%attacker%::%victim%}
 	if victim is a player:
 		set {_id} to line 19 of lore of {karta::%victim%}
+		replace all "&8Id: " in {_id} with ""
 		add 1 to {deaths::%victim%}
 		add 1 to {deaths::%{kartaname::%victim%}%::%{_id}%}
 	else:
@@ -85,6 +90,7 @@ on death:
 	if attacker is a player:
 		if tag "custom;ECMob" of nbt of victim is set:
 			set {_id} to line 19 of lore of {karta::%attacker%}
+			replace all "&8Id: " in {_id} with ""
 			add 1 to {mobskilled::%attacker%}
 			add 1 to {mobskilled::%{kartaname::%attacker%}%::%{_id}%}
 	show flash at victim
@@ -127,6 +133,7 @@ on death:
 				#set {_unc} to uncolored name of victim
 				#add 1 to {%{_unc}%::%attacker%}
 			set {_id} to line 19 of lore of {karta::%attacker%}
+			replace all "&8Id: " in {_id} with ""
 			add 1 to {kills::%{kartaname::%attacker%}%::%{_id}%::%metadata value "LastDamageCause" of victim%}
 			#if {expyield::%victim%} is set:
 			#	wait 1 tick
@@ -174,35 +181,38 @@ on death:
 				set metadata value "LastDamageCauseEN" of victim to "attack"
 			if metadata value "LastDamageCauseEN" of victim is not set:
 				set metadata value "LastDamageCauseEN" of victim to " "
-		if victim's name is set:
-			#usuwanie hp przeciwnika z wiadomości
-			set {_name} to victim's name
-			if display name of victim contains "&c♥":
-				set {_name::*} to name of victim split at " "
-				loop {_name::*}:
-					add 1 to {_l}
-				clear {_name::%{_l}%}
-				set {_name} to join {_name::*} by " "
-				#HP MOBÓW MINECRAFTOWYCH
-				if {_name} is not set:
-					set {_name} to victim
-			loop all players:
-				if {language::%loop-player%} = "English":
-					send formatted "%{_name}% &fwas slain by %attacker's name% &fusing <tooltip:%metadata value "LastDamageCauseLoreEN" of victim%>%metadata value "LastDamageCauseEN" of victim%" to loop-player
-				else:
-					send formatted "%{_name}% &fzostał pokonany przez %attacker's name% &fza pomocą <tooltip:%metadata value "LastDamageCauseLore" of victim%>%metadata value "LastDamageCause" of victim%" to loop-player
-			#execute console command "discord broadcast ##combat-log %now% | %uncolored victim's name% został pokonany przez %uncolored {_attacker}% za pomocą %uncolored metadata value "LastDamageCause" of victim%"
-			#log "%{_data}% %uncolored victim's name% został pokonany przez %attacker's name% za pomocą %uncolored metadata value "LastDamageCause" of victim%" to "logi/combat/combat %{datatydzien}%-%{datatydzien2}%.log"
-			log "%{_data}% %uncolored victim's name% was slain by %attacker's name% using %uncolored metadata value "LastDamageCauseEN" of victim%" to "logi/combat/combat %{datatydzien}%-%{datatydzien2}%.log"
+		if tag "custom;TowerDefenceMob" of nbt of victim is not set:
+			if victim's name is set:
+				#usuwanie hp przeciwnika z wiadomości
+				set {_name} to victim's name
+				if display name of victim contains "&c♥":
+					set {_name::*} to name of victim split at " "
+					loop {_name::*}:
+						add 1 to {_l}
+					clear {_name::%{_l}%}
+					set {_name} to join {_name::*} by " "
+					#HP MOBÓW MINECRAFTOWYCH
+					if {_name} is not set:
+						set {_name} to victim
+				loop all players:
+					if {language::%loop-player%} = "English":
+						send formatted "%{_name}% &fwas slain by %attacker's name% &fusing <tooltip:%metadata value "LastDamageCauseLoreEN" of victim%>%metadata value "LastDamageCauseEN" of victim%" to loop-player
+					else:
+						send formatted "%{_name}% &fzostał pokonany przez %attacker's name% &fza pomocą <tooltip:%metadata value "LastDamageCauseLore" of victim%>%metadata value "LastDamageCause" of victim%" to loop-player
+				#execute console command "discord broadcast ##combat-log %now% | %uncolored victim's name% został pokonany przez %uncolored {_attacker}% za pomocą %uncolored metadata value "LastDamageCause" of victim%"
+				#log "%{_data}% %uncolored victim's name% został pokonany przez %attacker's name% za pomocą %uncolored metadata value "LastDamageCause" of victim%" to "logi/combat/combat %{datatydzien}%-%{datatydzien2}%.log"
+				log "%{_data}% %uncolored victim's name% was slain by %attacker's name% using %uncolored metadata value "LastDamageCauseEN" of victim%" to "logi/combat/combat %{datatydzien}%-%{datatydzien2}%.log"
+			else:
+				loop all players:
+					if {language::%loop-player%} = "English":
+						send formatted "%victim% &fwas slain by %attacker's name% using <tooltip:%metadata value "LastDamageCauseLoreEN" of victim%>%metadata value "LastDamageCauseEN" of victim%" to loop-player
+					else:
+						send formatted "%victim% &fzostał pokonany przez %attacker's name% za pomocą <tooltip:%metadata value "LastDamageCauseLore" of victim%>%metadata value "LastDamageCause" of victim%" to loop-player
+				#log "%{_data}% %victim% &fzostał pokonany przez %attacker's name% za pomocą %uncolored metadata value "LastDamageCause" of victim%" to "logi/combat/combat %{datatydzien}%-%{datatydzien2}%.log"
+				log "%{_data}% %victim% &fwas slain by %attacker's name% using %uncolored metadata value "LastDamageCauseEN" of victim%" to "logi/combat/combat %{datatydzien}%-%{datatydzien2}%.log"
+				#execute console command "discord broadcast ##combat-log %now% | %victim% został pokonany przez %uncolored {_attacker}% za pomocą %uncolored metadata value "LastDamageCause" of victim%"
 		else:
-			loop all players:
-				if {language::%loop-player%} = "English":
-					send formatted "%victim% &fwas slain by %attacker's name% using <tooltip:%metadata value "LastDamageCauseLoreEN" of victim%>%metadata value "LastDamageCauseEN" of victim%" to loop-player
-				else:
-					send formatted "%victim% &fzostał pokonany przez %attacker's name% za pomocą <tooltip:%metadata value "LastDamageCauseLore" of victim%>%metadata value "LastDamageCause" of victim%" to loop-player
-			#log "%{_data}% %victim% &fzostał pokonany przez %attacker's name% za pomocą %uncolored metadata value "LastDamageCause" of victim%" to "logi/combat/combat %{datatydzien}%-%{datatydzien2}%.log"
-			log "%{_data}% %victim% &fwas slain by %attacker's name% using %uncolored metadata value "LastDamageCauseEN" of victim%" to "logi/combat/combat %{datatydzien}%-%{datatydzien2}%.log"
-			#execute console command "discord broadcast ##combat-log %now% | %victim% został pokonany przez %uncolored {_attacker}% za pomocą %uncolored metadata value "LastDamageCause" of victim%"
+			clear drops
 	else if damage was caused by a projectile:
 		victim is player or a living entity:
 			set death message to ""
@@ -274,6 +284,8 @@ on damage:
 		else if metadata value "dungeon" of victim is set:
 			set damage to 0
 			cancel event
+	else if damage cause is entity explosion:
+		cancel event
 	else if "%damage cause%" is "drowning":
 		if tag "custom;ECMob" of nbt of victim is set:
 			set damage to 0
@@ -489,8 +501,21 @@ on damage:
 		set damage to (damage * (tag "custom;MobDamageModifier" of nbt of attacker))
 	set {_idV} to line 19 of lore of {karta::%victim%}
 	set {_idA} to line 19 of lore of {karta::%attacker%}
+	replace all "&8Id: " in {_idV} with ""
+	replace all "&8Id: " in {_idA} with ""
 	set {_zywiol} to Zywiol(attacker, victim)
-	set {_damagered} to 1 + (({wytrzymalosc::%victim%}/30) + ({uniwersalnosc::%victim%}/30))/100
+
+	set {_resistance} to {resistance::%victim%}
+	set {_versatility} to {versatility::%victim%}
+
+	if metadata value "Voidform" of attacker is set:
+		if tag "Constellation;Mass Hysteria" of nbt of {karta::%attacker%} is set:
+			set {_voidformStacks} to metadata value "Voidform Stacks" of attacker
+			set {_damageAmp} to 1 + {_voidformStacks}/100
+			set damage to damage*{_damageAmp}
+
+	set {_damagered} to 1 + (({_resistance}/10) + ({_versatility}/30))/100
+	
 	if {_zywiol} = "resist":
 		add 0.1 + (({element::%victim%}/5)/100) to {_damagered}
 	if {_zywiol} = "supereffective":
@@ -500,16 +525,32 @@ on damage:
 			set {_setCount} to tag "Marksmanship Set" of nbt of {karta::%attacker%}
 			if {_setCount} >= 2:
 				if distance between attacker and victim >= 20:
-					broadcast "Damage before 2set %damage%"
 					set damage to damage*1.12
-					broadcast "Damage after 2set %damage%"
 			if {_setCount} >= 4:
 				if projectile exists:
 					set damage to damage*1.35
-			broadcast damage
 	set damage to damage/{_damagered}
-	chance of ({unik::%victim%}/50)%:
+	chance of ({avoidance::%victim%}/20)%:
 		set damage to 0
+	if 0.35*(victim's max health) >= victim's health:
+		if tag "Talents;Row 1" of nbt of {karta::%attacker%} = "Twist of Fate":
+			if metadata value "TwistOfFate" of attacker is not set:
+				set metadata value "TwistOfFateDuration" of attacker to 8 seconds
+				set metadata value "TwistOfFate" of attacker to true
+				TwistOfFate(attacker)
+			else:
+				set metadata value "TwistOfFateDuration" of attacker to 8 seconds
+			set damage to 1.1*damage
+	if metadata value "LastDamageCauseEN" of victim = "<##462566>Shadow Word: Death":
+		if {kartaname::%attacker%} = "Brother Therold":
+			if tag "Talents;Row 3" of nbt of {karta::%attacker%} = "Reaper of Souls":
+				GrantInsanity(attacker, 30)
+			else:
+				if final damage >= health of victim:
+					GrantInsanity(attacker, 30)
+				else:
+					GrantInsanity(attacker, 15)
+			UpdateInsanity(attacker)
 	if {shwdea::%victim%} is true:
 		if attacker is a player:
 			clear {shwdea::%victim%}
@@ -535,6 +576,7 @@ on damage:
 				set {_caster} to ({_caster::1} parsed as player)
 				set {_value} to {_caster::2} parsed as number
 				set {_id} to line 19 of lore of {karta::%{_caster}%}
+				replace all "&8Id: " in {_id} with ""
 				if ({_value}-{_dmg}) > 0:
 					add ({_dmg}) to {healtotal::%{_caster}%}
 					add ({_dmg}) to {healcard::%{kartaname::%{_caster}%}%::%{_id}%}
@@ -561,19 +603,19 @@ on damage:
 					set {-tarczacaster::%uuid of victim%} to "%{_caster}%-%{_value}%-%{_caster::3}%-%{_caster::4}%"
 				if {tarcza::%uuid of victim%} > 0:
 					if {language::%victim%} = "English":
-						send action bar "<##d6dcff>TARCZA: %{tarcza::%uuid of victim%}%" to victim
+						send action bar "%{kartacolor::%victim%}% SHIELD: &f%{tarcza::%uuid of victim%}%" to victim
 					else:
-						send action bar "<##d6dcff>SHIELD: %{tarcza::%uuid of victim%}%" to victim
+						send action bar "%{kartacolor::%victim%}% TARCZA: &f%{tarcza::%uuid of victim%}%" to victim
 				else:
 					if {language::%victim%} = "English":
-						send action bar "<##d6dcff>SHIELD BROKEN" to victim
+						send action bar "%{kartacolor::%victim%}% SHIELD BROKEN" to victim
 					else:
-						send action bar "<##d6dcff>TARCZA ZNISZCZONA" to victim
+						send action bar "%{kartacolor::%victim%}% TARCZA ZNISZCZONA" to victim
 				set damage to 0
 				if {tarcza::%uuid of victim%} < 0:
 					set {_dmg} to 0 - {tarcza::%uuid of victim%}
 					make the attacker damage the victim by 2*{_dmg}
-					set {tarczavar::%uuid of victim%} to false
+					clear {tarczavar::%uuid of victim%}
 					clear {-tarczacaster::%uuid of victim%}
 	#	#1.18 JAK COŚ SIĘ ZEPSUJE TO ZMIENIŁEM TU ŻEBY NIE DODAWAŁO DAMAGE KIEDY ZADAMY DAMAGE GDY PRZECIWNIK JEST NIEWRAŻLIWY
 	if damage is not 0:
@@ -759,9 +801,10 @@ on entity knockback:
 		cancel event
 function Heartbeat(p: entity):
 	while (max health of {_p})*0.3 > health of {_p}:
-		loop 2 times:
-			play sound "block.note_block.basedrum" with volume 5 and pitch 0 to {_p}
-			wait 0.4 seconds
+		if {_p}'s gamemode is survival or adventure:
+			loop 2 times:
+				play sound "block.note_block.basedrum" with volume 5 and pitch 0 to {_p}
+				wait 0.4 seconds
 		wait 3 seconds
 on leave:
 	clear {exec::%player%}
@@ -793,35 +836,7 @@ on leave:
 	#		set the player's tab name to "&b[%{_name}%] &8(%{kolorek::%player%}%&l%{poziom::%player%}%%{kolorek::%player%}%&l⭐&8) &r%player's name%"
 	#	else:
 	#		set the player's tab name to "&8(%{kolorek::%player%}%&l%{poziom::%player%}%%{kolorek::%player%}%&l⭐&8) &r%player's name%"
-on damage:
-	projectile exists:
-		if {tarczavar::%victim%} is true:
-			if {tarcza::%victim%} > 0:
-				set {_dmg} to damage
-				set {tarcza::%victim%} to {tarcza::%victim%} - {_dmg}
-				if {tarcza::%victim%} > 0:
-					send action bar "<##d6dcff>TARCZA: %{tarcza::%victim%}%" to victim
-				else:
-					send action bar "<##d6dcff>TARCZA ZNISZCZONA" to victim
-				set damage to 0
-				if {tarcza::%victim%} < 0:
-					set {_dmg} to 0 - {tarcza::%victim%}
-					make the attacker damage the victim by 2*{_dmg}
-					set {tarczavar::%victim%} to false
-	else if attacker is llama spit:
-		if {tarczavar::%victim%} is true:
-			if {tarcza::%victim%} > 0:
-				set {_dmg} to damage
-				set {tarcza::%victim%} to {tarcza::%victim%} - {_dmg}
-				if {tarcza::%victim%} > 0:
-					send action bar "<##d6dcff>TARCZA: %{tarcza::%victim%}%" to victim
-				else:
-					send action bar "<##d6dcff>TARCZA ZNISZCZONA" to victim
-				set damage to 0
-				if {tarcza::%victim%} < 0:
-					set {_dmg} to 0 - {tarcza::%victim%}
-					make the attacker damage the victim by 2*{_dmg}
-					set {tarczavar::%victim%} to false
+
 #on any move:
 #	if {walka} is true:
 #		if {arena} = "arenaburzy":

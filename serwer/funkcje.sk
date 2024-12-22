@@ -22,6 +22,19 @@ function StatyHologram(p: player, t: text):
 	wait 2 seconds
 	kill {_f}
 
+function getDayMonth(input: string) :: number:
+	set {_date::*} to now formatted human-readable split at " "
+	set {_yearMonthDay::*} to {_date::1} split at "-"
+	set {_num} to 1
+	loop {_yearMonthDay::*}:
+		set {_yearMonthDay::%{_num}%} to {_yearMonthDay::%{_num}%} parsed as number
+		add 1 to {_num}
+	if {_input} = "day":
+		set {_return} to {_yearMonthDay::3}
+	else if {_input} = "month":
+		set {_return} to {_yearMonthDay::2}
+	return {_return}
+
 function giveItem(p: player, item: item):
 	if {_p} is alive:
 		set {_give} to give or return {_item} to {_p}
@@ -51,12 +64,27 @@ function centeredText(text: string, length: integer) :: string:
 		add (getWidth(" ") + 1) to {_compensated}
 	return "%{_return}%%{_text}%"
 
-function addPlayerXP(p: player, xp: number, modifier: number = 1) :: number:
+function addPlayerXP(p: player, xp: number, modifier: number = 1, source: string = "general") :: number:
 	if {doubleXPFriday} is true:
 		set {_xp} to {_xp}*2
 	set {_xp} to {_xp}*{_modifier}
+	if {_source} = "mining":
+		if metadata value "SapphireDice" of {_p} is set:
+			set {_xp} to {_xp}*3
 	add {_xp} to {exp::%{_p}%}
+	playerCheckLevelUp({_p})
+	winterDelightPassAddXP({_p}, {_xp})
+	if {winterDelightPassLEVEL::%{_p}%} >= 0:
+		getMission({_p}, "Gaining Experience", "Zdobywanie Doświadczenia", {_xp})
 	return {_xp}
+
+function addMiningXP(p: player, xp: number, modifier: number = 1):
+	if {poziomgornictwo::%{_p}%} < 50:
+		if {doubleXPFriday} is true:
+			set {_xp} to {_xp}*2
+		set {_xp} to {_xp}*{_modifier}
+		add {_xp} to {expgornictwo::%{_p}%}
+		miningProfession({_p})
 	
 function DamageHologram(p: entity, t: text):
 	#set {_r} to a random integer between 1 and 2
@@ -245,6 +273,11 @@ function hasEnoughItem(p: player, i: item, i2: item, a: integer) :: boolean:
 	else:
 		return false
 function cardLevelup(p: player, xp: number, e: entity):
+	set {_modifier} to 1
+	if metadata value "SapphireDice" of {_p} is set:
+		set {_xp} to {_xp}*3
+		set {_modifier} to 3
+	set {_xp} to {_xp}*{_modifier}
 	set {_exp} to {_xp}
 	set {_id} to uncolored line 19 of lore of {karta::%{_p}%}
 	replace all "Id: " in {_id} with ""
@@ -300,6 +333,8 @@ function cardLevelup(p: player, xp: number, e: entity):
 		set {_cardLevel} to {_levelCard}
 		add 1 to {poziomykarty::%{_p}%}
 		play sound "minecraft:entity.player.levelup" with volume 2 and pitch 1 to {_p}
+		if {winterDelightPassLEVEL::%{_p}%} >= 0:
+			getMission({_p}, "Strength Training", "Trening", 1)
 		set {_talentlevels::*} to 15, 30, 40, 45 and 50
 		if {language::%{_p}%} = "English":
 			send "&eYour card advanced to Level %{_cardLevel}%!" to {_p}
@@ -316,7 +351,14 @@ function cardLevelup(p: player, xp: number, e: entity):
 	set yaml value "Card.XP Above Limit" in "cardLvlup-%{_p}%" to {_cardXpAboveLimit}
 	save yaml "cardLvlup-%{_p}%"
 	unload yaml "cardLvlup-%{_p}%"
-	send "&e+%{_exp}% XP from %name of {_e}%" to {_p}
+	if {language::%{_p}%} = "English":
+		set {_from} to "from"
+	else:
+		set {_from} to "z"
+	if {_modifier} is set:
+		send "&e+%{_exp}% XP %{_from}% %name of {_e}% &e(&fx%{_modifier}%&e)" to {_p}
+	else:
+		send "&e+%{_exp}% XP %{_from}% %name of {_e}%" to {_p}
 	loop all items in the inventory of {_p}:
 		if line 19 of lore of loop-item = line 19 of lore of {karta::%{_p}%}:
 			if {language::%{_p}%} = "English":
@@ -332,6 +374,52 @@ function cardLevelup(p: player, xp: number, e: entity):
 			set tag "Level" of nbt of loop-item to {_cardLevel}
 			set {karta::%{_p}%} to loop-item
 			stop loop
+		
+function newCard(lang: string, name: string, description: string, rarity: string, booster: string, cmd: integer, element: string, item: item, hp: integer, dmg: integer, res: integer, mob: integer, uti: integer, cc: integer, vers: integer, mas: integer, crit: integer, ele: integer, hast: integer, avo: integer) :: item:
+	set {_stats::*} to {_hp}, {_dmg}, {_res}, {_mob}, {_uti}, {_cc}, {_vers}, {_mas}, {_crit}, {_ele}, {_hast}, {_avo}
+	set {_count} to 1
+	loop {_stats::*}:
+		if loop-value < 10:
+			set {_char} to loop-value
+		else:
+			set {_char} to 10
+		set {_squares} to "■■■■■■■■■■"
+		set {_squares::*} to {_squares} split at ""
+		set {_squares::%{_char} + 1%} to "&7%{_squares::%{_char} + 1%}%"
+		set {_unc} to join {_squares::*} by ""
+		if {_count} = 1:
+			set {_stat1} to "<##c0ff02>%{_unc}%"
+		else if {_count} = 2:
+			set {_stat2} to "<##f74428>%{_unc}%"
+		else if {_count} = 3:
+			set {_stat3} to "<##ffef45>%{_unc}%"
+		else if {_count} = 4:
+			set {_stat4} to "&f%{_unc}%"
+		else if {_count} = 5:
+			set {_stat5} to "<##ae78d0>%{_unc}%"
+		else if {_count} = 6:
+			set {_stat6} to "<##58c3f5>%{_unc}%"
+		else if {_count} = 7:
+			set {_stat7} to "<##e3ebff>%{_unc}%"
+		else if {_count} = 8:
+			set {_stat8} to "<##f53b98>%{_unc}%"
+		else if {_count} = 9:
+			set {_stat9} to "<##fca417>%{_unc}%"
+		else if {_count} = 10:
+			set {_stat10} to "<##d5ff57>%{_unc}%"
+		else if {_count} = 11:
+			set {_stat11} to "<##19943e>%{_unc}%"
+		else if {_count} = 12:
+			set {_stat12} to "<##2154ad>%{_unc}%"
+		add 1 to {_count}
+
+	if {_lang} = "English":
+		set {_desc} to "%{_description}%%nl%&7Statistics:%nl%&7Health: %{_stat1}%%nl%&7Damage: %{_stat2}%%nl%&7Resistance: %{_stat3}%%nl%&7Mobility: %{_stat4}%%nl%&7Utility: %{_stat5}%%nl%&7Crowd Control: %{_stat6}%%nl%&7Versatility: %{_stat7}%%nl%&7Mastery: %{_stat8}%%nl%&7Critical Hit: %{_stat9}%%nl%&7Element: %{_stat10}%%nl%&7Haste: %{_stat11}%%nl%&7Avoidance: %{_stat12}%%nl%&7Element: %{_element}%%nl%&7Source: &f%{_booster}%%nl%&7Rarity: %{_rarity}%"
+	else:
+		set {_desc} to "%{_description}%%nl%&7Statystyki:%nl%&7Zdrowie: %{_stat1}%%nl%&7Obrażenia: %{_stat2}%%nl%&7Wytrzymałość: %{_stat3}%%nl%&7Mobilność: %{_stat4}%%nl%&7Użyteczność: %{_stat5}%%nl%&7Kontrola Tłumu: %{_stat6}%%nl%&7Uniwersalność: %{_stat7}%%nl%&7Mistrzostwo: %{_stat8}%%nl%&7Cios Krytyczny: %{_stat9}%%nl%&7Żywioł: %{_stat10}%%nl%&7Pośpiech: %{_stat11}%%nl%&7Unik: %{_stat12}%%nl%&7Żywioł: %{_element}%%nl%&7Źródło: &f%{_booster}%%nl%&7Rzadkość: %{_rarity}%"
+	set {_card} to {_item} named {_name} with lore {_desc} with nbt from "{CustomModelData:%{_cmd}%}"
+
+	return {_card}
 
 function SetCardIcon(p: player):
 	set {ikonkakarta::%{_p}%} to tag "CardIcon" of nbt of {_p}'s tool

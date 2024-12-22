@@ -1,7 +1,9 @@
 function AbilityUse(p: player, spell: text):
     #send "Ability Used" to {_p}
     set metadata value "lastspell" of {_p} to {_spell}
-
+    if {winterDelightPassLEVEL::%{_p}%} >= 0:
+        getMission({_p}, "Mastering the Art", "Opanowywanie Umiejętności", 1)
+        
 function CanUseAbility(p: player) :: boolean:
     if metadata value "CannotUseAbilities" of {_p} is true:
         set {_canUse} to false
@@ -76,10 +78,28 @@ function Target(p: player, length: number, passThrough: boolean) :: entity:
                     stop
     return {_entity}
 
+function LoopEntitiesAroundTarget(target: entity, radius: number, includeTarget: boolean = true) :: entities:
+    loop entities in radius {_radius} around {_target}:
+        if loop-entity is not a player:
+            if loop-entity is not an armor stand:
+                if loop-entity is a living entity:
+                    if loop-entity is not an arrow:
+                        if loop-entity is alive:
+                            if tag "custom;ECMob" of nbt of loop-entity is set:
+                                if loop-entity is not {_target}:
+                                    add loop-entity to {_entities::*}
+                                else:
+                                    if {_includeTarget} != false:
+                                        add loop-entity to {_entities::*}
+    return {_entities::*}
+
 function pathfind(e: entity, e2: entity):
     while distance between {_e} and {_e2} > 3:
         make {_e} pathfind to {_e2}
         wait 5 ticks
+
+function CritVisual(e: entity):
+    draw 20 crit at location above {_e} with offset vector(0.3, 0.4, 0.3) with extra 0.06
 
 function amountOfDots(p: player, e: entity) :: number:
     if metadata value "AmountOfDots%{_p}%" of {_e} is not set:
@@ -102,6 +122,16 @@ function amountOfDotsSubtract(p: player, e: entity):
     set metadata value "AmountOfDots%{_p}%" of {_e} to {_dotsAmount}
     if metadata value "AmountOfDots%{_p}%" of {_e} <= 0:
         clear metadata value "AmountOfDots%{_p}%" of {_e}
+
+function updateLore(p: player, nbt: string, lore: string, loreEN: string):
+    if {language::%{_p}%} = "English":
+        set {_l} to {_loreEN}
+    else:
+        set {_l} to {_lore}
+
+    loop all items in the inventory of {_p}:
+        if tag {_nbt} of nbt of loop-item is set:
+            set lore of loop-item to {_l}
 #function StatCalc(p: player, id: string):
 #    load yaml "plugins/Skript/playerdata/karty/%uncolored name of {karta::%{_p}%}%/%{_i}%.yml" as "karty-%player%"
  #   set {_haste} to yaml value "Card.Stats.Haste" in "karty-%player%"
@@ -109,14 +139,37 @@ function amountOfDotsSubtract(p: player, e: entity):
  #       set {_haste} to 
  #   unload yaml "karty-%player%"
 
+function translateAbility(p: player, nbt: text, namePL: text, nameEN: text, lorePL: text, loreEN: text):
+    if {language::%{_p}%} = "English":
+        set {_l} to {_loreEN}
+        set {_n} to {_nameEN}
+
+        set {_l2} to {_lore}
+        set {_n2} to {_name}
+    else:
+        set {_l} to {_lore}
+        set {_n} to {_name}
+
+        set {_l2} to {_loreEN}
+        set {_n2} to {_nameEN}
+
+    loop all items in the inventory of {_p}:
+        if tag {_nbt} of nbt of loop-item is set:
+            if name of loop-item does not contain {_n}:
+                replace all {_n2} in name of loop-item with {_n}
+            set lore of loop-item to {_l}
+
 on inventory click:
     if inventory action is shift move:
         set {_abilityOrTalent} to line 1 of lore of event-slot
         set {_name} to name of event-slot
         if {_abilityOrTalent} contains "&8Ability" or "&8Umiejętność":
-            if {_name} = "a":
-                broadcast "c"
-        else if {_abilityOrTalent} contains "Talent":
+            if {_name} = "<##b03228>Lava Wave":
+                if last element of lore of {_slot} contains "expand":
+                    set lore of event-slot to "&8Talent Ability%nl%&fInstant cast%nl%&7Cooldown: &f1 minute%nl%&7Use: &fRMB%nl%&7Talent Ability%nl%<##b03228>Blast your target with a Lava Wave, which%nl%<##b03228>deals &f3 <##b03228>+ (<##f74428>damage/35 <##b03228>) + (<##e3ebff>vers/105 <##b03228>) = &f3 <##ff3014>Lava <##b03228>damage%nl%<##b03228>and applies Molten Lava upon reaching its target.%nl% %nl%<##b03228>Your next Lava Burst will also hit all targets%nl%<##b03228>affected by Molten Lava for 80%% of normal damage.%nl% %nl%&8&oPress [SHIFT + MOUSE] to collapse tooltip."
+                else:
+                    set lore of event-slot to "&8Talent Ability%nl%&fInstant cast%nl%&7Cooldown: &f1 minute%nl%&7Use: &fRMB%nl%&7Talent Ability%nl%<##b03228>Blast your target with a Lava Wave, which%nl%<##b03228>deals &f3 <##ff3014>Lava <##b03228>damage <##b03228>and applies Molten Lava%nl%<##b03228>upon reaching its target.%nl% %nl%<##b03228>Your next Lava Burst will also hit all targets%nl%<##b03228>affected by Molten Lava for 80%% of normal damage.%nl% %nl%&8&oPress [SHIFT + MOUSE] to expand tooltip."
+        else if {_abilityOrTalent} contains "&eTalent":
             set {_slot} to event-slot
             #GHAZAN
             if {_name} = "<##b03228>Volcanic Tremors":
