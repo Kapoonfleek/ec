@@ -9,11 +9,11 @@ import:
 
 function ExpAreaMayan(p: player):
     wait 1 tick
-    while "%{_p}'s world%" = "groveofimmemorialruins":
+    while "%region at {_p}%" contains "ExpAreaMayan":
         set {_waitInterval} to a random number between 10 and (25 + (({expAreaMayan}-1)*2.5))
         set {_wait} to "%{_waitInterval}% seconds" parsed as timespan
         wait {_wait}
-        stop if "%{_p}'s world%" != "groveofimmemorialruins"
+        stop if "%region at {_p}%" does not contain "ExpAreaMayan"
         if {expAreaMayanMobs} < 50 + (({expAreaMayan}-1)*5):
             ExpAreaMayanMobSpawnEvent({_p})
 
@@ -31,18 +31,16 @@ function ExpAreaMayanMobSpawnEvent(p: player):
     set {_y} to a random integer between {_yMin} and {_yMax}
     set {_z} to a random integer between {_zMin} and {_zMax}
 
-    set {_randomLocation} to location({_x}, {_y}, {_z}, world "groveofimmemorialruins")
-
     while {@possibleBlocks} does not contain (type of block at {_randomLocation}):
         set {_x} to a random integer between {_xMin} and {_xMax}
         set {_y} to a random integer between {_yMin} and {_yMax}
         set {_z} to a random integer between {_zMin} and {_zMax}
         
-        if block at location({_x}, {_y}, {_z}, world "groveofimmemorialruins") is not solid:
-            loop all blocks above location({_x}, {_y}, {_z}, world "groveofimmemorialruins"):
+        if block at location({_x}, {_y}, {_z}, world "areny") is not solid:
+            loop all blocks above location({_x}, {_y}, {_z}, world "areny"):
                 if loop-block is air:
                     if block above loop-block is air:
-                        set {_randomLocation} to location({_x}, {_y}, {_z}, world "groveofimmemorialruins")
+                        set {_randomLocation} to location({_x}, {_y}, {_z}, world "areny")
 
     if chunk at {_randomLocation} is not loaded:
         async load chunk at {_randomLocation} with ticket
@@ -165,10 +163,10 @@ function ExpAreaMayanBossSpawn():
         set {_existingBoss} to {expAreaMayanBoss} parsed as entity
         kill {_existingBoss}
         
-    set {_loc} to location(546, 98.25, -977.308, world "groveofimmemorialruins")
+    set {_loc} to location(546, 98.25, -977.308, world "areny")
     set yaw of {_loc} to 180
     #Gets the player's Card Level to spawn a boss at an appropriate level
-    loop all players where [input's world = "groveofimmemorialruins"]:
+    loop all players where [input is in region "ExpAreaMayan"]:
         set {_id} to uncolored line 19 of lore of {karta::%loop-player%}
         replace all "Id: " in {_id} with ""
         load yaml "plugins/Skript/playerdata/karty/%{kartaname::%loop-player%}%/%{_id}%.yml" as "cardExpAreaMayan-%loop-player%"
@@ -501,24 +499,40 @@ on slime split:
 on combust:
     if tag "custom;ECMob" of nbt of event-entity is set:
         cancel event
-    else if tag "custom;TowerDefenceMob" of nbt of event-entity is set:
-        cancel event
-    else if tag "custom;TowerDefenceTurret" of nbt of event-entity is set:
-        cancel event
 on entity transform:
-    if "%event-entity's world%" contains "groveofimmemorialruins":
+    if "%region at event-entity%" contains "ExpAreaMayan":
         cancel event
 on heal:
     if tag "custom;ECMob" of nbt of event-entity is set:
         if event-entity = witch:
             set heal amount to heal amount*0.3
 
-on world change:
-    if "%event-world%" = "groveofimmemorialruins":
+on region enter:
+    if "%region%" contains "ExpAreaMayan":
         set {expAreaMayan} to {expAreaMayan} + 1
         ExpAreaMayan(player)
         wait 1 tick
-    if "%past event-world%" = "groveofimmemorialruins":
+    else if "%region%" contains "ExpAreaRuinsPortal":
+        set {_location} to location of player
+        set {_loc} to location(546.9, 95, -1010.7, world "areny")
+        set pitch of {_loc} to 0
+        set yaw of {_loc} to 150
+        teleport player to {_loc}
+        play sound "block.portal.travel" with volume 2 and pitch 1 at player
+        wait 2 ticks
+        play sound "block.portal.travel" with volume 2 and pitch 1 at {_location}
+    else if "%region%" contains "ArenyHubPortal":
+        set {_location} to location of player
+        set {_loc} to location(0.5, 66, 0.5, world "areny")
+        set pitch of {_loc} to 0
+        set yaw of {_loc} to 180
+        teleport player to {_loc}
+        play sound "block.portal.travel" with volume 2 and pitch 1 at player
+        wait 2 ticks
+        play sound "block.portal.travel" with volume 2 and pitch 1 at {_location}
+
+on region exit:
+    if "%region%" contains "ExpAreaMayan":
         remove player from all boss bars
         if {expAreaMayan} - 1 >= 0:
             set {expAreaMayan} to {expAreaMayan}-1
@@ -533,32 +547,13 @@ on world change:
                 else:
                     stop loop
             if {_wait} = 0 seconds:
-                loop all entities where [input's world = "groveofimmemorialruins"]:
+                loop all entities where [input is in region "ExpAreaMayan"]:
                     if loop-entity is not a player:
                         kill loop-entity
                 set {expAreaMayanMobs} to 0
-on region enter:
-    if "%region%" contains "ExpAreaRuinsPortal":
-        set {_location} to location of player
-        set {_loc} to location(546.9, 95, -1010.7, world "groveofimmemorialruins")
-        set pitch of {_loc} to 0
-        set yaw of {_loc} to 150
-        teleport player to {_loc}
-        play sound "block.portal.travel" with volume 2 and pitch 1 at player
-        wait 2 ticks
-        play sound "block.portal.travel" with volume 2 and pitch 1 at {_location}
-    else if "%region%" contains "ArenyHubPortal":
-        set {_location} to location of player
-        set {_loc} to location(0.5, 66, 0.5, world "groveofimmemorialruins")
-        set pitch of {_loc} to 0
-        set yaw of {_loc} to 180
-        teleport player to {_loc}
-        play sound "block.portal.travel" with volume 2 and pitch 1 at player
-        wait 2 ticks
-        play sound "block.portal.travel" with volume 2 and pitch 1 at {_location}
 
 on quit:
-    if "%player's world%" = "groveofimmemorialruins":
+    if "%region at player%" contains "ExpAreaMayan":
         execute player command "spawn"
 
 #Have a list of blocks mobs can spawn on

@@ -1,405 +1,166 @@
 variables:
 	{astralpower::%player%} = 50
+on damage:
+	projectile exists:
+		type of event-projectile is shulker bullet:
+			cancel event
+			set {_starshooter} to metadata value "starshooter" of event-projectile
+			set {_id} to line 19 of lore of {karta::%{_starshooter}%}
+			set {_crit} to 0 + ({crit::%{_starshooter}%}/44) + ({crit::%{_id}%}/44)
+			set {_damage} to 1 + ({obrazenia::%{_starshooter}%}/50) + ({obrazenia::%{_id}%}/50) + ({uniwersalnosc::%{_starshooter}%}/50) + ({uniwersalnosc::%{_id}%}/50)
+			set {_lore} to "&7..."
+			set {_loreEN} to "&7..."
+			set {elementCard::%{_starshooter}%} to "Astral"
+			set victim's last damage cause to sweep attack
+			set metadata value "LastDamageCause" of victim to "<##6a5e9e>Spadające Gwiazdy"
+			set {lastdmgcauselore::%victim%::*} to {_lore}
+			set metadata value "LastDamageCauseEN" of victim to "<##6a5e9e>Starfall"
+			set {lastdmgcauseloreEN::%victim%::*} to {_loreEN}
+			chance of {_crit}%:
+				set {_damage} to {_damage}*2
+			make {_starshooter} damage victim by 2*({_damage})
+			play sound "entity.generic.hurt" with volume 1.5 and pitch 1 at victim
+			clear metadata value "starshooter" of event-projectile
 
 function ShootingStars(p: player):
 	wait 1 tick
 	while metadata value "ECEngaged" of {_p} is set:
 		if {_p} is alive:
-			set {_chance} to 7
-			if metadata value "CelestialAlignment" of {_p} is set:
-				set {_chance} to {_chance}*2
-			if metadata value "Solstice" of {_p} is set:
-				set {_chance} to {_chance}*3
-			chance of {_chance}%:
+			chance of 6%:
 				ShootingStar({_p})
 		stop loop if metadata value "ECEngaged" of {_p} is not set
-		set {_haste} to 1 + (({haste::%{_p}%}/4)/100)
-		set {_wait} to "%1/{_haste}% seconds" parsed as timespan
-		wait {_wait}
-
+		wait 1 second
 function ShootingStar(p: player):
 	set {_id} to line 19 of lore of {karta::%{_p}%}
-	set {_loops} to 1
-	set {_astralInvocationChance} to 10
-	set {_damage} to (0.6 + (({damage::%{_p}%}/61) + ({versatility::%{_p}%}/183) + {intellect::%{_p}%}/30.5)) * (1 + (({mastery::%{_p}%}/3.2)/100))
-	if tag "Talents;Row 2" of nbt of {karta::%{_p}%} = "Crashing Star":
-		chance of 15%:
-			set {_damage} to (1.8 + (({damage::%{_p}%}/41) + ({versatility::%{_p}%}/123) + {intellect::%{_p}%}/20.5)) * (1 + (({mastery::%{_p}%}/3.2)/100))
-			set {_crashingStar} to true
-			set {_astralInvocationChance} to 20
-	set {_crit} to 0 + ({criticalhit::%{_p}%}/10)
-	if metadata value "CelestialAlignment" of {_p} is set:
-		add 15 to {_crit}
-	set {_haste} to 1 + (({haste::%{_p}%}/4)/100)
-	if metadata value "CelestialAlignment" of {_p} is set:
-		set {_damage} to {_damage}*1.15
-		set {_damage} to {_damage}*1.6
-	if tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Whirling Stars":
-		set {_astralpower} to 3
-		set {_damage} to {_damage}*1.09
-	else:
-		set {_astralpower} to 2
-	if tag "Talents;Row 4" of nbt of {karta::%{_p}%} = "Stellar Collision":
-		set {_damage} to {_damage}*1.15
-		chance of 20%:
-			set {_loops} to 2
-	if {_crashingStar} is true:
-		set {_astralpower} to {_astralpower}*2
-
-	loop all living entities in radius 30 around {_p}:
-		if tag "custom;ECMob" of nbt of loop-entity is set:
-			if metadata value "RecentlyDamagedCresselia%{_p}%" of loop-entity is set:
-				add loop-entity to {_enti::*}
+	set {_damage} to 0.8 + ({mistrzostwo::%{_p}%}/32) + ({mistrzostwo::%{_id}%}/32)
+	set {_crit} to 0 + ({criticalhit::%{_p}%}/50) + ({crit::%{_id}%}/50)
+	loop all living entities in radius 50 around {_p}:
+		if {mob::%loop-entity%} is true:
+			add loop-entity to {_enti::*}
 	if size of {_enti::*} > 0:
 		set {_target} to a random element of {_enti::*}
-		if {_crashingStar} is true:
-			set {_starSpeed} to 0.2*{_haste}
-			set {_damageCauseEN} to "<##6a5e9e>Crashing Star"
-			set {_damageCausePL} to "<##6a5e9e>Rozbijająca Gwiazda"
-			set {_shootingStar} to ShootingStarSpawn({_target}, true)
-			set {_pitch} to 0.25
-			set {_bonusY} to 1.8
-			play sound "entity.ender_dragon.shoot" with volume 4 and pitch 0 at {_target}
-		else:
-			set {_starSpeed} to 0.45*{_haste}
-			set {_damageCauseEN} to "<##6a5e9e>Shooting Stars"
-			set {_damageCausePL} to "<##6a5e9e>Spadające Gwiazdy"
-			set {_shootingStar} to ShootingStarSpawn({_target})
-			set {_pitch} to 1.5
-			set {_bonusY} to 0.9
-			play sound "entity.firework_rocket.launch" with volume 4 and pitch 0 at {_target}
-		set {_y} to 0
-		set {_locStar} to location of {_shootingStar}
-		set {_count} to 0
-		while {_shootingStar} is alive:
-			set {_targetLoc} to location 0.5 below {_target}
-			set {_vec} to vector between {_locStar} and {_targetLoc}
-			set {_loc} to location of {_shootingStar}
-			add {_bonusY} to y-location of {_loc}
-			if {_crashingStar} is true:
-				draw 1 firework particle at {_loc}
-			draw 1 of dust using dustOption((rgb 168, 134, 240), 1) at {_loc}
-			set vector length of {_vec} to {_count} * {_starSpeed}
-			teleport {_shootingStar} to {_locStar} ~ {_vec}
-			add nbt from "{Rotation:[%{_y}%.0f,%{_y}%.0f]}" to nbt of {_shootingStar}
-			stop loop if distance between {_shootingStar} and {_target} < 1
+		play sound "entity.firework_rocket.launch" with volume 4 and pitch 0 at {_target}
+		set {_l} to location of block 20 blocks above {_target}
+		loop round(distance between {_l} and {_target}) / 0.2 times:
+			set {_v} to vector between {_l} and {_target}'s head
+			set vector length of {_v} to loop-value * 0.45
+			draw 1 of dust using dustOption((rgb 168, 134, 240), 1) at {_l} ~ {_v}
 			wait 1 tick
-			add 1 to {_count}
-			add 10 to {_y}
-		kill {_shootingStar}
-		
-		play sound "skill.cresselia.shootingstarhit" with volume 2 and pitch {_pitch} at {_target}
-		play sound "entity.player.hurt" with volume 1.5 and pitch 1 at {_target}
-		if {_crashingStar} = true:
-			draw 25 firework particle at location above {_target} with offset vector(1.25, 0.5, 1.25) with extra 0.015
-		
-		loop {_loops} times:
-			set {_shootingStarsDamage} to {_damage}
-			set {_target}'s last damage cause to sweep attack
-			set {_lore} to "Abc"
-			set metadata value "Element" of {_target} to "Astral"
-			set metadata value "LastDamageCauseEN" of {_target} to {_damageCauseEN}
-			set metadata value "LastDamageCause" of {_target} to {_damageCausePL}
-			set metadata value "LastDamageCauseLore" of {_target} to {_lore}
-			set metadata value "LastDamageCauseLoreEN" of {_target} to {_lore}
-			chance of {_crit}%:
-				set {_shootingStarsDamage} to {_shootingStarsDamage}*2
-			make {_p} damage {_target} by {_shootingStarsDamage}*2
-			chance of {_astralInvocationChance}%:
-				AstralInvocation({_p})
-			if tag "Talents;Row 2" of nbt of {karta::%{_p}%} = "Astral Communion":
-				set {_astralPowerCap} to 120
-			else:
-				set {_astralPowerCap} to 100
-			if {astralpower::%{_p}%} + {_astralpower} <= {_astralPowerCap}:
-				add 2 to {astralpower::%{_p}%}
-			else:
-				set {astralpower::%{_p}%} to {_astralPowerCap}
-			AstralPowerUpdate({_p})
-			if tag "Talents;Row 5" of nbt of {karta::%{_p}%} = "Orbit Breaker":
-				set {_orbitBreaker} to metadata value "OrbitBreaker" of {_p}
-				add 1 to {_orbitBreaker}
-				if {_orbitBreaker} >= 30:
-					set {_orbitBreaker} to 0
-					FullMoon({_p}, {_target})
-				set metadata value "OrbitBreaker" of {_p} to {_orbitBreaker}
-			wait 1 tick
+		set {_target}'s last damage cause to sweep attack
+		set metadata value "LastDamageCauseEN" of {_target} to "<##6a5e9e>Shooting Star"
+		set metadata value "LastDamageCause" of {_target} to "<##6a5e9e>Spadająca Gwiazda"
+		set {lastdmgcauselore::%{_target}%::*} to {_lore}
+		set {lastdmgcauseloreEN::%{_target}%::*} to {_loreEN}
+		chance of {_crit}%:
+			set {_damage} to {_damage}*2
+		make {_p} damage {_target} by {_damage}*2
+		if {astralpower::%{_p}%} < 100:
+			add 2 to {astralpower::%{_p}%}
 		clear {_enti::*}
-		
-function ShootingStarSpawn(target: entity, crashingStar: boolean = false) :: entity:
-	set {_randomYcoordinate} to a random number between 8 and 35
-	set {_l} to location of block {_randomYcoordinate} blocks above {_target}
-	spawn an armor stand at {_l} with nbt from "{Invulnerable:1b,NoGravity:1b,Pose:{Head:[180.0f,0.0f,0.0f]}}"
-	if {_crashingStar} = true:
-		set name of last spawned armor stand to "CrashingStar"
-	else:
-		set name of last spawned armor stand to "ShootingStars"
-	set {_shootingStar} to last spawned armor stand
-	ShootingStarKill({_shootingStar})
-	return {_shootingStar}
-
-function ShootingStarKill(e: entity):
-	wait 20 seconds
-	#kill on server stop
-	kill {_e}
-
 function AstralPower(p: player):
 	wait 1 tick
-	set {_pospiech} to 1 + (({haste::%{_p}%}/4)/100)
-	set {_wait} to "%3/{_pospiech}% seconds" parsed as timespan
-	set {_astralPowerCap} to 100
-	if tag "Talents;Row 2" of nbt of {karta::%{_p}%} = "Astral Communion":
-		set {_astralPowerCap} to 120
+	set {_pospiech} to 1 + (({pospiech::%{_p}%}/4) + ({pospiech::%{_id}%}/4))/100
+	set {_wait} to "%1/{_pospiech}% seconds" parsed as timespan
 	while metadata value "ECEngaged" of {_p} is set:
 		if {_p} is alive:
-			set {_astralpower} to 2
-			if {astralpower::%{_p}%} + {_astralpower} <= {_astralPowerCap}:
+			if {astralpower::%{_p}%} < 100:
 				add 2 to {astralpower::%{_p}%}
-			else:
-				set {astralpower::%{_p}%} to {_astralPowerCap}
-			AstralPowerUpdate({_p})
-		stop loop if metadata value "ECEngaged" of {_p} is not set
+				send action bar "<##6a5e9e>% {astralpower::%{_p}%}%" to {_p}
+				stop loop if metadata value "ECEngaged" of {_p} is not set
 		wait {_wait}
-
-function AstralPowerUpdate(p: player):
-	if metadata value "casting" of {_p} is not set:
-		send action bar "&f <##6a5e9e>%{astralpower::%{_p}%}%" to {_p}
-
 on rightclick:
 	if player's tool is magenta dye:
 		if name of player's tool = "<##6a5e9e>Starsurge" or "<##6a5e9e>Gwiezdna Fala":
-			if {kartaname::%player%} = "Cresselia":
-				set {_target} to Target(player, 100, false)
-				if {_target} is set:
+			if {kartaname::%player%} = "Test Card":
+				if target of player is a living entity:
 					if CanUseAbility(player) != false:
-						if metadata value "casting" of player is not set:
-							if cooldown "StarsurgeDoublecast%player%" is finished:
-								create cooldown "StarsurgeDoublecast%player%" for 1 tick
-								if tag "Talents;Row 2" of nbt of {karta::%player%} = "Astral Communion":
-									set {_astralPowerCost} to 20
+						set {_target} to target of player
+						if {mob::%{_target}%} is true:
+							if {astralpower::%player%} >= 30:
+								set {_id} to line 19 of lore of {karta::%player%}
+								play sound "skill.cresselia.starsurgecast" with volume 4 and pitch 1 at player
+								remove 30 from {astralpower::%player%}
+								set {_crit} to 0 + ({criticalhit::%player%}/50) + ({crit::%{_id}%}/50)
+								set {_damage} to 6 + ({damage::%player%}/15) + ({obrazenia::%{_id}%}/15) + ({versatility::%player%}/45) + ({uniwersalnosc::%{_id}%}/45)
+								set {_loc} to player's location
+								set {_target}'s last damage cause to sweep attack
+								set {_pid} to random 8 char string from charset `0-9`
+								drawArc particle "blockcrack", material magenta concrete powder, center {_loc}, target location of {_target}, id "%{_pid}%", rainbowMode false, density 50, height 2, pitchMultiplier 1, visibleRange 30
+								set metadata value "LastDamageCauseEN" of {_target} to "<##6a5e9e>Starsurge"
+								set metadata value "LastDamageCause" of {_target} to "<##6a5e9e>Gwiezdna Fala"
+								set {lastdmgcauselore::%{_target}%::*} to {_lore}
+								set {lastdmgcauseloreEN::%{_target}%::*} to {_loreEN}
+								set metadata value "Element" of {_p} to "Astral"
+								chance of {_crit}%:
+									set {_damage} to {_damage}*2
+								make player damage {_target} by {_damage}*2
+								play sound "skill.cresselia.starsurgeimpact" with volume 4 and pitch 1 at {_target}
+								if {starsurgestacks::%player%::%{_target}%} is not set:
+									set {starsurgestacks::%player%::%{_target}%} to 0
 								else:
-									set {_astralPowerCost} to 30
-								if {astralpower::%player%} >= {_astralPowerCost}:
-									set {astralpower::%player%} to {astralpower::%player%} - {_astralPowerCost}
-									AstralPowerUpdate(player)
-									play sound "skill.cresselia.starsurgecast" with volume 4 and pitch 1 at player
-									set {_crit} to 0 + ({criticalhit::%player%}/10)
-									set {_damage} to 5.5 + ({damage::%player%}/12) + ({versatility::%player%}/36) + ({intellect::%player%}/6)
-									if metadata value "CelestialAlignment" of player is set:
-										set {_damage} to {_damage}*1.15
-										add 15 to {_crit}
-									if metadata value "UmbralInspiration" of player is set:
-										set {_damage} to {_damage}*1.3
-
-									set {_particleLoc} to location 1.758 above player
-									set {_shape} to a line from {_particleLoc} to location 1 above {_target}
-									set particle of {_shape} to item particle using magenta concrete powder
-									draw {_shape} at {_particleLoc}
-									CresseliaStarsurgeVisual(player, {_target})
-									set particle of {_shape} to item particle using purple concrete powder
-									draw {_shape} at {_particleLoc}
-
-									if metadata value "StarsurgeStacks%player%" of {_target} is not set:
-										set metadata value "StarsurgeStacks%player%" of {_target} to 0
-									
-									set {_starsurgeStacks} to metadata value "StarsurgeStacks%player%" of {_target}
-
-									if metadata value "StarsurgeStacks%player%" of {_target} < 2:
-										add 1 to {_starsurgeStacks} 
-										set metadata value "StarsurgeStacks%player%" of {_target} to {_starsurgeStacks}
-
-									set metadata value "StarsurgeTime%player%" of {_target} to 12 seconds
-									if metadata value "StarsurgeBonus%player%" of {_target} is not set:
-										set metadata value "StarsurgeBonus%player%" of {_target} to true
-										StarsurgeBonus(player, {_target})
-								
-
-									set {_starsurgeBonus} to 1+(0.15*{_starsurgeStacks})
-									set {_damage} to {_damage}*{_starsurgeBonus}
-
-									chance of {_crit}%:
-										set {_damage} to {_damage}*2
-									
-									set {_target}'s last damage cause to sweep attack
-									set metadata value "Element" of player to "Astral"
-									set {_lore} to "Abc"
-									set metadata value "LastDamageCauseEN" of {_target} to "<##6a5e9e>Starsurge"
-									set metadata value "LastDamageCause" of {_target} to "<##6a5e9e>Gwiezdna Fala"
-									set metadata value "LastDamageCauseLore" of {_target} to {_lore}
-									set metadata value "LastDamageCauseLoreEN" of {_target} to {_loreEN}
-									play sound "skill.cresselia.starsurgeimpact" with volume 4 and pitch 1 at {_target}
-									make player damage {_target} by {_damage}*2
-
-									CresseliaRecentlyDamaged(player, {_target})
-							#else:
-							#	if {language::%player%} = "English":
-							#		send action bar "<##6a5e9e>You must have at least 30 Astral Power to use this ability." to player
-							#	else:
-							#		send action bar "<##6a5e9e>Musisz mieć conajmniej 30 Astralnej Mocy, by móc użyć tej umiejętności." to player
-							#	play sound "entity.villager.no" with volume 3 and pitch 1 to player
-
+									if {starsurgestacks::%player%::%{_target}%} < 2:
+										add 1 to {starsurgestacks::%player%::%{_target}%}
+									set {czasstarsurge::%player%::%{_target}%} to 30 seconds
+									if {starsurgebonus::%player%::%{_target}%} is not set:
+										set {starsurgebonus::%player%::%{_target}%} to true
+								set {_starsurgebonus} to 1+(0.15*{starsurgestacks::%player%::%{_target}%})
+								set {_damage} to {_damage}*{_starsurgebonus}
+								make player damage {_target} by {_damage}*2
+								StarsurgeBonus(player, {_target})
+								wait 0.2 seconds
+								stopEffect "%{_pid}%"
+							else:
+								if {language::%player%} = "English":
+									send action bar "<##6a5e9e>You must have 30 Astral Power to use this ability." to player
+								else:
+									send action bar "<##6a5e9e>Musisz mieć 30 Astralnej Mocy, by móc użyć tej umiejętności." to player
+								play sound "entity.villager.no" with volume 3 and pitch 1 to player
 			else:
 				if {language::%player%} = "English":
 					send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to player
 				else:
 					send "&8[&6Earthcraft&8] &6Nie masz wybranej wymaganej karty, by móc użyć tej umiejętności." to player
 				play sound "block.glass.break" with volume 3 and pitch 0 to player
-
 	else if player's tool is purple dye:
-		if name of player's tool = "<##6a5e9e>Starfall" or "<##6a5e9e>Burza Gwiazd":
-			if {kartaname::%player%} = "Cresselia":
+		if name of player's tool = "<##6a5e9e>Starfall" or "<##6a5e9e>Spadające Gwiazdy":
+			if {kartaname::%player%} = "Test Card":
 				if CanUseAbility(player) != false:
-					if metadata value "casting" of player is not set:
-						if cooldown "StarfallDoublecast%player%" is finished:
-							create cooldown "StarfakkDoublecast%player%" for 1 tick
-							if tag "Talents;Row 2" of nbt of {karta::%player%} = "Astral Communion":
-								set {_astralPowerCost} to 40
-							else:
-								set {_astralPowerCost} to 50
-							if {astralpower::%player%} >= {_astralPowerCost}:
-								set {astralpower::%player%} to {astralpower::%player%} - {_astralPowerCost}
-								AstralPowerUpdate(player)
-								play sound "skill.cresselia.starfall" with volume 5 and pitch 1 at player
-								set {_starfallDuration} to 8 seconds
-								if tag "Talents;Row 4" of nbt of {karta::%player%} = "Hail of Stars":
-									set {_pospiech} to 1 + (({haste::%player%}/3.6))/100
-									add 3 seconds to {_starfallDuration}
-								else:
-									set {_pospiech} to 1 + (({haste::%player%}/4))/100
-								set {_wait} to "%1/{_pospiech}% seconds" parsed as timespan
-								loop all living entities in radius 60 around the player:
-									if loop-entity is not a player:
-										if tag "custom;ECMob" of nbt of loop-entity is set:
-											add loop-entity to {_enemies::*}
-								if {_enemies::*} is set:
-									set {_duration} to now
-									wait 1 tick
-									StellarDrift(player, {_starfallDuration})
-									while (difference between {_duration} and now) < {_starfallDuration}:
-										#15.08.2024 -> Maybe increase the amount of stars falling based on amount enemies in the list?
-										#starfall would scale with the amount of enemies dynamically
-										set {_randomEnemy} to a random element of {_enemies::*}
-										set {_randomIncrease} to a random number between 8 and 35
-										set {_loc} to location of {_randomEnemy}
-										set y-coordinate of {_loc} to (y-coordinate of {_randomEnemy} + {_randomIncrease})
-
-										spawn an armor stand at {_loc} with nbt from "{Invisible:1b,Invulnerable:1b,NoGravity:1b,Pose:{Head:[180.0f,0.0f,0.0f]}}"
-										set {_starfallStar} to last spawned armor stand
-										set helmet of {_starfallStar} to stick named "StarfallModel"
-										StarfallStarKill({_starfallStar})
-										StarfallStarTravel(player, {_starfallStar}, {_randomEnemy}, {_pospiech})
-
-										spawn an armor stand at location 0.5 above {_loc} with nbt from "{Invulnerable:1b,NoGravity:1b}"
-										set {_starfallParticle} to last spawned armor stand
-										set name of {_starfallParticle} to "StarfallAnim"
-										StarfallStarTravel(player, {_starfallParticle}, {_randomEnemy}, {_pospiech}, true)
-										StarfallStarKill({_starfallParticle})
-
-										wait {_wait}
-										stop loop if (difference between {_duration} and now) >= {_starfallDuration}
-										#WSZYSCY LOSOWO
-							#else:
-							#	if {language::%player%} = "English":
-							#		send action bar "<##6a5e9e>You must have 50 Astral Power to use this ability." to player
-							#	else:
-							#		send action bar "<##6a5e9e>Musisz mieć 50 Astralnej Mocy, by móc użyć tej umiejętności." to player
-							#	play sound "entity.villager.no" with volume 3 and pitch 1 to player
-			else:
-				if {language::%player%} = "English":
-					send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to player
-				else:
-					send "&8[&6Earthcraft&8] &6Nie masz wybranej wymaganej karty, by móc użyć tej umiejętności." to player
-				play sound "block.glass.break" with volume 3 and pitch 0 to player
-
-	else if player's tool = white dye:
-		if name of player's tool = "<##6a5e9e>Starfire" or "<##6a5e9e>Gwiezdny Ogień":
-			if {kartaname::%player%} = "Cresselia":
-				set {_target} to Target(player, 100, false)
-				if {_target} is set:
-					if CanUseAbility(player) != false:
-						if metadata value "AstralInvocation" of player is not set:
-							if cooldown "Global Cooldown Interrupted Cast%player%" is finished:
-								set {_pospiech} to 1 + ({haste::%player%}/4)/100
-								set {_baseCastTime} to 2.25
-								if metadata value "AstronomicalImpact" of player is set:
-									set {_baseCastTime} to {_baseCastTime}/1.6
-									set {_astronomicalImpact} to metadata value "AstronomicalImpact" of player
-									remove 1 from {_astronomicalImpact}
-									set metadata value "AstronomicalImpact" of player to {_astronomicalImpact}
-									if {_astronomicalImpact} = 0:
-										clear metadata value "AstronomicalImpact" of player
-								set {_casttime} to "%round(({_baseCastTime}/{_pospiech}), 1)% seconds" parsed as timespan
-								if metadata value "cast" of player is not set:
-									set metadata value "casttimemax" of player to {_casttime}
-									play sound "skill.cresselia.starfire_precast" with volume 3 and pitch 1 at player
-									set metadata value "casting" of player to true
-									if metadata value "channeling" of player is set:
-										clear metadata value "channeling" of player
-									set metadata value "lastspell" of player to player's tool's name
-									set metadata value "cast" of player to {_casttime}
-									while metadata value "casting" of player = true:
-										if metadata value "cast" of player is not set:
-											clear metadata value "casting" of player
-											stop
-										if {_casttime} > 0 seconds:
-											set {_cst} to "%{_casttime}%"
-											set metadata value "casttimeleft" of player to {_casttime}
-											replace all "seconds" and "second" in {_cst} with "sekund"
-											if {language::%player%} = "English":
-												send action bar "Casting... %{_cst}% | &f <##6a5e9e>%{astralpower::%player%}%" to player
-											else:
-												replace all "seconds" and "second" in {_cst} with "sekund"
-												send action bar "Rzucanie Zaklęcia... %{_cst}% | &f <##6a5e9e>%{astralpower::%player%}%" to player
-											wait 0.1 seconds
-											remove 0.1 seconds from {_casttime}
-										else:
-											clear metadata value "casting" of player
-											if {language::%player%} = "English":
-												send action bar "" to player
-											else:
-												send action bar "" to player
-								else:
-									stop
-								clear metadata value "casting" of player
-								clear metadata value "cast" of player
-								clear metadata value "casttimeleft" of player
-								clear metadata value "casttimemax" of player
-								stop sound "skill.cresselia.starfire_precast" for all players in radius 2 around the player
-								if {_casttime} > 0 seconds:
-									if {language::%player%} = "English":
-										send action bar "&cInterrupted" to player
-									else:
-										send action bar "&cPrzerwano" to player
-									stop
-								if {_astronomicalImpact} is set:
-									Starfire(player, {_target}, true)
-								else:
-									Starfire(player, {_target})
-							else:
-								if {tekstcd::%player%} = true:
-									set {_cdd} to cooldown "Global Cooldown Interrupted Cast%player%"
-									if {language::%player%} = "English":
-										send "<##6a5e9e>You must wait &f%{_cdd}%<##6a5e9e> to use this ability." to player
-									else:
-										send "<##6a5e9e>Musisz odczekać &f%{_cdd}%<##6a5e9e>, aby użyć tej umiejętności." to player
-								stop
-						else:
-							if metadata value "casting" of player is not set:
-								if cooldown "StarfireDoublecast%player%" is finished:
-									create cooldown "StarfireDoublecast%player%" for 1 tick
-									if {_astronomicalImpact} is set:
-										Starfire(player, {_target}, true)
-									else:
-										Starfire(player, {_target})
-									clear metadata value "AstralInvocation" of player
-									send title " " with subtitle " " to player for 1 tick with fade in 0.0 second and fade out 0.0 second
-									if tag "Talents;Row 1" of nbt of {karta::%player%} = "Umbral Inspiration":
-										UmbralInspiration(player)
+					if {astralpower::%player%} >= 50:
+						remove 50 from {astralpower::%player%}
+						play sound "skill.cresselia.starfall" with volume 5 and pitch 1 at player
+						set {_pospiech} to 1 + (({haste::%player%}/4) + ({pospiech::%{_id}%}/4))/100
+						set {_wait} to "%1/{_pospiech}% seconds" parsed as timespan
+						loop all living entities in radius 60 around the player:
+							if loop-entity is not a player:
+								if {mob::%loop-entity%} is true:
+									add loop-entity to {_enemies::*}
+						if {_enemies::*} is set:
+							set {_duration} to now
+							while (difference between {_duration} and now) < 8 seconds:
+								set {_j} to a random element of {_enemies::*}
+								set {_x} to location of block below highest solid block at {_j}
+								set {_xy} to ((y-coordinate of {_x}) - (y-coordinate of {_j}))
+								if {_x} is not set:
+									set {_int} to a random number between 15 and 20
+									set {_x} to block {_int} blocks above {_j}
+								else if (y-coordinate of {_x}) >= (y-coordinate of block at {_j}):
+									set {_h} to a random number between ({_xy}*0.67) and {_xy}
+									set {_x} to (y-coordinate of {_j}) + {_h}
+								set {_loc} to location of {_j}
+								set y-coordinate of {_loc} to {_x}
+								spawn a shulker bullet at {_loc}
+								silence last spawned shulker bullet
+								push last spawned shulker bullet (vector from last spawned shulker bullet to {_j}) with speed (0.2*{_pospiech})
+								set metadata value "starshooter" of last spawned shulker bullet to player
+								#play sound "entity.firework_rocket.launch" with volume 2.3 and pitch -1 at last spawned shulker bullet
+								wait {_wait}
+								stop loop if (difference between {_duration} and now) > 8 seconds
+								#WSZYSCY LOSOWO
 					else:
 						if {language::%player%} = "English":
-							send action bar "<##6a5e9e>You can not use this ability right now." to player
+							send action bar "<##6a5e9e>You must have 50 Astral Power to use this ability." to player
 						else:
-							send action bar "<##6a5e9e>Nie możesz teraz użyć tej umiejętności." to player
+							send action bar "<##6a5e9e>Musisz mieć 50 Astralnej Mocy, by móc użyć tej umiejętności." to player
 						play sound "entity.villager.no" with volume 3 and pitch 1 to player
 			else:
 				if {language::%player%} = "English":
@@ -407,38 +168,9 @@ on rightclick:
 				else:
 					send "&8[&6Earthcraft&8] &6Nie masz wybranej wymaganej karty, by móc użyć tej umiejętności." to player
 				play sound "block.glass.break" with volume 3 and pitch 0 to player
-	else if player's tool is light blue dye:
-		if name of player's tool = "<##6a5e9e>Celestial Alignment" or "<##6a5e9e>Gwiezdne Zrównanie":
-			if cooldown "CelestialAlignment%player%" is finished:
-				if metadata value "casting" of player is not set:
-					create cooldown "CelestialAlignment%player%" for 20 seconds
-					play sound "skill.cresselia.celestial_alignment_cast" with volume 4 and pitch 1 at player
-					CelestialAlignment(player, 20 seconds)
-
-					set {_astralPower} to 40
-					if tag "Talents;Row 2" of nbt of {karta::%player%} = "Astral Communion":
-						set {_astralPowerCap} to 120
-					else:
-						set {_astralPowerCap} to 100
-					if {astralpower::%player%} + {_astralPower} <= {_astralPowerCap}:
-						add {_astralPower} to {astralpower::%player%}
-					else:
-						set {astralpower::%player%} to {_astralPowerCap}
-					AstralPowerUpdate(player)
-					
-					if tag "Talents;Row 1" of nbt of {karta::%player%} = "Solstice":
-						Solstice(player)
-			else:
-				if {tekstcd::%player%} = true:
-					set {_cdd} to cooldown "CelestialAlignment%player%"
-					if {language::%player%} = "English":
-						send "<##6a5e9e>You must wait &f%{_cdd}%<##6a5e9e> to use this ability." to player
-					else:
-						send "<##6a5e9e>Musisz odczekać &f%{_cdd}%<##6a5e9e>, aby użyć tej umiejętności." to player
-				stop
 	else if player's tool is blue dye:
 		if name of player's tool = "<##6a5e9e>Innervate" or "<##6a5e9e>Gwiezdne Pobudzenie":
-			if {kartaname::%player%} = "Cresselia":
+			if {kartaname::%player%} = "Test Card":
 				if cooldown "innervate%player%" is finished:
 					if CanUseAbility(player) != false:
 						set {_id} to line 19 of lore of {karta::%player%}
@@ -505,331 +237,46 @@ on rightclick:
 	else if line 1 of lore of player's tool = "&8Umiejętność" or "&8Ability":
 		set metadata value "lastusedability" of player to (uncolored name of player's tool)
 
-function Starfire(p: player, target: entity, astronomicalImpact: boolean = false):
-	play sound "skill.cresselia.starfire_cast" with volume 3 and pitch 1 at {_p}
-
-	set {_astralPower} to 8
-	if tag "Talents;Row 2" of nbt of {karta::%{_p}%} = "Astral Communion":
-		set {_astralPowerCap} to 120
-	else:
-		set {_astralPowerCap} to 100
-	if {astralpower::%{_p}%} + {_astralPower} <= {_astralPowerCap}:
-		add {_astralPower} to {astralpower::%{_p}%}
-	else:
-		set {astralpower::%{_p}%} to {_astralPowerCap}
-	AstralPowerUpdate({_p})
-
-	set {_enemies::*} to LoopEntitiesAroundTarget({_target}, 5, true)
-	loop {_enemies::*}:
-		set {_damage} to 1.5 + (({damage::%{_p}%}/30) + ({versatility::%{_p}%}/90) + {intellect::%{_p}%}/15)
-		set {_crit} to 0 + ({criticalhit::%{_p}%}/10)
-		if metadata value "CelestialAlignment" of {_p} is set:
-			set {_damage} to {_damage}*1.15
-			add 15 to {_crit}
-		if {_astronomicalImpact} is true:
-			set {_damage} to {_damage}*1.6
-		if loop-value != {_target}:
-			set {_damage} to {_damage}*0.6
-			StarfireVisual({_p}, loop-value)
-		else:
-			StarfireVisual({_p}, loop-value, true)
-		set loop-value's last damage cause to sweep attack
-		set {_lore} to "Abc"
-		set metadata value "Element" of loop-value to "Astral"
-		set metadata value "LastDamageCauseEN" of loop-value to "<##6a5e9e>Starfire"
-		set metadata value "LastDamageCause" of loop-value to "<##6a5e9e>Gwiezdny Ogień"
-		set metadata value "LastDamageCauseLore" of loop-value to {_lore}
-		set metadata value "LastDamageCauseLoreEN" of loop-value to {_lore}
-		chance of {_crit}%:
-			set {_damage} to {_damage}*2
-		make {_p} damage loop-value by {_damage}*2
-
-	play sound "entity.{_p}.hurt" with volume 0.5 and pitch 1 at {_target}
-
-function StarfireVisual(p: player, target: entity, mainTarget: boolean = false):
-	set {_l} to location 8 above {_target}
-	set {_v} to vector between {_l} and {_target}
-	draw 15 dust using dustOption(rgb(177, 170, 242), 1) at location above {_target} with offset vector(0.5, 0.5, 0.5) with extra 0.03
-	loop round(distance between {_l} and {_target}) / 0.45 times:
-		set {_v} to vector between {_l} and {_target}'s head
-		set vector length of {_v} to loop-value * 0.45
-		if {_mainTarget} = true:
-			draw 1 flash particle at {_l} ~ {_v}
-		draw 1 dust using dustOption(rgb(255, 255, 255), 1) at {_l} ~ {_v} with offset vector(0.1, 0.1, 0.1) with extra 0.01
-		draw 1 item particle using pink wool at {_l} ~ {_v}
-		draw 1 dust using dustOption(rgb(96, 146, 219), 1) at {_l} ~ {_v} offset by a random vector
-		draw 2 dust using dustOption(rgb(177, 170, 242), 1) at {_l} ~ {_v} with offset vector(0.25, 0.1, 0.25) with extra 0.02
-		if loop-number > 14:
-			draw 2 dust using dustOption(rgb(145, 164, 255), 1) at {_l} ~ {_v} with offset vector(0.6, 0.25, 0.6) with extra 0.06
-			draw 2 dust using dustOption(rgb(231, 145, 255), 1) at {_l} ~ {_v} with offset vector(0.6, 0.25, 0.6) with extra 0.06
-		
 function StarsurgeBonus(p: player, target: entity):
-	if metadata value "StarsurgeBonus%{_p}%" of {_target} = true:
-		set metadata value "StarsurgeBonus%{_p}%" of {_target} to false
-		while metadata value "StarsurgeTime%{_p}%" of {_target} > 0 seconds:
+	if {starsurgebonus::%{_p}%::%{_target}%} is true:
+		set {starsurgebonus::%{_p}%::%{_target}%} to false
+		while {czasstarsurge::%{_p}%::%{_target}%} > 0 seconds:
 			if {_target} is alive:
+				remove 1 second from {czasstarsurge::%{_p}%::%{_target}%}
 				wait 1 second
-				set {_time} to metadata value "StarsurgeTime%{_p}%" of {_target}
-				remove 1 second from {_time}
-				set metadata value "StarsurgeTime%{_p}%" of {_target} to {_time}
-				if 0 seconds >= metadata value "StarsurgeTime%{_p}%" of {_target}:
-					clear metadata value "StarsurgeStacks%{_p}%" of {_target}
-					clear metadata value "StarsurgeTime%{_p}%" of {_target}
-					clear metadata value "StarsurgeBonus%{_p}%" of {_target}
+				if 0 seconds >= {czasstarsurge::%{_p}%::%{_target}%}:
+					clear {starsurgestacks::%{_p}%::%{_target}%}
+					clear {czasstarsurge::%{_p}%::%{_target}%}
+					clear {starsurgebonus::%{_p}%::%{_target}%}
 					stop loop
 			else:
-				clear metadata value "StarsurgeStacks%{_p}%" of {_target}
-				clear metadata value "StarsurgeTime%{_p}%" of {_target}
-				clear metadata value "StarsurgeBonus%{_p}%" of {_target}
+				clear {starsurgestacks::%{_p}%::%{_target}%}
 				stop loop
-
-function CresseliaStarsurgeVisual(p: player, target: entity):
-	set {_l} to location 0.7 blocks below {_p}'s head
-	set {_l} to location 0.4 blocks right of {_l}
-	set {_v} to vector between {_l} and {_target}'s head
-	loop round(distance between {_l} and {_target}) / 0.85 times:
-		set {_v} to vector between {_l} and {_target}'s head
-		set vector length of {_v} to loop-value * 0.85
-		draw 1 firework particle at {_l} ~ {_v}
-		draw 2 item particle using white concrete powder at {_l} ~ {_v}
-		draw 1 end rod particle using pink wool at {_l} ~ {_v} offset by a random vector
-		draw 1 of item particle using light blue wool at {_l} ~ {_v} offset by a random vector
-		draw 1 item particle using blue wool at {_l} ~ {_v} offset by a random vector
-
-function CresseliaRandomOffset() :: numbers:
-	set {_offsetX} to a random number between -5 and -20
-	set {_offsetY} to a random number between -5 and -20
-	set {_offsetZ} to a random number between -5 and -20
-	set {_offset::*} to {_offsetX} and {_offsetY} and {_offsetZ}
-	return {_offset::*}
-
-function StarfallStarTravel(p: player, e: entity, target: entity, haste: number, particle: boolean = false):
-	set {_y} to 0
-	set {_locStar} to location of {_e}
-	set {_count} to 0
-	set {_starSpeed} to 0.25*{_haste}
-	while {_e} is alive:
-		set {_targetLoc} to location 0.5 below {_target}
-		set {_vec} to vector between {_locStar} and {_targetLoc}
-		if {_count} is divisible by 7:
-			set {_loc} to location of {_e}
-			add 2.5 to y-location of {_loc}
-			draw 1 firework particle at {_loc}
-		set vector length of {_vec} to {_count} * {_starSpeed}
-		teleport {_e} to {_locStar} ~ {_vec}
-		add nbt from "{Rotation:[%{_y}%.0f,%{_y}%.0f]}" to nbt of {_e}
-		stop loop if distance between {_e} and {_target} < 1
-		wait 1 tick
-		add 1 to {_count}
-		add 10 to {_y}
-	kill {_e}
-	if {_particle} != true:
-		set {_enemies::*} to LoopEntitiesAroundTarget({_target}, 3, true)
-		loop {_enemies::*}:
-			set {_crit} to 0 + ({criticalhit::%{_p}%}/10)
-			set {_damage} to (1 + (({damage::%{_p}%}/48) + ({versatility::%{_p}%}/144) + {intellect::%{_p}%}/24))
-			if metadata value "CelestialAlignment" of {_p} is set:
-				set {_damage} to {_damage}*1.15
-				add 15 to {_crit}
-			if metadata value "UmbralInspiration" of {_p} is set:
-				set {_damage} to {_damage}*1.3
-			if tag "Talents;Row 2" of nbt of {karta::%{_p}%} = "Stellar Drift":
-				set {_damage} to {_damage}*1.3
-			set loop-value's last damage cause to sweep attack
-			set {_lore} to "Abc"
-			set metadata value "Element" of loop-value to "Astral"
-			set metadata value "LastDamageCauseEN" of loop-value to "<##6a5e9e>Starfall"
-			set metadata value "LastDamageCause" of loop-value to "<##6a5e9e>Burza Gwiazd"
-			set metadata value "LastDamageCauseLore" of loop-value to {_lore}
-			set metadata value "LastDamageCauseLoreEN" of loop-value to {_lore}
-			chance of {_crit}%:
-				set {_damage} to {_damage}*2
-			make {_p} damage loop-value by {_damage}*2
-			CresseliaRecentlyDamaged({_p}, loop-value)
-			if loop-value = {_target}:
-				play sound "entity.player.hurt" with volume 1.5 and pitch 1 at loop-value
-
-function StarfallStarKill(e: entity):
-	wait 20 seconds
-	#kill on server stop
-	kill {_e}
-
-function CresseliaRecentlyDamaged(p: player, e: entity):
-	if metadata value "RecentlyDamagedCresselia%{_p}%" of {_e} is not set:
-		set metadata value "RecentlyDamagedCresselia%{_p}%" of {_e} to 20 seconds
-		while metadata value "RecentlyDamagedCresselia%{_p}%" of {_e} > 0 seconds:
-			wait 1 second
-			set {_duration} to metadata value "RecentlyDamagedCresselia%{_p}%" of {_e}
-			remove 1 second from {_duration}
-			set metadata value "RecentlyDamagedCresselia%{_p}%" of {_e} to {_duration}
-			if 0 seconds >= metadata value "RecentlyDamagedCresselia%{_p}%" of {_e}:
-				clear metadata value "RecentlyDamagedCresselia%{_p}%" of {_e}
-				stop loop
-	else:
-		set metadata value "RecentlyDamagedCresselia%{_p}%" of {_e} to 20 seconds
-
-function AstralInvocation(p: player):
-	send title " " with subtitle "" to {_p} for 1 minute with fade in 0.25 second and fade out 0 second
-	set metadata value "AstralInvocation" of {_p} to true
-	play sound "skill.cresselia.innervate_cast" with volume 2 and pitch 2 at {_p}
-	set {_time} to 60 seconds
-	while metadata value "AstralInvocation" of {_p} = true:
-		wait 1 second
-		remove 1 second from {_time}
-		stop loop if 0 seconds >= {_time}
-	send title " " with subtitle " " to {_p} for 1 second with fade in 0.0 second and fade out 0.0 second
+on disconnect:
+	clear {starsurbonus::%player%}
+	clear {czasstarsur::%player%}
+	clear {starsurbonuscount::%player%}
 			
-function CelestialAlignmentVisual(p: player):
-	set {_loc} to location 2.5 above {_p}
-	if {_p}'s horizontal facing is south:
-		set {_loc1} to location 2 east of {_loc}
-		set {_loc2} to location 2 west of {_loc}
-	set {_v} to vector between {_loc1} and {_loc2}
-	loop round(distance between {_loc1} and {_loc2}) / 0.1 times:
-		if loop-number < 20:
-			set {_v} to vector between {_loc1} and {_loc}
-		set vector length of {_v} to loop-value * 0.1
-		draw 1 of dust using dustOption(rgb(255-loop-number, 255-loop-number, 255-loop-number), 1) at {_loc1} ~ {_v}
+#innervate - resetuje cd albo ->(zabiera sekundy) z przyjaznemu celu(skal. z użyt.)
+#starfall - to co na górze
+#asral power? pasywka
+#starsurge - spender st
 
-function Solstice(p: player):
-	if metadata value "Solstice" of {_p} is not set:
-		set metadata value "Solstice" of {_p} to 6 seconds
-		while metadata value "Solstice" of {_p} > 0 seconds:
-			wait 1 second
-			set {_duration} to metadata value "Solstice" of {_p}
-			remove 1 second from {_duration}
-			set metadata value "Solstice" of {_p} to {_duration}
-			if 0 seconds >= metadata value "Solstice" of {_p}:
-				clear metadata value "Solstice" of {_p}
-				stop loop
-	else:
-		set metadata value "Solstice" of {_p} to 6 seconds
+#mistrzostwo - twoje spendery zadają o x% więcej obrażeń za każdy astral power?
+#lub mistrzostwo -
+#1 astral power na 1 sek
+#starsurge - 15 AP
+#starfall - 30 lub 40 ap
 
-function FullMoon(p: player, target: entity):
-	play sound "skill.cresselia.fullmoon_cast" with volume 3 and pitch 1 at {_target}
-	set {_haste} to 1 + (({haste::%{_p}%}/4)/100)
-	set {_randomIncrease} to a random number between 10 and 40
-	set {_loc} to location of {_target}
-	set y-coordinate of {_loc} to (y-coordinate of {_target} + {_randomIncrease})
-	spawn an armor stand at {_loc} with nbt from "{Invulnerable:1b,NoGravity:1b,Pose:{Head:[180.0f,0.0f,0.0f]}}"
-	set name of last spawned armor stand to "CrashingStar"
-	set {_e} to last spawned armor stand
-	set {_y} to 0
-	set {_locMoon} to location of {_e}
-	set {_count} to 0
-	set {_moonSpeed} to 0.15*{_haste}
-	while {_e} is alive:
-		set {_targetLoc} to location 0.5 below {_target}
-		set {_vec} to vector between {_locMoon} and {_targetLoc}
-		if {_count} is divisible by 2:
-			set {_loc} to location of {_e}
-			add 3 to y-location of {_loc}
-			draw 1 of dust using dustOption((rgb 252, 240, 204), 1) at {_loc}
-			draw 1 of end rod particle at {_e}
-		set vector length of {_vec} to {_count} * {_moonSpeed}
-		teleport {_e} to {_locMoon} ~ {_vec}
-		add nbt from "{Rotation:[%{_y}%.0f,%{_y}%.0f]}" to nbt of {_e}
-		stop loop if distance between {_e} and {_target} < 1
-		wait 1 tick
-		add 1 to {_count}
-		add 10 to {_y}
-	kill {_e}
-	set {_enemies::*} to LoopEntitiesAroundTarget({_target}, 5, true)
-	set {_astralpower} to 40
-	if tag "Talents;Row 2" of nbt of {karta::%{_p}%} = "Astral Communion":
-		set {_astralPowerCap} to 120
-	else:
-		set {_astralPowerCap} to 100
-	if {_astralPowerCap} >= {astralpower::%{_p}%} + {_astralpower}:
-		add 40 to {astralpower::%{_p}%}
-	else:
-		set {astralpower::%{_p}%} to {_astralPowerCap}
-	AstralPowerUpdate({_p})
-	draw 25 smoke at location above {_target} with offset vector(2, 0.5, 2) with extra 0.01
-	draw 25 cloud at location above {_target} with offset vector(0.45, 0.5, 0.45) with extra 0.005
-	loop {_enemies::*}:
-		set {_crit} to 0 + ({criticalhit::%{_p}%}/10)
-		set {_damage} to (13 + (({damage::%{_p}%}/6.5) + ({versatility::%{_p}%}/19.5) + {intellect::%{_p}%}/3.25))
-		if loop-value != {_target}:
-			set {_damage} to {_damage}*0.4
-		if metadata value "CelestialAlignment" of {_p} is set:
-			set {_damage} to {_damage}*1.15
-			add 15 to {_crit}
-		set loop-value's last damage cause to sweep attack
-		set {_lore} to "Abc"
-		set metadata value "Element" of loop-value to "Astral"
-		set metadata value "LastDamageCauseEN" of loop-value to "<##6a5e9e>Full Moon"
-		set metadata value "LastDamageCause" of loop-value to "<##6a5e9e>Pełny Księżyc"
-		set metadata value "LastDamageCauseLore" of loop-value to {_lore}
-		set metadata value "LastDamageCauseLoreEN" of loop-value to {_lore}
-		chance of {_crit}%:
-			set {_damage} to {_damage}*2
-		make {_p} damage loop-value by {_damage}*2
-		CresseliaRecentlyDamaged({_p}, loop-value)
-		play sound "entity.player.hurt" with volume 1.5 and pitch 1 at loop-value
+#jak jest się out of combat to  zmienia się do 0 ap (w dmggraphskrypcie)
 
-function UmbralInspiration(p: player):
-	if metadata value "UmbralInspiration" of {_p} is not set:
-		set metadata value "UmbralInspiration" of {_p} to 6 seconds
-		while metadata value "UmbralInspiration" of {_p} > 0 seconds:
-			wait 1 second
-			set {_duration} to metadata value "UmbralInspiration" of {_p}
-			remove 1 second from {_duration}
-			set metadata value "UmbralInspiration" of {_p} to {_duration}
-			if 0 seconds >= metadata value "UmbralInspiration" of {_p}:
-				clear metadata value "UmbralInspiration" of {_p}
-				stop loop
-	else:
-		set metadata value "UmbralInspiration" of {_p} to 6 seconds
+#legendarki stellar drift, nature's balnce (out of combat rebalancuje do 50 ap)
 
-function CelestialAlignment(p: player, duration: timespan):
-	if metadata value "CelestialAlignment" of {_p} is not set:
-		set metadata value "CelestialAlignment" of {_p} to 20 seconds
-		add 150 to {criticalhit::%{_p}%}
-		add 60 to {haste::%{_p}%}
-		while metadata value "CelestialAlignment" of {_p} > 0 seconds:
-			wait 1 second
-			set {_timeRemaining} to metadata value "CelestialAlignment" of {_p}
-			remove 1 second from {_timeRemaining}
-			set metadata value "CelestialAlignment" of {_p} to {_timeRemaining}
-			if 0 seconds >= metadata value "CelestialAlignment" of {_p}:
-				clear metadata value "CelestialAlignment" of {_p}
-				remove 150 from {criticalhit::%{_p}%}
-				remove 60 from {haste::%{_p}%}
-				AstronomicalImpact({_p})
-				stop loop
-	else:
-		set {_timeRemaining} to metadata value "CelestialAlignment" of {_p}
-		set {_timeRemaining} to 0 seconds if {_timeRemaining} is not set
-		add {_duration} to {_timeRemaining}
-		set metadata value "CelestialAlignment" of {_p} to {_duration}
-
-function StellarDrift(p: player, duration: timespan):
-	if metadata value "StellarDrift" of {_p} is not set:
-		set {_movementSpeed} to {_p}'s walking speed
-		set metadata value "StellarDrift" of {_p} to {_duration}
-		set {_p}'s walking speed to ({_p}'s walking speed*1.2)
-		while metadata value "StellarDrift" of {_p} > 0 seconds:
-			wait 1 second
-			set {_duration} to metadata value "StellarDrift" of {_p}
-			remove 1 second from {_duration}
-			set metadata value "StellarDrift" of {_p} to {_duration}
-			if 0 seconds >= metadata value "StellarDrift" of {_p}:
-				clear metadata value "StellarDrift" of {_p}
-				set {_p}'s walking speed to {_movementSpeed}
-				stop loop
-	else:
-		set metadata value "StellarDrift" of {_p} to {_duration}
-
-function AstronomicalImpact(p: player):
-	if tag "Talents;Row 1" of nbt of {karta::%{_p}%} = "Astronomical Impact":
-		set metadata value "AstronomicalImpact" of {_p} to 2
-
-#on rightclick:
-#	set {_shape} to a star with 5 points, inner radius 0.25, and outer radius 2
-#	set particle of {_shape} to flame
-#	set {_x} to vector of player
-#	set {_p} to player's direction
-	#rotate shape {_shape} around vector(1, 1, 1) by 2 radians
-	#draw {_shape} at location 3.5 above player
-	#gradient podobny do procu nad graczem
+#if (y-coordinate of {_x}) - (y-coordinate of {_j}) is not bigger than 20:
+#	if (y-coordinate of player) is not bigger than or equal to (y-coordinate of {_x}):
+#		set {_x} to block 4 blocks below highest non-air block at {_j}
+#	else:
+#		set {_x} to block 20 blocks above {_j}
+#else:
+#	set {_x} to block 20 blocks above {_j} 
+#w while loop
