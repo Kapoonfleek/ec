@@ -1,0 +1,532 @@
+
+
+on load:
+	set {iceelemental} to light gray glass pane named "<##14c8ff>Ice Elemental" with lore " " and "&7Type: <##14c8ff>Caster/Summoner%nl%&7Element: <##add8e6>Ice" and "&7HP: <##14c8ff>400-800" and "&7EXP yield: <##14c8ff>50-75" and "&7Level range: <##14c8ff>20-40" and "&7Spawn chance: <##14c8ff>15%%" and " " and "&7Abilities:" and "<##14c8ff>Ice Rings" and "&7Summons three icy rings one after another," and "&7each dealing damage to all players in their" and "&7respective radius." and " " and "<##14c8ff>Ice Shards" and "&7Conjures three shards of ice in front" and "&7of itself and launches them consecutively" and "&7towards a random player." and " " and "<##14c8ff>Summon Ice Cubes" and "&7Summons two fragile Ice Cubes to aid itself" and "&7in battle. Ice Cubes slow all players in" and "&7a short radius and deal a small amount of" and "&7damage every few seconds." with nbt from "{CustomModelData:39}"
+	set {snowbombarder} to light gray glass pane named "&fSnow Bombarder" with lore " " and "&7Type: &fCaster/Summoner%nl%&7Element: <##add8e6>Ice" and "&7HP: &f300-600" and "&7EXP yield: &f35-60" and "&7Level range: &f20-40" and "&7Spawn chance: &f15%%" and " " and "&7Abilities:" and "&fSnowball" and "&7Shoots a snowball" and "&7each dealing damage to all players in their" and "&7respective radius." and " " and "<##14c8ff>Ice Shards" and "&7Conjures three shards of ice in front" and "&7of itself and launches them consecutively" and "&7towards a random player." and " " and "<##14c8ff>Summon Ice Cubes" and "&7Summons two fragile Ice Cubes to aid itself" and "&7in battle. Ice Cubes slow all players in" and "&7a short radius and deal a small amount of" and "&7damage every few seconds." with nbt from "{CustomModelData:41}"
+
+import:
+    java.lang.Math
+    org.bukkit.event.entity.EntityEvent
+
+function ExpAreaIceMobSpawn(p: player, loc: location):
+	#Adds to a mob count and checks whether it should spawn a Supermob or a standard mob. Also checks for boss spawn
+	add 1 to {expAreaIceMobCount}
+	if {expAreaIceMobCount} is divisible by 15:
+		set {_superMob} to true
+	if {expAreaIceMobCount} is divisible by 100:        
+		#ExpAreaIceBossSpawn()
+	#Gets the player's Card Level to spawn a mob at an appropriate level
+	set {_id} to uncolored line 19 of lore of {karta::%{_p}%}
+	replace all "Id: " in {_id} with ""
+	set {_name} to {kartaname::%{_p}%}
+	load yaml "plugins/Skript/playerdata/karty/%{_name}%/%{_id}%.yml" as "cardExpAreaIce-%{_p}%"
+	set {_cardLevel} to yaml value "Card.Level" in "cardExpAreaIce-%{_p}%"
+	if {_cardLevel} > 30:
+		set {_mobLevel} to 30 + ({_cardLevel} - 30)
+	else:
+		set {_mobLevel} to 30
+
+	if {_cardLevel} is not set:
+		set {_mobLevel} to 30
+
+	if {_mobLevel} is not an number:
+		set {_mobLevel} to rounded {_mobLevel}
+		set {_mobLevel} to {_mobLevel} parsed as number
+
+	unload yaml "cardExpAreaIce-%{_p}%"
+	if {_mobLevel} is between 30 and 39:
+		set {_color} to "&6"
+	else if {_mobLevel} is between 40 and 45:
+		set {_color} to "&c"
+	else if {_mobLevel} is between 46 and 50:
+		set {_color} to "&4"
+
+	#Chooses a mob from the list randomly
+	set {_mobList::*} to "skeleton"
+
+	set {_randomMob} to (a random element of {_mobList::*} parsed as entity type)
+	
+	if "%{_randomMob}%" = "slime":
+		spawn {_randomMob} at {_loc} with nbt from "{Size:3}"
+		set tag "custom;ECModelHeight" of nbt of last spawned entity to 1.825
+		set last spawned entity's max health to 14
+	else:
+		spawn {_randomMob} at {_loc}
+
+	set {_mob} to last spawned mob
+
+	set tag "custom;ECMob" of nbt of {_mob} to true
+	set tag "custom;ECLvl" of nbt of {_mob} to {_mobLevel}
+	set {_element} to "Ice"
+
+	if {_mob} is a zombie or a skeleton:
+		if {_mob} is a skeleton:
+			set {_mob}'s max health to 23
+			set {_randomMobType} to a random integer between 2 and 2
+			if {_randomMobType} = 1:
+				set tag "custom;ECModelHeight" of nbt of {_mob} to 1.55
+				set {_name} to "&fIce Elemental"
+				set helmet of {_mob} to light blue glass
+				disguise {_mob} as blaze
+				set metadata value "Summoned" of {_mob} to 0
+				spawn armor stand at location 1.75 above {_mob} with nbt from "{Marker:1b,Invisible:1b}"
+				set tag "custom;ECTextAboveCastBar" of nbt of {_mob} to uuid of last spawned armor stand
+				IceElementalAbiltiesInit({_mob})
+				silence {_mob}
+				IceElementalAmbientSounds({_mob})
+			else if {_randomMobType} = 2:
+				set tag "custom;ECModelHeight" of nbt of {_mob} to 1.65
+				set {_name} to "&fSnow Bombarder"
+				set helmet of {_mob} to light blue glass
+				disguise {_mob} as snowman
+				set metadata value "Summoned" of {_mob} to 0
+		if {_mob} is a zombie:
+			set {_mob}'s max health to 20
+	else if {_mob} is a spider:
+		set tag "custom;ECModelHeight" of nbt of {_mob} to 0.65
+		set {_element} to "Dark"
+		set {_mob}'s max health to 13 + 5
+
+	set the display name of {_mob} to {_name}
+
+	set tag "custom;ECElement" of nbt of {_mob} to {_element}
+
+	set tag "custom;ECExpAreaIceMob" of nbt of {_mob} to true
+	set tag "custom;ECExpAreaMob" of nbt of {_mob} to true
+
+
+	set {_maxHealthMob} to {_mob}'s max health * Math.pow(1.076, ({_mobLevel}))
+	if {_superMob} is true:
+		set {_maxHealthMob} to {_maxHealthMob}*4
+		set tag "custom;ECSuperMob" of nbt of {_mob} to true
+	set {_mob}'s max health to {_maxHealthMob}
+	heal {_mob}
+
+	if {_superMob} is true:
+		set tag "custom;MobDamageModifier" of nbt of {_mob} to 3 * Math.pow(1.026, ({_mobLevel}))
+		set {_color} to "%{_color}%Supermob "
+	else:
+		set tag "custom;MobDamageModifier" of nbt of {_mob} to 1 * Math.pow(1.026, ({_mobLevel}))
+		
+	increase {_loc}'s y-coordinate by (tag "custom;ECModelHeight" of nbt of {_mob})
+	spawn 1 armor stand at {_loc} with nbt from "{Marker:1b,Invulnerable:1b,Invisible:1b,CustomNameVisible:1,NoGravity:1b}"
+	set display name of last spawned armor stand to "&a|||||||||| &f(100%%)"
+	set tag "custom;ECTextAbove" of nbt of {_mob} to uuid of last spawned armor stand
+
+	spawn 1 armor stand at {_loc} with nbt from "{Marker:1b,Invulnerable:1b,Invisible:1b,CustomNameVisible:1,NoGravity:1b}"
+	set display name of last spawned armor stand to "%{_color}%Level %{_mobLevel}%"
+	set tag "custom;ECTextAboveLevel" of nbt of {_mob} to uuid of last spawned armor stand
+
+	add 1 to {expAreaIceMobs}
+
+function IceElementalAbiltiesInit(e: entity):
+	IceRingsCast({_e})
+	wait 8 seconds
+	stop if {_e} is not alive
+	if {_e} is alive:
+		IceCubeEffect({_e})
+
+
+function IceElementalAmbientSounds(e: entity):
+	while {_e} is alive:
+		play sound "entity.iron_golem.repair" with volume 3.75 and pitch 1 at {_e}
+		play sound "block.glass.place" with volume 3.75 and pitch 1.3 at {_e}
+		set {_waitSec} to a random number between 4 and 8
+		set {_wait} to "%{_waitSec}% seconds" parsed as timespan
+		wait {_wait}
+
+function SnowBombarderAmbientSounds(e: entity):
+	while {_e} is alive:
+		play sound "block.snow.break" with volume 3.75 and pitch 1.3 at {_e}
+		set {_waitSec} to a random number between 4 and 8
+		set {_wait} to "%{_waitSec}% seconds" parsed as timespan
+		wait {_wait}
+		
+on rightclick:
+	#set {_use} to a random interger between 1 and 2 if {_use} = 1... używa umki tylko 50 procent razy
+	#Icy Breath
+	#if player's tool is emerald named "Ice Caller":  #Daje buffy sojusznikom? haste?
+	if player's tool is emerald named "Ice Elemental":
+		ExpAreaIceMobSpawn(player, player's location)
+	#if player's tool is emerald named "Ice Mage":
+	#if player's tool is emerald named "Arctic Commander": #beast master z ice bearami lub ice foxami
+	#Lodowy Jeździec, Arctic Commander, Ice Mage, Ice Beast, Ice Caller, Ice Bombardeer
+	if player's tool is emerald named "Frost Knight":
+		spawn 1 skeleton at player
+		set {_moblevel} to a random integer between 20 and 40
+		set {_hp} to 30*{_moblevel}
+		set {_xp} to 45 + (({_moblevel}/20 * 25)-25)
+		set the name of last spawned skeleton to "&b(&f%{_moblevel}% Lv.&b) <##4683b3>Frost Knight &b[&f%{_hp}%&c♥&b]"
+		set the max health of last spawned skeleton to {_hp}
+		heal last spawned skeleton
+		silence last spawned skeleton
+		set helmet of last spawned skeleton to diamond helmet
+		set last spawned skeleton's tool to diamond sword
+		set {_u} to uuid of last spawned skeleton
+		set {mob::%last spawned skeleton%} to true
+		set {testentity::%last spawned skeleton%} to true
+		set {expyield::%last spawned skeleton%} to {_xp}
+		set {element::%last spawned skeleton%} to "Ice"
+		set {poziommob::%last spawned skeleton%} to {_moblevel}
+		set {mobexplod::%last spawned skeleton%} to true
+		execute console command "/disguuid %{_u}% player FrostKnight setCustomName ""Frost Knight"" setskin FrostKnight setHelmet air setDynamicName true setCustomNameVisible true"
+		apply slowness of tier 0.4 without particles to last spawned skeleton for 99999 seconds
+		set {_s} to last spawned zombie
+	if player's tool is emerald named "Lodowy Jeździec":
+		spawn 1 skeleton horse at player
+		set {_h} to last spawned skeleton horse
+		set max health of last spawned skeleton horse to 600
+		heal last spawned skeleton horse
+		set the name of last spawned skeleton horse to "Lodowy Mount"
+		apply potion of speed 1.2 without particles to last spawned horse
+		set {mob::%last spawned skeleton horse%} to true
+		spawn 1 zombie at player
+		set the name of last spawned zombie to "Lodowy Jeździec"
+		set {_u} to uuid of last spawned zombie
+		set max health of last spawned zombie to 400
+		heal last spawned zombie
+		set {mob::%last spawned zombie%} to true
+		make last spawned zombie ride {_h}
+		equip last spawned zombie with bow
+		set last spawned zombie's held item to diamond sword
+		execute console command "/disguuid %{_u}% player icewarrior setDynamicName true setCustomNameVisible true"
+		tame {_h} to last spawned zombie
+		make last spawned zombie ride {_h}
+		silence last spawned zombie
+
+on damage:
+	if {mob::%attacker%} is true:
+		if name of attacker contains "<##4683b3>Frost Knight":
+			if victim does not have slowness:
+				apply slowness of tier 2 without particles to victim for 12 seconds
+			else:
+				remove slowness from victim
+				apply slowness of tier 2 without particles to victim for 12 seconds
+			set {_frostStrikes} to metadata value "Frost Strikes%victim%" of attacker
+			add 1 to {_frostStrikes}
+			play sound "skill.fury_warrior.slash" with volume 3 and pitch 1 at attacker
+			if {_frostStrikes} = 3:
+				make attacker swing their offhand
+				set {_damage} to 12
+				make attacker damage victim by {_damage}*(({poziommob::%attacker%}/20))
+				clear metadata value "Frost Strikes%victim%" of attacker
+				wait 0.3 seconds
+				play sound "skill.fury_warrior.slash" with volume 3 and pitch 1 at attacker
+
+on shoot:
+	if tag "custom;ECMob" of nbt of shooter is set:
+		if name of shooter contains "Snow Bombarder" or "Snowman":
+			cancel event
+			set {_count} to metadata value "SnowBarrageCount" of shooter
+			add 1 to {_count}
+			set metadata value "SnowBarrageCount" of shooter to {_count}
+			set {_target} to target of shooter
+			if {_target} is set:
+				if {_target} is a player:
+					if {_target} is alive:
+						loop {_count} times:
+							spawn snowball at location 1.5 above shooter
+							set metadata value "SnowBombarder" of last spawned snowball to (uuid of shooter)
+							push last spawned snowball (vector from shooter to {_target}) with speed 2
+							wait 4 ticks
+			if {_count} = 4:
+				set {_count} to metadata value "SnowBarrageCount" of shooter
+				remove 4 from {_count}
+				set metadata value "SnowBarrageCount" of shooter to {_count}
+		else if name of shooter = "&fIce Elemental":
+			cancel event
+			set {_count} to metadata value "IceShardCount" of shooter
+			add 1 to {_count}
+			set metadata value "IceShardCount" of shooter to {_count}
+			if {_count} is divisible by 2:
+				set {_target} to target of shooter
+				if {_target} is set:
+					if {_target} is a player:
+						if {_target} is alive:
+							loop 2 times:
+								set {_l} to location 0.3 blocks below shooter's head
+								set {_v} to vector between {_l} and {_target}'s head
+								loop round(distance between {_l} and {_target}) / 0.5 times:
+									set {_v} to vector between {_l} and {_target}'s head
+									set vector length of {_v} to loop-value-2 * 0.5
+									draw 1 of block particle using ice block at {_l} ~ {_v}
+									wait 1 ticks
+								set {_damage} to 0.4
+								set {_damageTooltip} to {_damage}*(tag "custom;MobDamageModifier" of nbt of shooter)
+								set metadata value "LastDamageCauseEN" of {_target} to "<##14c8ff>Ice Shards"
+								set metadata value "LastDamageCause" of {_target} to "<##14c8ff>Odłamki Lodu"
+								set metadata value "Element" of {_e} to "Ice"
+								set metadata value "LastDamageCauseLoreEN" of {_target} to "<##14c8ff>Hurls two ice shards at the current target,%nl%<##14c8ff>dealing &f%{_damageTooltip}% <##add8e6>Ice <##14c8ff>damage."
+								set metadata value "LastDamageCauseLore" of {_target} to "<##14c8ff>Rzuca &fdwoma <##14c8ff>odłamkami lodu w cel, zadając%nl%&f%{_damageTooltip}% <##14c8ff>obrażeń <##add8e6>Lodu<##14c8ff>."
+								make shooter damage {_target} by {_damage}*2
+
+function IceRingsEffect(e: entity, radius: number):
+	set {_r} to 1*{_radius}
+	loop 360 times:
+		set {_v} to spherical vector radius {_r}, yaw loop-number-2*2, pitch 0
+		draw 1 of dust using dustOption((rgb 106, 184, 230), 1) at {_e} ~ {_v}
+	play sound "block.glass.break" with volume 2.2 and pitch 0.75 + ({_radius}/4) at {_e}
+	set {_damage} to 1.75
+	set {_damageTooltip} to {_damage}*(tag "custom;MobDamageModifier" of nbt of {_e})
+	loop all players in radius {_r}*3 around {_e}:
+		if loop-player is alive:
+			if loop-player is online:
+				set metadata value "LastDamageCauseEN" of loop-value to "<##14c8ff>Ice Rings"
+				set metadata value "LastDamageCause" of loop-value to "<##14c8ff>Lodowe Pierścienie"
+				set metadata value "Element" of {_e} to "Ice"
+				set metadata value "LastDamageCauseLoreEN" of loop-value to "<##14c8ff>Deals &f%{_damageTooltip}% <##add8e6>Ice <##14c8ff>damage &f3 <##14c8ff>times to%nl%<##14c8ff>all players around in an area that%nl%<##14c8ff>grows with each ring."
+				set metadata value "LastDamageCauseLore" of loop-value to "<##14c8ff>Zadaje &f%{_damageTooltip}% <##14c8ff>obrażeń <##add8e6>Lodu &f3 <##14c8ff>razy%nl%<##14c8ff>wszystkim graczom w zasięgu, który%nl%<##14c8ff>rośnie z każdym pierścieniem."
+				make {_e} damage loop-player by {_damage}*2
+
+function IceRingsCast(e: entity):
+	while {_e} is alive:
+		set {_haste} to metadata value "Haste" of {_e}
+		set {_crowdcontrol} to metadata value "Crowd Control" of {_e}
+		set {_radius} to 0 + {_crowdcontrol}/25
+		set {_hastered} to 1 + (({_haste}/4)/100)
+		set {_wait} to 12/{_hastered}
+		set {_wait} to ("%{_wait}% seconds" parsed as timespan)
+		set {_p} to nearest player around {_e}
+		if {_p} is set:
+			if distance between {_e} and {_p} < 30:
+				if ((tag "custom;ECTextAboveCastBar" of nbt of {_e}) parsed as entity) is not alive:
+					spawn armor stand at location (tag "custom;ECModelHeight" of nbt of {_e}) + 1 above {_e} with nbt from "{Marker:1b,Invisible:1b}"
+					set tag "custom;ECTextAboveCastBar" of nbt of {_e} to uuid of last spawned armor stand
+				IceRings({_e})
+			else:
+				set {_wait} to 6/{_hastered}
+				set {_wait} to ("%{_wait}% seconds" parsed as timespan)
+		else:
+			set {_wait} to 6/{_hastered}
+			set {_wait} to ("%{_wait}% seconds" parsed as timespan)
+		wait {_wait}
+
+function IceRings(e: entity):
+	set {_casttime} to 3 seconds
+	set {_cast} to 3
+	apply levitation without particles to {_e} for 3 seconds
+	if ((tag "custom;ECTextAboveCastBar" of nbt of {_e}) parsed as entity) is not alive:
+		spawn armor stand at location (tag "custom;ECModelHeight" of nbt of {_e}) + 1 above {_e} with nbt from "{Marker:1b,Invisible:1b}"
+		set tag "custom;ECTextAboveCastBar" of nbt of {_e} to uuid of last spawned armor stand
+	else:
+		set {_castBar} to (tag "custom;ECTextAboveCastBar" of nbt of {_e}) parsed as entity
+	if metadata value "cast" of {_e} is not set:
+		set metadata value "casting" of {_e} to true
+		set metadata value "cast" of {_e} to {_casttime}
+		while metadata value "casting" of {_e} = true:
+			if metadata value "cast" of {_e} is not set:
+				clear metadata value "casting" of {_e}
+				stop
+			if {_casttime} > 0 seconds:
+				teleport {_castBar} to location 1.75 above {_e}
+				set display name of {_castBar} to "Casting <##14c8ff>Ice Rings&f... %{_casttime}%"
+				if {_cast} is divisible by 1:
+					add 1 to {_radius}
+					IceRingsEffect({_e}, {_radius})
+				wait 0.1 seconds
+				remove 0.1 seconds from {_casttime}
+				remove 0.1 from {_cast}
+			else:
+				clear metadata value "casting" of {_e}
+				stop loop
+			stop if {_e} is not alive
+	else:
+		stop
+	clear metadata value "casting" of {_e}
+	clear metadata value "cast" of {_e}
+	clear {_radius}
+	if {_casttime} > 0 seconds:
+		InterruptHideCastBar({_castBar})
+		stop
+	kill {_castBar}
+	
+function IceCube(e: entity):
+	set {_casttime} to 10 seconds
+	set {_cast} to 10
+	if ((tag "custom;ECTextAboveCastBar" of nbt of {_e}) parsed as entity) is not alive:
+		spawn armor stand at location (tag "custom;ECModelHeight" of nbt of {_e}) + 1 above {_e} with nbt from "{Marker:1b,Invisible:1b}"
+		set tag "custom;ECTextAboveCastBar" of nbt of {_e} to uuid of last spawned armor stand
+	else:
+		set {_castBar} to (tag "custom;ECTextAboveCastBar" of nbt of {_e}) parsed as entity
+	if metadata value "cast" of {_e} is not set:
+		set metadata value "casting" of {_e} to true
+		set metadata value "cast" of {_e} to {_casttime}
+		while metadata value "casting" of {_e} = true:
+			if metadata value "cast" of {_e} is not set:
+				clear metadata value "casting" of {_e}
+				stop
+			if {_casttime} > 0 seconds:
+				teleport {_castBar} to location 1.75 above {_e}
+				set display name of {_castBar} to "Casting <##14c8ff>Summon Ice Cubes&f... %{_casttime}%"
+				if {_cast} is divisible by 1:
+					set {_sum} to metadata value "Summoned" of {_e}
+					if {_sum} < 5:
+						IceCubeSpawn({_e})
+				wait 0.1 seconds
+				remove 0.1 seconds from {_casttime}
+				remove 0.1 from {_cast}
+			else:
+				clear metadata value "casting" of {_e}
+				stop loop
+			stop if {_e} is not alive
+	else:
+		stop
+	clear metadata value "casting" of {_e}
+	clear metadata value "cast" of {_e}
+	clear {_radius}
+	if {_casttime} > 0 seconds:
+		InterruptHideCastBar({_castBar})
+		stop
+	kill {_castBar}
+
+function IceCubeEffect(e: entity):
+	while {_e} is alive:
+		set {_haste} to metadata value "Haste" of {_e}
+		set {_crowdcontrol} to metadata value "Crowd Control" of {_e}
+		set {_radius} to 0 + {_crowdcontrol}/25
+		set {_hastered} to 1 + (({_haste}/4)/100)
+		set {_wait} to 40/{_hastered}
+		set {_wait} to ("%{_wait}% seconds" parsed as timespan)
+		set {_p} to nearest player around {_e}
+		if {_p} is set:
+			if distance between {_e} and {_p} < 100:
+				if ((tag "custom;ECTextAboveCastBar" of nbt of {_e}) parsed as entity) is not alive:
+					spawn armor stand at location (tag "custom;ECModelHeight" of nbt of {_e}) + 1 above {_e} with nbt from "{Marker:1b,Invisible:1b}"
+					set tag "custom;ECTextAboveCastBar" of nbt of {_e} to uuid of last spawned armor stand
+				IceCube({_e})
+			else:
+				set {_wait} to 20/{_hastered}
+				set {_wait} to ("%{_wait}% seconds" parsed as timespan)
+		else:
+			set {_wait} to 20/{_hastered}
+			set {_wait} to ("%{_wait}% seconds" parsed as timespan)
+		wait {_wait}
+
+function IceCubeSpawn(e: entity):
+	if {_e} is alive:
+		play sound "entity.player.attack.strong" with volume 3 and pitch 0 at {_e}
+		set {_sum} to metadata value "Summoned" of {_e}
+		add 1 to {_sum}
+		set metadata value "Summoned" of {_e} to {_sum}
+
+		spawn 1 slime at {_e}
+		set {_slime} to last spawned slime
+		add nbt compound from "{Size:0.5}" to nbt of {_slime}
+		add nbt compound from "{CustomNameVisible:1b}" to nbt of {_slime}
+		silence {_slime}
+		push {_slime} (vector from {_e} to {_player}) with speed 2
+		play sound "block.glass.break" with volume 4 and pitch 0 at {_e}
+
+		set metadata value "Summoner" of {_slime} to uuid of {_e}
+		set tag "custom;ECModelHeight" of nbt of {_slime} to 0.25
+		set {_slime}'s max health to 6
+		set the display name of {_slime} to "&fIce Cube"
+		set tag "custom;ECElement" of nbt of {_slime} to "Ice"
+		set tag "custom;ECExpAreaIceMob" of nbt of {_slime} to true
+		set tag "custom;ECExpAreaMob" of nbt of {_slime} to true
+		set tag "custom;ECMob" of nbt of {_slime} to true
+		set {_mobLevel} to tag "custom;ECLvl" of nbt of {_e}
+		set tag "custom;ECLvl" of nbt of {_slime} to {_mobLevel}
+		set {_maxHealthMob} to {_slime}'s max health * Math.pow(1.076, ({_mobLevel}))
+		set {_slime}'s max health to {_maxHealthMob}
+		heal {_slime}
+		spawn 1 armor stand at {_slime} with nbt from "{Marker:1b,Invulnerable:1b,Invisible:1b,CustomNameVisible:1,NoGravity:1b}"
+		set display name of last spawned armor stand to "&a|||||||||| &f(100%%)"
+		set tag "custom;ECTextAbove" of nbt of {_slime} to uuid of last spawned armor stand
+		IcyAura({_slime})
+			
+function IcyAura(e: entity):
+	while {_e} is alive:
+		set {_haste} to metadata value "Haste" of {_e}
+		set {_crowdcontrol} to metadata value "Crowd Control" of {_e}
+		set {_radius} to 4 + {_crowdcontrol}/25
+		set {_hastered} to 1 + (({_haste}/4)/100)
+		set {_wait} to 3/{_hastered}
+		set {_wait} to ("%{_wait}% seconds" parsed as timespan)
+		loop all players in radius {_radius} around {_e}:
+			if loop-player is alive:
+				if loop-player is online:
+					if loop-player does not have slowness:
+						apply slowness 2 without particles to loop-player for 3 seconds
+					set {_damage} to 0.2
+					set {_damageTooltip} to {_damage}*(tag "custom;MobDamageModifier" of nbt of {_e})
+					loop all players in radius {_r}*3 around {_e}:
+						if loop-player is alive:
+							if loop-player is online:
+								set metadata value "LastDamageCauseEN" of loop-value to "<##14c8ff>Icy Aura"
+								set metadata value "LastDamageCause" of loop-value to "<##14c8ff>Lodowa Aura"
+								set metadata value "Element" of {_e} to "Ice"
+								set metadata value "LastDamageCauseLoreEN" of loop-value to "<##14c8ff>Deals &f%{_damageTooltip}% <##add8e6>Ice <##14c8ff>damage to all players%nl%<##14c8ff>and slows them every couple seconds."
+								set metadata value "LastDamageCauseLore" of loop-value to "<##14c8ff>Zadaje &f%{_damageTooltip}% <##14c8ff>obrażeń <##add8e6>Lodu <##14c8ff>i spowalnia%nl%<##14c8ff>graczy co kilka sekund."
+								make {_e} damage loop-player by {_damage}*2
+		wait {_wait}
+
+function Snowball(e: entity):
+	while {_e} is alive:
+		loop all players in radius 20 of {_e}:
+			if {mob::%loop-player%} is not set:
+				if loop-player is online:
+					add loop-player to {_players::*}
+					set {_player} to a random element of {_players::*}
+		if {_player} is alive:
+			set {_loc} to location 1.3 blocks in front of {_e}
+			set {_loc} to location 1 block above {_loc}
+			add 1 to {snowballcount::%{_e}%}
+			set {_loops} to 1
+			if {snowballcount::%{_e}%} = 3:
+				set {_loops} to 3
+				clear {snowballcount::%{_e}%}
+			loop {_loops} times:
+				if {_loops} > 1:
+					set {_player} to a random element of {_players::*}
+				if {_player} is alive:
+					spawn 1 snowball at {_loc}
+					play sound "entity.snowball.throw" with volume 4 and pitch 0.5 at {_e}
+					push last spawned snowball (vector from {_e} to {_player}) with speed 2
+					set metadata value "Snowball" of last spawned snowball to {_e}
+					if {_loops} > 1:
+						clear metadata value "Snowball" of last spawned snowball
+						set metadata value "SnowballB" of last spawned snowball to {_e}
+						wait 0.2 seconds
+		wait 3 seconds
+
+function BuildSnowmen(e: entity):
+	while {_e} is alive:
+		set {_sum} to metadata value "summoned" of {_e}
+		if 9 > {_sum}:
+			loop 2 times:
+				spawn 1 skeleton at {_e}
+				set {_s} to last spawned skeleton
+				set the name of last spawned skeleton to "&b(&f5 Lv.&b) &fSnowman &b[&f40&c♥&b]"
+				set the max health of last spawned skeleton to 40
+				heal last spawned skeleton
+				silence last spawned skeleton
+				set helmet of last spawned skeleton to light blue glass
+				set {_u} to uuid of last spawned skeleton
+				set {mob::%{_s}%} to true
+				execute console command "/disguuid %{_u}% snowman setDynamicName true setCustomNameVisible true"
+				play sound "entity.snow_golem.hurt" with volume 1 and pitch 1.5 at {_e}
+				add 1 to {_sum}
+				set metadata value "summoned" of {_e} to {_sum}
+				set metadata value "summoner" of last spawned skeleton to {_e}
+				wait 3 seconds
+				Snowball({_s})
+				wait 1 seconds
+		wait 48 seconds
+			
+				
+on projectile collide:
+	if metadata value "SnowBombarder" of event-projectile is set:
+		cancel event
+		if event-entity is a player:
+			set {_bombarder} to (metadata value "SnowBombarder" of event-projectile) parsed as entity
+			set {_target} to event-entity
+			set {_damage} to 0.35
+			set {_damageTooltip} to {_damage}*(tag "custom;MobDamageModifier" of nbt of {_bombarder})
+			set metadata value "LastDamageCauseEN" of {_target} to "&fSnow Barrage"
+			set metadata value "LastDamageCause" of {_target} to "&fBurza Śniegu"
+			set metadata value "Element" of {_e} to "Ice"
+			set metadata value "LastDamageCauseLoreEN" of {_target} to "&fStrzela śnieżką w cel, zadając %{_damageTooltip}% obrażeń <##add8e6>Lodu&f.%nl%&fZa każdym razem gdy Śniegowy Bombarder rzuci śnieżką,%nl%&frzuci o 1 więcej przy następnym użyciu umiejętności, aż%nl%&fdo 4, kiedy liczba się zresetuje."
+			set metadata value "LastDamageCauseLore" of {_target} to "&fShoots a snowball at the target, dealing %{_damageTooltip}% <##add8e6>Ice damage.%nl%&fEach time the Snow Bombarder shoots a snowball,%nl%&fthey will shoot 1 more the next time they cast this ability,%nl%&fup to 4. Then the count will reset."
+			make {_bombarder} damage {_target} by {_damage}*2
+		clear metadata value "SnowBombarder" of event-projectile
