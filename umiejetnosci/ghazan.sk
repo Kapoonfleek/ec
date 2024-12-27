@@ -252,22 +252,28 @@ on rightclick:
 							stop loop if {wildfire::%player%} is not true
 							if tag "Constellation;Unstoppable Heat" of nbt of {karta::%player%} is not set:
 								stop loop if metadata value "cast" of player is not true
-							loop all entities in radius 40 around the player:
-								if tag "custom;ECMob" of nbt of loop-entity is set:
+							loop all entities in radius 40 around player where [tag "custom;ECMob" of nbt of input is set]:
+								if loop-entity is alive:
 									if metadata value "ECPulled" of loop-entity is set:
-										add loop-entity to {_ent::*}
+										set {_enemyPulled::*} to {_enemyPulled::*} and loop-entity
 										if metadata value "MoltenLava%player%" of block under loop-entity is set:
-											add loop-entity to {_enemiesInMoltenLava::*}
-							if size of {_enemiesInMoltenLava::*} > 0:
-								set {_x} to a random element of {_enemiesInMoltenLava::*} where [input is alive]
-							if {_x} is not set:
-								set {_x} to a random element of {_ent::*} where [input is alive]
-							clear {_ent::*}
-							clear {_enemiesInMoltenLava::*}
-							LavaBurst(player, {_x}, 1)
+											set {_enemyMoltenLava::*} to {_enemyMoltenLava::*} and loop-entity
+									else:
+										set {_enemyNotInCombat::*} to {_enemyNotInCombat::*} and loop-entity
+							if size of {_enemyMoltenLava::*} >= 1:
+								set {_target} to a random element of {_enemyMoltenLava::*}
+							else:
+								if size of {_enemyPulled::*} >= 1:
+									set {_target} to a random element of {_enemyPulled::*}
+								else:
+									set {_target} to {_enemyNotInCombat::1}
+							LavaBurst(player, {_target}, 1)
 							if {_shield} is set:
 								draw 8 falling lava particle at location above player with offset vector(1.25, 0.5, 1.25) with extra 0.015
 								send action bar "<##b03228> SHIELD: &f%{tarcza::%uuid of player%}%" to player
+							clear {_enemyPulled::*}
+							clear {_enemyMoltenLava::*}
+							clear {_enemyNotInCombat::*}
 							wait {_tick}
 						clear metadata value "cast" of player
 						if {_shield} is set:
