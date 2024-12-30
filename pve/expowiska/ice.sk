@@ -8,13 +8,53 @@ import:
     java.lang.Math
     org.bukkit.event.entity.EntityEvent
 
+function ExpAreaIce(p: player):
+    wait 1 tick
+    while "%{_p}'s world%" = "arcticbattlefield":
+        set {_waitInterval} to a random number between 5 and (15 + (({expAreaIce}-1)*2.5))
+        set {_wait} to "%{_waitInterval}% seconds" parsed as timespan
+        wait {_wait}
+        stop if "%{_p}'s world%" != "arcticbattlefield"
+        if {expAreaIceMobs} < 50 + (({expAreaIce}-1)*5):
+            ExpAreaIceMobSpawnEvent({_p})
+    
+function ExpAreaIceMobSpawnEvent(p: player):
+    set {_xMin} to 194
+    set {_xMax} to 357
+    
+    set {_yMin} to 52
+    set {_yMax} to 161
+
+    set {_zMin} to -87
+    set {_zMax} to 87
+
+    set {_x} to a random integer between {_xMin} and {_xMax}
+    set {_y} to a random integer between {_yMin} and {_yMax}
+    set {_z} to a random integer between {_zMin} and {_zMax}
+
+    while {@possibleBlocks} does not contain (type of block at {_randomLocation}):
+        set {_x} to a random integer between {_xMin} and {_xMax}
+        set {_y} to a random integer between {_yMin} and {_yMax}
+        set {_z} to a random integer between {_zMin} and {_zMax}
+        
+        if block at location({_x}, {_y}, {_z}, world "arcticbattlefield") is not solid:
+            loop all blocks above location({_x}, {_y}, {_z}, world "arcticbattlefield"):
+                if loop-block is air:
+                    if block above loop-block is air:
+                        set {_randomLocation} to location({_x}, {_y}, {_z}, world "arcticbattlefield")
+
+    if chunk at {_randomLocation} is not loaded:
+        async load chunk at {_randomLocation} with ticket
+    ExpAreaIceMobSpawn({_p}, {_randomLocation})
+
 function ExpAreaIceMobSpawn(p: player, loc: location):
 	#Adds to a mob count and checks whether it should spawn a Supermob or a standard mob. Also checks for boss spawn
 	add 1 to {expAreaIceMobCount}
 	if {expAreaIceMobCount} is divisible by 15:
 		set {_superMob} to true
 	if {expAreaIceMobCount} is divisible by 100:        
-		#ExpAreaIceBossSpawn()
+		ExpAreaIceBossSpawn()
+	stop
 	#Gets the player's Card Level to spawn a mob at an appropriate level
 	set {_id} to uncolored line 19 of lore of {karta::%{_p}%}
 	replace all "Id: " in {_id} with ""
@@ -42,16 +82,11 @@ function ExpAreaIceMobSpawn(p: player, loc: location):
 		set {_color} to "&4"
 
 	#Chooses a mob from the list randomly
-	set {_mobList::*} to "skeleton"
+	set {_mobList::*} to "skeleton", "zombie", "blaze", "pillager", "polar bear"
 
 	set {_randomMob} to (a random element of {_mobList::*} parsed as entity type)
 	
-	if "%{_randomMob}%" = "slime":
-		spawn {_randomMob} at {_loc} with nbt from "{Size:3}"
-		set tag "custom;ECModelHeight" of nbt of last spawned entity to 1.825
-		set last spawned entity's max health to 14
-	else:
-		spawn {_randomMob} at {_loc}
+	spawn {_randomMob} at {_loc}
 
 	set {_mob} to last spawned mob
 
@@ -61,10 +96,11 @@ function ExpAreaIceMobSpawn(p: player, loc: location):
 
 	if {_mob} is a zombie or a skeleton:
 		if {_mob} is a skeleton:
-			set {_mob}'s max health to 23
-			set {_randomMobType} to a random integer between 2 and 2
+			set {_randomMobType} to a random integer between 1 and 2
 			if {_randomMobType} = 1:
+				set {_mob}'s max health to 23
 				set tag "custom;ECModelHeight" of nbt of {_mob} to 1.55
+				set tag "custom;ECIceElemental" of nbt of {_mob} to true
 				set {_name} to "&fIce Elemental"
 				set helmet of {_mob} to light blue glass
 				disguise {_mob} as blaze
@@ -75,17 +111,134 @@ function ExpAreaIceMobSpawn(p: player, loc: location):
 				silence {_mob}
 				IceElementalAmbientSounds({_mob})
 			else if {_randomMobType} = 2:
+				set {_mob}'s max health to 18
 				set tag "custom;ECModelHeight" of nbt of {_mob} to 1.65
+				set tag "custom;ECSnowBombarder" of nbt of {_mob} to true
 				set {_name} to "&fSnow Bombarder"
 				set helmet of {_mob} to light blue glass
 				disguise {_mob} as snowman
 				set metadata value "Summoned" of {_mob} to 0
-		if {_mob} is a zombie:
-			set {_mob}'s max health to 20
-	else if {_mob} is a spider:
-		set tag "custom;ECModelHeight" of nbt of {_mob} to 0.65
-		set {_element} to "Dark"
-		set {_mob}'s max health to 13 + 5
+				SnowmanEffect({_mob})
+
+		else if {_mob} is a zombie:
+			set {_randomMobType} to a random integer between 1 and 2
+			if {_randomMobType} = 1:
+				set {_mob}'s max health to 26
+				spawn skeleton horse at {_loc}
+				set {_mount} to last spawned skeleton horse
+				set tag "custom;ECModelHeight" of nbt of {_mount} to 1.35
+				set tag "custom;ECElement" of nbt of {_mount} to "Ghost"
+				set tag "custom;ECExpAreaIceMob" of nbt of {_mount} to true
+				set tag "custom;ECExpAreaMob" of nbt of {_mount} to true
+				set tag "custom;ECFrostRider" of nbt of {_mob} to true
+				set tag "custom;ECMob" of nbt of {_mount} to true
+				set tag "custom;ECLvl" of nbt of {_mount} to {_mobLevel}
+				set metadata value "LevelText" of {_mount} to "%{_color}%Level %{_mobLevel}%"
+				set metadata value "Rider" of {_mount} to (uuid of {_mob})
+				set metadata value "Mount" of {_mob} to (uuid of {_mount})
+				set {_mob}'s held item to iron sword
+				set {_mob}'s off hand item to shield
+				set {_maxHealthMob} to 24 * Math.pow(1.076, ({_mobLevel}))
+				set the display name of {_mount} to "&fSkeletal Mount"
+				if {_superMob} is true:
+					set {_maxHealthMob} to {_maxHealthMob}*4
+					set tag "custom;ECSuperMob" of nbt of {_mount} to true
+				set {_mount}'s max health to {_maxHealthMob}
+				heal {_mount}
+				SkeletalHorseAmbientSounds({_mount})
+				SkeletalHorseCharge({_mount})
+				SkeletalHorsePathfind({_mount})
+
+				set tag "custom;ECModelHeight" of nbt of {_mob} to 0
+				set {_name} to "&fFrost Rider"
+				disguise {_mob} as "FrostRider"
+				silence {_mob}
+				set custom name visibility of disguise of {_mob} to false
+			else:
+				set {_mob}'s max health to 24.24
+				set tag "custom;ECModelHeight" of nbt of {_mob} to 1.55
+				set tag "custom;ECFrostKnight" of nbt of {_mob} to true
+				set {_name} to "&fFrost Knight"
+				disguise {_mob} as "FrostKnight2"
+				set custom name of disguise of {_mob} to "&fFrost Knight"
+				set {_potion} to potion effect of speed of tier 0.85 without particles for 1 day
+				add {_potion} to potion effects of {_mob}
+				set {_mob}'s tool to diamond sword with nbt from "{CustomModelData:1}"
+				set {_mob}'s offhand item to diamond sword with nbt from "{CustomModelData:1}"
+	else if {_mob} is a pillager:
+		set {_mob}'s max health to 25
+		set tag "custom;ECModelHeight" of nbt of {_mob} to 1.55
+		set {_skin} to a random integer between 1 and 2
+		set {_name} to "&fArctic Commander"
+		disguise {_mob} as "ArcticCommander%{_skin}%"
+		set custom name of disguise of {_mob} to "&fArctic Commander"
+		set {_mob}'s held item to crossbow
+		set tag "custom;ECArcticCommander" of nbt of {_mob} to true
+		loop 2 times:
+			spawn 1 adult zombie at {_mob}
+			set {_fox} to last spawned entity
+			disguise {_fox} as snow fox
+			set the display name of {_fox} to "&fPolar Beast"
+			set tag "custom;ECModelHeight" of nbt of {_fox} to 0.45
+			set tag "custom;ECElement" of nbt of {_fox} to {_element}
+			set tag "custom;ECExpAreaMob" of nbt of {_fox} to true
+			set tag "custom;ECMob" of nbt of {_fox} to true
+			set tag "custom;ECLvl" of nbt of {_fox} to {_mobLevel}
+			set metadata value "Owner" of {_fox} to (uuid of {_mob})
+			set {_potion} to potion effect of speed of tier 1 without particles for 1 day
+			add {_potion} to potion effects of {_fox}
+			set {_nbt} to "{Marker:1b,Invulnerable:1b,Invisible:1b,CustomNameVisible:1b,NoGravity:1b}"
+			increase {_loc}'s y-coordinate by (tag "custom;ECModelHeight" of nbt of {_fox})
+			spawn 1 armor stand at {_loc} with nbt from {_nbt}
+			set display name of last spawned armor stand to "&a|||||||||| &f(100%%)"
+			set tag "custom;ECTextAbove" of nbt of {_fox} to uuid of last spawned armor stand
+
+			spawn 1 armor stand at {_loc} with nbt from {_nbt}
+			set display name of last spawned armor stand to "%{_color}%Level %{_mobLevel}%"
+			set tag "custom;ECTextAboveLevel" of nbt of {_fox} to uuid of last spawned armor stand
+			tame {_fox} to {_mob}
+			set {_fox}'s owner to {_mob}
+			PolarBeastPathfind({_fox}, {_mob}, loop-number)
+			set metadata value "PolarBeast%loop-number%" of {_mob} to uuid of {_fox}
+			set {_maxHealthMob} to 8 * Math.pow(1.076, ({_mobLevel}))
+			set {_fox}'s max health to {_maxHealthMob}
+			heal {_fox}
+		KillCommandCast({_mob})
+	else if {_mob} is a blaze:
+		set {_randomMobType} to a random integer between 2 and 2
+		if {_randomMobType} = 1:
+			set {_mob}'s max health to 16.5
+			set tag "custom;ECModelHeight" of nbt of {_mob} to 1.55
+			set tag "custom;ECIceCaller" of nbt of {_mob} to true
+			set {_name} to "&fIce Caller"
+			disguise {_mob} as "IceCaller"
+			set custom name of disguise of {_mob} to "&fIce Caller"
+			set {_mob}'s tool to heart of the sea
+			silence {_mob}
+			spawn armor stand at location 2.3 above {_mob} with nbt from "{Marker:1b,Invisible:1b}"
+			set tag "custom;ECTextAboveCastBar" of nbt of {_mob} to uuid of last spawned armor stand
+			set tag "custom;ECCastBarExtraHeight" of nbt of {_mob} to 0.5
+			IceCallerAmbientSounds({_mob})
+			HasteAuraIceCaller({_mob})
+			SummonIceRainIceCaller({_mob})
+		else:
+			set {_mob}'s max health to 19
+			set tag "custom;ECModelHeight" of nbt of {_mob} to 1.55
+			set tag "custom;ECIceMage" of nbt of {_mob} to true
+			set {_name} to "&fIce Mage"
+			disguise {_mob} as "IceMage"
+			set custom name of disguise of {_mob} to "&fIce Mage"
+			set {_mob}'s tool to air
+			set metadata value "Icicles" of {_mob} to 0
+			IciclesIceMage({_mob})	
+			silence {_mob}
+			set {_potion} to potion effect of speed of tier 0.6 without particles for 1 day
+			add {_potion} to potion effects of {_mob}
+	else if {_mob} is a polar bear:
+		set {_mob}'s max health to 33
+		set tag "custom;ECModelHeight" of nbt of {_mob} to 1.15
+		set {_name} to "&fPolar Bear"
+		set tag "custom;ECPolarBear" of nbt of {_mob} to true
 
 	set the display name of {_mob} to {_name}
 
@@ -107,6 +260,121 @@ function ExpAreaIceMobSpawn(p: player, loc: location):
 		set {_color} to "%{_color}%Supermob "
 	else:
 		set tag "custom;MobDamageModifier" of nbt of {_mob} to 1 * Math.pow(1.026, ({_mobLevel}))
+	
+	if {_mount} is set:
+		set {_nbt} to "{Invulnerable:1b,Invisible:1b,CustomNameVisible:1b,NoGravity:1b}"
+		FrostRiderMount({_mob}, {_mount})
+		increase {_loc}'s y-coordinate by (tag "custom;ECModelHeight" of nbt of {_mob})
+		spawn 1 armor stand at {_loc} with nbt from {_nbt}
+		set display name of last spawned armor stand to "&fFrost Rider"
+		set tag "custom;ECTextName" of nbt of {_mob} to uuid of last spawned armor stand
+	else:
+		set {_nbt} to "{Marker:1b,Invulnerable:1b,Invisible:1b,CustomNameVisible:1b,NoGravity:1b}"
+
+	increase {_loc}'s y-coordinate by (tag "custom;ECModelHeight" of nbt of {_mob})
+	spawn 1 armor stand at {_loc} with nbt from {_nbt}
+	set display name of last spawned armor stand to "&a|||||||||| &f(100%%)"
+	set tag "custom;ECTextAbove" of nbt of {_mob} to uuid of last spawned armor stand
+
+	spawn 1 armor stand at {_loc} with nbt from {_nbt}
+	set display name of last spawned armor stand to "%{_color}%Level %{_mobLevel}%"
+	set tag "custom;ECTextAboveLevel" of nbt of {_mob} to uuid of last spawned armor stand
+		
+	add 1 to {expAreaIceMobs}
+
+function ExpAreaIceBossSpawn():
+	#Checks if a boss is already alive, if yes, replaces it with a new one
+	if {expAreaIceBoss} is set:
+		set {_existingBoss} to {expAreaIceBoss} parsed as entity
+		kill {_existingBoss}
+		set {_text} to (tag "custom;ECTextAboveLevel" of nbt of {_existingBoss}) parsed as entity
+		set {_text2} to (tag "custom;ECTextAbove" of nbt of {_existingBoss}) parsed as entity
+		kill {_text} and {_text2}
+		
+	set {_loc} to location(303.175, 78, -31.5, world "arcticbattlefield")
+	set yaw of {_loc} to 37.4
+	#Gets the player's Card Level to spawn a boss at an appropriate level
+	loop all players where [input's world = "arcticbattlefield"]:
+		set {_id} to uncolored line 19 of lore of {karta::%loop-player%}
+		replace all "Id: " in {_id} with ""
+		set {_name} to {kartaname::%loop-player%}
+		load yaml "plugins/Skript/playerdata/karty/%{_name}%/%{_id}%.yml" as "cardExpAreaIce-%loop-player%"
+		set {_cardLevel} to yaml value "Card.Level" in "cardExpAreaIce-%loop-player%"
+		add {_cardLevel} to {_cardLevelTotal}
+		add 1 to {_players}
+		add loop-player to {_players::*}
+		unload yaml "cardExpAreaIce-%loop-player%"
+
+	stop if {_players} is not set
+
+	set {_cardLevelTotal} to {_cardLevelTotal} + 10
+	if ({_cardLevelTotal}/{_players}) > 40:
+		set {_mobLevel} to {_cardLevelTotal}/{_players}
+	else:
+		set {_mobLevel} to 40
+	if {_mobLevel} is not a number:
+		set {_mobLevel} to {_mobLevel} parsed as number
+	set {_mobLevel} to rounded {_mobLevel}
+
+	if {_mobLevel} is between 30 and 39:
+		set {_color} to "&6"
+	else if {_mobLevel} is between 40 and 45:
+		set {_color} to "&c"
+	else if {_mobLevel} >= 46:
+		set {_color} to "&4"
+
+	#Chooses a boss from the list randomly
+
+	set {_randomMob} to "MingHua"
+
+	if ({_cardLevelTotal}/{_players}) > 40:
+		set {_averageLevel} to {_cardLevelTotal}/{_players}
+	else:
+		set {_averageLevel} to 40
+
+	if {_randomMob} = "MingHua":
+		spawn 1 skeleton at {_loc}
+		set {_mob} to last spawned mob
+		set the display name of {_mob} to "&fMing Hua"
+		disguise {_mob} as "MingHua"
+		set custom name of disguise of {_mob} to "&fMing Hua"
+		set main hand slot of disguise of {_mob} to air
+		silence {_mob}
+		set {_colorBar} to blue
+		set tag "custom;ECElement" of nbt of {_mob} to "Water"
+		set tag "custom;ECMingHua" of nbt of {_mob} to true
+		set {_potion} to potion effect of speed of tier 2.25 without particles for 1 day
+		add {_potion} to potion effects of {_mob}
+		set {_maxHealthMob} to (50 * Math.pow(1.092, ({_mobLevel})))*({_players}*({_averageLevel}/{_mobLevel}))
+		WaterTentacleMingHua({_mob})
+		WaterArmsParticles({_mob})
+		WaterSpoutMingHua({_mob})
+		WaterTentacleMingHuaStrike({_mob})
+		MingHuaPushEntities({_mob})
+		WaterGripMingHua({_mob})
+
+
+	set {_mob}'s max health to {_maxHealthMob}
+	heal {_mob}
+
+	set tag "custom;ECMob" of nbt of {_mob} to true
+	set tag "custom;ECLvl" of nbt of {_mob} to {_mobLevel}
+	set tag "custom;ECBoss" of nbt of {_mob} to true
+
+	set {_id} to random 5 char string from charset `0-9` `a-z`
+	clear boss bar with id {_id}
+	set {_bar} to boss bar with id {_id} with title name of {_mob} with color {_colorBar}
+	set bar style of {_bar} to segmented 20
+	set tag "custom;ECBossBossBar" of nbt of {_mob} to {_id}
+	loop {_players::*}:
+		add loop-value to {_bar}
+		send "&e%name of {_mob}% has spawned!" to loop-value
+
+	set tag "custom;ECModelHeight" of nbt of {_mob} to 1.55
+	set tag "custom;ECExpAreaIceMob" of nbt of {_mob} to true
+	set tag "custom;ECExpAreaMob" of nbt of {_mob} to true
+	set tag "custom;MobDamageModifier" of nbt of {_mob} to 1 * Math.pow(1.025, ({_mobLevel}))
+	set tag "custom;ECBossBossBar" of nbt of {_mob} to {_id}
 		
 	increase {_loc}'s y-coordinate by (tag "custom;ECModelHeight" of nbt of {_mob})
 	spawn 1 armor stand at {_loc} with nbt from "{Marker:1b,Invulnerable:1b,Invisible:1b,CustomNameVisible:1,NoGravity:1b}"
@@ -114,11 +382,413 @@ function ExpAreaIceMobSpawn(p: player, loc: location):
 	set tag "custom;ECTextAbove" of nbt of {_mob} to uuid of last spawned armor stand
 
 	spawn 1 armor stand at {_loc} with nbt from "{Marker:1b,Invulnerable:1b,Invisible:1b,CustomNameVisible:1,NoGravity:1b}"
-	set display name of last spawned armor stand to "%{_color}%Level %{_mobLevel}%"
+	set display name of last spawned armor stand to "%{_color}%&l(BOSS)&r %{_color}%Level %{_mobLevel}%"
 	set tag "custom;ECTextAboveLevel" of nbt of {_mob} to uuid of last spawned armor stand
 
-	add 1 to {expAreaIceMobs}
+	set {expAreaIceBoss} to uuid of {_mob}
 
+
+function SkeletalHorsePathfind(e: entity):
+	while {_e} is alive:
+		if metadata value "Rider" of {_e} is set:
+			set {_rider} to (metadata value "Rider" of {_e}) parsed as entity
+			if target of {_rider} is set:
+				set {_p} to target of {_rider}
+		if {_p} is not set:
+			set {_p} to nearest player around {_e}
+		make {_e} pathfind to {_p}
+		wait 3 seconds
+
+function IcicleFormIceMage(e: entity, icicle: integer):
+	spawn 1 armor stand at {_e} with nbt from "{Invisible:1b,Marker:1b}"
+	set {_x} to last spawned armor stand
+	set {_x}'s helmet to stick named "Icicle"
+	if metadata value "Icicle%{_icicle}%" of {_e} is not set:
+		set metadata value "Icicle%{_icicle}%" of {_e} to {_x}
+		IcicleMoveIceMage({_e}, {_icicle}, {_x})
+
+function IcicleMoveIceMage(e: entity, num: integer, x: entity):
+	wait 1 tick
+	while metadata value "Icicles" of {_e} > 0:
+		if {_e} is alive:
+			if {_x} is alive:
+				if metadata value "Icicle%{_num}%" of {_e} is set:
+					set {_loc3} to {_e}'s location
+					increase {_loc3}'s y-coordinate by 0.2
+					set {_loc%{_num}%} to {_loc3}
+					if {_e}'s horizontal facing is east or west:
+						if {_num} = 1:
+							increase {_loc%{_num}%}'s z-coordinate by -0.6
+							increase {_loc%{_num}%}'s y-coordinate by -0.2
+						else if {_num} = 2:
+							increase {_loc%{_num}%}'s z-coordinate by -0.3
+							increase {_loc%{_num}%}'s y-coordinate by -0.1
+						else if {_num} = 4:
+							increase {_loc%{_num}%}'s z-coordinate by 0.3
+							increase {_loc%{_num}%}'s y-coordinate by -0.1
+						else if {_num} = 5:
+							increase {_loc%{_num}%}'s z-coordinate by 0.6
+							increase {_loc%{_num}%}'s y-coordinate by -0.2
+					else:
+						if {_num} = 1:
+							increase {_loc%{_num}%}'s x-coordinate by -0.6
+							increase {_loc%{_num}%}'s y-coordinate by -0.2
+						else if {_num} = 2:
+							increase {_loc%{_num}%}'s x-coordinate by -0.3
+							increase {_loc%{_num}%}'s y-coordinate by -0.1
+						else if {_num} = 4:
+							increase {_loc%{_num}%}'s x-coordinate by 0.3
+							increase {_loc%{_num}%}'s y-coordinate by -0.1
+						else if {_num} = 5:
+							increase {_loc%{_num}%}'s x-coordinate by 0.6
+							increase {_loc%{_num}%}'s y-coordinate by -0.2
+					add nbt from "{Rotation:[%{_e}'s yaw%f,%{_e}'s pitch%f]}" to nbt of {_x}
+					teleport {_x} to {_loc%{_num}%}
+		else:
+			stop loop
+		wait 2 ticks
+
+function IcicleHurlIceMage(e: entity, icicle: entity, target: entity):
+	set {_l} to location of {_icicle}
+	set {_yaw} to yaw of {_e}
+	set {_pitch} to pitch of {_e}
+	set yaw of {_l} to {_yaw}
+	set pitch of {_l} to {_pitch}
+	set {_targetLoc} to location 0.5 below {_target}
+	set {_rgb} to (rgb 106, 184, 230)
+	loop round(distance between {_l} and {_targetLoc}) / 0.7 times:
+		set {_targetLoc} to location 0.5 below {_target}
+		set {_vec} to vector between {_l} and {_targetLoc}
+		set vector length of {_vec} to loop-value * 1.4
+		teleport {_icicle} to {_l} ~ {_vec}
+		set {_icicleLoc} to location of {_icicle}
+		increase y-coordinate of {_icicleLoc} by 2 
+		draw 1 of dust using dustOption({_rgb}, 1) at {_icicleLoc}
+		stop loop if distance between {_e} and {_target} > 400
+		stop loop if distance between {_icicle} and {_target} < 1
+		wait 1 tick
+	kill {_icicle}
+	stop if distance between {_e} and {_target} > 400
+	play sound "skill.glaceon.flurry_impact" with volume 3 and pitch 1.3 at {_target}
+	set {_damage} to 0.5
+	set {_damageTooltip} to {_damage}*(tag "custom;MobDamageModifier" of nbt of {_e})
+	set {_damageGlacialSpike} to 5.5
+	set {_damageTooltipGlacialSpike} to {_damage}*(tag "custom;MobDamageModifier" of nbt of {_e})
+	set {_haste} to metadata value "Haste" of {_e}
+	set {_hastered} to 1 + (({_haste}/4)/100)
+	set {_wait} to 3/{_hastered}
+	set metadata value "LastDamageCauseEN" of {_target} to "<##14c8ff>Icicle"
+	set metadata value "LastDamageCause" of {_target} to "<##14c8ff>Sopelek"
+	set metadata value "Element" of {_e} to "Ice"
+	set metadata value "LastDamageCauseLoreEN" of {_target} to "<##14c8ff>Generates an Icicle every &f%{_wait}% sec<##14c8ff>.%nl%<##14c8ff>Upon reaching &f5 <##14c8ff>Icicles, hurl all%nl%<##14c8ff>stored Icicles and deal &f%{_damageTooltip}% <##add8e6>Ice <##14c8ff>damage%nl%<##14c8ff>to the target per Icicle. Every &f2 <##14c8ff>casts,%nl%<##14c8ff>combine all Icicles and hurl a Glacial Spike%nl%<##14c8ff>instead for &f%{_damageTooltipGlacialSpike}% <##add8e6>Ice <##14c8ff>damage."
+	set metadata value "LastDamageCauseLore" of {_target} to "<##14c8ff>Co &f%{_wait}% sek<##14c8ff>, wygeneruj Sopelek<##14c8ff>.%nl%<##14c8ff>Po uzyskaniu &f5 <##14c8ff>Sopelków, wystrzel%nl%<##14c8ff>wszystkie Sopelki, by zadać &f%{_damageTooltip}% <##14c8ff>obrażeń <##add8e6>Lodu%nl%<##14c8ff>celowi na każdy Sopelek. Co &f2 <##14c8ff>rzucenia,%nl%<##14c8ff>zaklęcia, połącz wszystkie Sopelki w Lodowcowy Kolec,%nl%<##14c8ff>by zadać &f%{_damageTooltipGlacialSpike}% <##14c8ff>obrażeń <##add8e6>Lodu<##14c8ff>."
+	make {_e} damage {_target} by {_damage}*2
+
+function IciclesHurlIceMage(e: entity, target: entity):
+	play sound "skill.glaceon.icelance_hurl" with volume 2.75 and pitch 1.15 at {_e}
+	loop 5 times:
+		set {_icicle} to metadata value "Icicle%loop-number%" of {_e}
+		IcicleHurlIceMage({_e}, {_icicle}, {_target})
+		clear metadata value "Icicle%Loop-number%" of {_e}
+		wait 2 ticks
+	if {_e} is alive:
+		set metadata value "Icicles" of {_e} to 0
+	else:
+		clear metadata value "Icicles" of {_e}
+
+function IciclesIceMage(e: entity):
+	while {_e} is alive:
+		set {_haste} to metadata value "Haste" of {_e}
+		set {_hastered} to 1 + (({_haste}/4)/100)
+		set {_wait} to 3/{_hastered}
+		set {_wait} to ("%{_wait}% seconds" parsed as timespan)
+		if target of {_e} is set:
+			set {_target} to target of {_e}
+			if {_e}'s world = {_target}'s world:
+				if distance between {_e} and {_target} < 400:
+					set {_icicles} to metadata value "Icicles" of {_e}
+					if {_icicles} < 5:
+						add 1 to {_icicles}
+						IcicleFormIceMage({_e}, {_icicles})
+						set metadata value "Icicles" of {_e} to {_icicles}
+						play sound "skill.glaceon.frostbolt_hurl" with volume 2.75 and pitch 1.65 at {_e}
+					else:
+						set {_abilityCount} to metadata value "AbilityCountIceMage" of {_e}
+						add 1 to {_abilityCount}
+						if {_abilityCount} = 2:
+							GlacialSpikeIceMageForm({_e}, {_target})
+							set {_abilityCount} to 0
+						else:
+							IciclesHurlIceMage({_e}, {_target})
+						set metadata value "AbilityCountIceMage" of {_e} to {_abilityCount}
+				else:
+					clear target of {_e}
+			else:
+				clear target of {_e}
+		wait {_wait}
+
+function GlacialSpikeIceMage(e: entity) :: entity:
+	set {_loc} to {_e}'s location
+	increase {_loc}'s y-coordinate by 0.4
+	spawn 1 armor stand at {_loc} with nbt from "{Invisible:1b,Marker:1b}"
+	set {_x} to last spawned armor stand
+	set {_x}'s helmet to stick named "Glacial Spike"
+	return {_x}
+
+function GlacialSpikeIceMageMove(p: player, x: entity):
+	while metadata value "GlacialSpikeIceMage" of {_e} is set:
+		if {_x} is alive:
+			if {_e} is alive:
+				set {_loc} to {_e}'s location
+				increase {_loc}'s y-coordinate by 0.4
+				add nbt from "{Rotation:[%{_e}'s yaw%f,%{_e}'s pitch%f]}" to nbt of {_x}
+				teleport {_x} to {_loc}
+			else:
+				kill metadata value "GlacialSpikeIceMage" of {_e}
+				clear metadata value "GlacialSpikeIceMage" of {_e}
+				stop loop
+		wait 2 ticks
+
+function GlacialSpikeIceMageHurl(e: entity, glacialspike: entity, target: entity):
+	set {_l} to location of {_glacialspike}
+	set {_yaw} to yaw of {_e}
+	set {_pitch} to pitch of {_e}
+	set yaw of {_l} to {_yaw}
+	set pitch of {_l} to {_pitch}
+	set {_targetLoc} to location 0.5 below {_target}
+	loop round(distance between {_l} and {_targetLoc}) / 0.75 times:
+		set {_targetLoc} to location 0.5 below {_target}
+		set {_vec} to vector between {_l} and {_targetLoc}
+		set vector length of {_vec} to loop-value * 1.5
+		teleport {_glacialspike} to {_l} ~ {_vec}
+		set {_glacialspikeLoc} to location of {_glacialspike}
+		increase y-coordinate of {_glacialspikeLoc} by 2 
+		draw 1 of dust using dustOption({_rgb}, 1) at {_glacialspikeLoc}
+		stop loop if distance between {_e} and {_target} > 400
+		stop loop if distance between {_glacialspike} and {_target} < 1
+		wait 1 tick
+	kill {_glacialspike}
+	stop if distance between {_e} and {_target} > 400
+	play sound "skill.glaceon.glacial_spike_hit" with volume 3 and pitch 1.6 at {_target}
+	play sound "skill.glaceon.glacial_spike_impact" with volume 3 and pitch 1.6 at {_target}
+	set {_damage} to 0.5
+	set {_damageGlacialSpike} to 5.5
+	set {_damageTooltipGlacialSpike} to {_damageGlacialSpike}*(tag "custom;MobDamageModifier" of nbt of {_e})
+	set {_damageTooltip} to {_damage}*(tag "custom;MobDamageModifier" of nbt of {_e})
+	set {_haste} to metadata value "Haste" of {_e}
+	set {_hastered} to 1 + (({_haste}/4)/100)
+	set {_wait} to 3/{_hastered}
+	set metadata value "LastDamageCauseEN" of {_target} to "<##14c8ff>Glacial Spike"
+	set metadata value "LastDamageCause" of {_target} to "<##14c8ff>Lodowcowy Kolec"
+	set metadata value "Element" of {_e} to "Ice"
+	set metadata value "LastDamageCauseLoreEN" of {_target} to "<##14c8ff>Generates an Icicle every &f%{_wait}% sec<##14c8ff>.%nl%<##14c8ff>Upon reaching &f5 <##14c8ff>Icicles, hurl all%nl%<##14c8ff>stored Icicles and deal &f%{_damageTooltip}% <##add8e6>Ice <##14c8ff>damage%nl%<##14c8ff>to the target per Icicle. Every &f2 <##14c8ff>casts,%nl%<##14c8ff>combine all Icicles and hurl a Glacial Spike%nl%<##14c8ff>instead for &f%{_damageTooltipGlacialSpike}% <##add8e6>Ice <##14c8ff>damage."
+	set metadata value "LastDamageCauseLore" of {_target} to "<##14c8ff>Co &f%{_wait}% sek<##14c8ff>, wygeneruj Sopelek<##14c8ff>.%nl%<##14c8ff>Po uzyskaniu &f5 <##14c8ff>Sopelków, wystrzel%nl%<##14c8ff>wszystkie Sopelki, by zadać &f%{_damageTooltip}% <##14c8ff>obrażeń <##add8e6>Lodu%nl%<##14c8ff>celowi na każdy Sopelek. Co &f2 <##14c8ff>rzucenia,%nl%<##14c8ff>zaklęcia, połącz wszystkie Sopelki w Lodowcowy Kolec,%nl%<##14c8ff>by zadać &f%{_damageTooltipGlacialSpike}% <##14c8ff>obrażeń <##add8e6>Lodu<##14c8ff>."
+	make {_e} damage {_target} by {_damageGlacialSpike}*2
+
+function GlacialSpikeIceMageForm(e: entity, target: entity):
+	if {_e} is alive:
+		set {_icicles} to metadata value "Icicles" of {_e}
+		play sound "skill.glaceon.glacial_spike_precast" with volume 3 and pitch 1.6 at {_e}
+		loop {_icicles} times:
+			set {_damage} to 1.5
+			set {_rgb} to (rgb 106, 184, 230)
+			add {_damage} to {_totaldmgicicles}
+			clear {_damageicicles}
+			set {_haste} to metadata value "Haste" of {_e}
+			set {_hastered} to 1 + (({_haste}/4)/100)
+			set {_speed} to 0.15 / {_hastered}
+			set {_wait} to "%0.1 / {_hastered}% seconds" parsed as timespan
+			set {_icicleVisual} to metadata value "Icicle%loop-number%" of {_e}
+			clear metadata value "Icicle%loop-number%" of {_e}
+			set {_i} to metadata value "Icicles" of {_e}
+			set metadata value "Icicles" of {_e} to {_i} - 1
+			GlacialSpikeIceMageFormAnimation({_e}, {_icicleVisual})
+		set metadata value "GlacialSpikeIceMage" of {_e} to GlacialSpikeIceMage({_e})
+		GlacialSpikeIceMageMove({_e}, metadata value "GlacialSpikeIceMage" of {_e})
+		set metadata value "IciclesTotalDmg" of {_e} to {_totaldmgicicles}
+		wait 2 seconds
+		stop sound "skill.glaceon.glacial_spike_precast" for all players in radius 20 around {_target}
+		play sound "skill.glaceon.glacial_spike_cast" with volume 3 and pitch 1.6 at {_e}
+		if {_e} is alive:
+			GlacialSpikeIceMageHurl({_e}, metadata value "GlacialSpikeIceMage" of {_e}, {_target})
+		else:
+			kill metadata value "GlacialSpikeIceMage" of {_e}
+			clear metadata value "GlacialSpikeIceMage" of {_e}
+
+function GlacialSpikeIceMageFormAnimation(e: entity, icicleVisual: entity):
+	set {_loc} to {_e}'s location
+	increase {_loc}'s y-coordinate by 0.2
+	set {_haste} to metadata value "Haste" of {_e}
+	set {_hastered} to 1 + (({_haste}/4)/100)
+	set {_speed} to 0.15 / {_hastered}
+	set {_wait} to "%0.1 / {_hastered}% seconds" parsed as timespan
+	set {_l} to location of {_icicleVisual}
+	set yaw of {_l} to 90
+	set yaw of {_l} to {_yaw}
+	set pitch of {_l} to {_pitch}
+	loop round(distance between {_l} and {_loc}) / {_speed} times:
+		set {_loc} to {_e}'s location
+		increase {_loc}'s y-coordinate by 0.2
+		set yaw of {_loc} to 90
+		set {_vec} to vector between {_l} and {_loc}
+		set vector length of {_vec} to loop-value * {_speed}
+		teleport {_icicleVisual} to {_l} ~ {_vec}
+		wait {_wait}
+	kill {_icicleVisual}
+
+function SummonIceRainIceCaller(e: entity):
+	set {_eligibleBlocks::*} to "grass block"
+	#summons a rain of ice blocks, when they fall they explode after a few seconds
+	wait 1.5 seconds
+	set {_casttime} to 4 seconds
+	set {_cast} to 4
+	while {_e} is alive:
+		set {_haste} to metadata value "Haste" of {_e}
+		set {_hastered} to 1 + (({_haste}/4)/100)
+		set {_wait} to 19.5/{_hastered}
+		set {_wait} to ("%{_wait}% seconds" parsed as timespan)
+		play sound "entity.evoker.prepare_summon" with volume 4 and pitch 1.35 at {_e}
+		set {_num} to a random number between 8 and 16
+		loop all blocks in radius 7 around {_e}:
+			if {_eligibleBlocks::*} contains "%type of loop-block%":
+				add loop-block to {_blocks::*}
+		loop {_num} times:
+			set {_x} to a random element of {_blocks::*}
+			spawn falling block of ice at location 15 above {_x}
+			set tag "custom;ECIceRainBlock" of nbt of last spawned falling block to uuid of {_e}
+			set {_randomWait} to a random number between 1 and 4
+			set {_randomWait} to "%{_randomWait}% ticks" parsed as timespan
+			wait {_randomWait}
+		clear {_blocks::*}
+		wait {_wait}
+
+on falling block land:
+	if event-entity = falling ice block:
+		if tag "custom;ECIceRainBlock" of nbt of event-entity is set:
+			play sound "block.glass.fall" with volume 2.5 and pitch 2 at event-location
+			wait 4 seconds
+			set block at event-location to air
+			play sound "block.glass.break" with volume 2.5 and pitch 1 at event-location
+			IceRainDamageEnemies(event-entity, event-location)
+			draw 8 block particle using ice at event-location with offset vector(0.4, 0.5, 0.4) with extra 0.03
+
+function IceRainDamageEnemies(e: entity, loc: location):
+	set {_damage} to 0.9
+	set {_caster} to (tag "custom;ECIceRainBlock" of nbt of {_e}) parsed as entity
+	set {_crowdcontrol} to metadata value "Crowd Control" of {_caster}
+	set {_radius} to 3 + {_crowdcontrol}/25
+	loop all entities in radius {_radius} around {_loc}:
+		if loop-entity is a player:
+			if loop-entity is alive:
+				set {_damageTooltip} to {_damage}*(tag "custom;MobDamageModifier" of nbt of {_caster})
+				set metadata value "LastDamageCauseEN" of loop-entity to "<##3da5f5>Ice Rain"
+				set metadata value "LastDamageCause" of loop-entity to "<##3da5f5>Deszcz Lodu"
+				set metadata value "Element" of {_caster} to "Ice"
+				set metadata value "LastDamageCauseLore" of loop-entity to "<##3da5f5>Wzywa deszcz lodu, przywołując &f8-16 <##3da5f5>bloków%nl%<##3da5f5>lodu, które po &f4 sek <##3da5f5>po spadnięciu%nl%<##3da5f5>zadadzą &f%{_damageTooltip}% obrażeń <##add8e6>Lodu <##3da5f5>wszystkim%nl%<##3da5f5>wrogom w zasięgu &f%{_radius}% <##3da5f5>kratek."
+				set metadata value "LastDamageCauseLoreEN" of loop-entity to "<##3da5f5>Calls down an ice rain, summoning &f8-16 <##3da5f5>blocks%nl%<##3da5f5>of ice which explode after &f4 sec <##3da5f5>of landing.%nl%<##3da5f5>The explosion will deal &f%{_damageTooltip}% <##add8e6>Ice <##3da5f5>damage to%nl%<##3da5f5>all enemies in radius &f%{_radius}% <##3da5f5>around the area."
+				make {_caster} damage loop-entity by {_damage}*2
+
+function HasteAuraIceCaller(e: entity):
+	wait 7.5 seconds
+	set {_casttime} to 12 seconds
+	set {_cast} to 12
+	while {_e} is alive:
+		set {_haste} to metadata value "Haste" of {_e}
+		set {_hastered} to 1 + (({_haste}/4)/100)
+		set {_wait} to 22/{_hastered}
+		set {_wait} to ("%{_wait}% seconds" parsed as timespan)
+		loop all entities in radius 10 around {_e} where [tag "custom;ECMob" of nbt of input is set]:
+			if loop-entity != {_e}:
+				if loop-entity is alive:
+					if tag "custom;ECIceCaller" of nbt of loop-entity is not set:
+						add loop-entity to {_entities::*}
+		if {_entities::*} is set:
+			play sound "entity.evoker.prepare_wololo" with volume 4 and pitch 1.35 at {_e}
+			if ((tag "custom;ECTextAboveCastBar" of nbt of {_e}) parsed as entity) is not alive:
+				spawn armor stand at location (tag "custom;ECModelHeight" of nbt of {_e}) + 1 above {_e} with nbt from "{Marker:1b,Invisible:1b}"
+				set tag "custom;ECTextAboveCastBar" of nbt of {_e} to uuid of last spawned armor stand
+			else:
+				set {_castBar} to (tag "custom;ECTextAboveCastBar" of nbt of {_e}) parsed as entity
+			if metadata value "cast" of {_e} is not set:
+				set metadata value "casting" of {_e} to true
+				set metadata value "cast" of {_e} to {_casttime}
+				while metadata value "casting" of {_e} = true:
+					if metadata value "cast" of {_e} is not set:
+						clear metadata value "casting" of {_e}
+						stop
+					if {_casttime} > 0 seconds:
+						teleport {_castBar} to location 2.3 above {_e}
+						if {_hasteEffect} is set:
+							set display name of {_castBar} to "Casting <##14c8ff>Haste Aura&f... %{_casttime}% (<##19943e> %{_hasteEffect}%&f)"
+						else:
+							set display name of {_castBar} to "Casting <##14c8ff>Haste Aura&f... %{_casttime}%"
+						if {_cast} is divisible by 2:
+							HasteAuraEffectIceCaller({_e}, {_entities::*})
+							add 20 to {_hasteEffect}
+							play sound "block.amethyst_block.resonate" with volume 3 and pitch {_hasteEffect}/60 at {_e}
+							if {_hasteEffect} = 120:
+								play sound "entity.generic.explode" with volume 3 and pitch 2 at {_e}
+						wait 0.1 seconds
+						remove 0.1 seconds from {_casttime}
+						remove 0.1 from {_cast}
+					else:
+						clear metadata value "casting" of {_e}
+						stop loop
+					stop if {_e} is not alive
+			else:
+				stop
+			clear metadata value "casting" of {_e}
+			clear metadata value "cast" of {_e}
+			clear {_radius}
+			if {_casttime} > 0 seconds:
+				InterruptHideCastBar({_castBar})
+				stop
+			kill {_castBar}
+			loop {_entities::*}:
+				if loop-value is alive:
+					HasteDeplete(loop-value, {_haste::%uuid of loop-value%})
+				else:
+					clear metadata value "Haste" of loop-value
+		clear {_entities::*}
+		clear {_haste::*}
+		wait {_wait}	
+
+function HasteAuraEffectIceCaller(e: entity, entities: entities):
+	loop {_entities::*}:
+		if loop-value is alive:
+			set {_hasteEntity} to metadata value "Haste" of loop-value
+			add 20 to {_hasteEntity}
+			set metadata value "Haste" of loop-value to {_hasteEntity}
+			add 20 to {_haste::%uuid of loop-value%}
+		else:
+			clear metadata value "Haste" of loop-value	
+
+function HasteDeplete(e: entity, haste: number):
+	wait 6 seconds
+	if {_e} is alive:
+		set {_hasteEntity} to metadata value "Haste" of {_e}
+		remove {_haste} from {_hasteEntity}
+		set metadata value "Haste" of {_e} to {_hasteEntity}
+	else:
+		clear metadata value "Haste" of {_e}
+
+function PolarBeastPathfind(e: entity, target: entity, leftright: integer):
+	while {_e} is alive:
+		if {_target}'s target is not set:
+			if {_leftright} = 1:
+				if {_target}'s horizontal facing is north or south:
+					make {_e} pathfind to block 1 east of {_target}
+				else:
+					make {_e} pathfind to block 1 south of {_target}
+			else:
+				if {_target}'s horizontal facing is north or south:
+					make {_e} pathfind to block 1 west of {_target}
+				else:
+					make {_e} pathfind to block 1 north of {_target}
+		else:
+			set {_e}'s target to {_target}'s target
+		wait 1 second
+		
 function IceElementalAbiltiesInit(e: entity):
 	IceRingsCast({_e})
 	wait 8 seconds
@@ -126,6 +796,57 @@ function IceElementalAbiltiesInit(e: entity):
 	if {_e} is alive:
 		IceCubeEffect({_e})
 
+function FrostRiderMount(e: entity, mount: entity):
+	set owner of {_mount} to {_e}
+	tame {_mount} to {_e}
+	make {_e} ride {_mount}
+
+function SkeletalHorseGallop(e: entity):
+	set {_p} to 0.5
+	loop 3 times:
+		play sound "entity.horse.gallop" with volume 4 and pitch {_p} at {_e}
+		add 0.5 to {_p}
+		wait 0.67 seconds
+
+function KillCommandCast(e: entity):
+	wait 8 seconds
+	while {_e} is alive:
+		set {_haste} to metadata value "Haste" of {_e}
+		set {_hastered} to 1 + (({_haste}/4)/100)
+		set {_wait} to 16/{_hastered}
+		set {_wait} to ("%{_wait}% seconds" parsed as timespan)
+		if target of {_e} is set:
+			loop 2 times:
+				if target of {_e} is alive:
+					set {_fox} to (metadata value "PolarBeast%loop-number%" of {_e}) parsed as entity
+					if {_fox} is alive:
+						if {_played} is not true:
+							play sound "skill.beast_master.kill_command" with volume 4 and pitch 1 at {_e}
+							play sound "arena.ice.arcticcommanderyell" with volume 3.5 and pitch 1 at {_e}
+						remove speed from {_fox}
+						set {_potion} to potion effect of speed of tier 5 without particles for 1 day
+						add {_potion} to potion effects of {_fox}
+						KillCommandPolarBeast({_fox}, {_e}, target of {_e})
+						make {_fox} pathfind to (target of {_e})
+						set target of {_fox} to target of {_e}
+						set {_played} to true
+			clear {_played}
+		wait {_wait}
+		
+function KillCommandPolarBeast(e: entity, commander: entity, target: entity):
+	while distance between {_e} and {_target} > 2:
+		wait 2 ticks
+	set {_damage} to 2.25
+	set {_damageTooltip} to {_damage}*(tag "custom;MobDamageModifier" of nbt of {_commander})
+	set metadata value "LastDamageCauseEN" of {_target} to "<##bd402d>Kill Command"
+	set metadata value "LastDamageCause" of {_target} to "<##bd402d>Komenda Zabójstwa"
+	set metadata value "Element" of {_commander} to "Beast"
+	set metadata value "LastDamageCauseLore" of {_target} to "<##bd402d>Rozkazuje swoim bestiom by brutalnie%nl%<##bd402d>zadać &f%{_damageTooltip}% obrażeń <##7a0000>Bestii <##bd402d>celowi."
+	set metadata value "LastDamageCauseLoreEN" of {_target} to "<##bd402d>Commands their beasts to savagely deal &f%{_damageTooltip}%%nl%<##7a0000>Beast <##bd402d>damage to their target."
+	make {_commander} damage {_target} by {_damage}*2
+	remove speed from {_e}
+	set {_potion} to potion effect of speed of tier 1 without particles for 1 day
+	add {_potion} to potion effects of {_e}
 
 function IceElementalAmbientSounds(e: entity):
 	while {_e} is alive:
@@ -142,6 +863,20 @@ function SnowBombarderAmbientSounds(e: entity):
 		set {_wait} to "%{_waitSec}% seconds" parsed as timespan
 		wait {_wait}
 		
+function SkeletalHorseAmbientSounds(e: entity):
+	while {_e} is alive:
+		play sound "entity.skeleton_horse.ambient" with volume 3.75 and pitch 1.3 at {_e}
+		set {_waitSec} to a random number between 4 and 8
+		set {_wait} to "%{_waitSec}% seconds" parsed as timespan
+		wait {_wait}
+
+function IceCallerAmbientSounds(e: entity):
+	while {_e} is alive:
+		play sound "entity.evoker.ambient" with volume 3.75 and pitch 0.875 at {_e}
+		set {_waitSec} to a random number between 4 and 8
+		set {_wait} to "%{_waitSec}% seconds" parsed as timespan
+		wait {_wait}
+		
 on rightclick:
 	#set {_use} to a random interger between 1 and 2 if {_use} = 1... używa umki tylko 50 procent razy
 	#Icy Breath
@@ -151,71 +886,29 @@ on rightclick:
 	#if player's tool is emerald named "Ice Mage":
 	#if player's tool is emerald named "Arctic Commander": #beast master z ice bearami lub ice foxami
 	#Lodowy Jeździec, Arctic Commander, Ice Mage, Ice Beast, Ice Caller, Ice Bombardeer
-	if player's tool is emerald named "Frost Knight":
-		spawn 1 skeleton at player
-		set {_moblevel} to a random integer between 20 and 40
-		set {_hp} to 30*{_moblevel}
-		set {_xp} to 45 + (({_moblevel}/20 * 25)-25)
-		set the name of last spawned skeleton to "&b(&f%{_moblevel}% Lv.&b) <##4683b3>Frost Knight &b[&f%{_hp}%&c♥&b]"
-		set the max health of last spawned skeleton to {_hp}
-		heal last spawned skeleton
-		silence last spawned skeleton
-		set helmet of last spawned skeleton to diamond helmet
-		set last spawned skeleton's tool to diamond sword
-		set {_u} to uuid of last spawned skeleton
-		set {mob::%last spawned skeleton%} to true
-		set {testentity::%last spawned skeleton%} to true
-		set {expyield::%last spawned skeleton%} to {_xp}
-		set {element::%last spawned skeleton%} to "Ice"
-		set {poziommob::%last spawned skeleton%} to {_moblevel}
-		set {mobexplod::%last spawned skeleton%} to true
-		execute console command "/disguuid %{_u}% player FrostKnight setCustomName ""Frost Knight"" setskin FrostKnight setHelmet air setDynamicName true setCustomNameVisible true"
-		apply slowness of tier 0.4 without particles to last spawned skeleton for 99999 seconds
-		set {_s} to last spawned zombie
-	if player's tool is emerald named "Lodowy Jeździec":
-		spawn 1 skeleton horse at player
-		set {_h} to last spawned skeleton horse
-		set max health of last spawned skeleton horse to 600
-		heal last spawned skeleton horse
-		set the name of last spawned skeleton horse to "Lodowy Mount"
-		apply potion of speed 1.2 without particles to last spawned horse
-		set {mob::%last spawned skeleton horse%} to true
-		spawn 1 zombie at player
-		set the name of last spawned zombie to "Lodowy Jeździec"
-		set {_u} to uuid of last spawned zombie
-		set max health of last spawned zombie to 400
-		heal last spawned zombie
-		set {mob::%last spawned zombie%} to true
-		make last spawned zombie ride {_h}
-		equip last spawned zombie with bow
-		set last spawned zombie's held item to diamond sword
-		execute console command "/disguuid %{_u}% player icewarrior setDynamicName true setCustomNameVisible true"
-		tame {_h} to last spawned zombie
-		make last spawned zombie ride {_h}
-		silence last spawned zombie
 
-on damage:
-	if {mob::%attacker%} is true:
-		if name of attacker contains "<##4683b3>Frost Knight":
-			if victim does not have slowness:
-				apply slowness of tier 2 without particles to victim for 12 seconds
-			else:
-				remove slowness from victim
-				apply slowness of tier 2 without particles to victim for 12 seconds
-			set {_frostStrikes} to metadata value "Frost Strikes%victim%" of attacker
-			add 1 to {_frostStrikes}
-			play sound "skill.fury_warrior.slash" with volume 3 and pitch 1 at attacker
-			if {_frostStrikes} = 3:
-				make attacker swing their offhand
-				set {_damage} to 12
-				make attacker damage victim by {_damage}*(({poziommob::%attacker%}/20))
-				clear metadata value "Frost Strikes%victim%" of attacker
-				wait 0.3 seconds
-				play sound "skill.fury_warrior.slash" with volume 3 and pitch 1 at attacker
-
+function FrostStrikes(a: entity, v: entity, w: timespan = 0 ticks):
+	wait 1 tick
+	wait {_w}
+	set {_damage} to 2.7
+	set {_damageTooltip} to {_damage}*(tag "custom;MobDamageModifier" of nbt of {_a})
+	set metadata value "LastDamageCauseEN" of {_v} to "<##4683b3>Frost Strikes"
+	set metadata value "LastDamageCause" of {_v} to "<##4683b3>Ciosy Mrozu"
+	set metadata value "Element" of {_a} to "Ice"
+	set metadata value "LastDamageCauseLore" of {_v} to "<##4683b3>Zadaje celowi &f%{_damageTooltip}% <##4683b3>obrażeń <##add8e6>Lodu<##4683b3>.%nl%<##4683b3>Co &f2 <##4683b3>pomyślnie ciosy na przeciwniku, Rycerz Mrozu%nl%<##4683b3>uderzy dwukrotnie."
+	set metadata value "LastDamageCauseLoreEN" of {_v} to "<##4683b3>Deals &f%{_damageTooltip}% <##add8e6>Ice <##4683b3>damage to the target.%nl%<##4683b3>Every &f2 <##4683b3>successful hits on the enemy,%nl%<##4683b3>the Frost Knight will strike twice."
+	draw 10 block particle using blue ice at {_a} with offset vector(0.4, 0.5, 0.4) with extra 0.03
+	if {_w} != 0 ticks:
+		play sound "skill.fury_warrior.slash" with volume 2 and pitch 1.2 at {_a}
+		draw 5 block particle using packed ice at {_a} with offset vector(0.4, 0.5, 0.4) with extra 0.03
+		draw 5 block particle using ice at {_a} with offset vector(0.4, 0.5, 0.4) with extra 0.03
+		make {_a} swing their offhand
+		make {_a} attack {_v}
+	else:
+		play sound "skill.fury_warrior.slash" with volume 2 and pitch 1 at {_a}
 on shoot:
 	if tag "custom;ECMob" of nbt of shooter is set:
-		if name of shooter contains "Snow Bombarder" or "Snowman":
+		if tag "custom;ECSnowBombarder" of nbt of shooter is set:
 			cancel event
 			set {_count} to metadata value "SnowBarrageCount" of shooter
 			add 1 to {_count}
@@ -228,17 +921,27 @@ on shoot:
 							spawn snowball at location 1.5 above shooter
 							set metadata value "SnowBombarder" of last spawned snowball to (uuid of shooter)
 							push last spawned snowball (vector from shooter to {_target}) with speed 2
+							play sound "block.snow.hit" with volume 3 and pitch 1 at shooter
 							wait 4 ticks
 			if {_count} = 4:
 				set {_count} to metadata value "SnowBarrageCount" of shooter
 				remove 4 from {_count}
 				set metadata value "SnowBarrageCount" of shooter to {_count}
-		else if name of shooter = "&fIce Elemental":
+		else if tag "custom;ECIceCaller" of nbt of shooter is set:
+			cancel event
+		else if tag "custom;ECIceMage" of nbt of shooter is set:
+			cancel event
+		else if tag "custom;ECMingHua" of nbt of shooter is set:
+			cancel event
+		else if tag "custom;ECIceElemental" of nbt of shooter is set:
 			cancel event
 			set {_count} to metadata value "IceShardCount" of shooter
 			add 1 to {_count}
 			set metadata value "IceShardCount" of shooter to {_count}
-			if {_count} is divisible by 2:
+			set {_haste} to metadata value "Haste" of shooter
+			set {_hastered} to 1 + (({_haste}/4)/100)
+			set {_divis} to rounded (3/{_hastered})
+			if {_count} is divisible by {_divis}:
 				set {_target} to target of shooter
 				if {_target} is set:
 					if {_target} is a player:
@@ -281,8 +984,6 @@ function IceRingsEffect(e: entity, radius: number):
 function IceRingsCast(e: entity):
 	while {_e} is alive:
 		set {_haste} to metadata value "Haste" of {_e}
-		set {_crowdcontrol} to metadata value "Crowd Control" of {_e}
-		set {_radius} to 0 + {_crowdcontrol}/25
 		set {_hastered} to 1 + (({_haste}/4)/100)
 		set {_wait} to 12/{_hastered}
 		set {_wait} to ("%{_wait}% seconds" parsed as timespan)
@@ -299,6 +1000,20 @@ function IceRingsCast(e: entity):
 		else:
 			set {_wait} to 6/{_hastered}
 			set {_wait} to ("%{_wait}% seconds" parsed as timespan)
+		wait {_wait}
+
+function SkeletalHorseCharge(e: entity):
+	wait 4 seconds
+	while {_e} is alive:
+		set {_haste} to metadata value "Haste" of {_e}
+		set {_hastered} to 1 + (({_haste}/4)/100)
+		set {_wait} to 15/{_hastered}
+		set {_wait} to ("%{_wait}% seconds" parsed as timespan)
+		set {_p} to nearest player around {_e}
+		if {_p} is set:
+			set {_potion} to potion effect of speed of tier 5.89 without particles for 3 seconds
+			SkeletalHorseGallop({_e})
+			add {_potion} to potion effects of {_e}
 		wait {_wait}
 
 function IceRings(e: entity):
@@ -358,7 +1073,7 @@ function IceCube(e: entity):
 			if {_casttime} > 0 seconds:
 				teleport {_castBar} to location 1.75 above {_e}
 				set display name of {_castBar} to "Casting <##14c8ff>Summon Ice Cubes&f... %{_casttime}%"
-				if {_cast} is divisible by 1:
+				if {_cast} is divisible by 2:
 					set {_sum} to metadata value "Summoned" of {_e}
 					if {_sum} < 5:
 						IceCubeSpawn({_e})
@@ -382,8 +1097,6 @@ function IceCube(e: entity):
 function IceCubeEffect(e: entity):
 	while {_e} is alive:
 		set {_haste} to metadata value "Haste" of {_e}
-		set {_crowdcontrol} to metadata value "Crowd Control" of {_e}
-		set {_radius} to 0 + {_crowdcontrol}/25
 		set {_hastered} to 1 + (({_haste}/4)/100)
 		set {_wait} to 40/{_hastered}
 		set {_wait} to ("%{_wait}% seconds" parsed as timespan)
@@ -422,7 +1135,6 @@ function IceCubeSpawn(e: entity):
 		set {_slime}'s max health to 6
 		set the display name of {_slime} to "&fIce Cube"
 		set tag "custom;ECElement" of nbt of {_slime} to "Ice"
-		set tag "custom;ECExpAreaIceMob" of nbt of {_slime} to true
 		set tag "custom;ECExpAreaMob" of nbt of {_slime} to true
 		set tag "custom;ECMob" of nbt of {_slime} to true
 		set {_mobLevel} to tag "custom;ECLvl" of nbt of {_e}
@@ -434,6 +1146,65 @@ function IceCubeSpawn(e: entity):
 		set display name of last spawned armor stand to "&a|||||||||| &f(100%%)"
 		set tag "custom;ECTextAbove" of nbt of {_slime} to uuid of last spawned armor stand
 		IcyAura({_slime})
+
+function SnowmanEffect(e: entity):
+	wait 10 seconds
+	while {_e} is alive:
+		set {_haste} to metadata value "Haste" of {_e}
+		set {_hastered} to 1 + (({_haste}/4)/100)
+		set {_wait} to 30/{_hastered}
+		set {_wait} to ("%{_wait}% seconds" parsed as timespan)
+		set {_sum} to metadata value "Summoned" of {_e}
+		if {_sum} < 2:
+			set {_p} to nearest player around {_e}
+			if {_p} is set:
+				if distance between {_e} and {_p} < 100:
+					SnowmanSpawn({_e}, {_p})
+				else:
+					set {_wait} to 15/{_hastered}
+					set {_wait} to ("%{_wait}% seconds" parsed as timespan)
+			else:
+				set {_wait} to 15/{_hastered}
+				set {_wait} to ("%{_wait}% seconds" parsed as timespan)
+		wait {_wait}
+
+function SnowmanSpawn(e: entity, player: player):
+	if {_e} is alive:
+		set {_sum} to metadata value "Summoned" of {_e}
+		add 1 to {_sum}
+		set metadata value "Summoned" of {_e} to {_sum}
+		spawn 1 skeleton at {_e}
+		set {_snowman} to last spawned skeleton
+		push {_snowman} (vector from {_e} to {_player}) with speed 2
+		play sound "block.snow.break" with volume 3 and pitch 1 at {_e}
+		
+		disguise {_snowman} as "SillySnowman"
+		set the display name of {_snowman} to "&fSilly Snowman"
+		set custom name of disguise of {_snowman} to "&fSilly Snowman"
+		set {_snowman}'s offhand item to snowball
+		set metadata value "Summoner" of {_snowman} to uuid of {_e}
+		set tag "custom;ECModelHeight" of nbt of {_snowman} to 1.55
+		set tag "custom;ECSnowBombarder" of nbt of {_snowman} to true
+		set tag "custom;ECSillySnowman" of nbt of {_snowman} to true
+		set {_snowman}'s max health to 8
+		set tag "custom;ECElement" of nbt of {_snowman} to "Ice"
+		set tag "custom;ECExpAreaMob" of nbt of {_snowman} to true
+		set tag "custom;ECMob" of nbt of {_snowman} to true
+		set {_snowmanLevel} to tag "custom;ECLvl" of nbt of {_e}
+		set tag "custom;ECLvl" of nbt of {_snowman} to {_snowmanLevel}
+		set {_maxHealthMob} to {_snowman}'s max health * Math.pow(1.076, ({_snowmanLevel}))
+		set {_snowman}'s max health to {_maxHealthMob}
+		heal {_snowman}
+
+		spawn 1 armor stand at {_snowman} with nbt from "{Marker:1b,Invulnerable:1b,Invisible:1b,CustomNameVisible:1,NoGravity:1b}"
+		set display name of last spawned armor stand to "&a|||||||||| &f(100%%)"
+		set tag "custom;ECTextAbove" of nbt of {_snowman} to uuid of last spawned armor stand
+
+		set {_level} to (tag "custom;ECTextAboveLevel" of nbt of {_e}) parsed as entity
+		set {_name} to display name of {_level}
+		spawn 1 armor stand at {_snowman} with nbt from "{Marker:1b,Invulnerable:1b,Invisible:1b,CustomNameVisible:1b,NoGravity:1b}"
+		set display name of last spawned armor stand to {_name}
+		set tag "custom;ECTextAboveLevel" of nbt of {_snowman} to uuid of last spawned armor stand
 			
 function IcyAura(e: entity):
 	while {_e} is alive:
@@ -450,15 +1221,12 @@ function IcyAura(e: entity):
 						apply slowness 2 without particles to loop-player for 3 seconds
 					set {_damage} to 0.2
 					set {_damageTooltip} to {_damage}*(tag "custom;MobDamageModifier" of nbt of {_e})
-					loop all players in radius {_r}*3 around {_e}:
-						if loop-player is alive:
-							if loop-player is online:
-								set metadata value "LastDamageCauseEN" of loop-value to "<##14c8ff>Icy Aura"
-								set metadata value "LastDamageCause" of loop-value to "<##14c8ff>Lodowa Aura"
-								set metadata value "Element" of {_e} to "Ice"
-								set metadata value "LastDamageCauseLoreEN" of loop-value to "<##14c8ff>Deals &f%{_damageTooltip}% <##add8e6>Ice <##14c8ff>damage to all players%nl%<##14c8ff>and slows them every couple seconds."
-								set metadata value "LastDamageCauseLore" of loop-value to "<##14c8ff>Zadaje &f%{_damageTooltip}% <##14c8ff>obrażeń <##add8e6>Lodu <##14c8ff>i spowalnia%nl%<##14c8ff>graczy co kilka sekund."
-								make {_e} damage loop-player by {_damage}*2
+					set metadata value "LastDamageCauseEN" of loop-value to "<##14c8ff>Icy Aura"
+					set metadata value "LastDamageCause" of loop-value to "<##14c8ff>Lodowa Aura"
+					set metadata value "Element" of {_e} to "Ice"
+					set metadata value "LastDamageCauseLoreEN" of loop-value to "<##14c8ff>Deals &f%{_damageTooltip}% <##add8e6>Ice <##14c8ff>damage to all players%nl%<##14c8ff>and slows them every couple seconds."
+					set metadata value "LastDamageCauseLore" of loop-value to "<##14c8ff>Zadaje &f%{_damageTooltip}% <##14c8ff>obrażeń <##add8e6>Lodu <##14c8ff>i spowalnia%nl%<##14c8ff>graczy co kilka sekund."
+					make {_e} damage loop-player by {_damage}*2
 		wait {_wait}
 
 function Snowball(e: entity):
@@ -522,11 +1290,628 @@ on projectile collide:
 			set {_bombarder} to (metadata value "SnowBombarder" of event-projectile) parsed as entity
 			set {_target} to event-entity
 			set {_damage} to 0.35
+			if tag "custom;ECSillySnowman" of nbt of {_bombarder} is set:
+				set {_damage} to {_damage}*0.5
 			set {_damageTooltip} to {_damage}*(tag "custom;MobDamageModifier" of nbt of {_bombarder})
 			set metadata value "LastDamageCauseEN" of {_target} to "&fSnow Barrage"
 			set metadata value "LastDamageCause" of {_target} to "&fBurza Śniegu"
-			set metadata value "Element" of {_e} to "Ice"
-			set metadata value "LastDamageCauseLoreEN" of {_target} to "&fStrzela śnieżką w cel, zadając %{_damageTooltip}% obrażeń <##add8e6>Lodu&f.%nl%&fZa każdym razem gdy Śniegowy Bombarder rzuci śnieżką,%nl%&frzuci o 1 więcej przy następnym użyciu umiejętności, aż%nl%&fdo 4, kiedy liczba się zresetuje."
-			set metadata value "LastDamageCauseLore" of {_target} to "&fShoots a snowball at the target, dealing %{_damageTooltip}% <##add8e6>Ice damage.%nl%&fEach time the Snow Bombarder shoots a snowball,%nl%&fthey will shoot 1 more the next time they cast this ability,%nl%&fup to 4. Then the count will reset."
+			set metadata value "Element" of {_bombarder} to "Ice"
+			set metadata value "LastDamageCauseLore" of {_target} to "&fStrzela śnieżką w cel, zadając %{_damageTooltip}% obrażeń <##add8e6>Lodu&f.%nl%&fZa każdym razem gdy Śniegowy Bombarder rzuci śnieżką,%nl%&frzuci o 1 więcej przy następnym użyciu umiejętności, aż%nl%&fdo 4, kiedy liczba się zresetuje."
+			set metadata value "LastDamageCauseLoreEN" of {_target} to "&fShoots a snowball at the target, dealing %{_damageTooltip}% <##add8e6>Ice damage.%nl%&fEach time the Snow Bombarder shoots a snowball,%nl%&fthey will shoot 1 more the next time they cast this ability,%nl%&fup to 4. Then the count will reset."
 			make {_bombarder} damage {_target} by {_damage}*2
 		clear metadata value "SnowBombarder" of event-projectile
+	else if tag "custom;ECArcticCommander" of nbt of shooter is set:
+		if event-entity is a player:
+			set {_damage} to 1
+			set {_damageTooltip} to {_damage}*(tag "custom;MobDamageModifier" of nbt of shooter)
+			set metadata value "LastDamageCauseEN" of {_target} to "<##ababab>Crossbow Shot"
+			set metadata value "LastDamageCause" of {_target} to "<##ababab>Strzał z Kuszy"
+			set metadata value "Element" of {_shooter} to "Fight"
+			set metadata value "LastDamageCauseLore" of {_target} to "<##ababab>Strzela z kuszy w cel,%nl%<##ababab>zadając &f%{_damageTooltip}% <##ababab>obrażeń <##953301>Walki<##ababab>."
+			set metadata value "LastDamageCauseLoreEN" of {_target} to "<##ababab>Shoots a target from a%nl%<##ababab>crossbow, dealing &f%{_damageTooltip}% <##953301>Fight <##ababab>damage."
+			make shooter damage {_target} by {_damage}*2
+
+function ExpAreaIceMobDrop(p: player, e: entity, dropChanceMultiplier: number, type: string):
+	set {_mobLevel} to (tag "custom;ECLvl" of nbt of {_e})
+	if {_mobLevel} is not a number:
+		set {_mobLevel} to rounded ({_mobLevel} parsed as number)
+	set {_starFactor} to (1 + ({_mobLevel}/100))
+	set {_ilvlFactor} to (1 + ({_mobLevel}/100)) 
+	set {_starLevelDrop} to a random number between 0 and 100
+
+	set {_cardType} to tag "PrimaryStat" of nbt of {karta::%{_p}%}
+	if {_type} = "mob":
+		#Artifacts
+		chance of 6*{_dropChanceMultiplier}%:
+			#Determines the random item drop
+			if tag "custom;ECFrostKnight" of nbt of {_e} is set:
+				if {language::%{_p}%} = "English":
+					set {_lootItem} to "Winter's Eon"
+				else:
+					set {_lootItem} to "Wieczna Zima"
+			else if tag "custom;ECArcticCommander" of nbt of {_e} is set:
+				if {language::%{_p}%} = "English":
+					set {_lootItem} to "Winter's Eon"
+				else:
+					set {_lootItem} to "Wieczna Zima"
+			else if tag "custom;ECIceCaller" of nbt of {_e} is set:
+				if {language::%{_p}%} = "English":
+					set {_lootItem} to "Morning Frost"
+				else:
+					set {_lootItem} to "Poranny Mróz"
+			else if tag "custom;ECPolarBear" of nbt of {_e} is set:
+				if {language::%{_p}%} = "English":
+					set {_lootItem} to "Morning Frost"
+				else:
+					set {_lootItem} to "Poranny Mróz"
+			else if tag "custom;ECIceElemental" of nbt of {_e} is set:
+				if {language::%{_p}%} = "English":
+					set {_lootItem} to "Glacial Heart"
+				else:
+					set {_lootItem} to "Oziębłe Serce"
+			else if tag "custom;ECSnowBombarder" of nbt of {_e} is set:
+				if {language::%{_p}%} = "English":
+					set {_lootItem} to "Glacial Heart"
+				else:
+					set {_lootItem} to "Oziębłe Serce"
+			else if tag "custom;ECFrostRider" of nbt of {_e} is set:
+				if {language::%{_p}%} = "English":
+					set {_lootItem} to "Icy Memorial"
+				else:
+					set {_lootItem} to "Lodowy Memoriał"
+			else if tag "custom;ECIceMage" of nbt of {_e} is set:
+				if {language::%{_p}%} = "English":
+					set {_lootItem} to "Icy Memorial"
+				else:
+					set {_lootItem} to "Lodowy Memoriał"
+			if {_lootItem} is set:
+
+				#Assigns the star level and an appropriate item level
+				set {_chance2Star} to 21.5 ^ {_starFactor}
+				set {_chance3Star} to 0.3 ^ {_starFactor}
+				if {_starLevelDrop} is between 0 and {_chance3Star}:
+					#Drops a 3 star artifact
+					set {_starlvl} to 3
+				else if {_starLevelDrop} is between {_chance3Star}+0.001 and {_chance2Star}:
+					#Drops a 2 star artifact
+					set {_starlvl} to 2
+				else:
+					#Drops a 1 star artifact
+					set {_starlvl} to 1
+				set {_ilvl} to ArtifactStarLevel({_starlvl}, {_mobLevel})
+				giveItem({_p}, Artifact({_lootItem}, {_starlvl}, {_ilvl}))
+				play sound "block.enchantment_table.use" with volume 3 and pitch 2 to {_p}
+				send "&d&oReceived &f%{_lootItem}% &e(Ilvl %{_ilvl}%&e, Star Level: %{_starlvl}%) &d&ofrom %name of {_e}%&d&o." to {_p}
+				play sound "entity.chicken.egg" with volume 3 and pitch 0 to {_p}
+		#Gear
+		chance of 0%:
+			#Determines the random item drop
+			set {_lootTableGear::*} to "xx", "Princess Yue's Locket", "Waterbending Scroll" #Waterbending scroll - your abilities have a small chance to trigger .. increasing your mastery by 10 every 3 seconds. upon reaching x stacks trigger exhaustion, reducing haste by 20
+			set {_lootTableGearTypes::*} to "xx", "Necklace", "Trinket"
+			if {_cardType} = "Agility":
+				set {_lootTableGear::1} to "Northern Ballista"
+				set {_lootTableGearTypes::1} to "Ranged Weapon"
+				set {_lootTableGear::1} to "Sokka's Boomerang"
+				set {_lootTableGearTypes::1} to "Ranged Weapon"
+			else if {_cardType} = "Intellect":
+				set {_lootTableGear::1} to "Crystalline Staff"
+				set {_lootTableGearTypes::1} to "Caster Weapon"
+			else if {_cardType} = "Strength":
+				set {_lootTableGear::1} to "Icebreaker"
+				set {_lootTableGearTypes::1} to "One-Handed Sword"
+
+			set {_randomIndex} to a random integer between 1 and (size of {_lootTableGear::*})
+			set {_lootItem} to {_lootTableGear::%{_randomIndex}%}
+			set {_itemType} to {_lootTableGearTypes::%{_randomIndex}%}
+
+			set {_chanceType} to a random integer between 1 and 100
+			set {_chanceRare} to 2 ^ {_ilvlFactor}
+			set {_chanceUncommon} to 30 ^ {_ilvlFactor}
+
+			if {_chanceType} is between 1 and {_chanceRare}:
+				set {_itemLevel} to round(1 + ({_mobLevel}*0.82), 0)
+				set {_rarity} to "<##0070dd>Rare"
+			else if {_chanceType} is between {_chanceRare}+0.001 and {_chanceUncommon}:
+				set {_itemLevel} to round(1 + ({_mobLevel}*0.74), 0)
+				set {_rarity} to "<##1fef00>Uncommon"
+			else:
+				set {_itemLevel} to round(1 + ({_mobLevel}*0.66), 0)
+				set {_rarity} to "<##cccccc>Common"
+
+			set {_item} to Gear({_lootItem}, {_itemType}, {_itemLevel}, {_rarity}, (tag "PrimaryStat" of nbt of {karta::%{_p}%}))
+			giveItem({_p}, {_item})
+			play sound "item.armor.equip_netherite" with volume 3 and pitch 1 to {_p}
+			send "&d&oReceived &f%{_lootItem}% &e(Ilvl %{_itemLevel}%&e) &d&ofrom %name of {_e}%&d&o." to {_p}
+			play sound "entity.chicken.egg" with volume 3 and pitch 0 to {_p}
+			#Assigns an appropriate item level
+		chance of 12%:
+			if {language::%{_p}%} = "English":
+				set {_book} to {noviceexpbookEN}
+			else:
+				set {_book} to {noviceexpbook}
+			giveItem({_p}, {_book})
+			send "&3&oReceived a &f%name of {_book}%&3&o." to {_p}
+			play sound "entity.chicken.egg" with volume 3 and pitch 0 to {_p}
+		chance of 2%:
+			if {language::%{_p}%} = "English":
+				set {_book} to {apprenticeexpbookEN}
+			else:
+				set {_book} to {apprenticeexpbook}
+			giveItem({_p}, {_book})
+			send "&3&oReceived a &f%name of {_book}%&3&o." to {_p}
+			play sound "entity.chicken.egg" with volume 3 and pitch 0 to {_p}
+	else if {_type} = "supermob":
+		#Artifacts
+		chance of 6*{_dropChanceMultiplier}%:
+			#Determines the random item drop
+			if tag "custom;ECFrostKnight" of nbt of {_e} is set:
+				if {language::%{_p}%} = "English":
+					set {_lootItem} to "Winter's Eon"
+				else:
+					set {_lootItem} to "Wieczna Zima"
+			else if tag "custom;ECArcticCommander" of nbt of {_e} is set:
+				if {language::%{_p}%} = "English":
+					set {_lootItem} to "Winter's Eon"
+				else:
+					set {_lootItem} to "Wieczna Zima"
+			else if tag "custom;ECIceCaller" of nbt of {_e} is set:
+				if {language::%{_p}%} = "English":
+					set {_lootItem} to "Morning Frost"
+				else:
+					set {_lootItem} to "Poranny Mróz"
+			else if tag "custom;ECPolarBear" of nbt of {_e} is set:
+				if {language::%{_p}%} = "English":
+					set {_lootItem} to "Morning Frost"
+				else:
+					set {_lootItem} to "Poranny Mróz"
+			else if tag "custom;ECIceElemental" of nbt of {_e} is set:
+				if {language::%{_p}%} = "English":
+					set {_lootItem} to "Glacial Heart"
+				else:
+					set {_lootItem} to "Oziębłe Serce"
+			else if tag "custom;ECSnowBombarder" of nbt of {_e} is set:
+				if {language::%{_p}%} = "English":
+					set {_lootItem} to "Glacial Heart"
+				else:
+					set {_lootItem} to "Oziębłe Serce"
+			else if tag "custom;ECFrostRider" of nbt of {_e} is set:
+				if {language::%{_p}%} = "English":
+					set {_lootItem} to "Icy Memorial"
+				else:
+					set {_lootItem} to "Lodowy Memoriał"
+			else if tag "custom;ECIceMage" of nbt of {_e} is set:
+				if {language::%{_p}%} = "English":
+					set {_lootItem} to "Icy Memorial"
+				else:
+					set {_lootItem} to "Lodowy Memoriał"
+			if {_lootItem} is set:
+				#Assigns the star level and an appropriate item level
+				set {_chance2Star} to 38 ^ {_starFactor}
+				set {_chance3Star} to 12 ^ {_starFactor}
+				set {_chance4Star} to 5 ^ {_starFactor}
+				if {_starLevelDrop} is between 0 and {_chance4Star}:
+					#Drops a 4 star artifact
+					set {_starlvl} to 4
+				else if {_starLevelDrop} is between {_chance4Star}+0.001 and {_chance3Star}:
+					#Drops a 3 star artifact
+					set {_starlvl} to 3
+				else if {_starLevelDrop} is between {_chance3Star}+0.001 and {_chance2Star}:
+					#Drops a 2 star artifact
+					set {_starlvl} to 2
+				else:
+					#Drops a 1 star artifact
+					set {_starlvl} to 1
+				set {_ilvl} to ArtifactStarLevel({_starlvl}, {_mobLevel})
+				giveItem({_p}, Artifact({_lootItem}, {_starlvl}, {_ilvl}))
+				play sound "block.enchantment_table.use" with volume 3 and pitch 2 to {_p}
+				send "&d&oReceived &f%{_lootItem}% &e(Ilvl %{_ilvl}%&e, Star Level: %{_starlvl}%) &d&ofrom %name of {_e}%&d&o." to {_p}
+				play sound "entity.chicken.egg" with volume 3 and pitch 0 to {_p}
+		#Gear
+		chance of 0%:
+			#Determines the random item drop
+			set {_lootTableGear::*} to "Spirit of the Woods", "Verdant Blessing", "Cizin's Curse", "Tangled Boots", "Vision of the Serpent", "Quetzalcoatl's Creation", "Grasp of the Foregone Tribe", "Guardianship of the Deities" 
+			set {_lootTableGear::*} to {_lootTableGear::*} and "Nature's Curtain" and "Old Hunter's Handiwork" and "Outworn Gauntlets"
+			set {_lootTableGearTypes::*} to "Ring", "Necklace", "Ring", "Boots", "Helmet", "Helmet", "Shoulders", "Chestplate", "Cloak", "Bracers" and "Gloves"
+			set {_randomIndex} to a random integer between 1 and (size of {_lootTableGear::*})
+			set {_lootItem} to {_lootTableGear::%{_randomIndex}%}
+			set {_itemType} to {_lootTableGearTypes::%{_randomIndex}%}
+
+			set {_chanceType} to a random integer between 1 and 100
+			set {_chanceRare} to 18 ^ {_ilvlFactor}
+			set {_chanceUncommon} to 60 ^ {_ilvlFactor}
+
+			if {_chanceType} is between 1 and {_chanceRare}:
+				set {_itemLevel} to round(1 + ({_mobLevel}*0.82), 0)
+				set {_rarity} to "<##0070dd>Rare"
+			else if {_chanceType} is between {_chanceRare}+0.001 and {_chanceUncommon}:
+				set {_itemLevel} to round(1 + ({_mobLevel}*0.74), 0)
+				set {_rarity} to "<##1fef00>Uncommon"
+			else:
+				set {_itemLevel} to round(1 + ({_mobLevel}*0.66), 0)
+				set {_rarity} to "<##cccccc>Common"
+
+			set {_item} to Gear({_lootItem}, {_itemType}, {_itemLevel}, {_rarity}, (tag "PrimaryStat" of nbt of {karta::%{_p}%}))
+			giveItem({_p}, {_item})
+			play sound "item.armor.equip_netherite" with volume 3 and pitch 1 to {_p}
+			send "&d&oReceived &f%{_lootItem}% &e(Ilvl %{_itemLevel}%&e) &d&ofrom %name of {_e}%&d&o." to {_p}
+			play sound "entity.chicken.egg" with volume 3 and pitch 0 to {_p}
+		chance of 32%:
+			if {language::%{_p}%} = "English":
+				set {_book} to {noviceexpbookEN}
+			else:
+				set {_book} to {noviceexpbook}
+			giveItem({_p}, {_book})
+			send "&3&oReceived a &f%name of {_book}%&3&o." to {_p}
+			play sound "entity.chicken.egg" with volume 3 and pitch 0 to {_p}
+		chance of 16%:
+			if {language::%{_p}%} = "English":
+				set {_book} to {apprenticeexpbookEN}
+			else:
+				set {_book} to {apprenticeexpbook}
+			giveItem({_p}, {_book})
+			send "&3&oReceived a &f%name of {_book}%&3&o." to {_p}
+			play sound "entity.chicken.egg" with volume 3 and pitch 0 to {_p}
+	else if {_type} = "boss":
+		#Artifacts
+		chance of 6*{_dropChanceMultiplier}%:
+			#Determines the random item drop
+			if {language::%{_p}%} = "English":
+				set {_lootTableArtifacts::*} to "Morning Frost", "Glacial Heart", "Winter's Eon", "Icy Memorial"
+			else:
+				set {_lootTableArtifacts::*} to "Poranny Mróz", "Oziębłe Serce", "Wieczna Zima", "Lodowy Memoriał"
+			set {_lootItem} to a random element of {_lootTableArtifacts::*}
+
+			#Assigns the star level and an appropriate item level
+			set {_chance2Star} to 90 ^ {_starFactor}
+			set {_chance3Star} to 30 ^ {_starFactor}
+			set {_chance4Star} to 16 ^ {_starFactor}
+			if {_starLevelDrop} is between 0 and {_chance4Star}:
+				#Drops a 4 star artifact
+				set {_starlvl} to 4
+			else if {_starLevelDrop} is between {_chance4Star}+0.001 and {_chance3Star}:
+				#Drops a 3 star artifact
+				set {_starlvl} to 3
+			else if {_starLevelDrop} is between {_chance3Star}+0.001 and {_chance2Star}:
+				#Drops a 2 star artifact
+				set {_starlvl} to 2
+			else:
+				#Drops a 1 star artifact
+				set {_starlvl} to 1
+			set {_ilvl} to ArtifactStarLevel({_starlvl}, {_mobLevel})
+			giveItem({_p}, Artifact({_lootItem}, {_starlvl}, {_ilvl}))
+			play sound "block.enchantment_table.use" with volume 3 and pitch 2 to {_p}
+			send "&d&oReceived &f%{_lootItem}% &e(Ilvl %{_ilvl}%&e, Star Level: %{_starlvl}%) &d&ofrom %name of {_e}%&d&o." to {_p}
+			play sound "entity.chicken.egg" with volume 3 and pitch 0 to {_p}
+		#Gear
+		chance of 0%:
+			#Determines the random item drop
+			if {_e}'s name contains "Paileao":
+				set {_lootTableGear::*} to "Cizin's Curse" and "Quetzalcoatl's Creation" and "Guardianship of the Deities" and "Old Hunter's Handiwork" and "Outworn Gauntlets" and "Tangled Boots"
+				set {_lootTableGearTypes::*} to "Ring", "Helmet", "Chestplate", "Bracers", "Gloves" and "Boots"
+			else if {_e}'s name contains "Salvajer":
+				set {_lootTableGear::*} to "Spirit of the Woods", "Verdant Blessing" and "Nature's Curtain" and "Vision of the Serpent" and "Grasp of the Foregone Tribe" and "Tangled Boots"
+				set {_lootTableGearTypes::*} to "Ring", "Necklace", "Cloak", "Helmet", "Shoulders" and "Boots"
+			set {_randomIndex} to a random integer between 1 and (size of {_lootTableGear::*})
+			set {_lootItem} to {_lootTableGear::%{_randomIndex}%}
+			set {_itemType} to {_lootTableGearTypes::%{_randomIndex}%}
+
+			set {_chanceType} to a random integer between 1 and 100
+			set {_chanceRare} to 60 ^ {_ilvlFactor}
+			set {_chanceUncommon} to 100
+				
+			if {_chanceType} is between 1 and {_chanceRare}:
+				set {_itemLevel} to round(1 + ({_mobLevel}*0.82), 0)
+				set {_rarity} to "<##0070dd>Rare"
+			else if {_chanceType} is between {_chanceRare}+0.001 and {_chanceUncommon}:
+				set {_itemLevel} to round(1 + ({_mobLevel}*0.74), 0)
+				set {_rarity} to "<##1fef00>Uncommon"
+			else:
+				set {_itemLevel} to round(1 + ({_mobLevel}*0.66), 0)
+				set {_rarity} to "<##cccccc>Common"
+
+			set {_item} to Gear({_lootItem}, {_itemType}, {_itemLevel}, {_rarity}, (tag "PrimaryStat" of nbt of {karta::%{_p}%}))
+			giveItem({_p}, {_item})
+			play sound "item.armor.equip_netherite" with volume 3 and pitch 1 to {_p}
+			send "&d&oReceived &f%{_lootItem}% &e(Ilvl %{_itemLevel}%&e) &d&ofrom %name of {_e}%&d&o." to {_p}
+			play sound "entity.chicken.egg" with volume 3 and pitch 0 to {_p}
+		chance of 68%:
+			if {language::%{_p}%} = "English":
+				set {_book} to {noviceexpbookEN}
+			else:
+				set {_book} to {noviceexpbook}
+			giveItem({_p}, {_book})
+			send "&3&oReceived a &f%name of {_book}%&3&o." to {_p}
+			play sound "entity.chicken.egg" with volume 3 and pitch 0 to {_p}
+		chance of 28%:
+			if {language::%{_p}%} = "English":
+				set {_book} to {apprenticeexpbookEN}
+			else:
+				set {_book} to {apprenticeexpbook}
+			giveItem({_p}, {_book})
+			send "&3&oReceived a &f%name of {_book}%&3&o." to {_p}
+			play sound "entity.chicken.egg" with volume 3 and pitch 0 to {_p}
+		chance of 6%:
+			if {language::%{_p}%} = "English":
+				set {_book} to {adeptexpbookEN}
+			else:
+				set {_book} to {adeptexpbook}
+			giveItem({_p}, {_book})
+			send "&3&oReceived a &f%name of {_book}%&3&o." to {_p}
+			play sound "entity.chicken.egg" with volume 3 and pitch 0 to {_p}
+
+function WaterTentacleMingHua(e: entity):
+	while {_e} is alive:
+		if metadata value "IceFormMingHua" of {_e} is not set:
+			if block under {_e} is not air:
+				set {_blocks::*} to all blocks at (circle at {_e}'s location with a radius of 3)
+				loop {_blocks::*}:
+					if loop-value is not solid:
+						make all players see block at loop-value as water
+		wait 4 ticks
+		if {_blocks::*} is set:
+			loop {_blocks::*}:
+				make all players see block at loop-value as (type of block at loop-value)
+			clear {_blocks::*}
+
+function WaterArmsParticles(e: entity):
+	while {_e} is alive:
+		set {_locMingHua} to location 0.5 above {_e}
+		set {_loc} to location 0.3 left of {_locMingHua}
+		set {_loc2} to location 0.3 right of {_locMingHua}
+		set {_shape} to an ellipsoid with radius 0.1, 0.7 and 0.1
+		set particle of {_shape} to falling_water
+		draw {_shape} at {_loc} and {_loc2}
+		wait 1 tick
+
+function MingHuaPushEntities(e: entity):
+	while {_e} is alive:
+		loop all players in radius 4 around {_e}:
+			if cooldown "MingHuaPushAway%loop-player%" is finished:
+				if loop-player's gamemode is not creative or spectator:
+					create cooldown "MingHuaPushAway%loop-player%" for 0.5 seconds
+					push loop-player upwards with velocity 0.03
+					push loop-player backwards with speed 1.2
+					if cooldown "MingHuaPushAwaySound" is finished:
+						play sound "arena.ice.minghua_pushaway" with volume 3 and pitch 1 at {_e}
+						create cooldown "MingHuaPushAwaySound" for 4 seconds
+					set {_damage} to 0.75
+					set {_damageTooltip} to {_damage}*(tag "custom;MobDamageModifier" of nbt of {_e})
+					set metadata value "LastDamageCauseEN" of loop-player to "<##54acff>Push Away"
+					set metadata value "LastDamageCause" of loop-player to "<##54acff>Odepchnięcie"
+					set metadata value "Element" of {_e} to "Water"
+					set metadata value "LastDamageCauseLoreEN" of loop-player to "<##54acff>Using her octopus form, Ming Hua pushes all%nl%<##54acff>enemies who get too close to her away,%nl%<##54acff>dealing &f%{_damageTooltip}% <##1ebbd7>Water <##54acff>damage."
+					set metadata value "LastDamageCauseLore" of loop-player to "<##54acff>Używając swojej formy ośmiornicy, Ming Hua%nl%<##54acff>odpycha przeciwników, którzy się do niej zbliżą%nl%<##54acff>i zadaje im &f%{_damageTooltip}% <##1ebbd7>Wodnych <##54acff>obrażeń."
+					make {_e} damage loop-player by {_damage}*2
+		wait 8 ticks
+
+function WaterSpoutMingHua(e: entity):
+	wait 20 seconds
+	while {_e} is alive:
+		if target of {_e} is set:
+			if target of {_e} is alive:
+				if metadata value "IceFormMingHua" of {_e} is not set:
+					set {_wait} to 25 seconds
+					make {_e}'s disguise sneak
+					play sound "entity.player.splash" with volume 3 and pitch 1.2 at {_e}
+					set {_block} to block under {_e}
+					play sound "arena.ice.minghua_waterspout" with volume 3 and pitch 1 at {_e}
+					play sound "entity.player.splash" with volume 3 and pitch 0.6 at {_e}
+					push {_e} upwards with velocity 2
+					loop all players in radius 30 around {_e}:
+						if loop-player is alive:
+							if loop-player is online:
+								if loop-player's gamemode is not creative or spectator:
+									WaterSpoutMingHuaEnemy(loop-player)
+									make {_e} look at loop-player
+				else:
+					set {_wait} to 3 seconds
+			else:
+				clear target of {_e}
+		wait {_wait}
+
+function WaterSpoutMingHuaEnemy(e: entity):
+	set {_target} to {_e}
+	push {_target} upwards with velocity 2
+	wait 1 tick
+	while block under {_target} is air:
+		stop loop if {_e} is not alive
+		stop loop if {_target} is not alive
+		set {_shape} to an ellipsoid with radius 0.1, 0.7 and 0.1
+		set particle of {_shape} to falling_water
+		draw {_shape} at {_target}
+		wait 1 tick
+
+function WaterGripParticle(e: entity):
+	while block under {_e} is air:
+		stop loop if {_e} is not alive
+		stop loop if {_e} is not alive
+		set {_shape} to an ellipsoid with radius 0.1, 0.7 and 0.1
+		set particle of {_shape} to falling_water
+		draw {_shape} at {_e}
+		wait 1 tick
+
+function WaterTentacleMingHuaStrike(e: entity):
+	wait 6.5 seconds
+	while {_e} is alive:
+		loop all players in radius 30 of {_e}:
+			if loop-player is alive:
+				if loop-player is online:
+					if loop-player's gamemode is not creative or spectator:
+						add loop-player to {_players::*}
+		if {_players::*} is set:
+			set {_randomTarget} to a random element of {_players::*}
+			set {_blocks::*} to blocks between {_e} and {_randomTarget}
+			loop {_blocks::*}:
+				if loop-value is not solid:
+					make all players see block at loop-value as water
+			make disguise of {_e} sneak
+			make {_e} look at {_randomTarget}
+			make {_e} swing their hand
+			play sound "entity.player.splash" with volume 2.75 and pitch 1 at {_randomTarget}
+			play sound "entity.player.splash" with volume 2.75 and pitch 1.6 at {_randomTarget}
+			WaterTentacleMingHuaStrikeClearEffect({_e}, {_blocks::*}, 0.45 seconds)
+			chance of 30%:
+				play sound "arena.ice.minghua_waterwhip" with volume 3 and pitch 1 at {_e}
+			set {_damage} to 1.8
+			set {_damageTooltip} to {_damage}*(tag "custom;MobDamageModifier" of nbt of {_e})
+			set metadata value "LastDamageCauseEN" of {_randomTarget} to "<##54acff>Water Whip"
+			set metadata value "LastDamageCause" of {_randomTarget} to "<##54acff>Wodny Bicz"
+			set metadata value "Element" of {_e} to "Water"
+			set metadata value "LastDamageCauseLoreEN" of {_randomTarget} to "<##54acff>Forms a water whip from the octopus form%nl%<##54acff>around her and strikes the target for%nl%&f%{_damageTooltip}% <##1ebbd7>Water <##54acff>damage."
+			set metadata value "LastDamageCauseLore" of {_randomTarget} to "<##54acff>Formuje wodny bicz z formy ośmiornicy%nl%<##54acff>wokół siebie i uderza cel by zadać%nl%&f%{_damageTooltip}% <##1ebbd7>Wodnych <##54acff>obrażeń."
+			push {_randomTarget} upwards with velocity 0.02
+			push {_randomTarget} backwards with speed 0.55
+			make {_e} damage {_randomTarget} by {_damage}*2
+		clear {_blocks::*}
+		clear {_players::*}
+		clear {_randomTarget}
+		wait 4 seconds
+
+function WaterTentacleMingHuaStrikeClearEffect(e: entity, blocks: locations, wait: timespan):
+	wait {_wait}
+	make {_e}'s disguise not sneak
+	loop {_blocks::*}:
+		make all players see block at loop-value as air
+		
+
+function MingHuaIceForm(e: entity):
+	while {_e} is alive:
+		loop all players in radius 30 of {_e}:
+			if loop-player is online:
+				if loop-player is alive:
+					if loop-player's gamemode is not creative or spectator:
+						add loop-player to {_players::*}
+		if {_players::*} is set:
+			set metadata value "IceFormMingHua" of {_e} to true
+			play sound "block.glass.break" with volume 3 and pitch 1 at {_e}
+			set {_blocks::*} to all blocks at (circle at {_e}'s location with a radius of 3) where [input is not solid]
+			loop {_blocks::*}:
+				set block at loop-value to ice
+				play sound "block.glass.fall" with volume 1.75 and pitch 1 at loop-value
+			wait 3 seconds
+			set {_count} to 1
+			play sound "arena.ice.minghua_iceform" with volume 3 and pitch 1 at {_e}
+			loop {_blocks::*}:
+				if {_e} is alive:
+					set {_randomTarget} to a random element of {_players::*} where [input is alive]
+					make {_e} look at {_randomTarget}
+					IceKnifeFormMingHua({_e}, loop-value, {_count})
+					draw 8 block particle using ice at loop-value with offset vector(0.25, 0.25, 0.25) with extra 0.01
+					play sound "skill.glaceon.icelance_hurl" with volume 2.75 and pitch 1.45 at loop-value
+					set {_iceKnife} to metadata value "Icicle%{_count}%" of {_e}
+					clear metadata value "Icicle%{_count}%" of {_e}
+					wait 1 tick
+					IceKnifeHurlMingHua({_e}, {_iceKnife}, {_randomTarget}, loop-value)
+					set {_i} to a random integer between 1 and 2
+					make {_e}'s disguise sneak
+					make {_e} look at loop-value
+					make {_e} swing their hand
+					set {_ticks} to a random integer between 1 and 4
+					set {_ticks} to "%{_ticks}% ticks" parsed as timespan
+					wait {_ticks}
+				else:
+					stop loop
+				add 1 to {_count}
+			make {_e}'s disguise not sneak
+			set metadata value "Icicles" of {_e} to 0
+			clear metadata value "IceFormMingHua" of {_e}
+			play sound "entity.player.splash.high_speed" with volume 3 and pitch 1 at {_e}
+			clear {_blocks::*}
+			clear {_players::*}
+			clear {_randomTarget}
+		wait 50 seconds
+
+
+function IceKnifeFormMingHua(e: entity, loc: location, icicle: integer):
+	spawn 1 armor stand at location 1.25 below {_loc} with nbt from "{Invisible:1b,Marker:1b}"
+	set {_x} to last spawned armor stand
+	set {_x}'s helmet to stick named "Icicle"
+	if metadata value "Icicle%{_icicle}%" of {_e} is not set:
+		set metadata value "Icicle%{_icicle}%" of {_e} to {_x}
+
+function IceKnifeHurlMingHua(e: entity, icicle: entity, target: entity, block: location):
+	set {_l} to location of {_icicle}
+	set {_yaw} to yaw of {_e}
+	set {_pitch} to pitch of {_e}
+	set yaw of {_l} to {_yaw}
+	set pitch of {_l} to {_pitch}
+	set {_targetLoc} to location 0.5 below {_target}
+	set {_rgb} to (rgb 106, 184, 230)
+	set block at {_block} to air
+	loop round(distance between {_l} and {_targetLoc}) / 0.3 times:
+		set {_targetLoc} to location 0.5 below {_target}
+		set {_vec} to vector between {_l} and {_targetLoc}
+		set vector length of {_vec} to loop-value * 1.6
+		teleport {_icicle} to {_l} ~ {_vec}
+		set {_icicleLoc} to location of {_icicle}
+		increase y-coordinate of {_icicleLoc} by 2 
+		draw 1 of dust using dustOption({_rgb}, 1) at {_icicleLoc}
+		stop loop if distance between {_e} and {_target} > 400
+		stop loop if distance between {_icicle} and {_target} < 1
+		wait 1 tick
+	kill {_icicle}
+	stop if distance between {_e} and {_target} > 400
+	play sound "skill.glaceon.flurry_impact" with volume 3 and pitch 1.6 at {_target}
+	set {_damage} to 0.25
+	set {_damageTooltip} to {_damage}*(tag "custom;MobDamageModifier" of nbt of {_e})
+	set metadata value "LastDamageCauseEN" of {_target} to "<##9ccfff>Ice Knife"
+	set metadata value "LastDamageCause" of {_target} to "<##9ccfff>Lodowy Nóż"
+	set metadata value "Element" of {_e} to "Ice"
+	set metadata value "LastDamageCauseLoreEN" of {_target} to "<##9ccfff>Ming Hua swaps into an Ice Form for the first%nl%<##9ccfff>time when she falls below &f50%% <##9ccfff>HP,%nl%<##9ccfff>from when she will periodically shift into it.%nl% %nl%<##9ccfff>Ming Hua freezes her octopus form and continously%nl%<##9ccfff>hurls Ice Knives at random targets until she%nl%<##9ccfff>runs out of ice. Each Ice Knife deals%nl%&f%{_damageTooltip}% <##add8e6>Ice <##9ccfff>damage."
+	set metadata value "LastDamageCauseLore" of {_target} to "<##9ccfff>Ming Hua zamienia wodę w lód po raz pierwszy,%nl%<##9ccfff>gdy jej zdrowie spadnie poniżej &f50%% <##9ccfff>HP,%nl%<##9ccfff>od którego co jakiś czas będzie wykonywać%nl%<##9ccfff>tę umiejętność.%nl% %nl%<##9ccfff>Ming Hua zamraża jej formę ośmiornicy i%nl%<##9ccfff>bez przerwy rzuca Lodowymi Nożami w losowych%nl%<##9ccfff>przeciwników aż do wyczerpania. Każdy Lodowy Nóż%nl%<##9ccfff>zada &f%{_damageTooltip}% <##9ccfff>obrażeń <##add8e6>Lodu<##9ccfff>."
+	make {_e} damage {_target} by {_damage}*2
+
+function MingHuaHPCheck(e: entity, a: entity):
+	wait 1 tick
+	set {_maxHealth} to max health of {_e}
+	if tag "custom;ECMingHua50PercentTriggered" of nbt of {_e} is not set:
+		if (0.5*{_maxHealth}) >= health of {_e}:
+			set tag "custom;ECMingHua50PercentTriggered" of nbt of {_e} to true
+			MingHuaIceForm({_e})
+			dialogue("&f💬 This ends now!", location 1.5 above {_e}'s head, 0 seconds, 2.5 seconds)
+			play sound "arena.ice.minghua_50trigger" with volume 4 and pitch 1 at {_e}
+	else if tag "custom;ECMingHua10PercentTriggered" of nbt of {_e} is not set:
+		if (0.1*{_maxHealth}) >= health of {_e}:
+			set tag "custom;ECMingHua10PercentTriggered" of nbt of {_e} to true
+			play sound "arena.ice.minghua_defeat" with volume 3 and pitch 1 at {_e}
+			play sound "block.bubble_column.whirlpool_inside" with volume 3 and pitch 0.45 at {_e}
+			play sound "ambient.underwater.enter" with volume 3 and pitch 0 at {_e}
+			make {_e} invulnerable
+			MingHuaEscape({_e}, {_a})
+		
+function WaterGripMingHua(e: entity):
+	wait 4 seconds
+	while {_e} is alive:
+		if metadata value "IceFormMingHua" of {_e} is not set:
+			push {_e} upwards with velocity 0.9
+			push {_e} in {_e}'s direction with speed 2.3
+			WaterGripParticle({_e})
+			make {_e}'s disguise sneak
+			push {_e} upwards with velocity 0.3
+			play sound "entity.player.splash" with volume 2.75 and pitch 0.46 at {_e}
+		wait 9 seconds
+
+function MingHuaEscape(e: entity, a: entity):
+	loop {asyst::%uuid of {_e}%::*}:
+		set {_p} to loop-value parsed as a player
+		if {language::%{_p}%} = "English":
+			send "&fAs  Ming Hua makes her last stand, she manages to escape..." to {_p}
+		else:
+			send "&fGdy  Ming Hua dostaje ostatni cios, udaje jej się uciec..." to {_p}
+		play sound "block.note_block.pling" with volume 1 and pitch 1.8 to {_p}
+	loop all blocks in radius 4 around {_e} where [input is not solid]:
+		if (y-coordinate of loop-block) = (y-coordinate of block at {_e}):
+			make all players see block at loop-block as water
+			add loop-block to {_blocks::*}
+	make {_e} invisible
+	set {_e}'s health to 0.01
+	set {_e}'s max health to 0.01
+	heal {_e}
+	make {_e} vulnerable
+	make {_a} damage {_e} by 1
+	wait 1 tick
+	make {_a} damage {_e} by 1
+	wait 5 seconds
+	play sound "ambient.underwater.exit" with volume 3 and pitch 0 at {_e}
+	loop {_blocks::*}:
+		make all players see block at loop-value as (type of block at loop-value)
