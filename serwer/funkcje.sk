@@ -21,6 +21,71 @@ function StatyHologram(p: player, t: text):
 	set {_f} to last spawned armor stand
 	wait 2 seconds
 	kill {_f}
+
+function getDayMonth(input: string) :: number:
+	set {_date::*} to now formatted human-readable split at " "
+	set {_yearMonthDay::*} to {_date::1} split at "-"
+	set {_num} to 1
+	loop {_yearMonthDay::*}:
+		set {_yearMonthDay::%{_num}%} to {_yearMonthDay::%{_num}%} parsed as number
+		add 1 to {_num}
+	if {_input} = "day":
+		set {_return} to {_yearMonthDay::3}
+	else if {_input} = "month":
+		set {_return} to {_yearMonthDay::2}
+	return {_return}
+
+function giveItem(p: player, item: item):
+	if {_p} is alive:
+		set {_give} to give or return {_item} to {_p}
+		if {_give} is set:
+			if "dataAdmin-%{_p}%" is not loaded:
+				load yaml "plugins/Skript/playerdata/admin/%uuid of {_p}%-Admin.yml" as "dataAdmin-%{_p}%"
+			add {_item} to yaml list "Player.Item Claim" in "dataAdmin-%{_p}%"
+	else:
+		if "dataAdmin-%{_p}%" is not loaded:
+			load yaml "plugins/Skript/playerdata/admin/%uuid of {_p}%-Admin.yml" as "dataAdmin-%{_p}%"
+		add {_item} to yaml list "Player.Item Claim" in "dataAdmin-%{_p}%"
+	save "dataAdmin-%{_p}%"
+
+import:
+	org.bukkit.map.MinecraftFont
+	
+function getWidth(text: string) :: number:
+	set {_s::*} to {_text} split at "&l"
+	loop {_s::*}:
+		add (MinecraftFont.Font.getWidth(unformatted loop-value) + (size of (loop-value split at "")) - (size of loop-value split at " ")) to {_result} if mod(loop-index parsed as integer, 2) = 0
+		add MinecraftFont.Font.getWidth(unformatted loop-value) to {_result} if mod(loop-index parsed as integer, 2) = 1
+		# 154 for chat, 127 for motd
+		
+function centeredText(text: string, length: integer) :: string:
+	while {_compensated} ? 0 < ({_length} - (getWidth({_text}) / 2)):
+		set {_return} to "%{_return} ? ""%&r "
+		add (getWidth(" ") + 1) to {_compensated}
+	return "%{_return}%%{_text}%"
+
+function addPlayerXP(p: player, xp: number, modifier: number = 1, source: string = "general") :: number:
+	if {doubleXPFriday} is true:
+		set {_xp} to {_xp}*2
+	set {_xp} to {_xp}*{_modifier}
+	if {_source} = "mining":
+		if metadata value "SapphireDice" of {_p} is set:
+			set {_xp} to {_xp}*3
+	add {_xp} to {exp::%{_p}%}
+	playerCheckLevelUp({_p})
+	winterDelightPassAddXP({_p}, {_xp})
+	if {winterDelightPassLEVEL::%{_p}%} >= 0:
+		getMission({_p}, "Gaining Experience", "Zdobywanie Doświadczenia", {_xp})
+	return {_xp}
+
+function addMiningXP(p: player, xp: number, modifier: number = 1):
+	if {poziomgornictwo::%{_p}%} < 50:
+		if {doubleXPFriday} is true:
+			set {_xp} to {_xp}*2
+		set {_xp} to {_xp}*{_modifier}
+		add {_xp} to {expgornictwo::%{_p}%}
+		miningProfession({_p})
+	
 function DamageHologram(p: entity, t: text):
 	#set {_r} to a random integer between 1 and 2
 	#if {_r} = 1:
@@ -49,6 +114,42 @@ function DamageHologram(p: entity, t: text):
 	set {_f} to last spawned armor stand
 	wait 2 seconds
 	kill {_f}
+function DamageDisplay(p: entity, t: text, player: player):
+	set {_yMin} to {_p}'s y-coordinate - 1
+	set {_yMax} to {_p}'s y-coordinate + 1
+	set {_zMin} to {_p}'s z-coordinate - 1
+	set {_zMax} to {_p}'s z-coordinate + 1
+	set {_xMin} to {_p}'s x-coordinate - 1
+	set {_xMax} to {_p}'s x-coordinate + 1
+	set {_block} to location(random number from {_xMin} to {_xMax}, random number from {_yMin} to {_yMax}, random number from {_zMin} to {_zMax}, world "%world of {_p}%")
+	set {_block} to location 2 above {_block}
+	set {_block2} to location 1.4 below {_block}
+	set yaw of {_block} to yaw of {_player}
+	set yaw of {_block2} to yaw of {_player}
+	set pitch of {_block} to pitch of {_player}
+	set pitch of {_block2} to pitch of {_player}
+	#spawn text display at {_block}
+	spawn 1 armor stand at {_block} with nbt from "{Marker:1b,Invulnerable:1b,Invisible:1b,Small:1b}"
+	set the display name of last spawned armor stand to {_t}
+	set {_display} to last spawned armor stand
+	#set display scale of {_display} to vector(0.75,0.75,0.75)
+	#set display text of {_display} to {_t}
+	#set display text shadowed of {_display} to true
+	#set display shadow strength of {_display} to 10
+	#set display default text background of {_display} to false
+	#AbilityDisplay({_i}, {_block2})
+	wait 2 seconds
+	kill {_display}
+function AbilityDisplay(i: item, l: location):
+	#spawn item display at {_l}
+	#set {_display} to last spawned display
+	#set display item of {_display} to {_i}
+	#set display scale of {_display} to vector(0.3,0.3,0.3)
+	spawn 1 armor stand at {_l} with nbt from "{Marker:1b,Invulnerable:1b,Invisible:1b,Small:1b}"
+	set helmet of last spawned armor stand to {_i}
+	set {_display} to last spawned entity
+	wait 2 seconds
+	kill {_display}
 	
 function SixStar(p: player):
 	set {_pitch} to 2
@@ -56,3 +157,814 @@ function SixStar(p: player):
 		wait 0.15 seconds
 		play sound "block.note_block.chime" with volume 5 and pitch 2 at {_p}
 		add 1 to {_pitch}
+
+function DamageProperties(p: entity, attacker: entity, dmgcause: text, dmgcauseEN: text, lore: text, loreEN: text, damage: number, element: string = (tag "custom;ECElement" of nbt of {_attacker})):
+	set {_p}'s last damage cause to sweep attack
+	if {_element} is set:
+		set tag "custom;ECElement" of nbt of {_attacker} to {_element}
+	set metadata value "LastDamageCauseEN" of {_p} to {_dmgcauseEN}
+	set metadata value "LastDamageCause" of {_p} to {_dmgcause}
+	set metadata value "LastDamageCauseLore" of {_p} to {_lore}
+	set metadata value "LastDamageCauseLoreEN" of {_p} to {_loreEN}
+	set {_custom} to tag "custom" of nbt of {_attacker}
+	set {_damageIncrease} to tag "DamageModifier" of {_custom}
+	set {_damage} to {_damage}*{_damageIncrease}
+	if tag "custom;FortifiedModifier" of nbt of {_attacker} is set:
+		set {_fortifiedModifier} to tag "custom;FortifiedModifier" of nbt of {_attacker}
+		set {_damage} to {_damage}*{_fortifiedModifier}
+	else if tag "custom;TyrannicalModifier" of nbt of {_attacker} is set:
+		set {_tyrannicalModifier} to tag "custom;TyrannicalModifier" of nbt of {_attacker}
+		set {_damage} to {_damage}*{_tyrannicalModifier}
+	if tag "custom;BolsteringStacks" of nbt of {_attacker} is set:
+		set {_bolsteringStacks} to tag "custom;BolsteringStacks" of nbt of {_attacker}
+		set {_damage} to {_damage}*{_bolsteringStacks}
+	if metadata value "Raging" of {_attacker} is set:
+		set {_damage} to {_damage}*2
+	make {_attacker} damage {_p} by ({_damage})*2
+
+function progressBar(progress: number, total: number, length: integer = 20, symbol: string = "|", color1: string = "&a", color2: string = "&c") :: string:
+	set {_symbol} to {_symbol}.repeat({_length})
+	set {_split} to floor(({_progress} / {_total}) * {_length})
+
+	return join "%{_color1}%", (first {_split} characters of {_symbol}), "%{_color2}%", (last ({_length} - {_split}) characters of {_symbol})
+
+function hex(string: string) :: string:
+	return "%{_string}%".replaceAll("&##([a-fA-F0-9]{6})", "<##$1>")
+
+function GiveTalentPoint(name: text, id: string):
+	load yaml "plugins/Skript/playerdata/karty/%{_name}%/%{_id}%.yml" as "%{_id}%"
+	set {_availableTalentPoints} to yaml value "Card.Available Talent Points" in "%{_id}%"
+	if {_availableTalentPoints} is set:
+		set {_availableTalentPoints} to {_availableTalentPoints} + 1
+	else:
+		set {_availableTalentPoints} to 1
+	set yaml value "Card.Available Talent Points" in "%{_id}%" to {_availableTalentPoints}
+	save yaml "%{_id}%"
+	
+function AssignTalentPoint(p: player, id: string) :: string:
+	if CheckEnoughTalentPoints({_id}) is true:
+		set {_availableTalentPoints} to yaml value "Card.Available Talent Points" in "%{_id}%"
+		set {_availableTalentPoints} to {_availableTalentPoints} - 1
+		set yaml value "Card.Available Talent Points" in "%{_id}%" to {_availableTalentPoints}
+		set {_returnMessage} to ""
+	else:
+		if {language::%{_p}%} = "English":
+			set {_returnMessage} to "&cInsufficient available Talent Points. Level up your Card to unlock new Talents."
+		else:
+			set {_returnMessage} to "&cNiewystarczająco dostępnych Punktów Talentu. Awansuj swoją kartę na wyższy poziom by odblokować nowe talenty."
+	save yaml "%{_id}%"
+	return {_returnMessage}
+
+function CheckEnoughTalentPoints(id: string) :: boolean:
+	load yaml "plugins/Skript/playerdata/karty/%{_id}%.yml" as "%{_id}%"
+	set {_availableTalentPoints} to yaml value "Card.Available Talent Points" in "%{_id}%"
+	if {_availableTalentPoints} is set:
+		if {_availableTalentPoints} > 0:
+			set {_bool} to true
+		else:
+			set {_bool} to false
+	return {_bool}
+
+function ReturnAmountTalentPoints(id: string) :: number:
+	load yaml "plugins/Skript/playerdata/karty/%{_id}%.yml" as "%{_id}%"
+	set {_availableTalentPoints} to yaml value "Card.Available Talent Points" in "%{_id}%"
+	if CheckEnoughTalentPoints({_id}) is not true:
+		set {_availableTalentPoints} to 0
+	return {_availableTalentPoints}
+
+function CP(p: player, slotname: string, spec: string, tooltip: boolean) :: number:
+	set {_talents} to tag "Talents;%{_spec}%;%{_slotname}%" of nbt compound of {_p}'s tool
+	if {_talents} is not set:
+		if {_tooltip} is true:
+			set {_talents} to 1
+		else:
+			set {_talents} to 0
+	return {_talents}
+	#return {_number}
+# This function will check if player has enough item or not
+# @params p Player to check
+# @params i item to check
+# @params amount of item to check
+# @return true if player has enough item else false
+function hasEnoughItem(p: player, i: item, i2: item, a: integer) :: boolean:
+	set {_c} to 0
+	loop {_p}'s inventory:
+		set {_is} to (1 of loop-value).isSimilar({_i})
+		set {_is2} to (1 of loop-value).isSimilar({_i2})
+		if {_is} is true:
+			add loop-value.getAmount() to {_c}
+			add loop-value.getAmount() to {_total1}
+		if {_is2} is true:
+			add loop-value.getAmount() to {_c}
+			add loop-value.getAmount() to {_total2}
+	if {_c} >= {_a}:
+		if {_total1} >= {_a}:
+			remove {_a} of {_i} from {_p}
+		else if {_total2} >= {_a}:
+			remove {_a} of {_i2} from {_p}
+		else if {_total1} + {_total2} >= {_a}:
+			set {_dif} to {_a}-{_total1}
+			set {_a} to {_a}-{_total1}
+			remove {_dif} of {_i} from {_p}
+			set {_a} to {_a}-{_dif}
+			remove {_dif} of {_i2} from {_p}
+			broadcast {_a}
+		return true
+	else:
+		return false
+function cardLevelup(p: player, xp: number, e: entity):
+	set {_modifier} to 1
+	if metadata value "SapphireDice" of {_p} is set:
+		set {_xp} to {_xp}*3
+		set {_modifier} to 3
+	set {_xp} to {_xp}*{_modifier}
+	set {_exp} to {_xp}
+	set {_id} to uncolored line 19 of lore of {karta::%{_p}%}
+	replace all "Id: " in {_id} with ""
+	set {_card} to {karta::%{_p}%}
+	load yaml "plugins/Skript/playerdata/karty/%uncolored name of {_card}%/%{_id}%.yml" as "cardLvlup-%{_p}%"
+	set {_cardLevel} to yaml value "Card.Level" in "cardLvlup-%{_p}%"
+	set {_cardXp} to yaml value "Card.Exp" in "cardLvlup-%{_p}%"
+	set {_cardXpAboveLimit} to yaml value "Card.XP Above Limit" in "cardLvlup-%{_p}%"
+	set {_maxLevel} to 50
+	if {_cardLevel} = 0:
+		set {_cardLevel} to 1
+	set {_requiredExp} to 2 ^ (2.5*({_cardLevel}/{_maxLevel})+(round({_cardLevel}/({_maxLevel}/10), 0))+sqrt({_cardLevel}/(5)))+{_maxLevel}*{_cardLevel}*3
+	#broadcast {_requiredExp}
+	set {_mobLevel} to (tag "custom;ECLvl" of nbt of {_e})
+	if {_mobLevel} is not a number:
+		set {_mobLevel} to rounded ({_mobLevel} parsed as number)
+	if {_mobLevel} is set:
+		#broadcast "MOB LEVEL %{_mobLevel}%"
+		if {_cardLevel} > {_mobLevel}:
+			set {_dif} to ({_cardLevel}-{_mobLevel})
+		else:
+			set {_dif} to 0
+	else:
+		set {_exp} to 0
+	if {_dif} is set:
+		if {_dif} < 20:
+			#broadcast "&e%{_exp}% VALUE IN %%"
+			set {_exp} to {_exp} * {_requiredExp}
+			#broadcast "&a%{_exp}%XP GRANTED"
+			set {_exp} to {_exp}*(1-(0.05*{_dif}))
+		else if {_dif} >= 20:
+			set {_exp} to 0
+	if {_cardLevel} < tag "MaxLevel" of nbt of {_card}:
+		if {_exp} > 0:
+			add {_exp} to {_cardXp}
+	else:
+		if {_exp} > 0:
+			add {_exp} to {_cardXpAboveLimit}
+	if {_exp} > 0:
+		if {_dif} < 20:
+			#add 0.2/({_xp}*(1-(0.05*{_dif}))) to {exp::%{_p}%}
+			addPlayerXP({_p}, 0.2/({_xp}*(1-(0.05*{_dif}))))
+		else:
+			add 0 to {exp::%{_p}%}
+		play sound "minecraft:entity.experience_orb.pickup" with volume 2 and pitch 1 to {_p}
+		#broadcast "%{exp::%{_p}%}% xp player"
+	UpdateScoreboard({_p})
+	#broadcast "&5%{_exp}% XP AFTER DIFFERENCE &cDIFFERENCE: &b%{_dif}% %{_requiredExp}% Required XP"
+	if {_cardxp} >= {_requiredExp}:
+		remove {_requiredExp} from {_cardXp}
+		set {_levelCard} to {_cardLevel}
+		add 1 to {_levelCard}
+		set {_cardLevel} to {_levelCard}
+		add 1 to {poziomykarty::%{_p}%}
+		play sound "minecraft:entity.player.levelup" with volume 2 and pitch 1 to {_p}
+		if {winterDelightPassLEVEL::%{_p}%} >= 0:
+			getMission({_p}, "Strength Training", "Trening", 1)
+		set {_talentlevels::*} to 15, 30, 40, 45 and 50
+		if {language::%{_p}%} = "English":
+			send "&eYour card advanced to Level %{_cardLevel}%!" to {_p}
+			set {_talentMessage} to "&eA new Talent can be learned!"
+		else:
+			send "&eTwoja karta awansowała do Poziomu %{_cardLevel}%!" to {_p}
+			set {_talentMessage} to "&eTwoja karta może nauczyć się nowego Talentu!"
+		if {_talentlevels::*} contains ({_cardLevel}):
+			send {_talentMessage} to {_p}
+			set {_idRaw} to uncolored {_id}
+			replace all "Id: " in {_idRaw} with ""
+	set yaml value "Card.Level" in "cardLvlup-%{_p}%" to {_cardLevel}
+	set yaml value "Card.Exp" in "cardLvlup-%{_p}%" to {_cardXP}
+	set yaml value "Card.XP Above Limit" in "cardLvlup-%{_p}%" to {_cardXpAboveLimit}
+	save yaml "cardLvlup-%{_p}%"
+	unload yaml "cardLvlup-%{_p}%"
+	if {language::%{_p}%} = "English":
+		set {_from} to "from"
+	else:
+		set {_from} to "z"
+	if {_modifier} is set:
+		send "&e+%{_exp}% XP %{_from}% %name of {_e}% &e(&fx%{_modifier}%&e)" to {_p}
+	else:
+		send "&e+%{_exp}% XP %{_from}% %name of {_e}%" to {_p}
+	loop all items in the inventory of {_p}:
+		if line 19 of lore of loop-item = line 19 of lore of {karta::%{_p}%}:
+			if {language::%{_p}%} = "English":
+				if {_cardLevel} = tag "MaxLevel" of nbt of {_card}:
+					set line 2 of lore of loop-item to "&7Level: %{kartacolor::%{_p}%}%%{_cardLevel}% &7| &7Exp: %{kartacolor::%{_p}%}%MAX"
+				else:
+					set line 2 of lore of loop-item to "&7Level: %{kartacolor::%{_p}%}%%{_cardLevel}% &7| &7Exp: %{kartacolor::%{_p}%}%%{_cardXp}%"
+			else:
+				if {_cardLevel} = tag "MaxLevel" of nbt of {_card}:
+					set line 2 of lore of loop-item to "&7Poziom: %{kartacolor::%{_p}%}%%{_cardLevel}% &7| &7Exp: %{kartacolor::%{_p}%}%MAX"
+				else:
+					set line 2 of lore of loop-item to "&7Poziom: %{kartacolor::%{_p}%}%%{_cardLevel}% &7| &7Exp: %{kartacolor::%{_p}%}%%{_cardXp}%"
+			set tag "Level" of nbt of loop-item to {_cardLevel}
+			set {karta::%{_p}%} to loop-item
+			stop loop
+		
+function newCard(lang: string, name: string, description: string, rarity: string, booster: string, cmd: integer, element: string, item: item, hp: integer, dmg: integer, res: integer, mob: integer, uti: integer, cc: integer, vers: integer, mas: integer, crit: integer, ele: integer, hast: integer, avo: integer) :: item:
+	set {_stats::*} to {_hp}, {_dmg}, {_res}, {_mob}, {_uti}, {_cc}, {_vers}, {_mas}, {_crit}, {_ele}, {_hast}, {_avo}
+	set {_count} to 1
+	loop {_stats::*}:
+		if loop-value < 10:
+			set {_char} to loop-value
+		else:
+			set {_char} to 10
+		set {_squares} to "■■■■■■■■■■"
+		set {_squares::*} to {_squares} split at ""
+		set {_squares::%{_char} + 1%} to "&7%{_squares::%{_char} + 1%}%"
+		set {_unc} to join {_squares::*} by ""
+		if {_count} = 1:
+			set {_stat1} to "<##c0ff02>%{_unc}%"
+		else if {_count} = 2:
+			set {_stat2} to "<##f74428>%{_unc}%"
+		else if {_count} = 3:
+			set {_stat3} to "<##ffef45>%{_unc}%"
+		else if {_count} = 4:
+			set {_stat4} to "&f%{_unc}%"
+		else if {_count} = 5:
+			set {_stat5} to "<##ae78d0>%{_unc}%"
+		else if {_count} = 6:
+			set {_stat6} to "<##58c3f5>%{_unc}%"
+		else if {_count} = 7:
+			set {_stat7} to "<##e3ebff>%{_unc}%"
+		else if {_count} = 8:
+			set {_stat8} to "<##f53b98>%{_unc}%"
+		else if {_count} = 9:
+			set {_stat9} to "<##fca417>%{_unc}%"
+		else if {_count} = 10:
+			set {_stat10} to "<##d5ff57>%{_unc}%"
+		else if {_count} = 11:
+			set {_stat11} to "<##19943e>%{_unc}%"
+		else if {_count} = 12:
+			set {_stat12} to "<##2154ad>%{_unc}%"
+		add 1 to {_count}
+
+	if {_lang} = "English":
+		set {_desc} to "%{_description}%%nl%&7Statistics:%nl%&7Health: %{_stat1}%%nl%&7Damage: %{_stat2}%%nl%&7Resistance: %{_stat3}%%nl%&7Mobility: %{_stat4}%%nl%&7Utility: %{_stat5}%%nl%&7Crowd Control: %{_stat6}%%nl%&7Versatility: %{_stat7}%%nl%&7Mastery: %{_stat8}%%nl%&7Critical Hit: %{_stat9}%%nl%&7Element: %{_stat10}%%nl%&7Haste: %{_stat11}%%nl%&7Avoidance: %{_stat12}%%nl%&7Element: %{_element}%%nl%&7Source: &f%{_booster}%%nl%&7Rarity: %{_rarity}%"
+	else:
+		set {_desc} to "%{_description}%%nl%&7Statystyki:%nl%&7Zdrowie: %{_stat1}%%nl%&7Obrażenia: %{_stat2}%%nl%&7Wytrzymałość: %{_stat3}%%nl%&7Mobilność: %{_stat4}%%nl%&7Użyteczność: %{_stat5}%%nl%&7Kontrola Tłumu: %{_stat6}%%nl%&7Uniwersalność: %{_stat7}%%nl%&7Mistrzostwo: %{_stat8}%%nl%&7Cios Krytyczny: %{_stat9}%%nl%&7Żywioł: %{_stat10}%%nl%&7Pośpiech: %{_stat11}%%nl%&7Unik: %{_stat12}%%nl%&7Żywioł: %{_element}%%nl%&7Źródło: &f%{_booster}%%nl%&7Rzadkość: %{_rarity}%"
+	set {_card} to {_item} named {_name} with lore {_desc} with nbt from "{CustomModelData:%{_cmd}%}"
+
+	return {_card}
+
+function SetCardIcon(p: player):
+	set {ikonkakarta::%{_p}%} to tag "CardIcon" of nbt of {_p}'s tool
+
+function SetPlayerStats(p: player):
+	set {_primaryStatType} to tag "PrimaryStat" of nbt of {karta::%{_p}%}
+	set {_primarystat} to tag "Stats;%{_primaryStatType}%" of nbt of {karta::%{_p}%}
+	set {_health} to tag "Stats;Health" of nbt of {karta::%{_p}%}
+	set {_damage} to tag "Stats;Damage" of nbt of {karta::%{_p}%}
+	set {_resistance} to tag "Stats;Resistance" of nbt of {karta::%{_p}%}
+	set {_mobility} to tag "Stats;Mobility" of nbt of {karta::%{_p}%}
+	set {_utility} to tag "Stats;Utility" of nbt of {karta::%{_p}%}
+	set {_crowdcontrol} to tag "Stats;Crowd Control" of nbt of {karta::%{_p}%}
+	set {_versatility} to tag "Stats;Versatility" of nbt of {karta::%{_p}%}
+	set {_mastery} to tag "Stats;Mastery" of nbt of {karta::%{_p}%}
+	set {_criticalhit} to tag "Stats;Critical Hit" of nbt of {karta::%{_p}%}
+	set {_element} to tag "Stats;Element" of nbt of {karta::%{_p}%}
+	set {_haste} to tag "Stats;Haste" of nbt of {karta::%{_p}%}
+	set {_avoidance} to tag "Stats;Avoidance" of nbt of {karta::%{_p}%}
+
+	set {primarystat::%{_p}%} to {_primarystat}
+	set {health::%{_p}%} to {_health}
+	set {damage::%{_p}%} to {_damage}
+	set {resistance::%{_p}%} to {_resistance}
+	set {mobility::%{_p}%} to {_mobility}
+	set {utility::%{_p}%} to {_utility}
+	set {crowdcontrol::%{_p}%} to {_crowdcontrol}
+	set {versatility::%{_p}%} to {_versatility}
+	set {mastery::%{_p}%} to {_mastery}
+	set {criticalhit::%{_p}%} to {_criticalhit}
+	set {element::%{_p}%} to {_element}
+	set {haste::%{_p}%} to {_haste}
+	set {avoidance::%{_p}%} to {_avoidance}
+
+	set max health of {_p} to 25 + ({health::%{_p}%}/5)
+	set scaled health of {_p} to 10
+
+	set {_p}'s walking speed to 0.2 + ({mobility::%{_p}%}/2000)
+
+
+
+	PermanentBuff({_p}) #see efekty.sk <- buffs to stat like +3% haste Glaceon's Winter's Blessing talent
+
+function ClearPlayerStats(p: player):
+	clear {health::%{_p}%}
+	clear {damage::%{_p}%}
+	clear {resistance::%{_p}%}
+	clear {mobility::%{_p}%}
+	clear {utility::%{_p}%}
+	clear {crowdcontrol::%{_p}%}
+	clear {versatility::%{_p}%}
+	clear {mastery::%{_p}%}
+	clear {criticalhit::%{_p}%}
+	clear {element::%{_p}%}
+	clear {haste::%{_p}%}
+	clear {avoidance::%{_p}%}
+
+function UpdateCard(p: player):
+	set {karta::%{_p}%} to {_p}'s tool
+	SetPlayerStats({_p})
+	
+function UpdateCardLore(p: player):
+	set {_card} to {_p}'s tool
+
+function BlockFlowerPath(e: entity):
+	while {_e} is alive:
+		{_e}.setFlower(null)
+		wait 1 second
+
+function Zywiol(a: entity, v: entity) :: text:
+	if {_a} is not a player:
+		set {_customA} to tag "custom" of nbt of {_a}
+		set {_ElementA} to tag "ECElement" of {_customA}
+	else:
+		set {_ElementA} to metadata value "Element" of {_a}
+		clear metadata value "Element" of {_a}
+	set {_customV} to tag "custom" of nbt of {_v}
+	set {_ElementV} to tag "ECElement" of {_customV}
+	if {_ElementA} = "Ogień" or "Fire":
+		if {_ElementV} = "Ogień" or "Fire":
+			set {_damage} to "resist"
+		if {_ElementV} = "Woda" or "Water":
+			set {_damage} to "resist"
+		if {_ElementV} = "Smok" or "Dragon":
+			set {_damage} to "resist"
+		if {_ElementV} = "Lawa" or "Lava":
+			set {_damage} to "resist"
+		if {_ElementV} = "Lód" or "Ice":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Natura" or "Nature":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Metal":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Bestia" or "Beast":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Mechanika" or "Tech":
+			set {_damage} to "supereffective"
+	if {_ElementA} = "Woda" or "Water":
+		if {_ElementV} = "Ogień" or "Fire":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Woda" or "Water":
+			set {_damage} to "resist"
+		if {_ElementV} = "Ziemia" or "Earth":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Natura" or "Nature":
+			set {_damage} to "resist"
+		if {_ElementV} = "Bestia" or "Beast":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Lawa" or "Lava":
+			set {_damage} to "resist"
+		if {_ElementV} = "Mechanika" or "Tech":
+			set {_damage} to "supereffective"
+	if {_ElementA} = "Ziemia" or "Earth":
+		if {_ElementV} = "Ogień" or "Fire":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Powietrze" or "Air":
+			set {_damage} to "resist"
+		if {_ElementV} = "Trucizna" or "Poison":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Burza" or "Storm":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Natura" or "Nature":
+			set {_damage} to "resist"
+		if {_ElementV} = "Metal":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Smok" or "Dragon":
+			set {_damage} to "resist"
+	if {_ElementA} = "Powietrze" or "Air":
+		if {_ElementV} = "Ziemia" or "Earth":
+			set {_damage} to "resist"
+		if {_ElementV} = "Burza" or "Storm":
+			set {_damage} to "resist"
+		if {_ElementV} = "Metal":
+			set {_damage} to "resist"
+		if {_ElementV} = "Bestia" or "Beast":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Natura" or "Nature":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Walka" or "Fight":
+			set {_damage} to "supereffective"
+	if {_ElementA} = "Trucizna" or "Poison":
+		if {_ElementV} = "Ziemia" or "Earth":
+			set {_damage} to "resist"
+		if {_ElementV} = "Trucizna" or "Poison":
+			set {_damage} to "resist"
+		if {_ElementV} = "Metal":
+			set {_damage} to "resist"
+		if {_ElementV} = "Duch" or "Ghost":
+			set {_damage} to "resist"
+		if {_ElementV} = "Natura" or "Nature":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Woda" or "Water":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Bestia" or "Beast":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Mechanika" or "Tech":
+			set {_damage} to "resist"
+		if {_ElementV} = "Walka" or "Fight":
+			set {_damage} to "resist"
+	if {_ElementA} = "Lód" or "Ice":
+		if {_ElementV} = "Ogień" or "Fire":
+			set {_damage} to "resist"
+		if {_ElementV} = "Woda" or "Water":
+			set {_damage} to "resist"
+		if {_ElementV} = "Lód" or "Ice":
+			set {_damage} to "resist"
+		if {_ElementV} = "Bestia" or "Beast":
+			set {_damage} to "resist"
+		if {_ElementV} = "Astral":
+			set {_damage} to "resist"
+		if {_ElementV} = "Metal":
+			set {_damage} to "resist"
+		if {_ElementV} = "Lawa" or "Lava":
+			set {_damage} to "resist"
+		if {_ElementV} = "Mechanika" or "Tech":
+			set {_damage} to "resist"
+		if {_ElementV} = "Ziemia" or "Earth":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Powietrze" or "Air":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Natura" or "Nature":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Smok" or "Dragon":
+			set {_damage} to "supereffective"
+	if {_ElementA} = "Burza" or "Storm":
+		if {_ElementV} = "Smok" or "Dragon":
+			set {_damage} to "resist"
+		if {_ElementV} = "Ziemia" or "Earth":
+			set {_damage} to "resist"
+		if {_ElementV} = "Burza" or "Storm":
+			set {_damage} to "resist"
+		if {_ElementV} = "Powietrze" or "Air":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Woda" or "Water":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Światło" or "Light":
+			set {_damage} to "supereffective"
+	if {_ElementA} = "Psychika" or "Psychic":
+		if {_ElementV} = "Metal":
+			set {_damage} to "resist"
+		if {_ElementV} = "Psychika" or "Psychic":
+			set {_damage} to "resist"
+		if {_ElementV} = "Mrok" or "Dark":
+			set {_damage} to "resist"
+		if {_ElementV} = "Trucizna" or "Poison":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Magia" or "Magic":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Mechanika" or "Tech":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Walka" or "Fight":
+			set {_damage} to "supereffective"
+	if {_ElementA} = "Natura" or "Nature":
+		if {_ElementV} = "Ogień" or "Fire":
+			set {_damage} to "resist"
+		if {_ElementV} = "Woda" or "Water":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Ziemia" or "Earth":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Trucizna" or "Poison":
+			set {_damage} to "resist"
+		if {_ElementV} = "Powietrze" or "Air":
+			set {_damage} to "resist"
+		if {_ElementV} = "Smok" or "Dragon":
+			set {_damage} to "resist"
+		if {_ElementV} = "Metal":
+			set {_damage} to "resist"
+		if {_ElementV} = "Lawa" or "Lava":
+			set {_damage} to "resist"
+		if {_ElementV} = "Mechanika" or "Tech":
+			set {_damage} to "resist"
+	if {_ElementA} = "Metal":
+		if {_ElementV} = "Lód" or "Ice":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Baśń" or "Fairy":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Bestia" or "Beast":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Ogień" or "Fire":
+			set {_damage} to "resist"
+		if {_ElementV} = "Woda" or "Water":
+			set {_damage} to "resist"
+		if {_ElementV} = "Ziemia" or "Earth":
+			set {_damage} to "resist"
+		if {_ElementV} = "Metal":
+			set {_damage} to "resist"
+		if {_ElementV} = "Lawa" or "Lava":
+			set {_damage} to "resist"
+		if {_ElementV} = "Mechanika" or "Tech":
+			set {_damage} to "resist"
+	if {_ElementA} = "Duch" or "Ghost":
+		if {_ElementV} = "Psychika" or "Psychic":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Duch" or "Ghost":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Światło" or "Light":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Mrok" or "Dark":
+			set {_damage} to "resist"
+	if {_ElementA} = "Smok" or "Dragon":
+		if {_ElementV} = "Lawa" or "Lava":
+			set {_damage} to "resist"
+		if {_ElementV} = "Baśń" or "Fairy":
+			set {_damage} to "resist"
+		if {_ElementV} = "Smok" or "Dragon":
+			set {_damage} to "supereffective"
+	if {_ElementA} = "Mrok" or "Dark":
+		if {_ElementV} = "Psychika" or "Psychic":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Duch" or "Ghost":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Mrok" or "Dark":
+			set {_damage} to "resist"
+		if {_ElementV} = "Bestia" or "Beast":
+			set {_damage} to "resist"
+		if {_ElementV} = "Baśń" or "Fairy":
+			set {_damage} to "resist"
+		if {_ElementV} = "Światło" or "Light":
+			set {_damage} to "resist"
+		if {_ElementV} = "Walka" or "Fight":
+			set {_damage} to "resist"
+	if {_ElementA} = "Baśń" or "Fairy":
+		if {_ElementV} = "Smok" or "Dragon":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Mrok" or "Dark":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Walka" or "Fight":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Ogień" or "Fire":
+			set {_damage} to "resist"
+		if {_ElementV} = "Trucizna" or "Poison":
+			set {_damage} to "resist"
+		if {_ElementV} = "Metal":
+			set {_damage} to "resist"
+	if {_ElementA} = "Światło" or "Light":
+		if {_ElementV} = "Mrok" or "Dark":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Metal":
+			set {_damage} to "resist"
+	if {_ElementA} = "Bestia" or "Beast":
+		if {_ElementV} = "Ogień" or "Fire":
+			set {_damage} to "resist"
+		if {_ElementV} = "Powietrze" or "Air":
+			set {_damage} to "resist"
+		if {_ElementV} = "Metal":
+			set {_damage} to "resist"
+		if {_ElementV} = "Astral":
+			set {_damage} to "resist"
+		if {_ElementV} = "Magia" or "Magic":
+			set {_damage} to "resist"
+		if {_ElementV} = "Mechanika" or "Tech":
+			set {_damage} to "resist"
+		if {_ElementV} = "Walka" or "Fight":
+			set {_damage} to "resist"
+		if {_ElementV} = "Psychika" or "Psychic":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Natura" or "Nature":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Mrok" or "Dark":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Baśń" or "Fairy":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Bestia" or "Beast":
+			set {_damage} to "supereffective"
+	if {_ElementA} = "Astral":
+		if {_ElementV} = "Ziemia" or "Earth":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Mrok" or "Dark":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Astral":
+			set {_damage} to "supereffective"
+	if {_ElementA} = "Lawa" or "Lava":
+		if {_ElementV} = "Woda" or "Water":
+			set {_damage} to "resist"
+		if {_ElementV} = "Ogień" or "Fire":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Ziemia" or "Earth":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Lód" or "Ice":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Natura" or "Nature":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Bestia" or "Beast":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Mechanika" or "Tech":
+			set {_damage} to "supereffective"
+	if {_ElementA} = "Magia" or "Magic":
+		if {_ElementV} = "Natura" or "Nature":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Bestia" or "Beast":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Magia" or "Magic":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Walka" or "Fight":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Trucizna" or "Poison":
+			set {_damage} to "resist"
+		if {_ElementV} = "Psychika" or "Psychic":
+			set {_damage} to "resist"
+		if {_ElementV} = "Baśń" or "Fairy":
+			set {_damage} to "resist"
+	if {_ElementA} = "Mechanika" or "Tech":
+		if {_ElementV} = "Ogień" or "Fire":
+			set {_damage} to "resist"
+		if {_ElementV} = "Water" or "Woda":
+			set {_damage} to "resist"
+		if {_ElementV} = "Lawa" or "Lava":
+			set {_damage} to "resist"
+		if {_ElementV} = "Trucizna" or "Poison":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Natura" or "Nature":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Metal":
+			set {_damage} to "supereffective"
+	if {_ElementA} = "Walka" or "Fight":
+		if {_ElementV} = "Metal":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Lód" or "Ice":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Bestia" or "Beast":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Mrok" or "Dark":
+			set {_damage} to "supereffective"
+		if {_ElementV} = "Trucizna" or "Poison":
+			set {_damage} to "resist"
+		if {_ElementV} = "Powietrze" or "Air":
+			set {_damage} to "resist"
+		if {_ElementV} = "Psychika" or "Psychic":
+			set {_damage} to "resist"
+		if {_ElementV} = "Duch" or "Ghost":
+			set {_damage} to "resist"
+		if {_ElementV} = "Baśń" or "Fairy":
+			set {_damage} to "resist"
+		if {_ElementV} = "Magia" or "Magic":
+			set {_damage} to "resist"
+	clear metadata value "Element" of {_a}
+	return {_damage}
+
+on join:
+	if {KeystoneClaim::%player%} is set:
+		wait 5 seconds
+		send "&aThere is a lost Keystone you can claim. Type /recover keystone to retrieve your Keystone."
+	
+command /recover [<text>]:
+	trigger:
+		if arg-1 = "keystone":
+			give player {KeystoneClaim::%player%}
+			clear {KeystoneClaim::%player%}
+
+on load:
+	# sets up the tick amounts for each denomination
+	# also sets up the names, feel free to change them, just be careful not to overlap
+	clear {-timespans::*}
+	set {-timespans::1} to ticks of 1 year
+	set {-timespans::1::name} to "y" 
+
+	set {-timespans::2} to ticks of 1 month
+	set {-timespans::2::name} to "o"
+
+	set {-timespans::3} to ticks of 1 week
+	set {-timespans::3::name} to "w"
+
+	set {-timespans::4} to ticks of 1 day
+	set {-timespans::4::name} to "d"
+
+	set {-timespans::5} to ticks of 1 hour
+	set {-timespans::5::name} to "h"
+
+	set {-timespans::6} to ticks of 1 minute
+	set {-timespans::6::name} to "m"
+
+	set {-timespans::7} to ticks of 1 second
+	set {-timespans::7::name} to "s"
+
+	set {-timespans::8} to 1
+	set {-timespans::8::name} to "t"
+
+	# sets the default format string, feel free to change it
+	# it's used if you don't specify a format string in the formatTimespan function
+	set {-timespan-default-format} to "hh:mm:ss"
+
+
+# Accepts a timespan, a format string, and a boolean to trim leading zeroes
+# Returns a string with the timespan formatted according to the format string
+#
+# Parameters:
+#   timespan: the timespan to format
+#   format: the format string to use. Defaults to the default format string, which is "hh:mm:ss"
+#   trim-zeroes: whether or not to trim leading zeroes. Defaults to false 
+function formatTimespan(timespan: timespan, format: string = {-timespan-default-format}, trim-zeroes: boolean = false) :: string:
+	# handle non-placeholder characters:
+	set {_escaped::*} to timespanGetEscapedCharacters({_format})
+	set {_format} to join (regex split {_format} at "\$.*?\$") with "$"
+
+	set {_format} to lowercase {_format}
+	set {_ticks} to ticks of {_timespan} # requires SkBee. Replace with your own timespan to ticks method if you don't have SkBee, like .getTicks() for skript-reflect.
+
+	# for each denomination, replace the placeholder with the correct amount of ticks
+	# then remove the amount of ticks from the total
+	loop {-timespans::*}:
+		if {_format} contains {-timespans::%loop-index%::name}:
+			set {_timespan} to floor({_ticks} / {-timespans::%loop-index%})
+			set {_ticks} to mod({_ticks}, {-timespans::%loop-index%})
+			set {_format} to timespanReplaceFormat({_format}, {-timespans::%loop-index%::name}, {_timespan})
+	
+	# handle non-placeholder characters:
+	loop {_escaped::*}:
+		replace first "$" with {_escaped::%loop-index%} in {_format}
+
+	# trim zeros
+	# it's kinda hacky, just looks for the first non-zero character and cuts off everything before it
+	# keeps decimals, so you can use 0.00 to show milliseconds
+	if {_trim-zeroes} is true:
+		set {_start} to length of {_format} + 1
+		loop length of {_format} times:
+			if character at loop-value of {_format} matches "[1-9]":
+				set {_start} to loop-value
+				exit loop
+			else if character at loop-value of {_format} is "0":
+				character at loop-value + 1 of {_format} is "."
+				character at loop-value + 2 of {_format} matches "\d"
+				set {_start} to loop-value
+				exit loop
+		# cut off everything before the first non-zero character
+		set {_format} to substring of {_format} from {_start} to length of {_format}
+		
+	return {_format}
+
+# replaces all characters between the first and last occurrence of the given name in the format string with the padded value
+# returns the new format string
+#
+# Parameters:
+#   format: the format string to replace characters in
+#   name: the name of the denomination to replace
+#   value: the number to replace the characters with
+function timespanReplaceFormat(format: string, name: string, value: number) :: string:
+	set {_first} to first index of {_name} in {_format}
+	set {_last} to last index of {_name} in {_format}
+	set {_length} to {_last} - {_first} + 1
+	if {_name} is "t":
+		set {_value} to {_value} / 20
+	set {_replaceValue} to timespanPadValue({_value}, {_length})
+	replace substring of {_format} from {_first} to {_last} with {_replaceValue} in {_format}
+	return {_format}
+
+# pads the given value to the given length with 0s
+# returns the padded value
+#
+# Parameters:
+#   value: the value to pad
+#   length: the length to pad to
+function timespanPadValue(value: number, length: number) :: string:
+	# handle decimal values (ticks)
+	set {_decimals} to mod({_value}, 1) 
+	set {_value} to floor({_value})
+	# pad decimals to 2 digits (ticks are multiples of 0.05)
+	if {_decimals} is not 0:
+		set {_decimals} to floor({_decimals} * 100)
+		set {_decimal-value} to timespanPadValue({_decimals}, 2)
+	# add non-zero parts
+	if {_decimal-value} is set:
+		set {_final-value} to "%{_value}%." if {_value} is not 0 else ""
+		set {_final-value} to "%{_final-value}%%{_decimal-value}%"
+	else:
+		set {_final-value} to "%{_value}%"
+	# pad left with 0s
+	while length of {_final-value} < {_length}:
+		set {_final-value} to "0%{_final-value}%" if {_decimal-value} is not set else "%{_final-value}%0"
+	return {_final-value}
+
+# returns a list of all substrings that are escaped (via $) in the given string
+#
+# Parameters:
+#   format: the format string to get escaped characters from
+function timespanGetEscapedCharacters(format: string) :: strings:
+	set {_chars::*} to {_format} split at ""
+	set {_escaped} to false
+	# iterate over list, toggle escaped state at $, add to escaped list if escaped
+	loop {_chars::*}:
+		if loop-value is "$":
+			set {_escaped} to true if {_escaped} is false else false
+			if {_escaped} is true:
+				add 1 to {_counter}
+			continue
+		if {_escaped} is true:
+			set {_escaped::%{_counter}%} to "%{_escaped::%{_counter}%} ? ""%%loop-value%"
+
+	return {_escaped::*}

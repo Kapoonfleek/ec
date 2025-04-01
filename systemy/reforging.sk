@@ -1,20 +1,728 @@
 #What would you like to do?
 #Judge 
 #Judges an Artifact or Relic, determining its power and ... from reaching maximum values.
+#Upgrade
+#Upgrades Gear, Relics or a piece of Artifact
 #Reforge
 # Reforges an Artifact or Relic, re-randomizing its stats, stat values, or both
+
 on rightclick on a player:
     if clicked player's name = "Papito":
+        play sound "entity.villager.yes" with volume 5 and pitch 0.62 to player
+        play sound "entity.villager.work_toolsmith" with volume 5 and pitch 0.91 to player
         if {language::%player%} = "English":
+            set {_dialogue} to a random integer between 1 and 2
+            if {_dialogue} = 1:
+                send "&8[<##b0b0b0>NPC&8] &8<<##b0b0b0>Papito&8> &fHey there! Need anything done?" to player
+            else:
+                send "&8[<##b0b0b0>NPC&8] &8<<##b0b0b0>Papito&8> &fAnything I can do for you?" to player
             set metadata tag "papito" of player to chest inventory with 1 row named "What would you like to do?"
-            set slot 3 of (metadata tag "papito" of player) to anvil named "&7Reforge" with lore "&7Reforge an Artifact on Relic, re-randomizng%nl%&7its stats, stat values, or both. The cost%nl%&7of Reforging increases with each Reforge and resets%nl%&7on a weekly basis."
-            set slot 4 of (metadata tag "papito" of player) to netherite sword named "&7Judge" with lore "&7Judges an Artifact or Relic, determining%nl%&7its power."
-            set slot 5 of (metadata tag "papito" of player) to smoker named "&7Upgrade" with lore "&f&l&oComing soon"
+            set slot 2 of (metadata tag "papito" of player) to smoker named "&7Upgrade" with lore "&fClick here to upgrade an item."
+            set slot 3 of (metadata tag "papito" of player) to anvil named "&7Reforge" with lore "&fReforge an Artifact, re-randomizng its stats%nl%&fstat values, or both. The cost of Reforging%nl%&fincreases with each Reforge and resets%nl%&fon a weekly basis."
+            set slot 4 of (metadata tag "papito" of player) to netherite sword named "&7Enhance" with lore "&fUse up a duplicate of a Relic to further%nl%&fenhance your Relic's power." with nbt from "{HideFlags:127}"
+            set slot 5 of (metadata tag "papito" of player) to netherite helmet named "&7Socket an Item" with lore "&fClick here to add a Gem to a socket." with nbt from "{HideFlags:127}"
+            set slot 6 of (metadata tag "papito" of player) to netherite ingot named "&7Rate an Artifact" with lore "&fClick here to have your Artifact%nl%&frated by 'Papito'."
         else:
+            set {_dialogue} to a random integer between 1 and 2
+            if {_dialogue} = 1:
+                send "&8[<##b0b0b0>NPC&8] &8<<##b0b0b0>Papito&8> &fCześć! Potrzeba coś zrobić?" to player
+            else:
+                send "&8[<##b0b0b0>NPC&8] &8<<##b0b0b0>Papito&8> &fMogę coś dla ciebie wykonać?" to player
             set metadata tag "papito" of player to chest inventory with 1 row named "Co chcesz zrobić?"
-            set slot 3 of (metadata tag "papito" of player) to anvil named "&7Reforge" with lore "&7Reforge an Artifact on Relic, re-randomizng%nl%&7its stats, stat values, or both. The cost%nl%&7of Reforging increases with each Reforge and resets%nl%&7on a weekly basis."
-            set slot 4 of (metadata tag "papito" of player) to netherite sword named "&7Oceń" with lore "&7Ocenia Relikt, lub Artefakt%nl%&7its power."
-            set slot 5 of (metadata tag "papito" of player) to smoker named "&7Ulepsz" with lore "&f&l&oComing soon"
+            set slot 2 of (metadata tag "papito" of player) to smoker named "&7Ulepsz" with lore "&f&l&oKliknij tutaj, by ulepszyć przedmiot."
+            set slot 3 of (metadata tag "papito" of player) to anvil named "&7Reforge" with lore "&fReforge an Artifact, re-randomizng its stats%nl%&fstat values, or both. The cost of Reforging%nl%&fincreases with each Reforge and resets%nl%&fon a weekly basis."
+            set slot 4 of (metadata tag "papito" of player) to netherite sword named "&7Wzmocnij" with lore "&fZamień duplikat Reliktu dodatkowo%nl%&fwzmacniając Relikt."
+            set slot 5 of (metadata tag "papito" of player) to netherite helmet named "&7Wypełnij Socket" with lore "&fKliknij tutaj, by dodać Gem do socketu." with nbt from "{HideFlags:127}"
+            set slot 6 of (metadata tag "papito" of player) to netherite ingot named "&7Oceń Artefakt" with lore "&fKliknij tutaj, by ocenić Artefakt."
+        open (metadata tag "papito" of player) to player
 on inventory click:
-    if player's current inventory = metadata tag "papito" of player:
+    if event-inventory = metadata tag "papito" of player:
         cancel event
+        if event-slot = 2:
+            play sound "block.anvil.place" with volume 5 and pitch 1.61 to player
+            if {language::%player%} = "English":
+                set metadata tag "papitoUpgrade" of player to chest inventory with 6 rows named "Papito - Upgrade"
+            else:
+                set metadata tag "papitoUpgrade" of player to chest inventory with 6 rows named "Papito - Ulepsz"
+            set {_slotIndex} to 0
+            loop all items in the player's inventory:
+                if (item amount of loop-item) = 1:
+                    if line 2 of lore of loop-item contains "Item Level":
+                        if line 1 of lore of loop-item contains "Artifact" or "Artefakt" or "Relic" or "Relikt":
+                            set slot {_slotIndex} of metadata tag "papitoUpgrade" of player to loop-item
+                            if tag "Artifact" of nbt of loop-item is set:
+                                set {_starLevel} to tag "StarLevel" of nbt of loop-item
+                                if (tag "Upgraded" of nbt of loop-item) < {_starLevel}*5:
+                                    set {_canUpgrade} to true
+                            else if tag "Relic" of nbt of loop-item is set:
+                                if (tag "Upgraded" of nbt of loop-item) < 125:
+                                    set {_canUpgrade} to true
+                            if {_canUpgrade} = true:
+                                add "%nl%&f&oClick here to upgrade this item." to lore of slot {_slotIndex} of metadata tag "papitoUpgrade" of player
+                            else:
+                                add "%nl%&c&oThis item has been fully upgraded." to lore of slot {_slotIndex} of metadata tag "papitoUpgrade" of player
+                            add 1 to {_slotIndex}
+            if {_slotIndex} > 0:
+                open metadata tag "papitoUpgrade" of player to player
+            else:
+                play sound "entity.villager.no" with volume 5 and pitch 0.62 to player
+                play sound "block.anvil.place" with volume 5 and pitch 1.176 to player 
+                send "&c&oThere are no Artifacts or Relics in your inventory." to player
+        else if event-slot = 5:
+            play sound "block.anvil.place" with volume 5 and pitch 1.61 to player
+            set metadata tag "papitoSocket" of player to chest inventory with 6 rows named "Papito - Socket"
+            set {_slotIndex} to 0
+            loop all items in the player's inventory:
+                if (item amount of loop-item) = 1:
+                    if tag "Socket" of nbt of loop-item is set:
+                        set slot {_slotIndex} of metadata value "papitoSocket" of player to loop-item
+                        add "%nl%&f&oClick here to socket this item." to lore of slot {_slotIndex} of metadata value "papitoSocket" of player
+                        add 1 to {_slotIndex}
+            if {_slotIndex} > 0:
+                open metadata tag "papitoSocket" of player to player
+            else:
+                play sound "entity.villager.no" with volume 5 and pitch 0.62 to player
+                send "&c&oThere are no items with a Socket in your inventory." to player
+        else if event-slot = 4:
+            play sound "block.anvil.place" with volume 5 and pitch 1.81 to player
+            if {language::%player%} = "English":
+                set metadata tag "papitoEnhance" of player to chest inventory with 6 rows named "Papito - Enhance"
+            else:
+                set metadata tag "papitoEnhance" of player to chest inventory with 6 rows named "Papito - Wzmocnij"
+            set {_slotIndex} to 0
+            loop all items in the player's inventory:
+                set {_lore::*} to lore of loop-item
+                if {_lore::2} contains "Item Level":
+                    if line 1 of lore of loop-item contains "Relic" or "Relikt":
+                        set slot {_slotIndex} of metadata tag "papitoEnhance" of player to loop-item
+                        if tag "Enhanced" of nbt of loop-item < 5:
+                            add "%nl%&f&oClick here to enhance this item." to lore of slot {_slotIndex} of metadata tag "papitoEnhance" of player
+                        else:
+                            add "%nl%&c&oThis item has been fully enhanced." to lore of slot {_slotIndex} of metadata tag "papitoEnhance" of player
+                        add 1 to {_slotIndex}
+            if {_slotIndex} > 0:
+                open metadata tag "papitoEnhance" of player to player
+            else:
+                play sound "entity.villager.no" with volume 5 and pitch 0.62 to player
+                play sound "block.anvil.place" with volume 5 and pitch 1.176 to player 
+                send "&c&oThere are no Relics in your inventory." to player
+    else if event-inventory = metadata tag "papitoSocket" of player:
+        if event-slot is between 0 and 53:
+            cancel event
+            if event-slot is not air:
+                if tag "Socket" of nbt of event-slot is set:
+                    set {_slot} to event-slot
+                    play sound "block.anvil.place" with volume 5 and pitch 1.74 to player
+                    set metadata tag "papitoSocketItem" of player to chest inventory with 3 rows named "Papito - Socket - %uncolored name of {_slot}%"
+                    loop lore of {_slot}:
+                        if loop-value does not contain "Click here to socket":
+                            add loop-value to {_lore::*}
+                    delete {_lore::%size of {_lore::*}%}
+                    set lore of {_slot} to {_lore::*}
+                    set slots (integers between 0 and 26) of  metadata tag "papitoSocketItem" of player to black glass pane named " "
+                    set slot 10 of metadata tag "papitoSocketItem" of player to {_slot}
+                    set slot 13 of metadata tag "papitoSocketItem" of player to white glass pane named "&fSocket" with lore "&7Click here to add a Gem from%nl%&7your inventory and socket this%nl%&7item."
+                    set slot 16 of metadata tag "papitoSocketItem" of player to {_slot}
+                    set slot 25 of metadata tag "papitoSocketItem" of player to blue glass pane named "&9Socket Details" with lore "&fStat Value Details%nl%&7Gems that are &f &7socketed will provide &f50%% &7of the Gem's%nl%&7original value, and the effectiveness of stats provided%nl%&7by a Gem depends on the gear piece's <##fdd002>Item Level&7.%nl% %nl%&fMaximum Value"
+                    add "&7Gear of at least <##a335ee>Epic &7quality, or gear above <##fdd002>Item Level 56%nl%&7will always receive the full value from Gems.%nl%&7Socketing an <##1fef00>Uncommon Gem &7will always provide%nl%&7the full value regardless of the item's <##fdd002>Item Level&7.%nl% %nl%&fHow To Socket%nl%&7Click on the &fwhite glass pane &7to choose a Gem from%nl%&7your inventory that will fit the appropriate socket" to lore of slot 25 of metadata tag "papitoSocketItem" of player
+                    add "&7type. Once you've chosen a Gem, click on the socketed%nl%&7Gear piece on the right to finish the process." to lore of slot 25 of metadata tag "papitoSocketItem" of player
+                    open metadata tag "papitoSocketItem" of player to player
+    else if event-inventory = metadata tag "papitoSocketItem" of player:
+        if event-slot is between 0 and 26:
+            cancel event
+            if event-slot = white glass pane named "&fSocket":
+                play sound "block.anvil.place" with volume 5 and pitch 1.9 to player
+                set {_gearItem} to slot 16 of metadata tag "papitoSocketItem" of player
+                set {_socketType} to tag "SocketType" of nbt of {_gearItem}
+                if {_socketType} contains "Prismatic Socket":
+                    set {_eligibleGems::*} to "Any"
+                else if {_socketType} contains "Uncommon Socket":
+                    set {_eligibleGems::*} to "Crafty Zach's Eye", "Energized King's Emerald", "Sensei's Galestone", "Zen Mystic Lapis Lazuli"
+                else if {_socketType} contains "Rare Socket":
+                    #set {_eligibleGems::*} to "Delphoxite", "Camomerald", "Echonite" and "Cynderite"
+                    set {_eligibleGems} to "Rare"
+                else if {_socketType} contains "Blue Socket":
+                    set {_eligibleGems::*} to "Zen Mystic Lapis Lazuli", "Echonite" and "Resplendent Illimited Diamond"
+                else if {_socketType} contains "Red Socket":
+                    set {_eligibleGems::*} to "Crafty Zach's Eye", "Delphoxite" and "Inscribed Illimited Diamond"
+                else if {_socketType} contains "Green Socket":
+                    set {_eligibleGems::*} to "Energized King's Emerald", "Camomerald" and "Fierce Illimited Diamond"
+                else if {_socketType} contains "Purple Socket":
+                    set {_eligibleGems::*} to "Sensei's Galestone", "Cynderite" and "Skillful Illimited Diamond"
+                
+                set {_gemCount} to 0
+                set metadata value "SocketChooseGem" of player to chest inventory with 5 rows named "Papito - Socket - Choose Gem"
+                loop all items in the inventory of player:
+                    if tag "Gem" of nbt of loop-item is set:
+                        if {_eligibleGems::*} != "Any":
+                            if {_eligibleGems::*} contains (uncolored name of loop-item):
+                                set slot {_gemCount} of metadata value "SocketChooseGem" of player to loop-item
+                                add 1 to {_gemCount}
+                            else if tag "GemType" of nbt of loop-item = {_eligibleGems}:
+                                set slot {_gemCount} of metadata value "SocketChooseGem" of player to loop-item
+                                add 1 to {_gemCount}
+
+                        else if {_eligibleGems::*} = "Any":
+                            set slot {_gemCount} of metadata value "SocketChooseGem" of player to loop-item
+                            add 1 to {_gemCount}
+                open metadata value "SocketChooseGem" of player to player   
+            else if event-slot = 16:
+                if tag "GearSlot" of nbt of event-slot is set:
+                    loop lore of event-slot:
+                        if loop-value contains "":
+                            set {_noChange} to true
+                    if {_noChange} is not set:
+                        set tag "Socketed" of nbt of event-slot to true
+                        remove slot 10 of metadata value "papitoSocketItem" of player from player
+                        set {_gemIcon} to tag "GemIcon" of nbt of slot 13 of metadata value "papitoSocketItem" of player
+                        send "&e&oSuccessfully socketed a &f%{_gemIcon}% &e&o%uncolored name of slot 13 of metadata value "papitoSocketItem" of player%." to player
+                        set tag "SocketedGem" of nbt of event-slot to (uncolored name of slot 13 of metadata value "papitoSocketItem" of player)
+                        set tag "GemQuality" of nbt of event-slot to (tag "Quality" of nbt of slot 13 of metadata value "papitoSocketItem" of player)
+                        set slot 10 of metadata value "papitoSocketItem" of player to air
+                        set slot 13 of metadata value "papitoSocketItem" of player to air
+                        teleport the player to player's location
+                        giveItem(player, event-slot)
+                        play sound "profession.gem.pick_up" with volume 5 and pitch 1 to player
+                        wait 5 ticks
+                        play sound "profession.gem.put_down" with volume 5 and pitch 1 to player
+                        wait 5 ticks
+                        play sound "block.anvil.place" with volume 5 and pitch 2 to player
+
+    else if event-inventory = (metadata value "SocketChooseGem" of player):
+        if event-slot is between 0 and 26:
+            cancel event
+            if tag "Gem" of nbt of event-slot is set:
+                play sound "profession.gem.pick_up" with volume 5 and pitch 1 to player
+                set {_gem} to 1 of event-slot
+                remove {_gem} from player
+                set slot 13 of metadata tag "papitoSocketItem" of player to {_gem}
+                set {_indexLore} to 1
+                set {_gearItem} to slot 16 of metadata tag "papitoSocketItem" of player
+                loop lore of slot 16 of metadata tag "papitoSocketItem" of player:
+                    if loop-value contains "":
+                        stop loop
+                    add 1 to {_indexLore}
+                set {_itemLevel} to tag "ItemLevel" of nbt of {_gearItem}
+                set {_statsGem} to "%tag "Stats" of nbt of {_gem}%"
+                replace all """" and "{" and "}" in {_statsGem} with ""
+                set {_statsType::*} to ({_statsGem} split at ",")
+                set {_index} to 1
+                loop {_statsType::*}:
+                    set {_values::*} to loop-value split at ":"
+                    set {_value} to {_values::2}
+                    set {_statsValue::%{_index}%} to {_value} parsed as number
+                    replace all ":" and {_value} in {_statsType::%{_index}%} with ""
+                    if {_statsType::%{_index}%} = "Critical Hit":
+                        set {_statColour} to "<##fca417>"
+                        set {_statIcon} to ""
+                    else if {_statsType::%{_index}%} = "Haste":
+                        set {_statColour} to "<##19943e>"
+                        set {_statIcon} to ""
+                    else if {_statsType::%{_index}%} = "Versatility":
+                        set {_statColour} to "<##e3ebff>"
+                        set {_statIcon} to ""
+                    else if {_statsType::%{_index}%} = "Mastery":
+                        set {_statColour} to "<##f53b98>"
+                        set {_statIcon} to ""
+                    else if {_statsType::%{_index}%} = "Intellect":
+                        set {_statColour} to "<##59c1e3>"
+                        set {_statIcon} to ""
+                    else if {_statsType::%{_index}%} = "Strength":
+                        set {_statColour} to "<##e35959>"
+                        set {_statIcon} to ""
+                    else if {_statsType::%{_index}%} = "Agility":
+                        set {_statColour} to "<##5ee359>"
+                        set {_statIcon} to ""
+                    if (tag "Rarity" of nbt of {_gearItem}) != "Epic":
+                        if (tag "GemType" of nbt of {_gem}) = "Uncommon":
+                            set {_factor} to 1
+                        else:
+                            if 56 > {_itemLevel}:
+                                set {_factor} to {_itemLevel}/56
+                            else:
+                                set {_factor} to 1
+                    else:
+                        set {_factor} to 1
+                    set {_stat} to round({_factor} * ({_statsValue::%{_index}%}*0.5), 0)
+                    set tag "SocketStats;%{_statsType::%{_index}%}%" of nbt of slot 16 of metadata tag "papitoSocketItem" of player to {_stat}
+                    set {_gemLine::%{_index}%} to "%{_statColour}%+%{_stat}% %{_statIcon}% %{_statsType::%{_index}%}%"
+                    clear {_statIcon}
+                    clear {_statColour}
+                    add 1 to {_index}
+                    clear {_stat}
+                    clear {_factor}
+                set {_gemIcon} to tag "GemIcon" of nbt of {_gem}
+                set {_gemline} to "&f%{_gemIcon}% %join {_gemLine::*} by " &f& "%"
+                set line {_indexLore} of lore of slot 16 of metadata tag "papitoSocketItem" of player to {_gemline}
+                set {_index} to 1
+                loop lore of slot 16 of metadata tag "papitoSocketItem" of player:
+                    if loop-value contains "&7Socket Bonus:":
+                        set {_socketBonusActive} to true
+                        set {_socketBonusLine::*} to loop-value split at ": "
+                        if character at 1 in {_socketBonusLine::2} = "":
+                            set {_socketBonusLine::2} to "<##19943e>%{_socketBonusLine::2}%"
+                        else if character at 1 in {_socketBonusLine::2} = "":
+                            set {_socketBonusLine::2} to "<##fca417>%{_socketBonusLine::2}%"
+                        else if character at 1 in {_socketBonusLine::2} = "":
+                            set {_socketBonusLine::2} to "<##e3ebff>%{_socketBonusLine::2}%"
+                        else if character at 1 in {_socketBonusLine::2} = "":
+                            set {_socketBonusLine::2} to "<##f53b98>%{_socketBonusLine::2}%"
+                        else if character at 1 in {_socketBonusLine::2} = "":
+                            set {_socketBonusLine::2} to "<##59c1e3>%{_socketBonusLine::2}%"
+                        else if character at 1 in {_socketBonusLine::2} = "":
+                            set {_socketBonusLine::2} to "<##e35959>%{_socketBonusLine::2}%"
+                        else if character at 1 in {_socketBonusLine::2} = "":
+                            set {_socketBonusLine::2} to "<##5ee359>%{_socketBonusLine::2}%"
+                        else if character at 1 in {_socketBonusLine::2} = "":
+                            set {_socketBonusLine::2} to "<##2154ad>%{_socketBonusLine::2}%"
+                        else if character at 1 in {_socketBonusLine::2} = "":
+                            set {_socketBonusLine::2} to "<##ae78d0>%{_socketBonusLine::2}%"
+                        else if character at 1 in {_socketBonusLine::2} = "":
+                            set {_socketBonusLine::2} to "<##d5ff57>%{_socketBonusLine::2}%"
+                        else if character at 1 in {_socketBonusLine::2} = "":
+                            set {_socketBonusLine::2} to "&f%{_socketBonusLine::2}%"
+                        else if character at 1 in {_socketBonusLine::2} = "":
+                            set {_socketBonusLine::2} to "<##58c3f5>%{_socketBonusLine::2}%"
+                        else if character at 1 in {_socketBonusLine::2} = "":
+                            set {_socketBonusLine::2} to "<##c0ff02>%{_socketBonusLine::2}%"
+                        else if character at 1 in {_socketBonusLine::2} = "":
+                            set {_socketBonusLine::2} to "<##f74428>%{_socketBonusLine::2}%"
+                        else if character at 1 in {_socketBonusLine::2} = "":
+                            set {_socketBonusLine::2} to "<##ffef45>%{_socketBonusLine::2}%"
+                        set line {_index} of lore of slot 16 of metadata tag "papitoSocketItem" of player to "&fSocket Bonus: %{_socketBonusLine::2}%"
+                    add 1 to {_index}
+                if {_socketBonusActive} is set:
+                    set tag "SocketBonusActive" of nbt of slot 16 of metadata tag "papitoSocketItem" of player to true
+                open metadata tag "papitoSocketItem" of player to player
+                wait 5 ticks
+                play sound "profession.gem.put_down" with volume 5 and pitch 1 to player
+                wait 5 ticks
+                play sound "block.anvil.place" with volume 5 and pitch 2 to player
+    else if event-inventory = metadata tag "papitoUpgrade" of player:
+        cancel event
+        if clicked slot is not air:
+            if clicked slot is between 0 and 53:
+                if lore of clicked slot does not contain "&c&oThis item has been fully upgraded.":
+                    if lore of clicked slot does not contain "&c&oTen przedmiot został w pełni ulepszony.":
+                        play sound "block.anvil.place" with volume 5 and pitch 1.176 to player 
+                        set {_} to last color of name of clicked slot
+                        if line 1 of lore of clicked slot contains "Artifact" or "Artefakt":
+                            set {_type} to "Artifact"
+                            set metadata tag "papitoUpgradeItem" of player to chest inventory with 5 rows named "Papito - Upgrade - %{_}%Artifact"
+                        else if line 1 of lore of clicked slot contains "Relic" or "Relikt":
+                            set {_type} to "Relic"
+                            set metadata tag "papitoUpgradeItem" of player to chest inventory with 5 rows named "Papito - Upgrade - %{_}%Relic"
+                        set {_item} to clicked slot
+                        loop lore of {_item}:
+                            if loop-value does not contain "Click here to upgrade" or "Kliknij tutaj, by ulepszyć":
+                                add loop-value to {_lore::*}
+                        delete {_lore::%size of {_lore::*}%}
+                        set lore of {_item} to {_lore::*}
+                        set {_artifact} to {_item}
+                        set {_upgradeLevel} to tag "Upgraded" of nbt of {_artifact}
+                        set {_experience} to tag "Experience" of nbt of {_artifact}
+                        set {_starLevel} to tag "StarLevel" of nbt of {_artifact}
+                        #add "%nl%&f&oYou are upgrading this item." to lore of {_item}
+                        set slot 13 of metadata tag "papitoUpgradeItem" of player to {_item}
+                        if {_type} = "Artifact":
+                            set {_requiredExp} to ArtifactReqExp({_item})
+                            loop {_starlevel}*5 times:
+                                if tag "Upgraded" of nbt of {_item} + 1 <= {_starLevel}*5:
+                                    if loop-number < 6:
+                                        add ArtifactReqExp({_item}) to {_requiredExp5Levels}
+                                    add ArtifactReqExp({_item}) to {_requiredExp25Levels}
+                                    set tag "Upgraded" of nbt of {_item} to tag "Upgraded" of nbt of {_item} + 1
+                        else if {_type} = "Relic":
+                            set {_requiredExp} to RelicReqExp({_item})
+                            loop 25 times:
+                                if tag "Upgraded" of nbt of {_item} + 1 <= 125:
+                                    if loop-number < 6:
+                                        add RelicReqExp({_item}) to {_requiredExp5Levels}
+                                    add RelicReqExp({_item}) to {_requiredExp25Levels}
+                                    set tag "Upgraded" of nbt of {_item} to tag "Upgraded" of nbt of {_item} + 1
+                        loop all items in the player's inventory:
+                            if 1 of loop-item = {stardust}:
+                                add item amount of loop-item to {_stardustAmount}
+                            if 1 of loop-item = {stardustEN}:
+                                add item amount of loop-item to {_stardustAmount}
+                        if {_stardustAmount} is not set:
+                            set {_stardustAmount} to 0
+                        if {_type} = "Artifact":
+                            set {_25minLvl} to 5*{_starLevel}
+                            if {_upgradeLevel} + 5 < {_starLevel}*5 + 1:
+                                set {_5} to {_upgradeLevel} + 5
+                            else:
+                                set {_5} to 5*{_starLevel}
+                            set slot 31 of metadata tag "papitoUpgradeItem" of player to smoker named "&8Upgrading" with lore "&7&oThis process will cost you Stardust&7&o.%nl%&f1 EXP = 1 Stardust.%nl%&fA total of 768 EXP is required to fully%nl%&fupgrade an item.%nl% %nl%&fYou currently have %{_stardustAmount}% Stardust in your inventory." with nbt from "{CustomModelData:1}"    
+                        else if {_type} = "Relic":
+                            set {_25minLvl} to {_upgradeLevel} + 25
+                            if {_25minLvl} + 25 < 126:
+                                set {_25minLvl} to 25 - {_upgradeLevel}
+                            if {_upgradeLevel} + 5 < 126:
+                                set {_5} to {_upgradeLevel} + 5
+                            else:
+                                set {_5} to 125
+                            #Calculate total amount of stardust required
+                            #set {_sum} to 0
+                            #loop 125 times:
+                                #set {_3} to rounded (2 * ((sqrt(loop-number)/sqrt(125)))*2.515) * (loop-number) + 2
+                                #add {_3} to {_sum}
+                            set slot 31 of metadata tag "papitoUpgradeItem" of player to smoker named "&8Upgrading" with lore "&7&oThis process will cost you Stardust&7&o.%nl%&f1 EXP = 1 Stardust.%nl%&fA total of 32000 EXP is required to fully%nl%&fupgrade an item.%nl% %nl%&fYou currently have %{_stardustAmount}% Stardust in your inventory." with nbt from "{CustomModelData:1}" 
+                        set slot 21 of metadata tag "papitoUpgradeItem" of player to anvil named "&8Upgrade +1" with lore "&fUpgrade Level: +%{_upgradeLevel}% -> +%{_upgradeLevel}+1%%nl%&fEXP until Level: %{_requiredExp}%%nl%&fCost: %{_requiredExp}%"
+                        set slot 22 of metadata tag "papitoUpgradeItem" of player to anvil named "&8Upgrade +5" with lore "&fUpgrade Level: +%{_upgradeLevel}% -> +%{_5}%%nl%&fEXP until Level: %{_requiredExp5Levels}%%nl%&fCost: %{_requiredExp5Levels}%"
+                        set slot 23 of metadata tag "papitoUpgradeItem" of player to anvil named "&8Upgrade +%{_starLevel}*5%" with lore "&fUpgrade Level: +%{_upgradeLevel}% -> +%{_25minLvl}%%nl%&fEXP until Level: %{_requiredExp25Levels}%%nl%&fCost: %{_requiredExp25Levels}%"
+                        set tag "StardustAmount" of nbt of slot 21 of metadata tag "papitoUpgradeItem" of player to {_requiredExp}
+                        set tag "StardustAmount" of nbt of slot 22 of metadata tag "papitoUpgradeItem" of player to {_requiredExp5Levels}
+                        set tag "StardustAmount" of nbt of slot 23 of metadata tag "papitoUpgradeItem" of player to {_requiredExp25Levels}
+
+                        open metadata tag "papitoUpgradeItem" of player to player
+                    else:
+                        play sound "block.anvil.land" with volume 5 and pitch 0.23 to player
+                else:
+                    play sound "block.anvil.land" with volume 5 and pitch 0.23 to player
+
+    else if event-inventory = metadata tag "papitoUpgradeItem" of player:
+        cancel event
+        if event-slot = 21 or 22 or 23:
+            play sound "block.anvil.place" with volume 5 and pitch 1.41 to player 
+            set {_artifact} to slot 13 of player's current inventory
+            set {_starLevel} to tag "StarLevel" of nbt of {_artifact}
+            #loop lore of {_item}:
+            #    if loop-value does not contain "You are upgrading this item." or "Ulepszasz ten przedmiot.":
+            #        add loop-value to {_lore::*}
+            #delete {_lore::%size of {_lore::*}%}
+            #set lore of {_item} to {_lore::*}
+            set {_stardustAmount} to tag "StardustAmount" of nbt of clicked slot
+            set metadata tag "papitoUpgradeItemConfirm" of player to chest inventory with 3 rows named "Papito - Upgrade - %last color of {_artifact}'s name%Artifact"
+            set {_itemConfirmGui} to metadata tag "papitoUpgradeItemConfirm" of player
+            set slots integers between 0 and 26 of {_itemConfirmGui} to black stained glass pane named " "
+            set slot 11 of {_itemConfirmGui} to {_artifact}
+            set slot 12 of {_itemConfirmGui} to paper named " " with nbt from "{CustomModelData:6}"
+            set slot 14 of {_itemConfirmGui} to paper named " " with nbt from "{CustomModelData:7}"
+            if {language::%player%} = "English":
+                if {_stardustAmount} < 65:
+                    set slot 13 of {_itemConfirmGui} to {_stardustAmount} of {stardustEN}
+                else:
+                    set slot 13 of {_itemConfirmGui} to 64 of {stardustEN} named "%last color of name of {stardustEN}%%{_stardustAmount}%x %name of {stardustEN}%"
+            else:
+                if {_stardustAmount} < 65:
+                    set slot 13 of {_itemConfirmGui} to {_stardustAmount} of {stardust}
+                else:
+                    set slot 13 of {_itemConfirmGui} to 64 of {stardust} named "%last color of name of {stardust}%%{_stardustAmount}%x %name of {stardust}%" 
+            set {_upgradeLevel} to tag "Upgraded" of nbt of {_artifact}
+            set {_experience} to tag "Experience" of nbt of {_artifact}
+            set {_artifactUpgraded} to {_artifact}
+            if event-slot = 21:
+                set {_upgradeAmount} to 1
+            else if event-slot = 22:
+                if {_upgradeLevel} + {_upgradeAmount} is not bigger than 5*{_starLevel}:
+                    set {_upgradeAmount} to 5
+                else:
+                    set {_upgradeAmount} to 5*{_starLevel} - {_upgradeLevel}
+            else if event-slot = 23:
+                set {_upgradeAmount} to 5*{_starLevel}
+            if {_upgradeLevel} + {_upgradeAmount} < {_starLevel}*5 + 1:
+                set tag "Upgraded" of nbt of {_artifactUpgraded} to {_upgradeLevel} + {_upgradeAmount}
+                set tag "Experience" of nbt of {_artifactUpgraded} to {_experience} + {_stardustAmount}
+            else:
+                set tag "Upgraded" of nbt of {_artifactUpgraded} to {_starLevel}*5
+                set tag "Experience" of nbt of {_artifactUpgraded} to {_stardustAmount}
+                set {_loops} to {_starLevel}*5-{_upgradeLevel}
+                loop {_loops} times:
+                    add ArtifactReqExp({_artifact}) to {_experience}
+                set tag "Experience" of nbt of {_artifactUpgraded} to {_experience}
+            loop lore of {_artifactUpgraded}:
+                add 1 to {_lineCount}
+                if loop-value contains "Upgraded:" or "Ulepszono:":
+                    set {_line} to loop-value
+                    replace all "Upgraded: +" and "Ulepszono: +" in {_line} with ""
+                    stop loop
+            set {_line} to {_line} parsed as integer
+            if line 1 of lore of {_artifactUpgraded} contains "Artifact":
+                set line {_lineCount} of lore of {_artifactUpgraded} to "&fUpgraded: +%tag "Upgraded" of nbt of {_artifactUpgraded}%" 
+            else if line 1 of lore of {_artifactUpgraded} contains "Artefakt":
+                set line {_lineCount} of lore of {_artifactUpgraded} to "&fUlepszono: +%tag "Upgraded" of nbt of {_artifactUpgraded}%"
+            if line 1 of lore of {_artifactUpgraded} contains "Relic":
+                set line {_lineCount} of lore of {_artifactUpgraded} to "&fUpgraded: +%tag "Upgraded" of nbt of {_artifactUpgraded}% | Enhanced: +%tag "Enhanced" of nbt of {_artifactUpgraded}%" 
+            else if line 1 of lore of {_artifactUpgraded} contains "Relikt":
+                set line {_lineCount} of lore of {_artifactUpgraded} to "&fUlepszono: +%tag "Upgraded" of nbt of {_artifactUpgraded}% | Wzmocniono: +%tag "Enhanced" of nbt of {_artifactUpgraded}%"
+            if tag "Artifact" of nbt of {_artifactUpgraded} is set:
+                set {_substats::*} to "%tag "Stats" of nbt of {_artifact}%" split at ","
+                set {_substatAmount} to size of {_substats::*}
+                if {_substatAmount} <= 3:
+                    if tag "Upgraded" of nbt of {_artifactUpgraded} >= 5:
+                        set {_count} to 0
+                        loop lore of {_artifactUpgraded}:
+                            if {_count} < 2:
+                                if loop-value = " " or "":
+                                    add 1 to {_count}
+                                if {_count} < 2:
+                                    add loop-value to {_lore1::*}
+                            else:
+                                add loop-value to {_lore2::*}
+                        if {_lore1::%size of {_lore1::*}%} = "" or " ":
+                            delete {_lore1::%size of {_lore1::*}%}
+                        delete {_lore1::%{_replaceLine}%}
+                        add "&f&o+ Adds a random secondary stat" to {_lore1::*}
+                        add " " to {_lore1::*}
+                        set {_lore::*} to {_lore1::*} and {_lore2::*}
+                        set lore of {_artifactUpgraded} to {_lore::*}
+                        set tag "SubstatAdded" of nbt of {_artifactUpgraded} to "True"
+            loop all items in the inventory of player:
+                if 1 of loop-item = {stardust}:
+                    add (loop-item.getAmount()) to {_stardustAmountInInv}
+                else if 1 of loop-item = {stardustEN}:
+                    add (loop-item.getAmount()) to {_stardustAmountInInv}
+            if {_stardustAmountInInv} >= {_stardustAmount}: 
+                add "%nl%&a&o✔ Can be upgraded." to lore of {_artifactUpgraded}
+            else:
+                add "%nl%&c&o✘ Not enough resources." to lore of {_artifactUpgraded}
+            set tag "RequiredStardust" of nbt of {_artifactUpgraded} to {_stardustAmount}
+            set slot 15 of {_itemConfirmGui} to {_artifactUpgraded}
+            open {_itemConfirmGui} to player  
+    else if event-inventory = metadata tag "papitoUpgradeItemConfirm" of player:
+        cancel event
+        if event-slot = 15:
+            set {_artifactUpgraded} to clicked slot
+            set {_currentArtifact} to slot 11 of player's current inventory
+            if lore of clicked slot contains "&a&o✔ Can be upgraded." or "&a&oMoże zostać ulepszony.":
+                set {_requiredStardust} to (tag "RequiredStardust" of nbt of {_artifactUpgraded}) parsed as number
+                delete tag "RequiredStardust" of nbt of {_artifactUpgraded}
+                if hasEnoughItem(player, {stardustEN}, {stardust}, {_requiredStardust}) = true:
+                    teleport the player to player's location
+                    play sound "misc.gearupgrade" with volume 4.1 and pitch 1 at player
+                    remove {_currentArtifact} from player
+                    set {_starlevel} to tag "StarLevel" of nbt of {_artifactUpgraded}
+                    if tag "Upgraded" of nbt of {_artifactUpgraded} >= 5:
+                        if tag "Upgraded" of nbt of {_artifactUpgraded} = 5*{_starlevel}:
+                            if tag "Upgraded" of nbt of {_currentArtifact} >= 0:
+                                set {_difference} to (tag "Upgraded" of nbt of {_artifactUpgraded}) - (tag "Upgraded" of nbt of {_currentArtifact})
+                                if {winterDelightPassLEVEL::%player%} >= 0:
+                                    getMission(player, "Upgrading Artifacts", "Ulepszanie Artefaktów", {_difference})
+                                loop {_difference} times:
+                                    if (tag "Upgraded" of nbt of {_currentArtifact}) + loop-number is divisible by 5:
+                                        add 1 to {_loops}
+                            else:
+                                set {_loops} to 1
+                        else:
+                            set {_loops} to 1
+                        set {_dif} to (tag "Upgraded" of nbt of {_artifactUpgraded}) - (tag "Upgraded" of nbt of {_currentArtifact})
+                        if {_dif} >= 5:
+                            set {_addStat} to true
+                        else if tag "Upgraded" of nbt of {_artifactUpgraded} is divisible by 5:
+                            set {_addStat} to true
+                        loop {_loops} times:
+                            if {_addStat} is true:
+                                play sound "block.anvil.use" with volume 4 and pitch 1.45 at player
+                                set {_lore::*} to lore of {_artifactUpgraded}
+                                set {_stats::*} to "<##c0ff02> x Health", "<##f74428> x Damage", "<##ffef45> x Resistance", "&f x Mobility", "<##ae78d0> x Utility", "<##58c3f5> x Crowd Control", "<##e3ebff> x Versatility", "<##f53b98> x Mastery", "<##fca417> x Critical Hit", "<##d5ff57> x Element", "<##19943e> x Haste" and "<##2154ad> x Avoidance"
+                                if tag "SubstatAdded" of nbt of {_artifactUpgraded} is set:
+                                    loop {_stats::*}:
+                                        set {_stat} to uncolored loop-value-2
+                                        replace all " x " in {_stat} with ""
+                                        set {_stat} to subtext of {_stat} from characters 2 to (length of {_stat})
+                                        if tag "Stats;%{_stat}%" of nbt of {_artifactUpgraded} is set:
+                                            remove loop-value-2 from {_stats::*}
+                                    loop {_lore::*}:
+                                        add 1 to {_index}
+                                        if loop-value-2 contains "&f&o+ Adds a random secondary stat" or "&f&o+ Dodaje losową drugorzędną statystykę":
+                                            set {_substatValues::*} to 0.186, 0.174, 0.162 and 0.150
+                                            set {_ItemLevel} to tag "ItemLevel" of nbt of {_artifactUpgraded}
+                                            set {_randomStat} to a random element of {_stats::*}
+                                            set {_randomSubstatValue} to a random element of {_substatValues::*}
+                                            set {_statAmount} to rounded (({_randomSubstatValue} * 4.7385*{_ItemLevel})/6)
+                                            replace all " x " in {_randomStat} with " %{_statAmount}% "
+                                            set {_nbtText::*} to uncolored {_randomStat} split at " "
+                                            clear {_nbtText::2} and {_nbtText::1} and {_nbtText::0}
+                                            set {_nbtText} to join {_nbtText::*} by " "
+                                            set tag "Stats;%{_nbtText}%" of nbt of {_artifactUpgraded} to {_statAmount}
+                                            set {_loreline} to loop-value-2
+                                            replace all "&f&o+ Adds a random secondary stat" and "&f&o+ Dodaje losową drugorzędną statystykę" in {_loreline} with {_randomStat}
+                                            set line {_index} of lore of {_artifactUpgraded} to {_loreline}
+                                    clear tag "SubstatAdded" of nbt of {_artifactUpgraded}
+                                else:
+                                    set {_statText} to "%tag "Stats" of nbt of {_artifactUpgraded}%"
+                                    replace all "{" and "}" and ":" and "1" and "2" and "3" and "4" and "5" and "6" and "7" and "8" and "9" and "0" and """" in {_statText} with ""
+                                    set {_statList::*} to {_statText} split at ","
+                                    if tag "Artifact" of nbt of {_artifactUpgraded} is set:
+                                        set {_randomStat2} to a random element of {_statList::*}
+                                        loop {_stats::*}:
+                                            if loop-value-2 contains {_randomStat2}:
+                                                set {_statLore} to loop-value-2
+                                        loop {_lore::*}:
+                                            if loop-value-2 contains {_randomStat2}:
+                                                set {_currentStatAmount} to tag "Stats;%{_randomStat2}%" of nbt of {_artifactUpgraded}
+                                                set {_substatValues::*} to 0.186, 0.174, 0.162 and 0.150
+                                                set {_ItemLevel} to tag "ItemLevel" of nbt of {_artifactUpgraded}
+                                                set {_randomSubstatValue} to a random element of {_substatValues::*}
+                                                set {_statAmount} to rounded (({_randomSubstatValue} * 4.7385*{_ItemLevel})/6)
+                                                set {_statLoreGained%loop-number%} to {_statLore}
+                                                set {_upgradedStats} to true
+                                                replace all " x " in {_statLore} with " %{_currentStatAmount} + {_statAmount}% "
+                                                replace all " x " in {_statLoreGained%loop-number%} with " %{_statAmount}% "
+                                                set {_lore::%loop-index%} to {_statLore}
+                                                set tag "Stats;%{_randomStat2}%" of nbt of {_artifactUpgraded} to {_currentStatAmount} + {_statAmount}
+                                                set {_artifactUpgraded} to {_artifactUpgraded} with lore {_lore::*}
+                                                stop loop
+                                    else if tag "Relic" of nbt of {_artifactUpgraded} is set:
+                                        set {_lineCount} to 0
+                                        loop {_lore::*}:
+                                            add 1 to {_lineCount}
+                                            loop {_statList::*}:
+                                                if loop-value-2 contains loop-value-3:
+                                                    add 1 to {_statListCount}
+                                                    set {_currentStatAmount} to tag "Stats;%loop-value-3%" of nbt of {_artifactUpgraded}
+                                                    set {_upgradedStats} to true
+                                                    if loop-value-3 contains "Agility" or "Intellect" or "Strength":
+                                                        set {_loreLine::*} to loop-value-2 split at " "
+                                                        set {_statAmount} to ({_loreLine::2} parsed as integer)
+                                                        add 2 to {_statAmount}
+                                                        set {_col} to last color of {_lore::%{_lineCount}%}
+                                                        set {_un} to uncolored {_lore::%{_lineCount}%}
+                                                        set {_statLoreGained%{_statListCount}%} to {_un}
+                                                        replace all {_loreLine::2} in {_un} with "%{_statAmount}%"
+                                                        replace all {_loreLine::2} in {_statLoreGained%{_statListCount}%} with "2"
+                                                        set {_statLoreGained%{_statListCount}%} to "%{_col}%%{_statLoreGained%{_statListCount}%}%"
+                                                        set {_lore::%{_lineCount}%} to "%{_col}%%{_un}%"
+                                                        set tag "Stats;%loop-value-3%" of nbt of {_artifactUpgraded} to {_currentStatAmount} + 2
+                                                    else:
+                                                        set {_loreLine::*} to loop-value-2 split at " "
+                                                        set {_statAmount} to ({_loreLine::2} parsed as integer)
+                                                        add 4 to {_statAmount}
+                                                        set {_col} to last color of {_lore::%{_lineCount}%}
+                                                        set {_un} to uncolored {_lore::%{_lineCount}%}
+                                                        set {_statLoreGained%{_statListCount}%} to {_un}
+                                                        replace all {_loreLine::2} in {_un} with "%{_statAmount}%"
+                                                        replace all {_loreLine::2} in {_statLoreGained%{_statListCount}%} with "4"
+                                                        set {_statLoreGained%{_statListCount}%} to "%{_col}%%{_statLoreGained%{_statListCount}%}%"
+                                                        set {_lore::%{_lineCount}%} to "%{_col}%%{_un}%"
+                                                        set tag "Stats;%loop-value-3%" of nbt of {_artifactUpgraded} to {_currentStatAmount} + 4
+                                            if loop-value-2 contains "Special Effect":
+                                                stop loop
+                                        set {_artifactUpgraded} to {_artifactUpgraded} with lore {_lore::*}
+                    loop lore of {_artifactUpgraded}:
+                        if loop-value does not contain "Can be upgraded." or "Może zostać ulepszony.":
+                            add loop-value to {_loreItem::*}
+                    delete {_loreItem::%size of {_loreItem::*}%}
+                    set {_artifactUpgraded} to {_artifactUpgraded} with lore {_loreItem::*}
+                    give player {_artifactUpgraded}
+                    send "&a✦ Successfully upgraded %name of {_artifactUpgraded}% &ato +%tag "Upgraded" of nbt of {_artifactUpgraded}%!" to player
+                    if {_loreline} is set:
+                        send "&aYour artifact gains a new attribute: &r%{_randomStat}%&a!" to player
+                    loop {_loops} times:
+                        if tag "Artifact" of nbt of {_artifactUpgraded} is set:
+                            if {_upgradedStats} is true:
+                                if {_statLoreGained%loop-number%} is set:
+                                    send "&aYour artifact gains %{_statLoreGained%loop-number%}%&a!" to player
+                            set {_itemUpgraded} to yaml value "Player.Artifacts Times Upgraded" in "data-%player%"
+                            add 1 to {_itemUpgraded}
+                            set yaml value "Player.Artifacts Times Upgraded" in "data-%player%" to {_itemUpgraded}
+                            set {_starLevel} to tag "StarLevel" of nbt of {_artifactUpgraded}
+                            if tag "Upgraded" of nbt of {_artifactUpgraded} = 5*{_starLevel}:
+                                set {_itemMaxed} to yaml value "Player.Artifacts Times Maxed" in "data-%player%"
+                                add 1 to {_itemMaxed}
+                                set yaml value "Player.Artifacts Times Maxed" in "data-%player%" to {_itemMaxed}
+                        else if tag "Relic" of nbt of {_artifactUpgraded} is set:
+                            if {_upgradedStats} is true:
+                                loop {_statListCount} times:
+                                    if {_statLoreGained%loop-number-2%} is set:
+                                        send "&aYour relic gains %{_statLoreGained%loop-number-2%}%&a!" to player
+                                set {_itemUpgraded} to yaml value "Player.Relics Times Upgraded" in "data-%player%"
+                                add 1 to {_itemUpgraded}
+                                set yaml value "Player.Relics Times Upgraded" in "data-%player%" to {_itemUpgraded}
+                            if tag "Upgraded" of nbt of {_artifactUpgraded} = 125:
+                                set {_itemMaxed} to yaml value "Player.Relics Times Maxed" in "data-%player%"
+                                add 1 to {_itemMaxed}
+                                set yaml value "Player.Relics Times Maxed" in "data-%player%" to {_itemMaxed}
+                    draw 20 dust using dustOption(lime, 1) at location above player with offset vector(0.3, 0.6, 0.3) with extra 0.03
+                    save yaml "data-%player%"
+            else:
+                play sound "block.anvil.land" with volume 5 and pitch 0.23 to player
+    else if event-inventory = metadata tag "papitoEnhance" of player:
+        cancel event
+        if clicked slot is not air:
+            if lore of clicked slot does not contain "&c&oThis item has been fully enhanced.":
+                if lore of clicked slot does not contain "&c&oTen przedmiot został w pełni wzmocniony.":
+                    set metadata value "RelicEnhanceId" of player to tag "Id" of nbt of clicked slot
+                    play sound "block.anvil.place" with volume 5 and pitch 1.55 to player
+                    set metadata tag "papitoEnhanceItem" of player to chest inventory with 5 rows named "Papito - Enhance - %name of clicked slot%"
+                    set slot 13 of metadata tag "papitoEnhanceItem" of player to clicked slot
+                    set {_c} to last color of name of clicked slot
+                    if uncolored (name of clicked slot) contains "Xal'Atath":
+                        set {_upgrade} to tag "EffectValue" of nbt of clicked slot + 0.5
+                        set {_upgradeText} to "%{_c}%Shadow Word: Pain and Vampiric Touch%nl%%{_c}%damage dealt increase:%nl% &f%tag "EffectValue" of nbt of clicked slot%%% -> %{_upgrade}%%%"
+                    set slot 22 of metadata tag "papitoEnhanceItem" of player to anvil named "&fEnhance" with lore "&fIncreases the value of the following effect(s):%nl%%{_upgradeText}%"
+                    set slot 31 of metadata tag "papitoEnhanceItem" of player to smoker named "Enhancing" with lore "&c&l(&4&l!&c&l) &cWarning: This process will destroy a%nl%&ccopy of the selected Relic.%nl%&fClick ""Enhance"" to proceed."
+                    open metadata tag "papitoEnhanceItem" of player to player
+                else:
+                    play sound "block.anvil.land" with volume 5 and pitch 0.13 to player
+            else:
+                play sound "block.anvil.land" with volume 5 and pitch 0.13 to player
+    else if event-inventory = metadata tag "papitoEnhanceItem" of player:
+        cancel event
+        if clicked slot is not air:
+            if event-slot = 22:
+                play sound "block.anvil.place" with volume 5 and pitch 2 to player
+                set metadata tag "papitoEnhanceItemRelics" of player to chest inventory with 5 rows named "Papito - Enhance - %name of slot 13 of player's current inventory%"
+                set {_slotIndex} to 0
+                loop all items in the player's inventory:
+                    set {_lore::*} to lore of loop-item
+                    if {_lore::2} contains "Item Level":
+                        if line 1 of lore of loop-item contains "Relic" or "Relikt":
+                            if tag "Id" of nbt of loop-item is not (metadata value "RelicEnhanceId" of player):
+                                if name of loop-item = name of slot 13 of player's current inventory:
+                                    if tag "StarLevel" of nbt of loop-item = tag "StarLevel" of nbt of slot 13 of player's current inventory:
+                                        set slot {_slotIndex} of metadata tag "papitoEnhanceItemRelics" of player to loop-item
+                                        add "%nl%&c&l(&4&l!&c&l) &f&oClick here to use this item." to lore of slot {_slotIndex} of metadata tag "papitoEnhanceItemRelics" of player
+                                        add 1 to {_slotIndex}
+                if {_slotIndex} > 0:
+                    open metadata tag "papitoEnhanceItemRelics" of player to player
+                else:
+                    play sound "entity.villager.no" with volume 5 and pitch 0.62 to player
+                    play sound "block.anvil.place" with volume 5 and pitch 1.176 to player 
+                    send "&c&oThere are no identical Relics in your inventory." to player
+    else if event-inventory = metadata tag "papitoEnhanceItemRelics" of player:
+        cancel event
+        if clicked slot is not air:
+            teleport the player to player's location
+            loop all items in player's inventory:
+                if (tag "Id" of nbt of loop-item) = (tag "Id" of nbt of clicked slot):
+                    set {_relicRemove} to loop-item
+                    stop loop
+            if {_relicRemove} is set:
+                remove {_relicRemove} from player
+                play sound "entity.ender_dragon.growl" with volume 4 and pitch 2 at player
+                loop all items in the inventory of player:
+                    if (tag "Id" of nbt of loop-item) = (metadata value "RelicEnhanceId" of player):
+                        if uncolored name of loop-item = "Xal'Atath":
+                            loop lore of loop-item:
+                                add 1 to {_index}
+                                if loop-value-2 contains "&f%tag "EffectValue" of nbt of loop-item%%%":
+                                    set {_lineIndex} to {_index}
+                                if loop-value-2 contains "Enhanced:" or "Wzmocniono:":
+                                    set {_lineIndex2} to {_index}
+                                    stop loop
+                            set {_enhanced} to tag "Enhanced" of nbt of loop-item
+                            replace all "Enhanced: +%{_enhanced}%" in line {_lineindex2} of lore of loop-item with "Enhanced: +%{_enhanced} + 1%"
+                            replace all "Wzmocniono: +%{_enhanced}%" in line {_index2} of lore of loop-item with "Wzmocniono: +%{_enhanced} + 1%"
+                            set {_effectValue} to tag "EffectValue" of nbt of loop-item
+                            replace all "%{_effectValue}%%%" in line {_lineIndex} of lore of loop-item with "%{_effectValue} + 0.5%%%"
+                            set tag "EffectValue" of nbt of loop-item to {_effectValue} + 0.5
+                            set tag "Enhanced" of nbt of loop-item to {_enhanced} + 1
+                        stop loop
+                set {_relicsEnhanced} to yaml value "%player%.Relics Times Enhanced" in "data-%player%"
+                add 1 to {_relicsEnhanced}
+                set yaml value "Player.Relics Enhanced" in "data-%player%" to {_relicsEnhanced}
+                if {_enhanced} = 5:
+                    set {_relicsEnhanceMax} to yaml value "%player%.Relics Times Max Enhanced" in "data-%player%"
+                    add 1 to {_relicsEnhanceMax}
+                    set yaml value "Player.Relics Times Max Enhanced" in "data-%player%" to {_relicsEnhanceMax}
+                save yaml "data-%player%"
+            else:
+                send "&c&oItem not found. The process has been terminated."
+on inventory close:
+    if event-inventory = (metadata value "papitoSocketItem" of player):
+        if tag "Gem" of nbt of (slot 13 of event-inventory) is set:
+            giveItem(player, slot 13 of event-inventory)
+            clear metadata value "papitoSocketItem" of player
+                

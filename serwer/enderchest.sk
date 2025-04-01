@@ -3,6 +3,8 @@ options:
 	sedriah: metadata tag "sedriah" of player
 command /enderchest [<number>]:
 	trigger:
+		if yaml value "Enderchest 1.Owned" in "Enderchest%player%" is not set:
+			setEnderchest(player)
 		if arg-1 isn't set:
 			open player's enderchest to player
 		if arg-1 is set:
@@ -16,15 +18,17 @@ command /enderchest [<number>]:
 			else:
 				if arg-1 < 7:
 					if arg-1 is not 1:
-						if {enderchestunlock::%arg-1%::%player%} is true:
-							if {nameenderchest::%arg-1%::%player%} is set:
-								set {@enderchest} to chest inventory with 3 rows named {nameenderchest::%arg-1%::%player%}
+						if yaml value "Player.Enderchests.%arg-1%" from "dataAdmin-%player%" is "Owned":
+							if yaml value "Enderchest %arg-1%.Name" from "Enderchest%player%" is set:
+								set {_name} to yaml value "Enderchest %arg-1%.Name" from "Enderchest%player%"
+								set {@enderchest} to chest inventory with 3 rows named {_name}
 							else:
 								set {@enderchest} to chest inventory with 3 rows named "Ender Chest"
 							loop 27 times:
-								set slot (loop-number - 1) of {@enderchest} to {enderchest::%arg-1%::%loop-number%::%player%}
+								set slot (loop-number - 1) of {@enderchest} to yaml value "Enderchest %arg-1%.Contents.%loop-number%" from "Enderchest%player%"
 							open {@enderchest} to player
-							set {enderchest::%player%} to arg-1
+							set metadata value "OpenEnderchest" of player to arg-1
+							play sound "block.ender_chest.open" with volume 5 and pitch 1 to player
 						else:
 							if {language::%player%} = "English":
 								send "&8[&6Earthcraft&8] &7You don't own this enderchest." to player
@@ -34,6 +38,7 @@ command /enderchest [<number>]:
 								play sound "block.glass.break" with volume 3 and pitch 0 to player
 					else:
 						open player's enderchest to player
+						play sound "block.ender_chest.open" with volume 5 and pitch 1 to player
 				else:
 					if {language::%player%} = "English":
 						send "&8[&6Earthcraft&8] &7Enter a number from 1 to 6." to player
@@ -45,6 +50,8 @@ command /enderchest [<number>]:
 			open player's enderchest to player
 command /ec [<number>]:
 	trigger:
+		if yaml value "Enderchest 1.Owned" in "Enderchest%player%" is not set:
+			setEnderchest(player)
 		if arg-1 isn't set:
 			open player's enderchest to player
 		if arg-1 is set:
@@ -58,15 +65,17 @@ command /ec [<number>]:
 			else:
 				if arg-1 < 7:
 					if arg-1 is not 1:
-						if {enderchestunlock::%arg-1%::%player%} is true:
-							if {nameenderchest::%arg-1%::%player%} is set:
-								set {@enderchest} to chest inventory with 3 rows named {nameenderchest::%arg-1%::%player%}
+						if yaml value "Player.Enderchests.%arg-1%" from "dataAdmin-%player%" is "Owned":
+							if yaml value "Enderchest %arg-1%.Name" from "Enderchest%player%" is set:
+								set {_name} to yaml value "Enderchest %arg-1%.Name" from "Enderchest%player%"
+								set {@enderchest} to chest inventory with 3 rows named {_name}
 							else:
 								set {@enderchest} to chest inventory with 3 rows named "Ender Chest"
 							loop 27 times:
-								set slot (loop-number - 1) of {@enderchest} to {enderchest::%arg-1%::%loop-number%::%player%}
+								set slot (loop-number - 1) of {@enderchest} to  yaml value "Enderchest %arg-1%.Contents.%loop-number%" from "Enderchest%player%"
 							open {@enderchest} to player
-							set {enderchest::%player%} to arg-1
+							set metadata value "OpenEnderchest" of player to arg-1
+							play sound "block.ender_chest.open" with volume 5 and pitch 1 to player
 						else:
 							if {language::%player%} = "English":
 								send "&8[&6Earthcraft&8] &7You don't own this enderchest." to player
@@ -76,6 +85,7 @@ command /ec [<number>]:
 								play sound "block.glass.break" with volume 3 and pitch 0 to player
 					else:
 						open player's enderchest to player
+						play sound "block.ender_chest.open" with volume 5 and pitch 1 to player
 				else:
 					if {language::%player%} = "English":
 						send "&8[&6Earthcraft&8] &7Enter a number from 1 to 6." to player
@@ -85,6 +95,24 @@ command /ec [<number>]:
 						play sound "block.glass.break" with volume 3 and pitch 0 to player
 		else if arg-1 = 1:
 			open player's enderchest to player
+function setEnderchest(p: player):
+	load yaml "plugins/Skript/playerdata/enderchesty/Enderchest-%uuid of {_p}%.yml" as "Enderchest%{_p}%"
+	set yaml value "Enderchest 1.Owned" in "Enderchest%{_p}%" to "Owned"
+	loop 6 times:
+		set {_%loop-number%} to yaml value "Enderchest %loop-number%.Owned" in "Enderchest%{_p}%"
+		if {_%loop-number%} is not set:
+			set yaml value "{_p}.Enderchests.%loop-number%" in "dataAdmin-%{_p}%" to "Not Owned"
+		else:
+			set yaml value "{_p}.Enderchests.%loop-number%" in "dataAdmin-%{_p}%" to "Owned"
+		if loop-number = 1:
+			set yaml value "Enderchest %loop-number%.Owned" in "Enderchest%{_p}%" to "Owned"
+			set yaml value "Enderchest %loop-number%.Name" in "Enderchest%{_p}%" to "Enderchest"
+		else:
+			set yaml value "Enderchest %loop-number%.Owned" in "Enderchest%{_p}%" to "Not Owned"
+			set yaml value "Enderchest %loop-number%.Name" in "Enderchest%{_p}%" to "Enderchest"
+		loop 27 times:
+			set yaml value "Enderchest %loop-number-1%.Contents.%loop-number-2%" in "Enderchest%{_p}%" to "-"
+	save yaml "Enderchest%{_p}%"
 on rightclick:
 	if clicked player's name = "Sedriah":
 		cancel event
@@ -101,190 +129,195 @@ on rightclick:
 		open {@sedriah} to player
 		play sound "block.note_block.pling" with volume 4 and pitch 1.6 to player
 on inventory click:
-	if player's current inventory = {@sedriah}:
+	if event-inventory = {@sedriah}:
 		cancel event
-		if clicked slot is 3:
-			if name of clicked slot contains "zakup" or "buy":
-				if {language::%player%} = "English":
-					set {@sedriah} to chest inventory with 1 row named "Enderchests"
-				else:
-					set {@sedriah} to chest inventory with 1 row named "Enderchesty"
-				set slot 0 and 1 of {@sedriah} to black glass pane named " "
-				set slot 7 and 8 of {@sedriah} to black glass pane named " "
-				loop 5 times:
-					if {language::%player%} = "English":
-						if {enderchestunlock::%1 + loop-number%::%player%} is not set:
-							set slot 1 + loop-number of {@sedriah} to ender chest named "&fEnderchest %1 + loop-number%" with lore "&7/enderchest %loop-number+1%" and " " and "&fClick here to buy this" and "&fenderchest."
+		if clicked slot is not air:
+			if clicked slot is between 0 and 8:
+				if event-slot is 3:
+					if name of event-slot contains "zakup" or "buy":
+						if {language::%player%} = "English":
+							set {@sedriah} to chest inventory with 1 row named "Enderchests"
 						else:
-							set slot 1 + loop-number of {@sedriah} to ender chest named "&fEnderchest %1 + loop-number%" with lore "&7/enderchest %loop-number+1%" and "<##b87ef2>Enderchest owned"
-					else:
-						if {enderchestunlock::%1 + loop-number%::%player%} is not set:
-							set slot 1 + loop-number of {@sedriah} to ender chest named "&fEnderchest %1 + loop-number%" with lore "&7/enderchest %loop-number+1%" and " " and "&fKliknij tutaj, by kupić" and "&ften enderchest."
+							set {@sedriah} to chest inventory with 1 row named "Enderchesty"
+						set slot 0 and 1 of {@sedriah} to black glass pane named " "
+						set slot 7 and 8 of {@sedriah} to black glass pane named " "
+						loop 5 times:
+							if {language::%player%} = "English":
+								if yaml value "Enderchest %1 + loop-number%.Owned" from "dataAdmin-%player%" is not set:
+									set slot 1 + loop-number of {@sedriah} to ender chest named "&fEnderchest %1 + loop-number%" with lore "&7/enderchest %loop-number+1%" and " " and "&fClick here to buy this" and "&fenderchest."
+								else:
+									set slot 1 + loop-number of {@sedriah} to ender chest named "&fEnderchest %1 + loop-number%" with lore "&7/enderchest %loop-number+1%" and "<##b87ef2>Enderchest owned"
+							else:
+								if yaml value "Enderchest %1 + loop-number%.Owned" from "dataAdmin-%player%" is not set:
+									set slot 1 + loop-number of {@sedriah} to ender chest named "&fEnderchest %1 + loop-number%" with lore "&7/enderchest %loop-number+1%" and " " and "&fKliknij tutaj, by kupić" and "&ften enderchest."
+								else:
+									set slot 1 + loop-number of {@sedriah} to ender chest named "&fEnderchest %1 + loop-number%" with lore "&7/enderchest %loop-number+1%" and "<##b87ef2>Enderchest posiadany"
+						open {@sedriah} to player
+						play sound "block.note_block.pling" with volume 4 and pitch 1.6 to player
+						stop
+				if event-slot is 4:
+					if name of event-slot contains "nazwę" or "name":
+						if {language::%player%} = "English":
+							set {@sedriah} to chest inventory with 1 row named "Enderchest names"
 						else:
-							set slot 1 + loop-number of {@sedriah} to ender chest named "&fEnderchest %1 + loop-number%" with lore "&7/enderchest %loop-number+1%" and "<##b87ef2>Enderchest posiadany"
-				open {@sedriah} to player
-				play sound "block.note_block.pling" with volume 4 and pitch 1.6 to player
-				stop
-		if clicked slot is 4:
-			if name of clicked slot contains "nazwę" or "name":
-				if {language::%player%} = "English":
-					set {@sedriah} to chest inventory with 1 row named "Enderchest names"
-				else:
-					set {@sedriah} to chest inventory with 1 row named "Nazwy enderchestów"
-				set slot 0 and 1 of {@sedriah} to black glass pane named " "
-				set slot 7 and 8 of {@sedriah} to black glass pane named " "
-				loop 5 times:
-					if {language::%player%} = "English":
-						set slot 1 + loop-number of {@sedriah} to ender chest named "&fEnderchest %1 + loop-number%" with lore "&7Enderchest name: &fnone" and " " and "&fClick to set a name for this" and "&fenderchest."
-						if {nameenderchest::%loop-number%::%player%} is set:
-							set lore of slot loop-number of {@sedriah} to "&7Enderchest name:%nl%&f%{nameenderchest::%loop-number%::%player%}%" and " " and "&fClick to change the name of" and "&fthis enderchest."
-					else:
-						set slot 1 + loop-number of {@sedriah} to ender chest named "&fEnderchest %1 + loop-number%" with lore "&7Nazwa enderchestu: &fbrak" and " " and "&fKliknij tutaj by ustawić nazwę" and "&ftego enderchestu."
-						if {nameenderchest::%loop-number%::%player%} is set:
-							set lore of slot loop-number of {@sedriah} to "&7Nazwa enderchestu:%nl%&f%{nameenderchest::%loop-number%::%player%}%" and " " and "&fKliknij tutaj by ustawić nazwę" and "&ftego enderchestu."
-				open {@sedriah} to player
-				play sound "block.note_block.pling" with volume 4 and pitch 1.6 to player
-				stop
-		if clicked slot is 5:
-			if name of clicked slot contains "shulker box":
-				if clicked slot is not yellow shulker box:
-					if {language::%player%} = "English":
-						set {_name} to "Shulker boxes"
-						set {_lore} to "&7Can store up to%nl%&71728 items.%nl% %nl%&fClick here to buy%nl%&fthis shulker box."
-					else:
-						set {_name} to "Shulker boxy"
-						set {_lore} to "&7Może przechować maksymalnie%nl%&71728 przedmiotów.%nl% %nl%&fKliknij tutaj by zakupić%nl%&ften shulker box."
-					set {@sedriah} to chest inventory with 2 rows named {_name}
-					set slot 0 of {@sedriah} to shulker box named "<##956595>Shulker Box" with lore {_lore}
-					set slot 1 of {@sedriah} to white shulker box named "<##e3e7e7>Shulker Box" with lore {_lore}
-					set slot 2 of {@sedriah} to orange shulker box named "<##f1720f>Shulker Box" with lore {_lore}
-					set slot 3 of {@sedriah} to magenta shulker box named "<##b83ead>Shulker Box" with lore {_lore}
-					set slot 4 of {@sedriah} to light blue shulker box named "<##37aed6>Shulker Box" with lore {_lore}
-					set slot 5 of {@sedriah} to yellow shulker box named "<##f9c222>Shulker Box" with lore {_lore}
-					set slot 6 of {@sedriah} to lime shulker box named "<##70ba18>Shulker Box" with lore {_lore}
-					set slot 7 of {@sedriah} to pink shulker box named "<##ee83a4>Shulker Box" with lore {_lore}
-					set slot 8 of {@sedriah} to gray shulker box named "<##3b3f43>Shulker Box" with lore {_lore}
-					set slot 9 of {@sedriah} to light gray shulker box named "<##898980>Shulker Box" with lore {_lore}
-					set slot 10 of {@sedriah} to cyan shulker box named "<##16828e>Shulker Box" with lore {_lore}
-					set slot 11 of {@sedriah} to purple shulker box named "<##7125a6>Shulker Box" with lore {_lore}
-					set slot 12 of {@sedriah} to blue shulker box named "<##313498>Shulker Box" with lore {_lore}
-					set slot 13 of {@sedriah} to brown shulker box named "<##714627>Shulker Box" with lore {_lore}
-					set slot 14 of {@sedriah} to green shulker box named "<##536c1c>Shulker Box" with lore {_lore}
-					set slot 15 of {@sedriah} to red shulker box named "<##962422>Shulker Box" with lore {_lore}
-					set slot 16 of {@sedriah} to black shulker box named "<##1f1f23>Shulker Box" with lore {_lore}
-					open {@sedriah} to player
-					play sound "block.note_block.pling" with volume 4 and pitch 1.6 to player
-					stop
-		if line 1 of lore of clicked slot contains "&7Nazwa" or "&7Enderchest name":
-			set {_x} to uncolored name of clicked slot
-			replace all "Enderchest " in {_x} with ""
-			replace all " " in {_x} with ""
-			set {_x} to {_x} parsed as number
-			if {enderchestunlock::%{_x}%::%player%} is true:
-				if player has 3 of {klejnotEN}:
-					set {_klejnot} to 3 of {klejnotEN}
-				if player has 3 of {klejnot}:
-					set {_klejnot} to 3 of {klejnot}
-				if player has {_klejnot}:
-					remove {_klejnot} from player
-					set {namewybieranie::%player%} to {_x}
-					teleport the player to player's location
-					if {language::%player%} = "English":
-						send "&8[&6Earthcraft&8] &7Please type the name for your enderchest in the &6chat&7." to player
-					else:
-						send "&8[&6Earthcraft&8] &7Napisz nazwę dla wybranego enderchestu na &6czacie&7." to player
-					play sound "entity.experience_orb.pickup" with volume 5 and pitch 1.1 to player
-				else:
-					if {language::%player%} = "English":
-						send "&8[&6Earthcraft&8] &7You don't have enough &6Klejnots &7in your inventory." to player
-						play sound "block.glass.break" with volume 3 and pitch 2 to player
-					else:
-						send "&8[&6Earthcraft&8] &7Nie masz wystarczająco &6Klejnotów &7w ekwipunku." to player
-						play sound "block.glass.break" with volume 3 and pitch 0 to player
-			else:
-				if {language::%player%} = "English":
-					send "&8[&6Earthcraft&8] &7You don't own this enderchest." to player
-					play sound "block.glass.break" with volume 3 and pitch 2 to player
-				else:
-					send "&8[&6Earthcraft&8] &7You posiadasz tego enderchestu."  to player
-					play sound "block.glass.break" with volume 3 and pitch 0 to player
-		if line 1 of lore of clicked slot contains "&7/enderchest":
-			if line 2 of lore of clicked slot does not contain "owned" or "posiadany":
-				if player has 50 of {klejnotEN}:
-					set {_klejnot} to 50 of {klejnotEN}
-				if player has 50 of {klejnot}:
-					set {_klejnot} to 50 of {klejnot}
-				if player has {_klejnot}:
-					remove {_klejnot} from player
-					set {_x} to uncolored name of clicked slot
+							set {@sedriah} to chest inventory with 1 row named "Nazwy enderchestów"
+						set slot 0 and 1 of {@sedriah} to black glass pane named " "
+						set slot 7 and 8 of {@sedriah} to black glass pane named " "
+						loop 5 times:
+							if {language::%player%} = "English":
+								set slot 1 + loop-number of {@sedriah} to ender chest named "&fEnderchest %1 + loop-number%" with lore "&7Enderchest name: &fnone" and " " and "&fClick to set a name for this" and "&fenderchest."
+								if {nameenderchest::%loop-number%::%player%} is set:
+									set lore of slot loop-number of {@sedriah} to "&7Enderchest name:%nl%&f%{nameenderchest::%loop-number%::%player%}%" and " " and "&fClick to change the name of" and "&fthis enderchest."
+							else:
+								set slot 1 + loop-number of {@sedriah} to ender chest named "&fEnderchest %1 + loop-number%" with lore "&7Nazwa enderchestu: &fbrak" and " " and "&fKliknij tutaj by ustawić nazwę" and "&ftego enderchestu."
+								if {nameenderchest::%loop-number%::%player%} is set:
+									set lore of slot loop-number of {@sedriah} to "&7Nazwa enderchestu:%nl%&f%{nameenderchest::%loop-number%::%player%}%" and " " and "&fKliknij tutaj by ustawić nazwę" and "&ftego enderchestu."
+						open {@sedriah} to player
+						play sound "block.note_block.pling" with volume 4 and pitch 1.6 to player
+						stop
+				if event-slot is 5:
+					if name of event-slot contains "shulker box":
+						if event-slot is not yellow shulker box:
+							if {language::%player%} = "English":
+								set {_name} to "Shulker boxes"
+								set {_lore} to "&7Can store up to%nl%&71728 items.%nl% %nl%&fClick here to buy%nl%&fthis shulker box."
+							else:
+								set {_name} to "Shulker boxy"
+								set {_lore} to "&7Może przechować maksymalnie%nl%&71728 przedmiotów.%nl% %nl%&fKliknij tutaj by zakupić%nl%&ften shulker box."
+							set {@sedriah} to chest inventory with 2 rows named {_name}
+							set slot 0 of {@sedriah} to shulker box named "<##956595>Shulker Box" with lore {_lore}
+							set slot 1 of {@sedriah} to white shulker box named "<##e3e7e7>Shulker Box" with lore {_lore}
+							set slot 2 of {@sedriah} to orange shulker box named "<##f1720f>Shulker Box" with lore {_lore}
+							set slot 3 of {@sedriah} to magenta shulker box named "<##b83ead>Shulker Box" with lore {_lore}
+							set slot 4 of {@sedriah} to light blue shulker box named "<##37aed6>Shulker Box" with lore {_lore}
+							set slot 5 of {@sedriah} to yellow shulker box named "<##f9c222>Shulker Box" with lore {_lore}
+							set slot 6 of {@sedriah} to lime shulker box named "<##70ba18>Shulker Box" with lore {_lore}
+							set slot 7 of {@sedriah} to pink shulker box named "<##ee83a4>Shulker Box" with lore {_lore}
+							set slot 8 of {@sedriah} to gray shulker box named "<##3b3f43>Shulker Box" with lore {_lore}
+							set slot 9 of {@sedriah} to light gray shulker box named "<##898980>Shulker Box" with lore {_lore}
+							set slot 10 of {@sedriah} to cyan shulker box named "<##16828e>Shulker Box" with lore {_lore}
+							set slot 11 of {@sedriah} to purple shulker box named "<##7125a6>Shulker Box" with lore {_lore}
+							set slot 12 of {@sedriah} to blue shulker box named "<##313498>Shulker Box" with lore {_lore}
+							set slot 13 of {@sedriah} to brown shulker box named "<##714627>Shulker Box" with lore {_lore}
+							set slot 14 of {@sedriah} to green shulker box named "<##536c1c>Shulker Box" with lore {_lore}
+							set slot 15 of {@sedriah} to red shulker box named "<##962422>Shulker Box" with lore {_lore}
+							set slot 16 of {@sedriah} to black shulker box named "<##1f1f23>Shulker Box" with lore {_lore}
+							open {@sedriah} to player
+							play sound "block.note_block.pling" with volume 4 and pitch 1.6 to player
+							stop
+				if line 1 of lore of event-slot contains "&7Nazwa" or "&7Enderchest name":
+					set {_x} to uncolored name of event-slot
 					replace all "Enderchest " in {_x} with ""
 					replace all " " in {_x} with ""
 					set {_x} to {_x} parsed as number
-					set {enderchestunlock::%{_x}%::%player%} to true
-					teleport the player to player's location
-					if {language::%player%} = "English":
-						send "&8[&6Earthcraft&8] &7Successfully bought enderchest &6%{_x}%&7. Enjoy!" to player
-					else:
-						send "&8[&6Earthcraft&8] &7Pomyślnie zakupiono enderchest &6%{_x}%&7. Miłej zabawy!" to player
-					play sound "entity.player.levelup" with volume 5 and pitch 1.1 at player
-					loop 5 times:
-						if {enderchestunlock::%loop-number + 1%::%player%} is true:
-							add 1 to {_count}
-					if {_count} = 5:
-						strike lightning effect at player
-						set {osiagniecie::enderchest::all::%player%} to true
-						log "%{_data}% Gracz %player% właśnie zdobył osiągnięcie [Enderchester]" to "logi/osiagniecia.log"
-						loop all players:
-							if {language::%loop-player%} = "English":
-								send formatted "&fGracz %player% właśnie zdobył osiągnięcie <tooltip:&aUnlock all enderchests>&a[Enderchester]" to loop-player
+					if yaml value "Player.Enderchests.%{_x}%" from "dataAdmin-%player%" is "Owned":
+						if player has 3 of {klejnotEN}:
+							set {_klejnot} to 3 of {klejnotEN}
+						if player has 3 of {klejnot}:
+							set {_klejnot} to 3 of {klejnot}
+						if player has {_klejnot}:
+							remove {_klejnot} from player
+							set {namewybieranie::%player%} to {_x}
+							teleport the player to player's location
+							if {language::%player%} = "English":
+								send "&8[&6Earthcraft&8] &7Please type the name for your enderchest in the &6chat&7." to player
 							else:
-								send formatted "&f%player% just earned the achievement <tooltip:&aOdblokuj wszystkie enderchesty>&a[Enderchester]" to loop-player
-				else:
-					if {language::%player%} = "English":
-						send "&8[&6Earthcraft&8] &7You don't have enough &6Klejnots &7in your inventory." to player
-						play sound "block.glass.break" with volume 3 and pitch 2 to player
+								send "&8[&6Earthcraft&8] &7Napisz nazwę dla wybranego enderchestu na &6czacie&7." to player
+							play sound "entity.experience_orb.pickup" with volume 5 and pitch 1.1 to player
+						else:
+							if {language::%player%} = "English":
+								send "&8[&6Earthcraft&8] &7You don't have enough &6Klejnots &7in your inventory." to player
+								play sound "block.glass.break" with volume 3 and pitch 2 to player
+							else:
+								send "&8[&6Earthcraft&8] &7Nie masz wystarczająco &6Klejnotów &7w ekwipunku." to player
+								play sound "block.glass.break" with volume 3 and pitch 0 to player
 					else:
-						send "&8[&6Earthcraft&8] &7Nie masz wystarczająco &6Klejnotów &7w ekwipunku." to player
-						play sound "block.glass.break" with volume 3 and pitch 0 to player
-		set {_llore} to join lore of clicked slot by ""
-		if {_llore} contains "shulker box":
-			if player has 70 of {klejnotEN}:
-				set {_klejnot} to 70 of {klejnotEN}
-			if player has 70 of {klejnot}:
-				set {_klejnot} to 70 of {klejnot}
-			if player has {_klejnot}:
-				remove {_klejnot} from player
-				if clicked slot < 16:
-					set {_s} to clicked slot
-					set {_n} to name of clicked slot
-					clear lore of {_s}
-					teleport the player to player's location
-					play sound "entity.player.levelup" with volume 5 and pitch 1.1 to player
-					if player can hold {_s}:
-						give {_s} to player
+						if {language::%player%} = "English":
+							send "&8[&6Earthcraft&8] &7You don't own this enderchest." to player
+							play sound "block.glass.break" with volume 3 and pitch 2 to player
+						else:
+							send "&8[&6Earthcraft&8] &7You posiadasz tego enderchestu."  to player
+							play sound "block.glass.break" with volume 3 and pitch 0 to player
+				else if line 1 of lore of event-slot contains "&7/enderchest":
+					if line 2 of lore of event-slot does not contain "owned" or "posiadany":
+						if player has 50 of {klejnotEN}:
+							set {_klejnot} to 50 of {klejnotEN}
+						if player has 50 of {klejnot}:
+							set {_klejnot} to 50 of {klejnot}
+						if player has {_klejnot}:
+							remove {_klejnot} from player
+							set {_x} to uncolored name of event-slot
+							replace all "Enderchest " in {_x} with ""
+							replace all " " in {_x} with ""
+							set {_x} to {_x} parsed as number
+							set yaml value "Player.Enderchests.%{_x}%" from "dataAdmin-%player%" to "Owned"
+							set yaml value "Enderchest %{_x}%.Owned" in "Enderchest%player%" to "Owned"
+							teleport the player to player's location
+							if {language::%player%} = "English":
+								send "&8[&6Earthcraft&8] &7Successfully bought enderchest &6%{_x}%&7. Enjoy!" to player
+							else:
+								send "&8[&6Earthcraft&8] &7Pomyślnie zakupiono enderchest &6%{_x}%&7. Miłej zabawy!" to player
+							play sound "entity.player.levelup" with volume 5 and pitch 1.1 at player
+							loop 5 times:
+								if yaml value "Enderchest %loop-number + 1%.Owned" from "dataAdmin-%player%" is true:
+									add 1 to {_count}
+							if {_count} = 5:
+								strike lightning effect at player
+								set {osiagniecie::enderchest::all::%player%} to true
+								log "%{_data}% Gracz %player% właśnie zdobył osiągnięcie [Enderchester]" to "logi/osiagniecia.log"
+								loop all players:
+									if {language::%loop-player%} = "English":
+										send formatted "&fGracz %player% właśnie zdobył osiągnięcie <tooltip:&aUnlock all enderchests>&a[Enderchester]" to loop-player
+									else:
+										send formatted "&f%player% just earned the achievement <tooltip:&aOdblokuj wszystkie enderchesty>&a[Enderchester]" to loop-player
+							save yaml "dataAdmin-%player%"
+						else:
+							if {language::%player%} = "English":
+								send "&8[&6Earthcraft&8] &7You don't have enough &6Klejnots &7in your inventory." to player
+								play sound "block.glass.break" with volume 3 and pitch 2 to player
+							else:
+								send "&8[&6Earthcraft&8] &7Nie masz wystarczająco &6Klejnotów &7w ekwipunku." to player
+								play sound "block.glass.break" with volume 3 and pitch 0 to player
+				else if uncolored name of event-slot = "Shulker Box":
+					if player has 70 of {klejnotEN}:
+						set {_klejnot} to 70 of {klejnotEN}
+					if player has 70 of {klejnot}:
+						set {_klejnot} to 70 of {klejnot}
+					if player has {_klejnot}:
+						remove {_klejnot} from player
+						if event-slot < 16:
+							set {_s} to event-slot
+							set {_n} to name of event-slot
+							clear lore of {_s}
+							teleport the player to player's location
+							play sound "entity.player.levelup" with volume 5 and pitch 1.1 to player
+							if player can hold {_s}:
+								give {_s} to player
+							else:
+								drop {_s} at player
+						if {language::%player%} = "English":
+							send "&8[&6Earthcraft&8] &7Successfully bought %{_n}%&7. Enjoy!" to player
+						else:
+							send "&8[&6Earthcraft&8] &7Pomyślnie zakupiono %{_n}%&7. Miłej zabawy!" to player
 					else:
-						drop {_s} at player
-				if {language::%player%} = "English":
-					send "&8[&6Earthcraft&8] &7Successfully bought %{_n}%&7. Enjoy!" to player
-				else:
-					send "&8[&6Earthcraft&8] &7Pomyślnie zakupiono %{_n}%&7. Miłej zabawy!" to player
-			else:
-				if {language::%player%} = "English":
-					send "&8[&6Earthcraft&8] &7You don't have enough &6Klejnots &7in your inventory." to player
-					play sound "block.glass.break" with volume 3 and pitch 2 to player
-				else:
-					send "&8[&6Earthcraft&8] &7Nie masz wystarczająco &6Klejnotów &7w ekwipunku." to player
-					play sound "block.glass.break" with volume 3 and pitch 0 to player
+						if {language::%player%} = "English":
+							send "&8[&6Earthcraft&8] &7You don't have enough &6Klejnots &7in your inventory." to player
+							play sound "block.glass.break" with volume 3 and pitch 2 to player
+						else:
+							send "&8[&6Earthcraft&8] &7Nie masz wystarczająco &6Klejnotów &7w ekwipunku." to player
+							play sound "block.glass.break" with volume 3 and pitch 0 to player
+				save yaml "Enderchest%player%"
 on chat:
 	if {namewybieranie::%player%} is set:
 		cancel event
-		set {nameenderchest::%{namewybieranie::%player%}%::%player%} to formatted message
+		set yaml value "Enderchest %{namewybieranie::%player%}%.Name" from "Enderchest%player%" to formatted message
 		if {language::%player%} = "English":
 			send "&8[&6Earthcraft&8] &7Successfully set &6%message% &7as the name for enderchest &6%{namewybieranie::%player%}%&7." to player
 		else:
 			send "&8[&6Earthcraft&8] &7Pomyślnie wybrano &6%message% &7jako nazwę dla enderchestu &6%{namewybieranie::%player%}%&7." to player
 		play sound "entity.player.levelup" with volume 5 and pitch 1.1 to player
 		clear {namewybieranie::%player%}
+		save yaml "Enderchest::%player%"
 #on damage of player:
 # name of tool of attacker is "something"
 # cooldown "attack%attacker%" is finished:
@@ -294,6 +327,18 @@ on chat:
 
 
 on inventory close:
-	if player's current inventory is {@enderchest}:
+	if event-inventory = {@enderchest}:
+		set {_ec} to metadata value "OpenEnderchest" of player
 		loop 27 times:
-			set {enderchest::%{enderchest::%player%}%::%loop-number%::%player%} to slot (loop-number - 1) of {@enderchest}
+			set yaml value "Enderchest %{_ec}%.Contents.%loop-number%" from "Enderchest%player%" to slot (loop-number - 1) of {@enderchest}
+		save yaml "Enderchest%player%"
+		play sound "block.ender_chest.close" with volume 5 and pitch 1 to player
+	if event-inventory = player's enderchest:
+		loop 27 times:
+			set yaml value "Enderchest 1.Contents.%loop-number%" from "Enderchest%player%" to slot (loop-number - 1) of enderchest of player
+		play sound "block.ender_chest.close" with volume 5 and pitch 1 to player
+		save yaml "Enderchest%player%"
+on skript stop:
+	loop all players:
+		save yaml "Enderchest%loop-player%"
+		unload yaml "Enderchest%loop-player%"

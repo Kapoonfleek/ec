@@ -1,101 +1,264 @@
 function data() :: string:
+	#API
+	
+	#set {_x} to text from "https://worldtimeapi.org/api/timezone/Europe/Amsterdam"
+	#set {_json} to json from {_x}
+	#set {_time} to value "unixtime" of {_json}
+	#add 7200 to {_time}
+	#set {_data} to unix date of {_time} formatted as "HH:mm:ss dd.MM.yyyy"
+
+	#OWN
+
 	set {_t} to now formatted as "HH.mm.ss dd.MM.yyyy"
 	set {_l::*} to "%{_t}%" split at "."
-	set {_x} to first element of {_l::*}
+	set {_x} to {_l::1}
 	set {_x} to {_x} parsed as number
-	add 2 to {_x}
+	add 1 to {_x}
+	if {_x} = 24:
+		set {_x} to 0
+	if {_x} = 25:
+		set {_x} to 1
+	if {_x} = 26:
+		set {_x} to 2
+	if {_x} < 10:
+		set {_x} to "0%{_x}%"
 	set {_data} to "%{_x}%:%join {_l::2} and {_l::3} with ":"%.%join {_l::4} and {_l::5} with "."%"
 	return {_data}
+
+options:
+	UTC-Offset: 2
+
+# find the number of seconds until a given time
+# Uses 24 hour time
+function findSecondsUntil(hour: number, minutes: number = 0, seconds: number = 0) :: number:
+	#set {_x::*} to text from "https://worldtimeapi.org/api/timezone/Europe/Amsterdam" split at ","
+	#set {_time} to {_x::7}
+	set {_time} to now
+	add 2 hours to {_time}
+	set {_unix-now} to unix timestamp of now
+	set {_unix-now} to "%{_unix-now}%" parsed as number
+	add 7200 to {_unix-now}
+	add 3600 * {@UTC-Offset} to {_unix-now} # Offset to correct for timezone
+	# offset by the hour, minutes, and seconds to get the exact time we're looking for
+	add -3600 * {_hour} to {_unix-now}  
+	add -60 * {_minutes} to {_unix-now}
+	add -1 * {_seconds} to {_unix-now}
+	# use modulus to find the number of seconds until the time we're looking for
+	return 86400 - mod({_unix-now}, 86400)
+
+every 10 minutes:
+	# every day at 8:00
+	# since we check every 10 minutes, if we're within 10 minutes of 8:00, we should wait and trigger at 8:00 exactly
+	set {_seconds} to findSecondsUntil(7 + 0.91 + (2/300))
+	if {_seconds} < 600:
+		wait "%{_seconds}% seconds" parsed as timespan
+		runAt6Announcement()
 	
-at 10:00 in real world:
+	# every day at 20:00
+	# technically this could be delayed by up to 10 minutes, but since 20:00 is 12 hours after 8:00, it doesn't matter
+	# just be aware that this behavior exists
+	set {_seconds} to findSecondsUntil(8)
+	if {_seconds} < 600:
+		wait "%{_seconds}% seconds" parsed as timespan
+		runAt6()
+
+function runAt6():
 	set {_x} to text from "https://worldtimeapi.org/api/timezone/Europe/Amsterdam"
 	if {_x} contains """day_of_week"":5":
 		set {tygodniowyreset} to true
 		add 1 to {stellarrotation}
-		if {stellarrotation} = 7:
+		if {stellarrotation} = 5:
 			set {stellarrotation} to 1
 	set {dziennyreset} to true
 	kill {-leaderboard::*}
+	clear {dailyResetSoon}
 	restart server
 
-at 09:55 in real world: 
-	broadcast "&aDzienny reset nastąpi za 5 min!"
+function runAt6Announcement():
+	set {dailyResetSoon} to true
+	broadcast "&aDaily reset will happen in 5 min!"
 	wait 2 minutes
-	broadcast "&aDzienny reset nastąpi za 3 min!"
+	broadcast "&aDaily reset will happen in 3 min!"
 	wait 2 minutes
-	broadcast "&aDzienny reset nastąpi za 1 min!"
+	broadcast "&aDaily reset will happen in 1 min!"
 	wait 30 seconds
 	set {_s} to 30
 	loop 30 times:
 		if {_s} = 30, 20, 15, 10 or 5:
-			broadcast "&aDzienny reset nastąpi za %{_s}% sekund!"
-		else if {_s} < 6:
-			broadcast "&aDzienny reset nastąpi za %{_s}% sekund!"
+			broadcast "&aDaily reset will happen in %{_s}% seconds!"
+		else if {_s} < 5:
+			broadcast "&aDaily reset will happen in %{_s}% seconds!"
 		remove 1 from {_s}
 		wait 1 second
 	
 on skript start:
 	wait 2 ticks
+	set {-dungeons} to 0
+	execute console command "gamerule naturalRegeneration false"
+	load yaml "plugins/Skript/serverstats/stats.yml" as "serverstats"
 	if {dziennyreset} is true:
 		set {dziennyreset} to false
 		send "Dzienny reset nastąpił!" to console
 		set {_data} to data()
 		log "%{_data}% Dzienny reset nastąpił!" to "logi/serwer.log"
 		if {tygodniowyreset} is not true:
-			execute console command "discord broadcast ##earthcraft %{_data}% | Dzienny reset nastąpił!"
+			#execute console command "discord broadcast ##earthcraft %{_data}% | Dzienny reset nastąpił!"
+			make embed:
+				set author of embed to "EarthCraft"
+				set title of embed to "The Daily Reset has occured"
+				set embed color of the embed to lime
+				set description of embed to "**Daily Reset**%nl%• Your daily Stardust limit has reset!%nl%• A new Daily Reward is awaiting you!"
+				set {_icon} to "https://i.imgur.com/Iei2Uf1.png"                  
+				set author icon of embed to {_icon}
+				set {_emotes::*} to ":)", "^_^", "^-^", ":D", "!!!", ">:)" and ":P"
+				set {_text} to a random element of {_emotes::*}
+				set footer of embed to {_text}
+				set timestamp of embed to now
+			post embed to channel with id "900397064251379752"
 		loop all offline players:
 			set {dziennylimit::stardust::%loop-offline player%} to {poziom::%loop-offline player%}
 			if {dailyready::%loop-offline player%} = true:
 				set {dailystreak::%loop-offline player%} to 0
 			else:
 				set {dailyready::%loop-offline player%} to true
-				if {dailynagroda::%loop-offline player%} < 7:
+				if {dailynagroda::%loop-offline player%} < 14:
 					add 1 to {dailynagroda::%loop-offline player%}
 				else:
 					set {dailynagroda::%loop-offline player%} to 1
 			set {dresetwiad::%loop-offline player%} to true
 		execute console command "noinvincibility on"
 		Leaderboard(1, "mobskilled")
+		set {_day} to text from "https://current-time-api.vercel.app/api/current-date" parsed as number
+		set {_month} to (text from "https://current-time-api.vercel.app/api/current-month" parsed as number) + 1
+		set {_year} to text from "https://current-time-api.vercel.app/api/current-year" parsed as number
+		set {_n1} to floor(275 * {_month} / 9)
+		set {_n2} to floor(({_month} + 9) / 12)
+		set {_n3} to (1 + floor(({_year} - 4 * floor({_year} / 4) + 2) / 3))
+		set {_dayoftheyear} to {_n1} - ({_n2} * {_n3}) + {_day} - 30
+		loop all offline players:
+			if {dataurodzin::%loop-offline player%} is set:
+				set {_data::*} to {dataurodzin::%loop-offline player%} split at "."
+				set {_data::1} to {_data::1} parsed as number
+				set {_data::2} to {_data::2} parsed as number
+				set {_data::3} to {_data::3} parsed as number
+				set {_n1} to floor(275 * {_data::2} / 9)
+				set {_n2} to floor(({_data::2} + 9) / 12)
+				set {_n3} to (1 + floor(({_data::3} - 4 * floor({_data::3} / 4) + 2) / 3))
+				set {_dayoftheyearplayer} to {_n1} - ({_n2} * {_n3}) + {_data::1} - 30
+				if {_dayoftheyearplayer} = {_dayoftheyear}:
+					set {urodzinydzien::%loop-offline player%} to true
+					if {jezyk::%loop-offline player%} = "English":
+						execute console command "/reward set 3 %loop-offline player% Birthday {odlamekgwiazdyEN}"
+					else:
+						execute console command "/reward set 3 %loop-offline player% Urodziny {odlamekgwiazdy}"
+				else:
+					if {urodzinydzien::%loop-offline player%} is set:
+						clear {urodzinydzien::%loop-offline player%}
 	if {tygodniowyreset} is true:
 		set {tygodniowyreset} to false
 		send "Tygodniowy reset nastąpił!" to console
+		set {doubleXPFriday} to true
 		set {_data} to data()
 		log "%{_data}% Tygodniowy reset nastąpił!" to "logi/serwer.log"
-		execute console command "discord broadcast ##earthcraft %{_data}% | Tygodniowy reset nastąpił!"
+		make embed:
+			set author of embed to "EarthCraft"
+			set title of embed to "The Weekly Reset has occured"
+			set embed color of the embed to red
+			set description of embed to "**Weekly Reset**%nl%• Work Orders have been reset!%nl%• Weekly rewards are awaiting you in the Grand Vault!%nl%• The Stellar Chest's card for this week has changed!"
+			set {_icon} to "https://i.imgur.com/UiRf56w.png"                  
+			set author icon of embed to {_icon}
+			set {_emotes::*} to ":)", "^_^", "^-^", ":D", "!!!", ">:)" and ":P"
+			set {_text} to a random element of {_emotes::*}
+			set footer of embed to {_text}
+			set timestamp of embed to now
+		post embed to channel with id "900397064251379752"
+		#execute console command "discord broadcast ##earthcraft %{_data}% | Tygodniowy reset nastąpił!"
 		loop all offline players:
 			set {tresetwiad::%loop-offline player%} to true
 			clear {zlecenia::%loop-offline player%::*}
 			clear {vaultnagroda::%loop-offline player%}
 		set {_datatydz::*} to {_data} split at " "
-		set {_datatydzien} to 2nd element of {_datatydz::*}
+		set {_datatydzien} to {_datatydz::2}
 		set {_char1} to char at 0 in {_datatydzien}
 		set {_char2} to char at 1 in {_datatydzien}
-		if {_char1} != "0":
-			set {_dzien} to "%{_char1}%%{_char2}%" parsed as number
+		set {_day} to text from "https://current-time-api.vercel.app/api/current-date" parsed as number
+		set {_month} to (text from "https://current-time-api.vercel.app/api/current-month" parsed as number) + 1
+		add 7 to {_day}
+		if {_month} is 2 or 4 or 6 or 9 or 11:
+			if {_day} > 30:
+				set {_day} to {_day}-30
 		else:
-			set {_dzien} to "%{_char2}%" parsed as number
-		add 7 to {_dzien}
+			if {_day} > 31:
+				set {_day} to {_day}-31
 		set {datatydzien} to {_datatydzien}
 		set {_datadzien::*} to {_datatydzien} split at "."
-		set {_datadzien::1} to {_dzien}
+		set {_datadzien::1} to {_day}
 		set {_datadzien} to join {_datadzien::*} with "."
-		set {datatydzien2} to "%{_dzien}%.%{_datadzien}%"
-		
-	loop {leaderboard::*}:
-		kill loop-value
-		clear {leaderboard::*}
+		set {datatydzien2} to "%{_day}%.%{_datadzien}%"
+	else:
+		clear {doubleXPFriday}
+	UpdateTopDungeons({topKeystones::1}, {topKeystonesPath::1}, "top")
+	UpdateTopDungeons({mostRecentKeystone}, {mostRecentKeystonePath}, "recent")
+	NewPlayerHologram()
+	#loop {leaderboard::*}:
+	#	kill loop-value
+	#	clear {leaderboard::*}
+	clear {dmgdealt::*}
+	execute console command "mv load groveofimmemorialruins"
+	execute console command "keepchunks keepregion worldguard groveofimmemorialruins groveofimmemorialruins"
+	wait 2 seconds
+	clear {dailyResetSoon}
+	execute console command "sk reload systemy/walki"
+	execute console command "cwr regen groveofimmemorialruins"
+	execute console command "cwr confirm"
 			
 on skript stop:
-	wait 2 ticks
-	loop {leaderboard::*}:
-		kill loop-value
-		clear {leaderboard::*}
-	loop {standard::*}:
-		kill loop-value
-	clear {standard::*}
+	clear {discordCodes::*}
+	clear {dailyResetSoon}
+	set {expAreaMayanMobs} to 0
+	clear {expAreaMayan}
+	loop all offline players where [metadata value "dungeon" of input is set]:
+		DungeonLeave(loop-offline player)
+	loop all players where [metadata value "dungeon" of input is set]:
+		DungeonLeave(loop-player)
+	load yaml "plugins/Skript/dungeonconfig/KeystoneHolderIDs.yml" as "keystoneIds"
+	set {_size} to yaml value "IDs Registered" in "keystoneIds"
+	loop {_size} times:
+		clear {-KeystoneHolderLoc%loop-number%}
+		clear {-dungeonInstance%loop-number%::*}
+		clear {-DungeonTimer%loop-number%}
+		clear {-DungeonTimerLimit%loop-number%}
+		clear {-deaths%loop-number%}
+		clear {-dungeonBosses%loop-number%}
+	unload yaml "keystoneIds"
+	DungeonStatsFileAverageUpdate()
+	loop all entities where [input's world = "groveofimmemorialruins"]:
+		if loop-entity is not a player:
+			kill loop-entity
+	clear {lingeringInsanityHaste::*}
+	clear {hasteVoidform::*}
+	#wait 2 ticks
+	#loop {leaderboard::*}:
+	#	kill loop-value
+	#	clear {leaderboard::*}
+	#loop {standard::*}:
+	#	kill loop-value
+	#clear {standard::*}
 on join:
+	if player is invulnerable:
+		make player vulnerable
+	if getDayMonth("month") = 12:
+		AkasakaArthurSnowFight()
+		playerGiftYaml(player)
+		WinterDelightDisguiseUpdate()
+		newGiftSpawn()
+		if amount of online players = 1:
+			SnowfallOnSpawn()
+		set {stellarrotation} to 2
 	wait 2 seconds
+	execute console command "noinvincibility on"
 	if {dresetwiad::%player%} = true:
+		winterDelightRandomizeMissions(player)
 		set {dresetwiad::%player%} to false
 		wait 1.5 seconds
 		if {language::%player%} = "English":
@@ -109,15 +272,58 @@ on join:
 	if {tresetwiad::%player%} = true:
 		set {tresetwiad::%player%} to false
 		wait 1.5 seconds
+		set {_x} to text from "https://worldtimeapi.org/api/timezone/Europe/Amsterdam"
 		if {language::%player%} = "English":
 			send "&d=== Weekly reset ===" to player
 			send "&dWeekly rewards are awaiting you in The Grand Vault!" to player
 			send "&dWork Orders have been reset!" to player
-			send "&dCard rotation in Stellar Chest has changed!" to player
+			send "&dCard rotation in the Stellar Chest has changed!" to player
+			if {_x} contains """day_of_week"":5":
+				send "&dBenefit from a Double EXP day today!" to player
+				doubleExpDayReminder(player)
 		else:
 			send "&d=== Tygodniowy reset nastąpił! ===" to player
 			send "&dNagrody czekają na ciebie w Wielkim Skarbcu!" to player
 			send "&dTwoje Zlecenia zostały zresetowane!" to player
 			send "&dRotacja Kart w Stelarnej Skrzynce się zmieniła!" to player
-	if player's name = "kapoonfleek" or "llamadegree":
+			if {_x} contains """day_of_week"":5":
+				send "&dCiesz się dziś dniem Podwójnego EXP!" to player
+				doubleExpDayReminder(player)
+	if player's name = "kapoonfleek" or "llamadegree" or "Pehrek":
 		execute player command "noinvincibility on"
+
+on pickup:
+	if tag "custom;CantDespawn" of nbt of event-dropped item is set:
+		cancel event
+on item despawn:
+	if tag "custom;CantDespawn" of nbt of event-dropped item is set:
+		cancel event
+
+function notifyPlayerDailyReward(p: player):
+	while {dailyready::%{_p}%} != false:
+		wait 15 minutes
+		send " " to {_p}
+		send " " to {_p}
+		if {language::%{_p}%} = "English":
+			send formatted "Reminder: &o<##54d6ff>(<##a3dcff>&o!<##54d6ff>&o) <##a3dcff>&oYou have not yet claimed your daily reward. You can visit the &f&ospawn centre <##a3dcff>&oto do so. <command:/dailyrewardreminder hide><tooltip:&fHides the daily reward reminder for today.>&f(Click here to hide this message)" to {_p}
+		else:
+			send formatted "Przypomnienie: &o<##54d6ff>(<##a3dcff>&o!<##54d6ff>&o) <##a3dcff>&oNie odebrano jeszcze dzisiaj dziennej nagrody. Aby to zrobić, możesz odwiedzić &f&ocentrum spawnu<##a3dcff>&o! <command:/dailyrewardreminder hide><tooltip:&fChowa przypomnienie o dziennej nagrodzie na dziś.>&f(Kliknij tutaj, by schować wiadomość)" to {_p}
+		set {_pitch} to 1
+		loop 3 times:
+			play sound "block.note_block.cow_bell" with volume 3 and pitch {_pitch} to {_p}
+			play sound "block.note_block.basedrum" with volume 3 and pitch {_pitch} to {_p}
+			play sound "block.note_block.didgeridoo" with volume 3 and pitch {_pitch} to {_p}
+			add 0.334 to {_pitch}
+			wait 2 ticks
+		stop loop if metadata value "DailyRewardReminderHidden" of {_p} is set
+
+function doubleExpDayReminder(p: player):
+	wait 6 seconds
+	set {_dexp} to mini message from "<gradient:##daa3ff:##ff42fc>Double Exp Friday:"
+	if {language::%{_p}%} = "English":
+		set {_d2} to mini message from "<gradient:##daa3ff:##ff42fc>double EXP day"
+		send "&5(&d&l🫧&5) %{_dexp}% &fToday marks a %{_d2}%&f! Enjoy double player EXP from all sources!" to {_p}
+	else:
+		set {_d2} to mini message from "<gradient:##daa3ff:##ff42fc>dzień podwójnego EXP"
+		send "&5(&d&l🫧&5) %{_dexp}% &fDzisiaj odbywa się %{_d2}%&f! Ciesz się podwójnym EXP gracza ze wszystkich źródeł!" to {_p}
+	play sound "entity.player.levelup" with volume 2 and pitch 0.6 to {_p}

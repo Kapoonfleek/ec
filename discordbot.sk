@@ -1,0 +1,418 @@
+define new bot named "Earthcraft":
+    token: ""
+    policy: all
+    auto reconnect: true
+    compression: none
+    intents: default intents
+    on ready:
+        set {_server} to guild with id "871857809816440852"
+        # "1068544290436948048"
+        set the presence of the bot named "Earthcraft" to playing "Earthcraft"
+        send "[EarthcraftDiscord] The Earthcraft Bot has loaded successfully!" to console
+
+on load:
+    #post "Hello World!" to text channel with id "1068544290436948048" # specific channel
+    set {_level} to new slash command named "card" with description "Displays information about a Card with the given id."
+    add new string option named "name" with description "Card name" to options of {_level}
+    add new string option named "id" with description "Card id" to options of {_level}
+    add new locale data for "pl" with value "karta" to name localizations of {_level}
+    add new locale data for "pl" with value "nazwa" to description localizations of {_level}
+    add new locale data for "pl" with value "id karty" to description localizations of {_level}
+
+    set {_linkaccount} to new slash command named "linkaccount" with description "Links an in-game player username with a Discord username."
+    add new string option named "code" with description "unique code obtained from the in-game /linkaccount command" to options of {_linkaccount}
+    add new locale data for "pl" with value "polaczkonto" to name localizations of {_linkaccount}
+    add new locale data for "pl" with value "kod" to description localizations of {_linkaccount}
+
+    set {_cardlist} to new slash command named "cardlist" with description "Links Card IDs and their respective owners."
+    add new string option named "name" with description "Card name" to options of {_cardlist}
+    add new locale data for "pl" with value "listakart" to name localizations of {_cardlist}
+    add new locale data for "pl" with value "nazwa" to description localizations of {_cardlist}
+    set {_bot} to bot named "Earthcraft"
+
+    set {_refreshBot} to new slash command named "refreshbot" with description "for my badge"
+
+    update {_level} and {_linkaccount} and {_cardlist} and {_refreshBot} globally in {_bot}
+
+    #update {_linkaccount} globally in {_bot}
+
+on slash command:
+    if discord id of event-channel = "777982524139765800" or "900397064251379752":
+        if event-string = "card":
+            set {_id} to argument "id" as string
+            set {_name} to argument "name" as string
+            if {_name} is set:
+                if {_id} is set:
+                    if yaml file "plugins/Skript/playerdata/karty/%{_name}%/%{_id}%.yml" exists:
+                        set {_randomId} to random 6 char string from charset `0-9` `a-z`
+                        load yaml "plugins/Skript/playerdata/karty/%{_name}%/%{_id}%.yml" as {_randomId}
+
+                        make embed:
+                            set title of embed to {_name} in strict proper case
+                            
+                            set {_dropdate::*} to (yaml value "Card.Dropped" in {_randomId}) split at " "
+                            set {_dropdate} to "%{_dropdate::2}%, %{_dropdate::1}%"
+                            set {_element} to yaml value "Card.Element" in {_randomId}
+                            if {_element} is not set:
+                                set {_element} to "-"
+                            set description of embed to "**Owner:** %yaml value "Card.Owner" in {_randomId}%%nl%**Id:** %{_id}%%nl%**Element:** %{_element}%%nl%‎"
+                            
+                            set {_colour} to yaml value "Card.Colour" in {_randomId}
+                            set embed color of the embed to hex {_colour}
+
+                            set {_statsIcons::*} to "<:health:1207676338203525121>", "<:damage:1207666062691274774>", "<:resistance:1207676340124393542>", "<:mobility:1207679541531639808>", "<:utility:1207679543528259614>", "<:crowdcontrol:1207679535873794058>", "<:versatility:1207679545189072956>", "<:mastery:1207679539824828437>", "<:criticalhit:1207679534389010452>", "<:element:1207676337108549703>", "<:haste:1207679537786265630>" and "<:avoidance:1207679532631588944>" and "<:intellect:1242863325365141565>", "<:strength:1242863327344857190>" and "<:agility:1242863323561852999>"
+                            set {_index} to 1
+                            loop yaml nodes with keys "Card.Stats" in {_randomId}:
+                                add loop-value to {_cardStats::*}
+                                set {_statAmount::%{_index}%} to yaml value "Card.Stats.%loop-value%" in {_randomId}
+                                add 1 to {_index}
+                            loop {_cardStats::*}:
+                                if loop-value does not contain "Total":
+                                    if loop-value = "Crowd Ctrl":
+                                        set {_stat} to "crowdcontrol"
+                                    else:
+                                        set {_stat} to loop-value in lowercase
+                                        replace all " " in {_stat} with ""
+                                    loop {_statsIcons::*}:
+                                        if loop-value-2 contains {_stat}:
+                                            set {_statIcon} to loop-value-2
+                                            stop loop
+                                    set {_cardStats::%loop-index%} to "%{_statIcon}% %loop-value%: %{_statAmount::%loop-index%}%"
+                                else:
+                                    set {_cardStats::%loop-index%} to "%loop-value%: %{_statAmount::%loop-index%}%"
+                            
+                            set {_stats} to join {_cardStats::*} by nl
+                            add inline field named "**Level:**" with value "%(yaml value "Card.Level" in {_randomId})%%nl%‎" to fields of embed
+                            set {_exp} to yaml value "Card.Exp" in {_randomId}
+                            if {_exp} is not set:
+                                set {_exp} to 0
+                            add inline field named "**Experience:**" with value "%({_exp})%" to fields of embed
+                            add inline field named "**Gear Score:**" with value "0" to fields of embed
+                            
+                            add inline field named "Stats:" with value "%{_stats}%%nl%‎" to fields of embed
+                            set {_talents::*} to yaml list "Card.Talents" in {_randomId}
+                            loop 5 times:
+                                if yaml value "Card.Talents.Row %loop-number%" in {_randomId} is set:
+                                    set {_row%loop-number%} to yaml value "Card.Talents.Row %loop-number%" in {_randomId}
+                                else:
+                                    set {_row%loop-number%} to "Not discovered"
+                            add inline field named "Talents:" with value "15: %{_row1}%%nl%30: %{_row2}%%nl%40: %{_row3}%%nl%45: %{_row4}%%nl%50: %{_row5}%" to fields of embed
+                            add inline field named "Gear:" with value "Head: WIP%nl%Neck: WIP%nl%Shoulders: WIP%nl%Chest: WIP%nl%Wrists: WIP%nl%Gloves: WIP%nl%Waist: WIP%nl%Legs: WIP%nl%Boots: WIP%nl%Ring 1: WIP%nl%Ring 2: WIP" to fields of embed
+
+                            set {_traitsGlaceon::*} to "<:chainreaction:1186080018800058478>", "<:flashfreeze:1186080021081763860>", "<:frigidgrasp:1186080022436511764>", "<:frozentouch:1186080024000987288>", "<:packedice:1186080026127519804>", "<:splinteringcold:1186080027486466108>", "<:thermalvoid:1186080028962865262>", "<:tunnelofice:1186080030946770975>", "<:whiteout:1186079159844356218>" and "<:wintertide:1186080033278795796>"
+                            set {_traits::*} to yaml list "Card.Traits" in {_randomId}
+                            loop {_traits::*}:
+                                clear {_amount}
+                                if loop-value is not "Not set":
+                                    loop {_traits::*}:
+                                        if loop-value-2 = loop-value-1:
+                                            add 1 to {_amount}
+                                    if {_amount} is set:
+                                        set {_%loop-value%} to {_amount}
+                                        set {_traitIconFind} to loop-value in lowercase
+                                        replace all " " in {_traitIconFind} with ""
+                                        loop {_traits%{_name}%::*}:
+                                            if loop-value-2 contains {_traitIconFind}:
+                                                set {_traitList::*} to {_traitList::*} and "%loop-value-2% %{_amount}%x %loop-value-1%"
+                                                broadcast "add"
+                            set {_traits} to join {_traitList::*} by nl
+
+                            add inline field named "Traits:" with value {_traits} to fields of embed
+
+                            add inline field named "**Artifacts:**" with value "Not equipped%nl%Not equipped%nl%Not equipped%nl%Not equipped%nl%‎" to fields of embed
+                            add inline field named "**Relic:**" with value "WIP" to fields of embed
+                            set {_constellation} to yaml value "Card.Constellation" in {_randomId}
+                            add inline field named "**Constellation:**" with value "<:starshard:1147162152751333416> %{_constellation}%" to fields of embed
+
+                            set {_gemList1::*} to "<:skillfulillimiteddiamond:1186032733240185035>", "<:fierceillimiteddiamond:1186032736335564860>", "<:resplendentillimiteddiamond:1186032740055928962>", "<:inscribedillimiteddiamond:1186032738130739340>", "<:quickcamomerald:1186032834998173786>", "<:keencamomerald:1186032838420746340>", "<:craftycamomerald:1186032840098463754>", "<:energizedcamomerald:1186032841465798707>", "<:keencynderite:1186032843437129810>", "<:zencynderite:1186032810574745630>", "<:fracturedcynderite:1186032844577972274>", "<:senseiscynderite:1186032846796759070>" 
+                            set {_gemList2::*} to "<:craftydelphoxite:1186032814521593936>", "<:senseisdelphoxite:1186032816048312522>", "<:radiantdelphoxite:1186032821316362250>", "<:deadlydelphoxite:1186032817612791849>", "<:energizedechonite:1186032827037401098>", "<:stormyechonite:1186032833635033228>", "<:zenechonite:1186032828115320862>", "<:radiantechonite:1186032831307186348>", "<:energizedkingsemerald:1186032868783296582>", "<:craftyzachseye:1186032867361423360>", "<:zenmysticlapislazuli:1186032872356843641>", "<:senseisgalestone:1186032871257935952>"
+                            set {_gemList::*} to {_gemList1::*} and {_gemList2::*}
+
+                            set {_cardGems::*} to yaml list "Card.Gems" in {_randomId}
+
+                            loop {_cardGems::*}:
+                                if {_uniqueGems::*} does not contain loop-value:
+                                    add loop-value to {_uniqueGems::*}
+
+                            loop {_uniqueGems::*}:
+                                clear {_amount}
+                                loop {_cardGems::*}:
+                                    if loop-value-2 = loop-value-1:
+                                        add 1 to {_amount}
+                                set {_gemsAmount::*} to {_gemsAmount::*} and "%{_amount}%x"
+                            
+                                
+                            loop {_uniqueGems::*}:
+                                set {_gem::*} to loop-value split at " "
+                                set {_rank} to {_gem::%size of {_gem::*}%}
+                                delete {_gem::%size of {_gem::*}%}
+                                set {_gemIcon} to join {_gem::*} by ""
+                                set {_gem} to join {_gem::*} by " "
+                                set {_gemLowercase} to {_gemIcon} in lowercase
+                                replace all "'" in {_gemLowercase} with ""
+                                loop {_gemList::*}:
+                                    if loop-value-2 contains {_gemLowercase}:
+                                        set {_icon} to loop-value-2
+                                        stop loop
+                                set {_gemsCard::*} to {_gemsCard::*} and "%{_icon}% %{_gemsAmount::%loop-index-1%}% %{_gem}% %{_rank}%"
+                                clear {_icon}
+                                broadcast {_gemLowercase}
+
+                            set {_gems} to join {_gemsCard::*} by nl   
+                            add field named "Gems:" with value {_gems} to fields of embed
+
+                            set {_cardList::*} to "Glaceon", "Umbreon", "Vaporeon", "Ghazan", "Delphox", "Espeon", "Buckshot", "Brother Therold", "Cresselia"
+                            set {_cardImages::*} to "https://i.imgur.com/rVxgo28.png", "https://i.imgur.com/KVLZOHM.png", "https://i.imgur.com/3wVKI8k.png", "https://i.imgur.com/MsToWIh.png", "https://i.imgur.com/dc7IFoQ.png", "https://i.imgur.com/DE1KMCp.png", "https://i.imgur.com/aFkqR8y.png", "https://i.imgur.com/95pmVm7.png", "https://i.imgur.com/M7l9VIB.png", "https://i.imgur.com/6hTXJqU.png", "https://i.imgur.com/SUAVc87.png", "https://i.imgur.com/k0bKazm.png"
+                            set {_index} to 0
+                            loop {_cardList::*}:
+                                add 1 to {_index}
+                                if loop-value = {_name}:
+                                    set {_cardImage} to {_cardImages::%{_index}%}
+                                    stop loop
+                            
+
+                            set thumbnail of embed to {_cardImage}
+                            set author of the embed to "EarthCraft Card"
+                            set timestamp of embed to now
+                            set footer of embed to "Drop Date: %{_dropdate}%"
+
+                        reply with last embed
+                        save yaml "Card-DiscordBot%{_randomId}%"
+                        unload yaml "Card-DiscordBot%{_randomId}%"
+                    else:
+                        reply with hidden "No card with the provided id was found."
+                else:
+                    reply with hidden "You must provide a Card id. (ex. n7t03756)"
+            else:
+                reply with hidden "You must provide a Card name. (ex. Glaceon)"
+        else if event-string is "linkaccount":
+            set {_code} to argument "code" as string
+            load yaml "plugins/Skript/playerdata/admin/discord/LinkedAccounts.yml" as "Discord"
+            if {discordCodes::*} contains {_code}:
+                remove {_code} from {discordCodes::*}
+                if size of {discordCodes::*} = 0:
+                    clear {discordCodes::*}
+                set {_user} to yaml value "Accounts.Unlinked.%{_code}%" in "Discord"
+                clear yaml value "Accounts.Unlinked.%{_code}%" in "Discord"
+                set {_discordId} to "<@%event-user's discord id%>"
+                set yaml value "Accounts.%{_discordId}%.UUID" in "Discord" to {_user}
+                set yaml value "Player Accounts.%{_user}%.Discord ID" in "Discord" to {_discordId}
+                save yaml "Discord"
+                unload yaml "Discord"
+                reply with hidden "Successfully bound your in-game account to your Discord account."
+            else:
+                broadcast {discordCodes::*}
+                reply with hidden "The entered code was not recognized."
+        else if event-string = "refreshbot":
+            reply with "Thank you for helping me refresh <@&900385261786120212>'s BADGE"
+        else if event-string is "cardlist":
+            set {_name} to argument "name" as string
+            if {_name} is set:
+                load all yaml from directory "/plugins/Skript/playerdata/karty/%{_name} in strict proper case%"
+                set {_chars::*} to "&8" and "<none>" and "Id:" and "Dropped" and "Wydropiono"
+                loop all loaded yaml:
+                    if loop-value contains "/%{_name}%":
+                        set {_yamlList::*} to loop-value split at "/"
+                        replace all ".yml" in {_yamlList::%size of {_yamlList::*}%} with ""
+                        if {_idList::*} does not contain {_yamlList::%size of {_yamlList::*}%}:
+                            if {_yamlList::%size of {_yamlList::*}%} does not contain "Wydropiono":
+                                if {_yamlList::%size of {_yamlList::*}%} does not contain "Dropped":
+                                    if {_yamlList::%size of {_yamlList::*}%} does not contain "<none>":
+                                        if {_yamlList::%size of {_yamlList::*}%} does not contain "Id:":
+                                            if {_yamlList::%size of {_yamlList::*}%} does not contain " ":
+                                                set {_idList::*} to {_idList::*} and {_yamlList::%size of {_yamlList::*}%}
+                            if yaml value "Card.Owner" in loop-value is set:
+                                set {_authorList::*} to {_authorList::*} and yaml value "Card.Owner" in loop-value
+                            if {_colour} is not set:
+                                set {_colour} to yaml value "Card.Colour" in loop-value
+                if size of {_yamlList::*} > 0:
+                    unload all loaded yaml from directory "/plugins/Skript/playerdata/karty/%{_name} in strict proper case%"
+                    make embed:
+                        set title of embed to {_name} in strict proper case
+                        set description of embed to "List of all existing Card IDs"
+                        loop {_idList::*}:
+                            set {_idListSkimmed::%loop-index%} to "%loop-value% - Owner: %{_authorList::%loop-index%}%"
+                        set {_idList} to (join {_idListSkimmed::*} by nl)
+                        add field named "**Card List:**" with value {_idList} to fields of embed
+                        set embed color of the embed to hex {_colour}
+                        set {_cardList::*} to "Glaceon", "Umbreon", "Vaporeon", "Ghazan", "Delphox", "Espeon", "Buckshot", "Brother Therold", "Cresselia"
+                        set {_cardImages::*} to "https://i.imgur.com/rVxgo28.png", "https://i.imgur.com/KVLZOHM.png", "https://i.imgur.com/3wVKI8k.png", "https://i.imgur.com/MsToWIh.png", "https://i.imgur.com/dc7IFoQ.png", "https://i.imgur.com/DE1KMCp.png", "https://i.imgur.com/aFkqR8y.png", "https://i.imgur.com/95pmVm7.png", "https://i.imgur.com/M7l9VIB.png", "https://i.imgur.com/6hTXJqU.png", "https://i.imgur.com/SUAVc87.png", "https://i.imgur.com/k0bKazm.png"
+                        loop {_cardList::*}:
+                            add 1 to {_index}
+                            if loop-value = {_name}:
+                                set {_cardImage} to {_cardImages::%{_index}%}
+                                stop loop                     
+                        set thumbnail of embed to {_cardImage}
+                    reply with embed
+                else:
+                    reply with hidden "No cards with the provided name have been found."
+            else:
+                reply with hidden "You must provide a Card name. (ex. Glaceon)"
+
+on join:
+    make embed:
+        set author of embed to "%player% joined the server"
+        set embed color of the embed to lime
+        set {_player} to "https://mc-heads.net/avatar/%player%"                  
+        set author icon of embed to {_player}
+    post embed to channel with id "900397064251379752"
+on leave:
+    make embed:
+        set author of embed to "%player% left the server"
+        set embed color of the embed to red
+        set {_player} to "https://mc-heads.net/avatar/%player%"                  
+        set author icon of embed to {_player}
+    post embed to channel with id "900397064251379752"
+
+function StellarCardDiscord(p: player, card: string):
+    make embed:
+        set author of embed to "%{_p}% dropped %{_card}%"
+        set embed color of the embed to red
+        set description of embed to "%{_p}% just dropped %{_card}% from the Stellar Chest!"
+        set {_cardList::*} to "Glaceon", "Umbreon", "Vaporeon", "Ghazan", "Delphox", "Espeon", "Buckshot", "Brother Therold", "Cresselia"
+        set {_cardImages::*} to "https://i.imgur.com/rVxgo28.png", "https://i.imgur.com/KVLZOHM.png", "https://i.imgur.com/3wVKI8k.png", "https://i.imgur.com/MsToWIh.png", "https://i.imgur.com/dc7IFoQ.png", "https://i.imgur.com/DE1KMCp.png", "https://i.imgur.com/aFkqR8y.png", "https://i.imgur.com/95pmVm7.png", "https://i.imgur.com/M7l9VIB.png", "https://i.imgur.com/6hTXJqU.png", "https://i.imgur.com/SUAVc87.png", "https://i.imgur.com/k0bKazm.png"
+        loop {_cardList::*}:
+            add 1 to {_index}
+            if loop-value = {_card}:
+                set {_cardImage} to {_cardImages::%{_index}%}
+                stop loop                     
+        set thumbnail of embed to {_cardImage}
+        set {_player} to "https://mc-heads.net/avatar/%{_p}%"                  
+        set author icon of embed to {_player}
+        set {_data::*} to data() split at " "
+        set footer of embed to {_data::1}
+
+on message receive:
+    if event is from guild:
+        if event-member is not a discord bot:
+            if discord id of event-channel = "900397064251379752":
+                set {_data::*} to data() split at " "
+                set {_discordId} to "<@%event-user's discord id%>"
+                load yaml "plugins/Skript/playerdata/admin/discord/LinkedAccounts.yml" as "Discord"
+                set {_player} to (yaml value "Accounts.%{_discordId}%.UUID" in "Discord") parsed as player
+                if message attachments of event-message exists:
+                    set {_attachments::*} to message attachments of event-message
+                loop {_attachments::*}:
+                    set {_attachments::%loop-index%} to "&f%file name of loop-value% &9&n%loop-value's url%"
+                set {_messageContent} to "%message content of event-message%"
+                if {_messageContent} = "":
+                    if {_attachments::*} is set:
+                        set {_messageContent} to (join {_attachments::*} by " ")
+                else if {_messageContent} contains "http" or "www":
+                    set {_messageContent} to "&9&n%{_messageContent}%"
+                if mentioned members of event-message is set:
+                    loop mentioned members of event-message:
+                        add loop-value to {_mentionedMembers::*}
+                    loop {_mentionedMembers::*}:
+                        replace all "<@%discord id of loop-value%>" in {_messageContent} with "&9@%loop-value%&r"
+                if {_player} is set:
+                    #set {_message} to "<##7289da>[EarthCraft] &f%{_data::1}% | %event-user%: %message content of event-message%"
+                    #set {_message} to "<##7289da>[Discord] &8[%{kolorek::%{_player}%}%%{poziom::%{_player}%}% Lvl&8] <%{kolorek::%{_player}%}%%{pseudonim::%{_player}%}%&8> &f%{_messageContent}%"
+                    load yaml "plugins/Skript/playerdata/admin/%uuid of {_player}%-Admin.yml" as "dataAdmin-%{_player}%"
+                    if (yaml value "Player.Preferred Discord Name" in "dataAdmin-%{_player}%" in lowercase) = "discord":
+                        set {_user::*} to "%event-member%" split at "##"
+                        set {_message} to "<##7289da>[EarthCraft] &f%{_data::1}% | <##7289da>%{_user::1}%&f: %{_messageContent}%"
+                    else:
+                        set {_message} to "<##7289da>[EarthCraft] &f%{_data::1}% | <##7289da>%{_player}%&f: %{_messageContent}%"
+                else:
+                    set {_user::*} to "%event-member%" split at "##"
+                    set {_message} to "<##7289da>[EarthCraft] &f%{_data::1}% | <##7289da>%{_user::1}%&f: %{_messageContent}%"
+                if {_message} != "":
+                    if {_message} contains "<:xdd:1208802789715873822>":
+                        replace all "<:xdd:1208802789715873822>" in {_message} with ""
+                    if {_message} contains "🥰":
+                        replace all "🥰" in {_message} with ""
+                    if {_message} contains "-formatted":
+                        replace all "-formatted" in {_message} with ""
+                        broadcast formatted {_message}
+                    else:
+                        broadcast {_message}
+                if "%message content of event-message%" contains "<@881202434029006910>":
+                    set {_tag::*} to mention tag of event-user split at "##"
+                    show typing status in event-channel
+                    wait 1 second
+                    set {_randomReply} to a random integer between 1 and 2
+                    if {_randomReply} = 1:
+                        set {_randomReply::*} to "What do you want", "Yes?", "What is it", "Leave me alone", "Wuh", "Huh" and "'As a water bead on a lotus leaf, as water on a red lily, does not adhere, so the sage does not adhere to the seen, the heard, or the sensed.'"
+                    else if {_randomReply} = 2:
+                        set {_randomReply::*} to "https://media1.tenor.com/m/7t63GFnoIPUAAAAd/huh-cat-huh-m4rtin.gif", "<:kristina553344459916443648:1197291090244534282>", "What<:xdd:1186836934677499944>", "https://tenor.com/view/cat-gif-27443459", "<a:HelpMe:1209511777809993808>", "Love island", "I know what you are"
+                    set {_random} to a random element of {_randomReply::*}
+                    reply with "%{_tag::1}% %{_random}%"
+                unload yaml "Discord"
+
+command /discord [<text>] [<text>] [<text>]:
+    trigger:
+        if arg-1 = "help" or "list" or "":
+            if {language::%player%} = "English":
+                send "<##7289da>[EarthCraft Discord] &fCommand list:" to player
+                send "<##7289da>-/discord preferences name &f- Changes the displayed name for all players when you send a message through <##7289da>Discord&f. This preference can be set to either your in-game name or your <##7289da>Discord &fname. <##7289da>-use arguments: &fin-game <##7289da>or &fdiscord" to player
+                send "<##7289da>-/discord preferences reminder &f- Turns off the account linking reminder that's shown on login." to player
+            else:
+                send "<##7289da>[EarthCraft Discord] &fLista komend:" to player
+                send "<##7289da>-/discord preferencje nazwa &f- Zmienia wyświetlaną nazwe dla wszystkich graczy przy wysyłaniu wiadomości przez <##7289da>Discord&f. Ta preferencja może zostać ustawiona na nazwę użytkownika w grze, lub nazę użytkownika na <##7289da>Discord&f. <##7289da>-użyj argumentów: &fin-game <##7289da>lub &fdiscord" to player
+                send "<##7289da>-/discord preferences reminder &f- Wyłącza przypomnienie o połączeniu konta przy logowaniu." to player
+        if arg-1 = "preferences" or "preferencje":
+            if arg-2 = "name" or "nazwa":
+                if {language::%player%} = "English":
+                    if arg-3 is "in-game" or "discord":
+                        load yaml "plugins/Skript/playerdata/admin/%uuid of player%-Admin.yml" as "dataAdmin-%player%"
+                        set yaml value "Player.Preferred Discord Name" in "dataAdmin-%player%" to arg-3
+                        save yaml "dataAdmin-%player%"
+                        send "<##7289da>[EarthCraft Discord] &fSuccessfully set your preferred name in global messages to &7&o%arg-3%&f." to player
+                    else:
+                        send "<##7289da>[EarthCraft Discord] &fNo argument was been given for the preferred name or used an incorrect argument. Possible arguments are &7&oin-game&f and &7&odiscord&f." to player
+                else:
+                    if arg-3 is "in-game" or "discord":
+                        load yaml "plugins/Skript/playerdata/admin/%uuid of player%-Admin.yml" as "dataAdmin-%player%"
+                        set yaml value "Player.Preferred Discord Name" in "dataAdmin-%player%" to arg-3
+                        save yaml "dataAdmin-%player%"
+                        send "<##7289da>[EarthCraft Discord] &fPomyślnie ustawiono preferowaną nazwę w wiadmościach na &7&o%arg-3%&f." to player
+                    else:
+                        send "<##7289da>[EarthCraft Discord] &fNie podano argumentu na preferowaną nazwę, lub użyto złego argumentu. Możliwe argumenty to &7&oin-game&f, oraz &7&odiscord&f." to player
+            else if arg-2 = "reminder":
+                if {language::%player%} = "English":
+                    send "<##7289da>[EarthCraft Discord] &fSuccessfully disabled account linking reminders." to player
+                else:
+                    send "<##7289da>[EarthCraft Discord] &fPomyślnie wyłączono przypomnienia o połączeniu konta przy logowaniu." to player
+                load yaml "plugins/Skript/playerdata/admin/%uuid of player%-Admin.yml" as "dataAdmin-%player%"
+                set yaml value "Player.Discord Reminders" in "dataAdmin-%player%" to "Disabled"
+                save yaml "dataAdmin-%player%"
+
+on chat:
+    if {chatstop} is not true:
+        if {kanal::%player%} is not set:
+            set {_data::*} to data() split at " "
+            post "%{_data::1}% | %player%: %unformatted message%" to text channel with id "900397064251379752" # earthcraft -> "900397064251379752" # specific channel
+
+command /accountsync:
+    aliases: /polaczkonto, /linkaccount
+    trigger:
+        load yaml "plugins/Skript/playerdata/admin/discord/LinkedAccounts.yml" as "Discord"
+        if yaml value "Player Accounts.%player's uuid%.Discord ID" in "Discord" is not set:
+            set {_code} to random 8 char string from charset `0-9`
+            if metadata value "DiscordCode" of player is not set:
+                broadcast {_code}
+                set metadata value "DiscordCode" of player to {_code}
+                add {_code} to {discordCodes::*}
+                set yaml value "Accounts.Unlinked.%{_code}%" in "Discord" to (player's uuid)
+                if {language::%player%} = "English":
+                    send "<##7289da>[EarthCraft Discord] &fYour unique code is %{_code}%. Use /linkaccount <code> on <##7289da>Discord &fto link or update your username." to player
+                else:
+                    send "<##7289da>[EarthCraft Discord] &fTwój unikalny kod to %{_code}%. Użyj /polaczkonto <kod>, lub /linkaccount <kod> na <##7289da>Discordzie&f, by połączyć, lub zaktualizować nazwę użytkownika." to player
+                save yaml "Discord"
+                unload yaml "Discord"
+            else:
+                if {language::%player%} = "English":
+                    send "<##7289da>[EarthCraft Discord] &fYour unique code is %metadata value "DiscordCode" of player%. Use /linkaccount <code> on <##7289da>Discord &fto link or update your username." to player
+                else:
+                    send "<##7289da>[EarthCraft Discord] &fTwój unikalny kod to %metadata value "DiscordCode" of player%. Użyj /polaczkonto <kod>, lub /linkaccount <kod> na <##7289da>Discordzie&f, by połączyć, lub zaktualizować nazwę użytkownika." to player
+        else:
+            if {language::%player%} = "English":
+                send "<##7289da>[EarthCraft Discord] &fYour <##7289da>Discord &faccount has already been linked to EarthCraft." to player
+            else:
+                send "<##7289da>[EarthCraft Discord] &fTwoje konto <##7289da>Discord &fzostało już połączone z EarthCraft." to player
+
+on join:
+    set channel topic of channel with id "900397064251379752" to "Players Online: %number of online players%  |  IP: 194.213.3.150:25605  |  Dynmap: http://194.213.3.150:8101  |  Bluemap: http://194.213.3.150:8191"
+on quit:
+    set channel topic of channel with id "900397064251379752" to "Players Online: %number of online players%  |  IP: 194.213.3.150:25605  |  Dynmap: http://194.213.3.150:8101  |  Bluemap: http://194.213.3.150:8191"

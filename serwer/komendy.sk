@@ -4,10 +4,41 @@ command /spawn:
 command /bed:
 	trigger:
 		teleport the player to player's bed
-command /nbt:
+command /nbt [<text>]:
 	trigger:
 		set {_nbt} to pretty nbt from nbt compound of player's tool with split " "
-		send {_nbt} to player
+		if arg-1 = "console":
+			send {_nbt} to console
+		else:
+			send {_nbt} to player
+command /itemclaim [<text>]:
+	trigger:
+		load yaml "plugins/Skript/playerdata/admin/%uuid of player%-Admin.yml" as "dataAdmin-%player%"
+		set {_amount} to size of yaml list "Player.Item Claim" in "dataAdmin-%player%"
+		if arg-1 is not set:
+			send "&aYou have &f%{_amount}% &aunclaimed items." to player
+			if {_amount} > 0:
+				send formatted "&aClaim items? <command:/itemclaim claim><tooltip:&fClick here to claim items.>&f[YES]"
+		if arg-1 = "claim":
+			set {_items::*} to yaml list "Player.Item Claim" in "dataAdmin-%player%"
+			loop {_items::*}:
+				set {_i} to give or return loop-value to player
+				if {_i} is set:
+					drop {_i} at player
+				clear {_i}
+				remove loop-value from yaml list "Player.Item Claim" in "dataAdmin-%player%"
+				if name of loop-value is set:
+					send "&aYou claimed %name of loop-value%&a!" to player
+				else:
+					send "&aYou claimed %loop-value%&a!" to player
+			if {_amount} = 0:
+				play sound "block.chest.close" with volume 5 and pitch 1 to player
+			send "&aYou claimed &f%{_amount}% &aitems!" to player
+			save yaml "dataAdmin-%player%"
+			loop {_amount} times:
+				play sound "entity.item.pickup" with volume 5 and pitch 0.7 at player
+				wait 3 ticks
+
 command /completionclaim [<text>]:
 	trigger:
 		if target of player is a player:
@@ -24,10 +55,15 @@ command /completionclaim [<text>]:
 						set {_y} to data()
 						if {language::%player%} = "English":
 							set {_karta} to {espeonkartaswEN}
+							set {_id} to random 8 char string from charset `0-9` `a-z`
+							add "&8Id: %{_id}%" to lore of {_karta}
 							add "&8Dropped: %{_y}%" to lore of {_karta}
 						else:
 							set {_karta} to {espeonkartasw}
+							set {_id} to random 8 char string from charset `0-9` `a-z`
+							add "&8Id: %{_id}%" to lore of {_karta}
 							add "&8Wydropiono: %{_y}%" to lore of {_karta}
+						add nbt from "{Stats:{Intellect:0,Health:0,Damage:0,Resistance:0,Mobility:0,Utility:0,'Crowd Control':0,Versatility:0,Mastery:0,'Critical Hit':0,Element:0,Haste:0,Avoidance:0,Total:0}}" to nbt of {_karta}
 						if player can hold {_karta}:
 							give {_karta} to player
 						else:
@@ -43,11 +79,11 @@ command /completionclaim [<text>]:
 							else:
 								send formatted "&f%player% just earned the achievement <tooltip:&aComplete the Secret Wonders booster.%nl%&aEarned: %{_data}%>&a[Secret Wonders]" to loop-player
 						execute console command "discord broadcast ##earthcraft | %player% just earned the achievement [Secret Wonders]"
-				if arg-1 = "shaymin":
+				else if arg-1 = "shaymin":
 					if {completionreward::%player%::*} contains "Majestic Dawn":
 						remove "Majestic Dawn" from {completionreward::%player%::*}
 						if {language::%player%} = "English":
-							send "&8[<##00949e>NPC&8] &8<<##00949e>August&8> &fCongratulations for completing the &5&oSMajestic Dawn &fbooster! Here is your reward!" to player
+							send "&8[<##00949e>NPC&8] &8<<##00949e>August&8> &fCongratulations for completing the &5&oMajestic Dawn &fbooster! Here is your reward!" to player
 							play sound "entity.villager.celebrate" with volume 5 and pitch 1 at target of player
 						else:
 							send "&8[<##00949e>NPC&8] &8<<##00949e>August&8> &fGratulacje! Oto twoja nagroda za skomplementowanie boostera &5&oMajestic Dawn&f!" to player
@@ -55,10 +91,15 @@ command /completionclaim [<text>]:
 						set {_y} to data()
 						if {language::%player%} = "English":
 							set {_karta} to {shayminlandkartamdEN}
+							set {_id} to random 8 char string from charset `0-9` `a-z`
+							add "&8Id: %{_id}%" to lore of {_karta}
 							add "&8Dropped: %{_y}%" to lore of {_karta}
 						else:
 							set {_karta} to {shayminlandkartamd}
+							set {_id} to random 8 char string from charset `0-9` `a-z`
+							add "&8Id: %{_id}%" to lore of {_karta}
 							add "&8Wydropiono: %{_y}%" to lore of {_karta}
+						add nbt from "{Stats:{Intellect:0,Health:0,Damage:0,Resistance:0,Mobility:0,Utility:0,'Crowd Control':0,Versatility:0,Mastery:0,'Critical Hit':0,Element:0,Haste:0,Avoidance:0,Total:0}}" to nbt of {_karta}
 						if player can hold {_karta}:
 							give {_karta} to player
 						else:
@@ -74,9 +115,297 @@ command /completionclaim [<text>]:
 							else:
 								send formatted "&f%player% just earned the achievement <tooltip:&aComplete the Majestic Dawn booster.%nl%&aEarned: %{_data}%>&a[Majestic Dawn]" to loop-player
 						execute console command "discord broadcast ##earthcraft | %player% just earned the achievement [Majestic Dawn]"
+				else if arg-1 = "cynder":
+					if {completionreward::%player%::*} contains "Unseen Forces":
+						remove "Unseen Forces" from {completionreward::%player%::*}
+						if {language::%player%} = "English":
+							send "&8[<##00949e>NPC&8] &8<<##00949e>August&8> &fCongratulations for completing the &5&oUnseen Forces &fbooster! Here is your reward!" to player
+							play sound "entity.villager.celebrate" with volume 5 and pitch 1 at target of player
+						else:
+							send "&8[<##00949e>NPC&8] &8<<##00949e>August&8> &fGratulacje! Oto twoja nagroda za skomplementowanie boostera &5&oUnseen Forces&f!" to player
+							play sound "entity.villager.celebrate" with volume 5 and pitch 1 at target of player
+						set {_y} to data()
+						if {language::%player%} = "English":
+							set {_karta} to {cynderkartaufEN}
+							set {_id} to random 8 char string from charset `0-9` `a-z`
+							add "&8Id: %{_id}%" to lore of {_karta}
+							add "&8Dropped: %{_y}%" to lore of {_karta}
+						else:
+							set {_karta} to {cynderkartauf}
+							set {_id} to random 8 char string from charset `0-9` `a-z`
+							add "&8Id: %{_id}%" to lore of {_karta}
+							add "&8Wydropiono: %{_y}%" to lore of {_karta}
+						add nbt from "{Stats:{Intellect:0,Health:0,Damage:0,Resistance:0,Mobility:0,Utility:0,'Crowd Control':0,Versatility:0,Mastery:0,'Critical Hit':0,Element:0,Haste:0,Avoidance:0,Total:0}}" to nbt of {_karta}
+						if player can hold {_karta}:
+							give {_karta} to player
+						else:
+							drop {_karta} at player
+						log "%{_y}% &f[&2Booster&f] &aGracz &c%player% &aodebrał właśnie kartę <##5b467d>Cynder &aza skompletowanie &5Unseen Forces&a!" to "logi/karty.log"
+						set {osiagniecie.unseenforces::%player%} to true
+						strike lightning effect at player
+						set {_data} to data()
+						log "%{_data}% Gracz %player% właśnie zdobył osiągnięcie [Unseen Forces]" to "logi/osiagniecia.log"
+						loop all players:
+							if {language::%loop-player%} = "Polski":
+								send formatted "&fGracz %player% właśnie zdobył osiągnięcie <tooltip:&aSkompletuj booster Unseen Forces.%nl%&aZdobyto: %{_data}%>&a[Unseen Forces]" to loop-player
+							else:
+								send formatted "&f%player% just earned the achievement <tooltip:&aComplete the Unseen Forces booster.%nl%&aEarned: %{_data}%>&a[Unseen Forces]" to loop-player
+						execute console command "discord broadcast ##earthcraft | %player% just earned the achievement [Unseen Forces]"
+				else if arg-1 = "leafeon":
+					if {completionreward::%player%::*} contains "Plasma Freeze":
+						remove "Plasma Freeze" from {completionreward::%player%::*}
+						if {language::%player%} = "English":
+							send "&8[<##00949e>NPC&8] &8<<##00949e>August&8> &fCongratulations for completing the &5&oPlasma Freeze &fbooster! Here is your reward!" to player
+							play sound "entity.villager.celebrate" with volume 5 and pitch 1 at target of player
+						else:
+							send "&8[<##00949e>NPC&8] &8<<##00949e>August&8> &fGratulacje! Oto twoja nagroda za skomplementowanie boostera &5&oPlasma Freeze&f!" to player
+							play sound "entity.villager.celebrate" with volume 5 and pitch 1 at target of player
+						set {_y} to data()
+						if {language::%player%} = "English":
+							set {_karta} to {leafeonkartapfEN}
+							set {_id} to random 8 char string from charset `0-9` `a-z`
+							add "&8Id: %{_id}%" to lore of {_karta}
+							add "&8Dropped: %{_y}%" to lore of {_karta}
+						else:
+							set {_karta} to {leafeonkartapf}
+							set {_id} to random 8 char string from charset `0-9` `a-z`
+							add "&8Id: %{_id}%" to lore of {_karta}
+							add "&8Wydropiono: %{_y}%" to lore of {_karta}
+						add nbt from "{Stats:{Strength:0,Health:0,Damage:0,Resistance:0,Mobility:0,Utility:0,'Crowd Control':0,Versatility:0,Mastery:0,'Critical Hit':0,Element:0,Haste:0,Avoidance:0,Total:0}}" to nbt of {_karta}
+						if player can hold {_karta}:
+							give {_karta} to player
+						else:
+							drop {_karta} at player
+						log "%{_y}% &f[&2Booster&f] &aGracz &c%player% &aodebrał właśnie kartę <##74ba75>Leafeon &aza skompletowanie &5Unseen Forces&a!" to "logi/karty.log"
+						set {osiagniecie.unseenforces::%player%} to true
+						strike lightning effect at player
+						set {_data} to data()
+						log "%{_data}% Gracz %player% właśnie zdobył osiągnięcie [Plasma Freeze]" to "logi/osiagniecia.log"
+						loop all players:
+							if {language::%loop-player%} = "Polski":
+								send formatted "&fGracz %player% właśnie zdobył osiągnięcie <tooltip:&aSkompletuj booster Plasma Freeze.%nl%&aZdobyto: %{_data}%>&a[Plasma Freeze]" to loop-player
+							else:
+								send formatted "&f%player% just earned the achievement <tooltip:&aComplete the Plasma Freeze booster.%nl%&aEarned: %{_data}%>&a[Plasma Freeze]" to loop-player
+						execute console command "discord broadcast ##earthcraft | %player% just earned the achievement [Plasma Freeze]"
 
 	#on command "sethome":
 #	trigger:
 #		
 #on command "essentials:sethome":
-	
+
+command /convertcard:
+	trigger:
+		if line 18 of lore of player's tool contains "Id: ":
+			set {_id} to line 18 of lore of {karta::%player%}
+			if {_id} = line 18 of lore of player's tool:
+				if name of player's tool contains "Umbreon":
+					set name of player's tool to "<##555555>Umbreon"
+				set {_cardlore::*} to lore of player's tool
+				set tag "Stats;Health" of nbt of player's tool to {zdrowie::%{_id}%}
+				set tag "Stats;Damage" of nbt of player's tool to {obrazenia::%{_id}%}
+				set tag "Stats;Resistance" of nbt of player's tool to {wytrzymalosc::%{_id}%}
+				set tag "Stats;Mobility" of nbt of player's tool to {mobilnosc::%{_id}%}
+				set tag "Stats;Utility" of nbt of player's tool to {uzytecznosc::%{_id}%}
+				set tag "Stats;Crowd Control" of nbt of player's tool to {kontrolatlumu::%{_id}%}
+				set tag "Stats;Versatility" of nbt of player's tool to {uniwersalnosc::%{_id}%}
+				set tag "Stats;Mastery" of nbt of player's tool to {mistrzostwo::%{_id}%}
+				set tag "Stats;Critical Hit" of nbt of player's tool to {crit::%{_id}%}
+				set tag "Stats;Element" of nbt of player's tool to {zywiol::%{_id}%}
+				set tag "Stats;Haste" of nbt of player's tool to {pospiech::%{_id}%}
+				set tag "Stats;Avoidance" of nbt of player's tool to {unik::%{_id}%}
+				clear {zdrowie::%{_id}%}
+				clear {obrazenia::%{_id}%}
+				clear {wytrzymalosc::%{_id}%}
+				clear {mobilnosc::%{_id}%}
+				clear {uzytecznosc::%{_id}%}
+				clear {kontrolatlumu::%{_id}%}
+				clear {uniwersalnosc::%{_id}%}
+				clear {mistrzostwo::%{_id}%}
+				clear {crit::%{_id}%}
+				clear {zywiol::%{_id}%}
+				clear {pospiech::%{_id}%}
+				clear {unik::%{_id}%}
+				if {kartaname::%player%} is set:
+					set {_name} to {kartaname::%player%}
+				else:
+					set {_name} to uncolored name of player's tool
+				set {_total} to {stattotal::%{_name}%::%{_id}%}
+				set {_level} to tag "Level" of nbt of player's tool
+				if {_level} > 0:
+					set tag "Level" of nbt of player's tool to 0
+					add 15*{_level} to {stardust::%player%}
+				set tag "Stats;Total" of nbt of player's tool to {_total}
+				if tag "PrimaryStat" of nbt of player's tool is not set:
+					set {_intellectUsers::*} to "Glaceon", "Vaporeon", "Delphox", "Ghazan", "Brother Therold", "Espeon", "Shaymin (Land)", "Shaymin (Sky)", "Cresselia"
+					set {_strengthUsers::*} to "Umbreon", "Leafeon", "Shenhe"
+					set {_agilityUsers::*} to "Buckshot"
+					if {_intellectUsers::*} contains {kartaname::%player%}:
+						set tag "PrimaryStat" of nbt of player's tool to "Intellect"
+					else if {_strengthUsers::*} contains {kartaname::%player%}:
+						set tag "PrimaryStat" of nbt of player's tool to "Strength"
+					else if {_agilityUsers::*} contains {kartaname::%player%}:
+						set tag "PrimaryStat" of nbt of player's tool to "Agility"
+					else if {kartaname::%player%} = "Test Card":
+						set tag "PrimaryStat" of nbt of player's tool to "Intellect"
+					
+					set {_primaryStatType} to tag "PrimaryStat" of nbt of player's tool
+					set tag "Stats;%{_primaryStatType}%" of nbt of player's tool to 0
+				set {_index} to 0
+				if name of player's tool contains "Umbreon":
+					if {language::%player%} = "English":
+						set line 1 of lore of player's tool to "&7Night Huntress"
+					else:
+						set line 1 of lore of player's tool to "&7Nocna Łowczyni"
+				loop lore of player's tool:
+					add 1 to {_index}
+					if {_index} >= 4:
+						if name of player's tool contains "Umbreon":
+							if loop-value contains "Source":
+								add "&7Source: <##555555>Starter" to {_lore::*}
+						add loop-value to {_lore::*}
+					else if {_index} < 4:
+						add loop-value to {_lore1::*}
+				set {_intellectUsers::*} to "Glaceon", "Vaporeon", "Delphox", "Ghazan", "Brother Therold", "Espeon", "Shaymin (Land)", "Shaymin (Sky)", "Cresselia"
+				set {_strengthUsers::*} to "Umbreon", "Leafeon", "Shenhe"
+				set {_agilityUsers::*} to "Buckshot"
+				if {_intellectUsers::*} contains {kartaname::%player%}:
+					set tag "PrimaryStat" of nbt of player's tool to "Intellect"
+				else if {_strengthUsers::*} contains {kartaname::%player%}:
+					set tag "PrimaryStat" of nbt of player's tool to "Strength"
+				else if {_agilityUsers::*} contains {kartaname::%player%}:
+					set tag "PrimaryStat" of nbt of player's tool to "Agility"
+				
+
+				set {_primaryStatType} to tag "PrimaryStat" of nbt of player's tool
+				set tag "Stats;%{_primaryStatType}%" of nbt of player's tool to 0
+				if {_primaryStatType} = "Intellect":
+					set lore of player's tool to "%(join {_lore1::*} by nl)%%nl%&7%{_primaryStatType}%: &7■■■■■■■■■■ &7(<##59c1e3>0&7)%nl%%(join {_lore::*} by nl)%"
+				else if {_primaryStatType} = "Strength":
+					set lore of player's tool to "%(join {_lore1::*} by nl)%%nl%&7%{_primaryStatType}%: &7■■■■■■■■■■ &7(<##e35959>0&7)%nl%%(join {_lore::*} by nl)%"
+				else if {_primaryStatType} = "Agility":
+					set lore of player's tool to "%(join {_lore1::*} by nl)%%nl%&7%{_primaryStatType}%: &7■■■■■■■■■■ &7(<##5ee359>0&7)%nl%%(join {_lore::*} by nl)%"
+				if {gem::%{_id}%::*} is set:
+					load yaml "plugins/Skript/playerdata/admin/%uuid of player%-Admin.yml" as "dataAdmin-%player%"
+					set {_list::*} to yaml list "Player.Item Claim" in "dataAdmin-%player%"
+					set {_oldrank1MainRare} to 25
+					set {_oldrank2MainRare} to 34
+					set {_oldrank3MainRare} to 48
+					set {_oldrank1SecondaryRare} to 11
+					set {_oldrank2SecondaryRare} to 16
+					set {_oldrank3SecondaryRare} to 23
+					set {_oldrank1MainRareSolo} to 31
+					set {_oldrank2MainRareSolo} to 43
+					set {_oldrank3MainRareSolo} to 60
+					#8.2.0+
+					set {_rank1MainRare} to 10
+					set {_rank2MainRare} to 14
+					set {_rank3MainRare} to 19
+					set {_rank1SecondaryRare} to 4
+					set {_rank2SecondaryRare} to 6
+					set {_rank3SecondaryRare} to 9
+					set {_rank1MainRareSolo} to 12
+					set {_rank2MainRareSolo} to 17
+					set {_rank3MainRareSolo} to 24
+					#8.1.0
+					set {_oldrank1Main} to 6
+					set {_oldrank2Main} to 9
+					set {_oldrank3Main} to 12
+					set {_oldrank1Epic} to 63
+					set {_oldrank2Epic} to 91
+					set {_oldrank3Epic} to 130
+					#8.2.0+
+					set {_rank1Main} to 3
+					set {_rank2Main} to 5
+					set {_rank3Main} to 7
+					set {_rank1Epic} to 26
+					set {_rank2Epic} to 38
+					set {_rank3Epic} to 60
+					loop {gem::%{_id}%::*}:
+						set {_gem} to loop-value
+						set {_lore::*} to lore of {_gem}
+						if name of {_gem} contains "<##1eff00>":
+							set {_num} to 0
+							loop {_lore::*}:
+								add 1 to {_num}
+								replace all "%{_oldrank1Main}%" in line {_num} of lore of {_gem} with "%{_rank1Main}%"
+								replace all "%{_oldrank2Main}%" in line {_num} of lore of {_gem} with "%{_rank2Main}%"
+								replace all "%{_oldrank3Main}%" in line {_num} of lore of {_gem} with "%{_rank3Main}%"
+						else if name of {_gem} contains "<##0070dd>":
+							set {_num} to 0
+							loop {_lore::*}:
+								add 1 to {_num}
+								replace all "%{_oldrank1MainRare}%" in line {_num} of lore of {_gem} with "%{_rank1MainRare}%"
+								replace all "%{_oldrank2MainRare}%" in line {_num} of lore of {_gem} with "%{_rank2MainRare}%"
+								replace all "%{_oldrank3MainRare}%" in line {_num} of lore of {_gem} with "%{_rank3MainRare}%"
+								replace all "%{_oldrank1SecondaryRare}%" in line {_num} of lore of {_gem} with "%{_rank1SecondaryRare}%"
+								replace all "%{_oldrank2SecondaryRare}%" in line {_num} of lore of {_gem} with "%{_rank2SecondaryRare}%"
+								replace all "%{_oldrank3SecondaryRare}%" in line {_num} of lore of {_gem} with "%{_rank3SecondaryRare}%"
+								replace all "%{_oldrank1MainRareSolo}%" in line {_num} of lore of {_gem} with "%{_rank1MainRareSolo}%"
+								replace all "%{_oldrank2MainRareSolo}%" in line {_num} of lore of {_gem} with "%{_rank2MainRareSolo}%"
+								replace all "%{_oldrank3MainRareSolo}%" in line {_num} of lore of {_gem} with "%{_rank3MainRareSolo}%"
+						else if name of {_gem} contains "<##a335ee>":
+							replace all "%{_oldrank1Epic}%" in line {_num} of lore of {_gem} with "%{_rank1Epic}%"
+							replace all "%{_oldrank2Epic}%" in line {_num} of lore of {_gem} with "%{_rank2Epic}%"
+							replace all "%{_oldrank3Epic}%" in line {_num} of lore of {_gem} with "%{_rank3Epic}%"
+						add nbt from "{Gem:1b}" to nbt of {_gem}
+						set {_list::*} to {_list::*} and {_gem}
+					clear {gem::%{_id}%::*}
+					set yaml list "Player.Item Claim" in "dataAdmin-%player%" to {_list::*}
+					save yaml "dataAdmin-%player%"
+					if {language::%player%} = "English":
+						send "&6>> Successfully converted old card data to the new system." to player
+						send "&6>> It is advised to relog once after this process." to player
+					else:
+						send "&6>> Pomyślnie przekonwertowano stare dane karty na nowy system." to player
+						send "&6>> Doradzane jest przelogowanie się po tym procesie." to player
+		else:
+			if {language::%player%} = "English":
+				send "&6>> You must right click with your card once first to use this command." to player
+			else:
+				send "&6>> Musisz kliknąć kartą prawym przyciskiem myszy raz, by użyć tej komendy." to player
+
+command /info [<text>]:
+	trigger:
+		if arg-1 = "socket":
+			send "&7Sockets are special slottable ... on a piece of gear. Players are able to slot Gems in sockets to get bonus stats! There is a 10%% chance to obtain a piece of gear with a socket."
+command /invsee [<player>] [<text>]:
+	trigger:
+		if arg-2 is set:
+			if arg-2 = "no" or "noreplace" or "-":
+				set metadata value "PlayerInventory" of player to arg-1's inventory
+				set {_inv} to metadata value "PlayerInventory" of player
+				open {_inv} to player
+		else:
+			clear metadata value "PlayerInventory" of player
+			open arg-1's inventory to player
+
+on inventory click:
+	if player's current inventory = metadata value "setname" of player:
+		cancel event
+	if player's current inventory = metadata value "PlayerInventory" of player:
+		cancel event
+
+command /dailyrewardreminder [<text>]:
+	trigger:
+		if arg-1 = "hide":
+			if {language::%player%} = "English":
+				send "&f&oSuccessfully hidden the daily reward reminder for today." to player
+			else:
+				send "&f&oPomyślnie schowano przypomnienie o dziennej nagrodzie na dzisiaj." to player
+			set metadata value "DailyRewardReminderHidden" of player to true
+			play sound "entity.generic.explode" with volume 3 and pitch 1 at player
+			play sound "entity.generic.explode" with volume 3 and pitch 2 at player
+
+command /changecardcourse [<text>]:
+	trigger:
+		if {language::%player%} = "English":
+			if arg-1 = "yes":
+				send "&fSuccessfully reset your Stellar Card Course." to player
+			else:
+				send formatted "&f&oAre you sure you want to change your current Card Course from &c&m%{cardcourse::%player%}%&f? <tooltip:Click here to change your current Stellar Card Course.><command:/changecardcourse yes>&a[YES]" to player
+		else:
+			if arg-1 = "yes":
+				send "&fPomyślnie zresetowano swoją preferowaną kartę w Stelarnej Skrzynce." to player
+			else:
+				send formatted "&f&oCzy jesteś pewien, że chcesz zmienić swoją obecną preferowaną kartę z &c&m%{cardcourse::%player%}%&f? <tooltip:Kliknij tutaj, by zmienić swoją obecną preferowaną Kartę w Stelarnej Skrzynce.><command:/changecardcourse yes>&a[YES]" to player
+			

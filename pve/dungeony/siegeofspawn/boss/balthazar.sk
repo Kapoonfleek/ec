@@ -1,0 +1,608 @@
+function ShootArrow(e: entity):
+    wait 2 seconds
+    set {_custom} to tag "custom" of nbt of {_e}
+    set {_instance} to tag "ECDungeonInstance" of {_custom}
+    while metadata value "ECPulled" of {_e} is set:
+        if tag "EC5PercentTriggered" of {_custom} is not set:
+            loop {-dungeonInstance%{_instance}%::*}:
+                loop 2 times:
+                    if {_e} is alive:
+                        loop all blocks in radius 9 around {_e} where [distance between input and {_e} > 5]:
+                            if loop-block is solid:
+                                if (y-coordinate of loop-block) = (y-coordinate of block under {_e}):
+                                    add loop-block to {_blocks::*}
+                        set {_block} to a random element of {_blocks::*}
+                        CubeSpell({_e}, (location of {_block}), loop-number)
+                        wait 1 second
+            stop loop if {_e} is not alive
+            set {_haste} to metadata value "Haste" of {_e}
+            set {_hastered} to 1 + (({_haste}/4)/100)
+            set {_wait} to 7/{_hastered}
+            set {_wait} to ("%{_wait}% seconds" parsed as timespan)
+            wait {_wait}
+        else:
+            stop loop
+
+on projectile collide:
+    set {_custom} to tag "custom" of nbt compound of event-projectile
+    if event-projectile is ender pearl:
+        if event-entity is not a player:
+            cancel event
+        else:
+            broadcast event-entity
+            push event-entity backwards with speed 0.5
+#BALTHAZAR
+function CubeSpell(e: entity, loc: location, arrowType: integer):
+    make {_e} look at {_loc}
+    set {_custom} to tag "custom" of nbt of {_e}
+    wait 0.5 seconds
+    set {_shape} to a hollow cuboid with length 1, width 1, and height 1
+    if {_arrowType} = 1:
+        set particle of {_shape} to witch particle
+    else:
+        set particle of {_shape} to electric spark
+    set {_haste} to metadata value "Haste" of {_e}
+    set {_hastered} to 1 + (({_haste}/4)/100)
+    set {_time} to 20/{_hastered}
+    set {_time} to ("%{_time}% seconds" parsed as timespan)
+    play sound "block.enchantment_table.use" with volume 2.8 and pitch 0.4 at {_loc}
+    while {_time} >= 0 seconds:
+        if {_e} is alive:
+            if {_ticks} is divisible by 20:
+                remove 1 second from {_time}
+            set {_view} to vector from yaw {_loc}'s yaw and pitch {_loc}'s pitch
+            draw {_shape} at location 0.8 above {_loc}:
+                rotate shape drawn shape by rotation from vector(1, 0, 1) to {_view}
+            loop all players in radius 1 of location 0.8 above {_loc}:
+                if loop-player is alive:
+                    if {_arrowType} = 1:
+                        set {_p} to potion effect of levitation of tier 2 without particles for 4 seconds
+                        add {_p} to potion effects of loop-player
+                        play sound "item.bottle.fill_dragonbreath" with volume 2.5 and pitch 1.2 at {_loc}
+                    else:
+                        set {_p} to potion effect of slowness of tier 3 without particles for 5 seconds
+                        push loop-player forwards with speed 3
+                        play sound "block.chain.break" with volume 2.5 and pitch 1.8 at {_loc}
+                        ZapSound({_loc})
+                        add {_p} to potion effects of loop-player
+                    stop
+        if metadata value "CubeExplode" of {_e} is set:
+            if {_e} is alive:
+                if tag "EC40PercentTriggered" of {_custom} is not set:
+                    set {_shape} to solid star with 8 points, inner radius 1.5, and outer radius 2.5
+                else:
+                    set {_shape} to solid star with 8 points, inner radius 2.5, and outer radius 3.5
+                set particle of {_shape} to witch particle
+                draw {_shape} at {_loc}:
+                    set {_vectors::*} to points of drawn shape
+                    loop {_vectors::*}:
+                        loop all entities in radius 1.5 of ({_e} ~ loop-value):
+                            if loop-entity is a player:
+                                if loop-entity is alive:
+                                    set {_instance} to tag "custom;ECDungeonInstance" of nbt of {_e}
+                                    set {_instanceTarget} to metadata value "DungeonInstance" of loop-entity
+                                    if {_instance} = {_instanceTarget}:
+                                        if {_targets::*} does not contain loop-entity:
+                                            add loop-entity to {_targets::*}
+                                            set loop-entity's last damage cause to sweep attack
+                                            DamageProperties(loop-entity, {_e}, "<##8641ab>Eksplozja Arkany", "<##8641ab>Arcane Detonation", {_lore}, {_loreEN}, 6)
+                stop
+        stop loop if {_e} is not alive
+        stop if tag "EC5PercentTriggered" of {_custom} is set
+        stop if 0 seconds >= {_time}
+        wait 2 ticks
+        add 2 to {_ticks}
+
+function CubeExplode(e: entity):
+    set metadata value "CubeExplode" of {_e} to 1
+    wait 5 ticks
+    clear metadata value "CubeExplode" of {_e}
+
+function ZapSound(loc: location):
+    loop 3 times:
+        play sound "entity.bee.hurt" with volume 2.5 and pitch 0 at {_loc}
+        wait 1 tick
+
+function BalthazarEscape(e: entity, loc: location):
+    make {_e}'s disguise not sneak
+    while distance between {_e} and {_loc} > 2:
+        stop loop if {_e} is not alive
+        clear {_e}'s target
+        make {_e} look at {_loc}
+        make {_e} pathfind to block 1 below {_loc}
+        wait 1 tick
+    add nbt from "{NoAI:1b}" to nbt of {_e}
+    set {_pi} to 0
+    loop 3 times:
+        play sound "entity.evoker.prepare_attack" with volume 4 and pitch {_pi} at {_e}
+        add 0.5 to {_pi}
+        wait 0.75 seconds
+    set {_portalLoc} to yaml value "BalthazarPortalLoc" from "SOSspawnlocations"
+    BalthazarBuckshotPortalCreate({_e}, {_portalLoc})
+    play sound "entity.evoker.prepare_summon" with volume 1 and pitch 1 at {_loc}
+    play sound "block.portal.travel" with volume 1 and pitch 2 at {_loc}
+    wait 3 seconds
+    AtticusSpawn({_e}, {_portalLoc})
+    play sound "block.portal.travel" with volume 1 and pitch 1 at {_loc}
+
+function CheckIfReachedBalthazar(e: entity, loc: location):
+    set {_custom} to tag "custom" of nbt of {_e}
+    set {_entity} to tag "ECTextAbove" of {_custom} parsed as entity
+    wait 1.5 seconds
+    if distance between {_e} and {_loc} > 2:
+        teleport {_e} to location 1 behind {_loc}
+        play sound "entity.enderman.teleport" with volume 3 and pitch 1 at {_e}
+        draw 40 portal at location at {_loc} with offset vector(0.4, 0.6, 0.4) with extra 0.03
+        draw 40 witch particle at location 1 above {_loc} with offset vector(0.3, 0.6, 0.3) with extra 0.03
+        teleport {_entity} to location 1 behind {_loc}
+
+function AtticusSpawn(vic: entity, loc: location):
+    spawn 1 zombie at location 1.5 in front and 1 above {_loc}
+    set {_x} to last spawned zombie
+    set tag "custom;ECCantTarget" of nbt of {_x} to true
+    set name of last spawned zombie to "Atticus"
+    add nbt from "{Silent:1b,Invulnerable:1b}" to nbt of {_x}
+    make {_x} invulnerable
+    disguise {_x} as "Atticus"
+    set custom name of {_x}'s disguise to "Atticus"
+    set skin of {_x}'s disguise to "Atticus"
+    set {_loc} to location 2 above {_x}
+    draw 40 portal at location at {_x} with offset vector(0.4, 0.6, 0.4) with extra 0.03
+    set {_loc2} to location 1.55 above {_x}
+    spawn 1 armor stand at {_loc2} with nbt from "{Marker:1b,Invulnerable:1b,Invisible:1b}"
+    set display name of last spawned armor stand to "&e<Master Enchanter>"
+    set {_armorstand} to last spawned armor stand
+    set {_customT} to tag "custom" of nbt of {_x}
+    set tag "ECTextAbove" of {_customT} to uuid of {_armorstand}
+    while distance between {_x} and {_vic} > 4:
+        clear {_x}'s target
+        make {_x} look at {_vic}
+        make {_vic} look at {_x}
+        make {_x} pathfind to {_vic}
+        wait 1 tick
+    wait 0.8 seconds
+    dialogue("Quick! Let's get him out of here before it's too late!", (location 2 above {_x}), 0 seconds, 5 seconds)
+    play sound "entity.villager.no" with volume 4 and pitch 0.4 at {_loc}
+    loop all entities in radius 30 around {_x}:
+        if name of loop-entity = "Buckshot":
+            if loop-entity is a zombie:
+                set {_buckshot} to loop-entity
+                stop loop
+    wait 1.5 seconds
+    make {_x} look at {_buckshot}
+
+function BuckshotSpawn(vic: entity, loc: location):
+    play sound "entity.illusioner.mirror_move" with volume 1 and pitch 0.8 at {_loc}
+    spawn 1 zombie at location 1 above {_loc}
+    set {_x} to last spawned zombie
+    set tag "custom;ECCantTarget" of nbt of {_x} to true
+    set name of last spawned zombie to "Buckshot"
+    add nbt from "{Silent:1b,Invulnerable:1b}" to nbt of {_x}
+    make {_x} invulnerable
+    disguise {_x} as "Buckshot"
+    set custom name of {_x}'s disguise to "Buckshot"
+    set skin of {_x}'s disguise to "Buckshot"
+    make {_x} look at {_vic}
+    set {_pot} to potion effect of slowness of tier 2.2 without particles for 1 day
+    add {_pot} to potion effects of {_x}
+    set {_loc2} to location 0.55 above {_x}
+    spawn 1 armor stand at {_loc2} with nbt from "{Marker:1b,Invulnerable:1b,Invisible:1b}"
+    set display name of last spawned armor stand to "&e<Magical Faun Archer>"
+    set {_armorstand} to last spawned armor stand
+    set {_customBuck} to tag "custom" of nbt of {_x}
+    set tag "ECTextAbove" of {_customBuck} to uuid of {_armorstand}
+    draw 40 portal at location at {_x} with offset vector(0.4, 0.6, 0.4) with extra 0.03
+    draw 60 witch particle at location above {_x} with offset vector(0.3, 0.6, 0.3) with extra 0.03
+    wait 3 seconds
+    loop all entities in radius 30 around {_x}:
+        if name of loop-entity = "Atticus":
+            if loop-entity is a zombie:
+                set {_atticus} to loop-entity
+        if tag "custom;BuckshotPortal" of nbt of loop-entity is set:
+            set {_portal} to loop-entity
+        if {_atticus} is set:
+            if {_portal} is set:
+                stop loop
+    make {_x} look at {_atticus}
+    wait 3 seconds
+    make {_x} look at {_vic}
+    wait 0.8 seconds
+    make {_x} swing their hand
+    wait 0.7 seconds
+    make {_x} look at {_portal}
+    teleport {_vic} to location 0.5 above {_portal}
+    play sound "entity.enderman.teleport" with volume 3 and pitch 2 at {_portal}
+    make {_vic} look at {_portal}
+    wait 0.5 seconds
+    play sound "entity.enderman.teleport" with volume 3 and pitch 2 at {_portal}
+    draw 40 portal at location at {_vic} with offset vector(0.4, 0.6, 0.4) with extra 0.03
+    teleport {_vic} to location(-1228, -100, -1792, world "world")
+    set {_custom} to tag "custom" of nbt of {_vic}
+    set {_attacker} to (tag "ECLastAttacker" of {_custom}) parsed as entity
+    set {_damageCause} to tag "ECDamageCauseBalthazar" of {_custom}
+    set tag "ECCutsceneEnd" of {_custom} to true
+    make {_vic} vulnerable
+    set metadata value "LastDamageCauseEN" of {_vic} to {_damageCause}
+    make {_attacker} damage {_vic} by ({_vic}'s health*2)
+    set {_entity} to tag "ECTextAbove" of {_custom} parsed as entity
+    kill {_entity}
+    make {_x} look at {_atticus}
+    make {_atticus} look at {_x}
+    wait 0.7 seconds
+    make {_atticus} look at {_portal}
+    make {_x} swing their hand
+    wait 0.5 seconds
+    make {_x} look at {_portal}
+    teleport {_atticus} to location 0.5 above {_portal}
+    play sound "entity.enderman.teleport" with volume 3 and pitch 2 at {_portal}
+    wait 0.5 seconds
+    play sound "entity.enderman.teleport" with volume 3 and pitch 2 at {_portal}
+    draw 40 portal at location at {_atticus} with offset vector(0.4, 0.6, 0.4) with extra 0.03
+    teleport {_atticus} to location(-1228, -100, -1792, world "world")
+    set {_customT} to tag "custom" of nbt of {_atticus}
+    set {_entity2} to (tag "ECTextAbove" of {_customT}) parsed as entity
+    kill {_entity2}
+    kill {_atticus}
+    wait 0.3 seconds
+    make {_x} swing their hand
+    wait 0.6 seconds
+    teleport {_x} to location 0.5 above {_portal}
+    play sound "entity.enderman.teleport" with volume 3 and pitch 2 at {_portal}
+    wait 0.5 seconds
+    play sound "entity.enderman.teleport" with volume 3 and pitch 2 at {_portal}
+    draw 40 portal at location at {_x} with offset vector(0.4, 0.6, 0.4) with extra 0.03
+    teleport {_x} to location(-1228, -100, -1792, world "world")
+    kill {_x}
+    kill {_armorstand}
+    wait 1 second
+    play sound "block.lava.extinguish" with volume 3 and pitch 1 at {_portal}
+    kill {_portal}
+    set {_lecternLoc} to yaml value "BalthazarLecternLoc" from "SOSspawnlocations"
+    if block at {_lecternLoc} = lectern:
+        set block at {_lecternLoc} to air
+
+function BalthazarBuckshotPortalCreate(p: entity, eventblock: location):
+    set {_block} to block above {_eventblock}
+    if {_eventblock} is not solid:
+        set {_blocksabove} to 1.3
+    else:
+        set {_blocksabove} to 2.3
+    spawn 1 armor stand at location {_blocksabove} above {_eventblock} with nbt from "{Invulnerable:1b,Invisible:1b}"
+    set {_custom} to tag "custom" of nbt compound of last spawned armor stand
+    set tag "BuckshotPortal" of {_custom} to true
+    set tag "PortalCount" of {_custom} to 0
+    set {_portal} to last spawned armor stand
+    set gravity of {_portal} to false
+    set {_uuid} to uuid of {_portal}
+    execute console command "/disguuid %{_uuid}% Iron_Golem"
+
+    set {_shapes::outer-circle} to a circle of radius 1.725
+    set {_shapes::inner-circle} to a circle of radius 1.5
+    set {_shapes::tiny-circle} to a circle of radius 1.175
+
+    set {_shapes::triangle-1} to a triangle with radius 1
+    set {_shapes::triangle-2} to a triangle with radius 1
+    rotate shapes {_shapes::triangle-2} around y axis by 60 degrees
+
+    set particle of {_shapes::*} to witch particle
+    
+    set {_eye} to location {_blocksabove} above {_eventblock}
+    if {_portals} is not true:
+        set {_view} to vector from yaw {_eventblock}'s yaw and pitch {_eventblock}'s pitch
+    else:
+        set {_yawrandom} to a random number between -180 and 180
+        set {_view} to vector from yaw {_yawrandom} and pitch {_eventblock}'s pitch
+    set {_yaw} to yaw of {_view}
+    set {_rotation} to rotation from vector(0, 1, 0) to {_view}
+    set {_loc} to location of {_portal}
+    set yaw of {_loc} to {_yaw}
+    if {_eventblock}'s pitch is between 60 and 90:
+        set pitch of {_loc} to pitch of {_eventblock}
+    increase y-coordinate of {_loc} by -2
+    teleport {_portal} to {_loc}
+    BalthazarBuckshotPortalDelete({_portal}, 15 seconds)
+    shoot an arrow from {_portal} with speed 2.75
+    set {_custom2} to tag "custom" of nbt compound of last shot arrow
+    set tag "BuckshotArrow" of {_custom2} to true
+    set tag "BuckshotArrowBalthazar" of {_custom2} to uuid of {_p}
+    set gravity of last shot projectile to false
+    set vector length of last shot projectile's velocity to 0.5
+    TrailPurple(last shot projectile)
+    KillArrow(last shot projectile)
+    play sound "entity.skeleton.shoot" with volume 3 and pitch 1 at {_portal}
+    play sound "entity.firework_rocket.launch" with volume 3 and pitch 0.8 at {_portal}
+    while {_portal} is alive:
+        loop 40 times:
+            draw {_shapes::*} at {_eye} ~ {_view}:
+                rotate shape drawn shape by {_rotation}
+                rotate shape drawn shape around relative y axis by -1 * {_yaw}
+            wait 1 tick
+
+function BalthazarBuckshotPortalDelete(portal: entity, t: timespan):
+    wait {_t}
+    kill {_portal}
+
+function MagicBullets(e: entity):
+    while {_e} is alive:
+        set {_custom} to tag "custom" of nbt of {_e}
+        if tag "EC5PercentTriggered" of {_custom} is not set:
+            if tag "EC40PercentTriggered" of {_custom} is not set:
+                set {_loops} to 3
+                set {_pitch1} to 1
+                set {_pitch2} to 1.6
+            else:
+                set {_loops} to 4
+                set {_pitch1} to 0.7
+                set {_pitch2} to 0.7
+            loop {_loops} times:
+                play sound "entity.witch.throw" with volume 3 and pitch {_pitch1} at {_e}
+                play sound "entity.witch.drink" with volume 3 and pitch {_pitch2} at {_e}
+                set {_custom} to tag "custom" of nbt of {_e}
+                set {_instance} to tag "ECDungeonInstance" of {_custom}
+                set {_loc} to location of {_e}
+                set {_loc} to block 1 block in front of {_loc}
+                set {_loc} to block 1 block above {_loc}
+                set {_loc} to block 0.3 blocks left of {_loc}
+                spawn an ender pearl at {_loc}
+                MagicBulletTrail(last spawned ender pearl)
+                make {_e} swing their hand
+                loop {-dungeonInstance%{_instance}%::*}:
+                    if loop-value-2 is alive:
+                        if distance between {_e} and loop-value-2 <= 40:
+                            set {_instance} to tag "custom;ECDungeonInstance" of nbt of {_e}
+                            set {_instanceTarget} to metadata value "DungeonInstance" of loop-value-2
+                            if {_instance} = {_instanceTarget}:
+                                add loop-value-2 to {_targets::*}
+                set {_target} to a random element of {_targets::*} 
+                make {_e} look at {_target}
+                push last spawned ender pearl (vector from {_e} to {_target}) with speed 1.8
+                set {_sound} to tag "ECSpellSound" of {_custom}
+                if {_sound} is not set:
+                    set {_sound} to 1
+                play sound "entity.illusioner.cast_spell" with volume 3 and pitch {_sound} at {_e}
+                add 0.5 to {_sound}
+                if {_sound} >= 2.5:
+                    set {_sound} to 1
+                set tag "ECSpellSound" of {_custom} to {_sound}
+                wait 0.35 seconds
+            set {_haste} to metadata value "Haste" of {_e}
+            set {_hastered} to 1 + (({_haste}/4)/100)
+            set {_wait} to 4.5/{_hastered}
+            set {_wait} to ("%{_wait}% seconds" parsed as timespan)
+            wait {_wait}
+        else:
+            stop loop
+
+function Sigils(e: entity):
+    wait 14 seconds
+    set {_customBoss} to tag "custom" of nbt of {_e}
+    while metadata value "ECPulled" of {_e} is set:
+        if tag "EC5PercentTriggered" of {_customBoss} is not set:
+            clear {_entities::*}
+            if {_e} is alive:
+                set metadata value "MagicSigils" of {_e} to true
+                if tag "EC40PercentTriggered" of {_customBoss} is not set:
+                    set {_hasteAmount} to 120
+                else:
+                    set {_hasteAmount} to 160
+                SigilsSound({_e})
+                wait 0.2 seconds
+                if {_e} is alive:
+                    SigilsOrbit({_e})
+                    loop all entities in radius 10 around {_e}:
+                        if loop-entity is not a player:
+                            if loop-entity is a living entity:
+                                set {_custom} to tag "custom" of nbt of loop-entity
+                                if tag "ECDungeonMob" of {_custom} is set:
+                                    set {_haste} to metadata value "Haste" of loop-entity
+                                    if {_haste} is set:
+                                        add {_hasteAmount} to {_haste}
+                                    else:
+                                        set {_haste} to {_hasteAmount}
+                                    set metadata value "Haste" of loop-entity to {_haste}
+                                    add loop-entity to {_entities::*}
+                                clear {_custom}
+                                clear {_haste}
+            SigilsDuration({_e})
+            if {_hasteAmount} is not set:
+                set {_hasteAmount} to 750
+            BalthazarHasteStop({_entities::*}, {_e}, {_hasteAmount})
+            stop loop if {_e} is not alive
+            wait 40 seconds
+        else:
+            stop
+
+
+function SigilsSound(e: entity):
+    play sound "bottle.fill_dragonbreath" with volume 3 and pitch 2 at {_e}
+    play sound "block.end_gateway.spawn" with volume 3 and pitch 1.5 at {_e}
+    wait 0.2 seconds
+    play sound "block.end_gateway.spawn" with volume 3 and pitch 2 at {_e}
+    play sound "entity.elder_guardian.curse" with volume 3 and pitch 2 at {_e}
+    play sound "block.note_block.chime" with volume 3 and pitch 2 at {_e}
+
+function BalthazarHasteStop(e: entities, boss: entity, hasteAmount: number):
+    wait 10 seconds
+    loop {_e::*}:
+        if loop-value is alive:
+            set {_haste} to metadata value "Haste" of loop-value
+            if {_haste} is set:
+                remove {_hasteAmount} from {_haste}
+            set metadata value "Haste" of loop-value to {_haste}
+            broadcast metadata value "Haste" of loop-value
+        clear {_haste}
+    if {_boss} is alive:
+        set {_custom} to tag "custom" of nbt of {_boss}
+        if tag "EC5PercentTriggered" of {_custom} is not set:
+            clear metadata value "MagicSigils" of {_boss}
+            CubeExplode({_boss})
+            play sound "entity.ender_dragon.hurt" with volume 4 and pitch 1 at {_boss}
+            play sound "block.end_portal.spawn" with volume 4 and pitch 2 at {_boss}
+
+function SigilsDuration(e: entity):
+    set {_custom} to tag "custom" of nbt of {_e}
+    set {_entity} to tag "ECTextAbove" of {_custom} parsed as entity
+    set {_secs} to 10
+    while metadata value "MagicSigils" of {_e} is set:
+        set the display name of {_entity} to "&6&lBOSS <##7641d1>(%{_secs}% sec.)"
+        wait 1 second
+        remove 1 from {_secs}
+    set the display name of {_entity} to "&6&lBOSS"
+    
+function SigilsOrbit(e: entity):
+    set {_custom} to tag "custom" of nbt of {_e}
+    while metadata value "MagicSigils" of {_e} is set:
+        if {_e} is alive:
+            set {_y1} to 0
+            set {_y2} to 90
+            set {_y3} to 180
+            loop 45 times:
+                set {_x} to {_e}'s location
+                increase {_x}'s y-coordinate by 1
+                loop 3 times:
+                    set {_v%loop-number-2%} to vector 1, 0, 1
+                    rotate {_v%loop-number-2%} around y-axis by {_y%loop-number-2%}
+                    add 8 to {_y%loop-number-2%}
+                    draw 1 of dust using dustOption(purple, 1) at {_x} ~ {_v%loop-number-2%}
+                    loop all players in radius 2 around {_x} ~ {_v%loop-number-2%}:
+                        if cooldown "SigilDamage%loop-player%" is finished:
+                            broadcast loop-player
+                            create cooldown "SigilDamage%loop-player%" for 0.5 seconds
+                stop loop if metadata value "MagicSigils" of {_e} is not set
+                stop if tag "EC5PercentTriggered" of {_custom} is set
+                wait 1 tick
+        else:
+            stop loop
+function MagicBulletTrail(e: entity):
+	while block at {_e} is air:
+		if {_e} is alive:
+			set {_sphere} to a sphere of radius 0.2
+			synchronously draw {_sphere} at {_e}'s location:
+				set event-shape's particle to witch particle
+			wait 1 tick
+		else:
+			stop loop
+    #loop 2 times:
+        #set {_target} to a random element of {-dungeonInstance%{_instance}%::*}
+        #play 100 portal with offset of 1.50, 1.50, 1.50 and speed 0 at {_e}
+        #wait 0.5 seconds
+function Rings(e: entity, locc: location):
+    wait 8 seconds
+    set {_custom} to tag "custom" of nbt of {_e}
+    set {_instance} to tag "ECDungeonInstance" of {_custom}
+    set {_ran} to a random element of {-dungeonInstance%{_instance}%::*}
+    make {_e} look at {_ran}
+    while metadata value "ECPulled" of {_e} is set:
+        if {_e} is alive:
+            set {_uuid} to uuid of {_e}
+            set {_shapes::outer-circle} to a circle of radius 0.225
+            set {_shapes2::outer-circle} to a circle of radius 0.225
+            set particle of {_shapes::*} to electric spark
+            set particle of {_shapes2::*} to electric spark
+            wait 1 tick
+            stop if tag "EC5PercentTriggered" of {_custom} is set
+            set {stun::%{_e}%} to true
+            set {_location} to 0
+            set {_view} to vector from yaw {_e}'s yaw and pitch {_e}'s pitch
+            set {_yaw} to yaw of {_view}
+            set {_loc} to location {_location} meter in front of {_e}'s eye location
+            set {_xx} to a random integer between 0 and 2
+            set {_yy} to a random integer between 0 and 2
+            set {_zz} to a random integer between 0 and 2
+            set {_rotation} to rotation from vector({_xx}, {_yy}, {_zz}) to {_view}
+            set {_rotation2} to rotation from vector(0, 1, 0) to {_view}
+            set {_p} to {_e}'s location
+            set {_player} to {_e}
+            make {_e}'s disguise sneak
+            if tag "EC40PercentTriggered" of {_custom} is set:
+                Rings2ThreeWaves({_e})
+            else:
+                Rings2({_e})
+            loop 160 times:
+                draw {_shapes::*} at {_loc} ~ {_view}:
+                    set {_view} to vector from yaw {_e}'s yaw and pitch {_e}'s pitch
+                    set {_yaw} to yaw of {_view}
+                    rotate shape drawn shape by {_rotation}
+                    rotate shape drawn shape around relative y axis by -1 * {_yaw}
+                    set {_vectors::*} to points of drawn shape
+                    loop {_vectors::*}:
+                        loop all entities in radius 1.2 of ({_p} ~ loop-value):
+                            if loop-entity is a player:
+                                if loop-entity is alive:
+                                    if {_targets::*} does not contain loop-entity:
+                                        if loop-entity is not {_player}:
+                                            set {_instance} to tag "custom;ECDungeonInstance" of nbt of {_e}
+                                            set {_instanceTarget} to metadata value "DungeonInstance" of loop-entity
+                                            if {_instance} = {_instanceTarget}:
+                                                add loop-entity to {_targets::*}
+                                                set loop-entity's last damage cause to sweep attack
+                                                DamageProperties(loop-entity, {_e}, "<##8641ab>Arkanowe Pierścienie", "<##8641ab>Arcane Rings", {_lore}, {_loreEN}, 8)
+                draw {_shapes2::*} at {_loc} ~ {_view}:
+                    set {_view} to vector from yaw {_e}'s yaw and pitch {_e}'s pitch
+                    set {_yaw} to yaw of {_view}
+                    rotate shape drawn shape by {_rotation2}
+                    rotate shape drawn shape around relative y axis by -1 * {_yaw}
+                    set {_vectors2::*} to points of drawn shape
+                    loop {_vectors2::*}:
+                        loop all entities in radius 1.2 of ({_p} ~ loop-value):
+                            if loop-entity is a player:
+                                if loop-entity is alive:
+                                    if {_targets::*} does not contain loop-entity:
+                                        if loop-entity is not {_player}:
+                                            set {_instance} to tag "custom;ECDungeonInstance" of nbt of {_e}
+                                            set {_instanceTarget} to metadata value "DungeonInstance" of loop-entity
+                                            if {_instance} = {_instanceTarget}:
+                                                add loop-entity to {_targets::*}
+                                                set loop-entity's last damage cause to sweep attack
+                                                DamageProperties(loop-entity, {_e}, "<##8641ab>Arkanowe Pierścienie", "<##8641ab>Arcane Rings", {_lore}, {_loreEN}, 8)
+                stop loop if {_e} is not alive
+                stop if tag "EC5PercentTriggered" of {_custom} is set
+                wait 1 tick
+                add 1 to {_location}
+                set radius of {_shapes::outer-circle} to (radius of {_shapes::outer-circle}+0.1)
+                set radius of {_shapes2::outer-circle} to (radius of {_shapes2::outer-circle}+0.1)
+            clear {stun::%{_e}%}
+            make {_e}'s disguise not sneak
+        set {_haste} to metadata value "Haste" of {_e}
+        set {_hastered} to 1 + (({_haste}/4)/100)
+        set {_wait} to 25/{_hastered}
+        set {_wait} to ("%{_wait}% seconds" parsed as timespan)
+        wait {_wait}
+function Rings2(e: entity):
+    wait 1.5 second
+    stop if tag "EC5PercentTriggered" of {_custom} is set
+    set {_shapes::outer-circle} to a circle of radius 0.225
+    set particle of {_shapes::*} to electric spark
+    set {_location} to 0
+    set {_view} to vector from yaw {_e}'s yaw and pitch {_e}'s pitch
+    set {_yaw} to yaw of {_view}
+    set {_loc} to location {_location} meter in front of {_e}'s eye location
+    set {_p} to {_e}'s location
+    set {_player} to {_e}
+    loop 160 times:
+        draw {_shapes::*} at {_loc} ~ {_view}:
+            set {_vectors::*} to points of drawn shape
+            loop {_vectors::*}:
+                loop all entities in radius 1.2 of ({_p} ~ loop-value):
+                    if loop-entity is a player:
+                        if loop-entity is alive:
+                            if {_targets::*} does not contain loop-entity:
+                                if loop-entity is not {_player}:
+                                    set {_instance} to tag "custom;ECDungeonInstance" of nbt of {_e}
+                                    set {_instanceTarget} to metadata value "DungeonInstance" of loop-entity
+                                    if {_instance} = {_instanceTarget}:
+                                        add loop-entity to {_targets::*}
+                                        set loop-entity's last damage cause to sweep attack
+                                        DamageProperties(loop-entity, {_e}, "<##8641ab>Arkanowe Pierścienie", "<##8641ab>Arcane Rings", {_lore}, {_loreEN}, 8)
+        stop loop if {_e} is not alive
+        stop if tag "EC5PercentTriggered" of {_custom} is set
+        wait 1 tick
+        add 1 to {_location}
+        set radius of {_shapes::outer-circle} to (radius of {_shapes::outer-circle}+0.1)
+        set radius of {_shapes2::outer-circle} to (radius of {_shapes2::outer-circle}+0.1)
+
+function Rings2ThreeWaves(e: entity):
+    loop 3 times:
+        if {_e} is alive:
+            Rings2({_e})
+            wait 1 seconds

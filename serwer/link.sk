@@ -7,9 +7,14 @@ command /link:
 		set {_am} to (item amount of held item)
 		if player's held item's name is not set:
 			set {_link} to 1 of player's held item
-		if {poziomkarta::%line 18 of lore of player's tool%} is set:
-			set {_id} to line 18 of lore of player's tool
+		if line 19 of lore of player's tool contains "Id: ":
+			set {_id} to uncolored line 19 of lore of player's tool
+			replace all "Id: " in {_id} with ""
 			set {_color} to last color of player's tool's name
+			load yaml "plugins/Skript/playerdata/karty/%uncolored name of player's tool%/%{_id}%.yml" as "kartyLink-%player%"
+			set {_level} to yaml value "Card.Level" in "kartyLink-%player%"
+			set {_xp} to yaml value "Card.Exp" in "kartyLink-%player%"
+			unload yaml "kartyLink-%player%"
 		if player's held item is enchanted:
 			set {_lastdmg::*} to "&5Enchants:"
 		loop enchantments of player's held item:
@@ -37,9 +42,9 @@ command /link:
 			if player's held item's name is set:
 				if {_id} is set:
 					if {language::%loop-player%} = "English":
-						send formatted "&8[&e&lLINK&r&8] &8[&e%{poziom::%player%}% Lvl&8] &8<&e%{pseudonim::%player%}%&8> <tooltip:%{_link2}%>&7[&r<tooltip:%{_link2}%>%player's held item's name%&7] | [Level: %{_color}%%{poziomkarta::%{_id}%}%&7, EXP: %{_color}%%{expkarta::%{_id}%}%&7]" to loop-players
+						send formatted "&8[&e&lLINK&r&8] &8[&e%{poziom::%player%}% Lvl&8] &8<&e%{pseudonim::%player%}%&8> <tooltip:%{_link2}%>&7[&r<tooltip:%{_link2}%>%player's held item's name%&7] | [Level: %{_color}%%{_level}%&7, EXP: %{_color}%%{_xp}%&7]" to loop-players
 					else:
-						send formatted "&8[&e&lLINK&r&8] &8[&e%{poziom::%player%}% Lvl&8] &8<&e%{pseudonim::%player%}%&8> <tooltip:%{_link2}%>&7[&r<tooltip:%{_link2}%>%player's held item's name%&7] | [Poziom: %{_color}%%{poziomkarta::%{_id}%}%&7, EXP: %{_color}%%{expkarta::%{_id}%}%]" to loop-players
+						send formatted "&8[&e&lLINK&r&8] &8[&e%{poziom::%player%}% Lvl&8] &8<&e%{pseudonim::%player%}%&8> <tooltip:%{_link2}%>&7[&r<tooltip:%{_link2}%>%player's held item's name%&7] | [Poziom: %{_color}%%{_level}%&7, EXP: %{_color}%%{_xp}%&7]" to loop-players
 				else:
 					if {_am} > 1:
 						if player's held item is a written book:
@@ -66,9 +71,11 @@ command /linkmob:
 	trigger:
 		if target of player is a living entity:
 			set {_x} to player's target
-			if {poziommob::%{_x}%} is set:
-				set {_link2EN} to "&7Type: &6%{_x}%%nl%&7UUID: &6%uuid of {_x}%%nl%&7Level: &6%{poziommob::%{_x}%}%%nl%&7Exp Yield: &6%{expyield::%{_x}%}%%nl%&7HP: &6%health of {_x}%/&6%max health of {_x}%"
-				set {_link2} to "&7Typ: &6%{_x}%%nl%&7UUID: &6%uuid of {_x}%%nl%&7Poziom: &6%{poziommob::%{_x}%}%%nl%&7Exp Yield: &6%{expyield::%{_x}%}%%nl%&7HP: &6%health of {_x}%/&6%max health of {_x}%"
+			if tag "custom;ECLvl" of nbt of {_x} is set:
+				set {_mobLevel} to tag "custom;ECLvl" of nbt of {_x}
+			if {_mobLevel} is set:
+				set {_link2EN} to "&7Type: &6%{_x}%%nl%&7UUID: &6%uuid of {_x}%%nl%&7Level: &6%{_mobLevel}%%nl%&7HP: &6%health of {_x}%/&6%max health of {_x}%"
+				set {_link2} to "&7Typ: &6%{_x}%%nl%&7UUID: &6%uuid of {_x}%%nl%&7Poziom: &6%{_mobLevel}%%nl%&7HP: &6%health of {_x}%/&6%max health of {_x}%"
 			else:
 				set {_link2EN} to "&7Type: &6%{_x}%%nl%&7UUID: &6%uuid of {_x}%%nl%&7HP: &6%health of {_x}%/&6%max health of {_x}%"
 				set {_link2} to "&7Typ: &6%{_x}%%nl%&7UUID: &6%uuid of {_x}%%nl%&7HP: &6%health of {_x}%/&6%max health of {_x}%"
@@ -79,26 +86,33 @@ command /linkmob:
 				set {_name} to {_x}
 			else:
 				set {_name} to name of {_x}
+			if {_mobLevel} is set:
+				set {_name} to "%{_name}% &7(&fLvl. %{_mobLevel}%"
 			loop all players:
 				if {language::%loop-player%} = "English":
 					send formatted "&8[&e&lLINK&r&8] &8[&e%{poziom::%player%}% Lvl&8] &8<&e%{pseudonim::%player%}%&8> <tooltip:%{_link2EN}%>&7(&r<tooltip:%{_link2EN}%>%{_name}%&7)" to loop-players	
 				else:
 					send formatted "&8[&e&lLINK&r&8] &8[&e%{poziom::%player%}% Lvl&8] &8<&e%{pseudonim::%player%}%&8> <tooltip:%{_link2}%>&7(&r<tooltip:%{_link2}%>%{_name}%&7)" to loop-players
-					
+		
 command /linksign:
 	trigger:
-		if target block of player is a sign:
+		if target block of player is sign:
+			set {_sign} to target block of player
+			broadcast line 1 of target block of player
 			loop all players:
 				if {language::%loop-player%} = "English":
-					send formatted "&8[&e&lLINK&r&8] &8[&e%{poziom::%player%}% Lvl&8] &8<&e%{pseudonim::%player%}%&8> &eLinked sign:" to loop-players
+					send formatted "&8[&e&lLINK&r&8] &8[&e%{poziom::%player%}% Lvl&8] &8<&e%{pseudonim::%player%}%&8> &eLinked a sign:" to loop-players
 				else:
 					send formatted "&8[&e&lLINK&r&8] &8[&e%{poziom::%player%}% Lvl&8] &8<&e%{pseudonim::%player%}%&8> &eZlinkował tabliczkę:" to loop-players
-				set {_block} to target block of player
 				loop 4 times:
-					if line (loop-number) of {_block} is set:
-						if line (loop-number) of {_block} is not " " or "":
-							set {_line} to formatted line (loop-number) of {_block}
-							if {language::%loop-player%} = "English":
-								send formatted "&8(&eSign&8) &8%loop-number%. &e%{_line}%" to loop-player
-							else:
-								send formatted "&8(&eTabliczka&8) &8%loop-number%. &e%{_line}%" to loop-player
+					if (line loop-number of target block of player) is not "":
+						if {language::%loop-player%} = "English":
+							send formatted "&8(&eSign&8) &8[&eFront&8] &8Line %loop-number%. &e%line loop-number of target block of player%" to loop-player
+						else:
+							send formatted "&8(&eTabliczka&8) &8[&ePrzód&8] &8Linia %loop-number%. &e%line loop-number of target block of player%" to loop-player
+				loop 4 times:
+					if "%(back sign line loop-number of target block of player)%" is not "":
+						if {language::%loop-player%} = "English":
+							send formatted "&8(&eSign&8) &8[&eBack&8] &8Line %loop-number%. &e%back sign line loop-number of target block of player%" to loop-player
+						else:
+							send formatted "&8(&eTabliczka&8) &8[&eTył&8] &8Linia %loop-number%. &e%back sign line loop-number of target block of player%" to loop-player

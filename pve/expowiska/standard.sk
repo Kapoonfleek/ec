@@ -1,0 +1,577 @@
+
+options:
+    possibleBlocks: grass block, moss block, azalea, rooted dirt, dirt, coarse dirt, mangrove wood, spruce slab, mossy cobblestone, birch leaves, oak leaves, flowering azalea, smooth sandstone, andesite, smooth sandstone stairs, mud, muddy mangrove roots, podzol, water, tuff, moss carpet, stone, mud bricks, mud brick stairs, mud brick wall, mud brick slab, lily pad, pointed dripstone
+variables:
+    {expAreaMayanMobs} = 0
+import:
+    java.lang.Math
+    org.bukkit.event.entity.EntityEvent
+
+function ExpAreaMayan(p: player):
+    wait 1 tick
+    while "%{_p}'s world%" = "groveofimmemorialruins":
+        set {_waitInterval} to a random number between 10 and (25 + (({expAreaMayan}-1)*2.5))
+        set {_wait} to "%{_waitInterval}% seconds" parsed as timespan
+        wait {_wait}
+        stop if "%{_p}'s world%" != "groveofimmemorialruins"
+        if {expAreaMayanMobs} < 50 + (({expAreaMayan}-1)*5):
+            ExpAreaMayanMobSpawnEvent({_p})
+
+function ExpAreaMayanMobSpawnEvent(p: player):
+    set {_xMin} to 471
+    set {_xMax} to 623
+    
+    set {_yMin} to 86
+    set {_yMax} to 106
+
+    set {_zMin} to -937
+    set {_zMax} to -1090
+
+    set {_x} to a random integer between {_xMin} and {_xMax}
+    set {_y} to a random integer between {_yMin} and {_yMax}
+    set {_z} to a random integer between {_zMin} and {_zMax}
+
+    while {@possibleBlocks} does not contain (type of block at {_randomLocation}):
+        set {_x} to a random integer between {_xMin} and {_xMax}
+        set {_y} to a random integer between {_yMin} and {_yMax}
+        set {_z} to a random integer between {_zMin} and {_zMax}
+        
+        if block at location({_x}, {_y}, {_z}, world "groveofimmemorialruins") is not solid:
+            loop all blocks above location({_x}, {_y}, {_z}, world "groveofimmemorialruins"):
+                if loop-block is air:
+                    if block above loop-block is air:
+                        set {_randomLocation} to location({_x}, {_y}, {_z}, world "groveofimmemorialruins")
+
+    if chunk at {_randomLocation} is not loaded:
+        async load chunk at {_randomLocation} with ticket
+    ExpAreaMayanMobSpawn({_p}, {_randomLocation})
+
+function ExpAreaMayanMobSpawn(p: player, loc: location):
+    #Adds to a mob count and checks whether it should spawn a Supermob or a standard mob. Also checks for boss spawn
+    add 1 to {expAreaMayanMobCount}
+    if {expAreaMayanMobCount} is divisible by 15:
+        set {_superMob} to true
+    if {expAreaMayanMobCount} is divisible by 100:        
+        ExpAreaMayanBossSpawn()
+    #Gets the player's Card Level to spawn a mob at an appropriate level
+    set {_id} to uncolored line 19 of lore of {karta::%{_p}%}
+    replace all "Id: " in {_id} with ""
+    load yaml "plugins/Skript/playerdata/karty/%{kartaname::%{_p}%}%/%{_id}%.yml" as "cardExpAreaMayan-%{_p}%"
+    set {_cardLevel} to yaml value "Card.Level" in "cardExpAreaMayan-%{_p}%"
+    set {_mobLevel} to {_cardLevel}
+    if {_cardLevel} is not set:
+        set {_mobLevel} to 1
+    else if {_mobLevel} = 0:
+        set {_mobLevel} to 1
+    
+    if {_mobLevel} is not an number:
+        set {_mobLevel} to rounded {_mobLevel}
+        set {_mobLevel} to {_mobLevel} parsed as number
+
+    unload yaml "cardExpAreaMayan-%{_p}%"
+    if {_mobLevel} is between 1 and 9:
+        set {_color} to "&2"
+    else if {_mobLevel} is between 10 and 19:
+        set {_color} to "&a"
+    else if {_mobLevel} is between 20 and 29:
+        set {_color} to "&e"
+    else if {_mobLevel} is between 30 and 39:
+        set {_color} to "&6"
+    else if {_mobLevel} is between 40 and 45:
+        set {_color} to "&c"
+    else if {_mobLevel} is between 46 and 50:
+        set {_color} to "&4"
+
+    #Chooses a mob from the list randomly
+    set {_mobList::*} to "adult zombie", "skeleton", "spider", "cave spider", "magma cube", "slime" and "witch"
+
+    set {_randomMob} to (a random element of {_mobList::*} parsed as entity type)
+
+    if "%{_randomMob}%" = "slime":
+        spawn {_randomMob} at {_loc} with nbt from "{Size:3}"
+        set tag "custom;ECModelHeight" of nbt of last spawned entity to 1.825
+        set last spawned entity's max health to 14
+    else:
+        spawn {_randomMob} at {_loc}
+    
+    set {_mob} to last spawned mob
+    set {_name} to "%type of {_mob}%"
+    set {_name} to {_name} in strict proper case
+    set {_name} to "&f%{_name}%"
+
+    set the display name of {_mob} to {_name}
+    set tag "custom;ECMob" of nbt of {_mob} to true
+    set tag "custom;ECLvl" of nbt of {_mob} to {_mobLevel}
+
+    if {_mob} is a zombie or a skeleton:
+        set tag "custom;ECModelHeight" of nbt of {_mob} to 1.70
+        set {_element} to "Ghost"
+        if {_mob} is a skeleton:
+            set {_mob}'s max health to 17
+        if {_mob} is a zombie:
+            set {_mob}'s max health to 20
+    else if {_mob} is a magma cube:
+        set {_element} to "Lava"
+        set tag "custom;ECModelHeight" of nbt of {_mob} to 1.825
+        set {_mob}'s max health to 18.5
+        add nbt from "{Size:3}" to nbt of {_mob}
+    else if {_mob} is a spider:
+        set tag "custom;ECModelHeight" of nbt of {_mob} to 0.65
+        set {_element} to "Dark"
+        set {_mob}'s max health to 13 + 5
+    else:
+        if {_mob} is a cave spider:
+            set tag "custom;ECModelHeight" of nbt of {_mob} to 0.25
+            set {_mob}'s max health to 12 + 5
+        else if {_mob} is a witch:
+            set tag "custom;ECModelHeight" of nbt of {_mob} to 1.7
+            set {_mob}'s max health to 24
+        set {_element} to "Poison"
+    
+    set tag "custom;ECElement" of nbt of {_mob} to {_element}
+
+    set tag "custom;ECExpAreaMayanMob" of nbt of {_mob} to true
+    set tag "custom;ECExpAreaMob" of nbt of {_mob} to true
+    
+    set {_maxHealthMob} to {_mob}'s max health * Math.pow(1.072, ({_mobLevel}))
+    if {_superMob} is true:
+        set {_maxHealthMob} to {_maxHealthMob}*4
+        set tag "custom;ECSuperMob" of nbt of {_mob} to true
+    set {_mob}'s max health to {_maxHealthMob}
+    heal {_mob}
+    
+    if {_superMob} is true:
+        set tag "custom;MobDamageModifier" of nbt of {_mob} to 3 * Math.pow(1.026, ({_mobLevel}))
+        set {_color} to "%{_color}%Supermob "
+    else:
+        set tag "custom;MobDamageModifier" of nbt of {_mob} to 1 * Math.pow(1.026, ({_mobLevel}))
+        
+    increase {_loc}'s y-coordinate by (tag "custom;ECModelHeight" of nbt of {_mob})
+    spawn 1 armor stand at {_loc} with nbt from "{Marker:1b,Invulnerable:1b,Invisible:1b,CustomNameVisible:1,NoGravity:1b}"
+    set display name of last spawned armor stand to "&a|||||||||| &f(100%%)"
+    set tag "custom;ECTextAbove" of nbt of {_mob} to uuid of last spawned armor stand
+
+    spawn 1 armor stand at {_loc} with nbt from "{Marker:1b,Invulnerable:1b,Invisible:1b,CustomNameVisible:1,NoGravity:1b}"
+    set display name of last spawned armor stand to "%{_color}%Level %{_mobLevel}%"
+    set tag "custom;ECTextAboveLevel" of nbt of {_mob} to uuid of last spawned armor stand
+
+    add 1 to {expAreaMayanMobs}
+
+function ExpAreaMayanBossSpawn():
+    #Checks if a boss is already alive, if yes, replaces it with a new one
+    if {expAreaMayanBoss} is set:
+        set {_existingBoss} to {expAreaMayanBoss} parsed as entity
+        kill {_existingBoss}
+        
+    set {_loc} to location(546, 98.25, -977.308, world "groveofimmemorialruins")
+    set yaw of {_loc} to 180
+    #Gets the player's Card Level to spawn a boss at an appropriate level
+    loop all players where [input's world = "groveofimmemorialruins"]:
+        set {_id} to uncolored line 19 of lore of {karta::%loop-player%}
+        replace all "Id: " in {_id} with ""
+        load yaml "plugins/Skript/playerdata/karty/%{kartaname::%loop-player%}%/%{_id}%.yml" as "cardExpAreaMayan-%loop-player%"
+        set {_cardLevel} to yaml value "Card.Level" in "cardExpAreaMayan-%loop-player%"
+        add {_cardLevel} to {_cardLevelTotal}
+        add 1 to {_players}
+        add loop-player to {_players::*}
+        unload yaml "cardExpAreaMayan-%loop-player%"
+
+    stop if {_players} is not set
+    
+    set {_cardLevelTotal} to {_cardLevelTotal} + 10
+    set {_mobLevel} to {_cardLevelTotal}/{_players}
+    if {_mobLevel} is not a number:
+        set {_mobLevel} to {_mobLevel} parsed as number
+    set {_mobLevel} to rounded {_mobLevel}
+
+    if {_mobLevel} is between 1 and 9:
+        set {_color} to "&2"
+    else if {_mobLevel} is between 10 and 19:
+        set {_color} to "&a"
+    else if {_mobLevel} is between 20 and 29:
+        set {_color} to "&e"
+    else if {_mobLevel} is between 30 and 39:
+        set {_color} to "&6"
+    else if {_mobLevel} is between 40 and 45:
+        set {_color} to "&c"
+    else if {_mobLevel} >= 46:
+        set {_color} to "&4"
+
+    #Chooses a boss from the list randomly
+    set {_mobListBosses::*} to "Salvajer" and "Paileao"
+
+    set {_randomMob} to (a random element of {_mobListBosses::*})
+    
+    set {_averageLevel} to {_cardLevelTotal}/{_players}
+
+    if {_randomMob} = "Salvajer":
+        spawn 1 skeleton at {_loc}
+        set {_mob} to last spawned mob
+        set the display name of {_mob} to "&fSalvajer"
+        disguise {_mob} as {_randomMob}
+        set tool of last spawned skeleton to wooden sword named "&2Nature's Wrath" with lore "&7A weapon wielded by &fSalvajer&7."
+        set {_colorBar} to aqua
+        set tag "custom;ECElement" of nbt of {_mob} to "Nature"
+        set {_maxHealthMob} to (45 * Math.pow(1.092, ({_mobLevel})))*({_players}*({_averageLevel}/{_mobLevel}))
+
+    else if {_randomMob} = "Paileao":
+        spawn 1 zombie at {_loc}
+        set {_mob} to last spawned mob
+        set the display name of {_mob} to "&fPaileao"
+        disguise {_mob} as {_randomMob}
+        set {_pot} to potion effect of speed of tier 1.35 without particles for 1 day
+        add {_pot} to potion effects of {_mob}
+        set {_colorBar} to orange
+        set tag "custom;ECElement" of nbt of {_mob} to "Beast"
+        set {_maxHealthMob} to (60 * Math.pow(1.09, ({_mobLevel})))*({_players}*({_averageLevel}/{_mobLevel}))
+    
+    set {_mob}'s max health to {_maxHealthMob}
+    heal {_mob}
+
+    set tag "custom;ECMob" of nbt of {_mob} to true
+    set tag "custom;ECLvl" of nbt of {_mob} to {_mobLevel}
+    set tag "custom;ECBoss" of nbt of {_mob} to true
+
+    set {_id} to random 5 char string from charset `0-9` `a-z`
+    clear boss bar with id {_id}
+    set {_bar} to boss bar with id {_id} with title name of {_mob} with color {_colorBar}
+    set bar style of {_bar} to segmented 20
+    loop {_players::*}:
+        add loop-value to {_bar}
+        send "&e%name of {_mob}% has spawned!" to loop-value
+
+    set tag "custom;ECModelHeight" of nbt of {_mob} to 1.55
+    set tag "custom;ECExpAreaMayanMob" of nbt of {_mob} to true
+    set tag "custom;ECExpAreaMob" of nbt of {_mob} to true
+    set tag "custom;MobDamageModifier" of nbt of {_mob} to 1 * Math.pow(1.043, ({_mobLevel}))
+    set tag "custom;ECBossBossBar" of nbt of {_mob} to {_id}
+        
+    increase {_loc}'s y-coordinate by (tag "custom;ECModelHeight" of nbt of {_mob})
+    spawn 1 armor stand at {_loc} with nbt from "{Marker:1b,Invulnerable:1b,Invisible:1b,CustomNameVisible:1,NoGravity:1b}"
+    set display name of last spawned armor stand to "&a|||||||||| &f(100%%)"
+    set tag "custom;ECTextAbove" of nbt of {_mob} to uuid of last spawned armor stand
+
+    spawn 1 armor stand at {_loc} with nbt from "{Marker:1b,Invulnerable:1b,Invisible:1b,CustomNameVisible:1,NoGravity:1b}"
+    set display name of last spawned armor stand to "%{_color}%&l(BOSS)&r %{_color}%Level %{_mobLevel}%"
+    set tag "custom;ECTextAboveLevel" of nbt of {_mob} to uuid of last spawned armor stand
+
+    set {expAreaMayanBoss} to uuid of {_mob}
+
+function ExpAreaMayanMobDrop(p: player, e: entity, dropChanceMultiplier: number, type: string):
+    set {_mobLevel} to (tag "custom;ECLvl" of nbt of {_e})
+    if {_mobLevel} is not a number:
+        set {_mobLevel} to rounded ({_mobLevel} parsed as number)
+    set {_starFactor} to (1 + ({_mobLevel}/100))
+    set {_ilvlFactor} to (1 + ({_mobLevel}/100)) 
+    set {_starLevelDrop} to a random number between 0 and 100
+    if {_type} = "mob":
+        #Artifacts
+        chance of 6*{_dropChanceMultiplier}%:
+            #Determines the random item drop
+            if {language::%{_p}%} = "English":
+                set {_lootTableArtifacts::*} to "Marksman's Anemone", "Vision of the Hunt", "Archer's Belt Pouch", "Hunter's Manuscript"
+            else:
+                set {_lootTableArtifacts::*} to "Anemon Strzelca", "Wizja Myślistwa", "Bukłak Łucznika", "Rękopis Łowcy"
+            set {_lootItem} to a random element of {_lootTableArtifacts::*}
+
+            #Assigns the star level and an appropriate item level
+            set {_chance2Star} to 21.5 ^ {_starFactor}
+            set {_chance3Star} to 0.3 ^ {_starFactor}
+            if {_starLevelDrop} is between 0 and {_chance3Star}:
+                #Drops a 3 star artifact
+                set {_starlvl} to 3
+            else if {_starLevelDrop} is between {_chance3Star}+0.001 and {_chance2Star}:
+                #Drops a 2 star artifact
+                set {_starlvl} to 2
+            else:
+                #Drops a 1 star artifact
+                set {_starlvl} to 1
+            set {_ilvl} to ArtifactStarLevel({_starlvl}, {_mobLevel})
+            giveItem({_p}, Artifact({_lootItem}, {_starlvl}, {_ilvl}))
+            play sound "block.enchantment_table.use" with volume 3 and pitch 2 to {_p}
+            send "&d&oReceived &f%{_lootItem}% &e(Ilvl %{_ilvl}%&e, Star Level: %{_starlvl}%) &d&ofrom %name of {_e}%&d&o." to {_p}
+            play sound "entity.chicken.egg" with volume 3 and pitch 0 to {_p}
+        #Gear
+        chance of 8*{_dropChanceMultiplier}%:
+            #Determines the random item drop
+            set {_lootTableGear::*} to "Spirit of the Woods", "Verdant Blessing", "Cizin's Curse", "Tangled Boots", "Vision of the Serpent", "Quetzalcoatl's Creation", "Grasp of the Foregone Tribe", "Guardianship of the Deities" 
+            set {_lootTableGear::*} to {_lootTableGear::*} and "Nature's Curtain" and "Old Hunter's Handiwork" and "Outworn Gauntlets"
+            set {_lootTableGearTypes::*} to "Ring", "Necklace", "Ring", "Boots", "Helmet", "Helmet", "Shoulders", "Chestplate", "Cloak", "Bracers" and "Gloves"
+            set {_randomIndex} to a random integer between 1 and (size of {_lootTableGear::*})
+            set {_lootItem} to {_lootTableGear::%{_randomIndex}%}
+            set {_itemType} to {_lootTableGearTypes::%{_randomIndex}%}
+
+            set {_chanceType} to a random integer between 1 and 100
+            set {_chanceRare} to 2 ^ {_ilvlFactor}
+            set {_chanceUncommon} to 30 ^ {_ilvlFactor}
+
+            if {_chanceType} is between 1 and {_chanceRare}:
+                set {_itemLevel} to round(1 + ({_mobLevel}*0.82), 0)
+                set {_rarity} to "<##0070dd>Rare"
+            else if {_chanceType} is between {_chanceRare}+0.001 and {_chanceUncommon}:
+                set {_itemLevel} to round(1 + ({_mobLevel}*0.74), 0)
+                set {_rarity} to "<##1fef00>Uncommon"
+            else:
+                set {_itemLevel} to round(1 + ({_mobLevel}*0.66), 0)
+                set {_rarity} to "<##cccccc>Common"
+
+            set {_item} to Gear({_lootItem}, {_itemType}, {_itemLevel}, {_rarity}, (tag "PrimaryStat" of nbt of {karta::%{_p}%}))
+            giveItem({_p}, {_item})
+            play sound "item.armor.equip_netherite" with volume 3 and pitch 1 to {_p}
+            send "&d&oReceived &f%{_lootItem}% &e(Ilvl %{_itemLevel}%&e) &d&ofrom %name of {_e}%&d&o." to {_p}
+            play sound "entity.chicken.egg" with volume 3 and pitch 0 to {_p}
+            #Assigns an appropriate item level
+        chance of 12%:
+            if {language::%{_p}%} = "English":
+                set {_book} to {noviceexpbookEN}
+            else:
+                set {_book} to {noviceexpbook}
+            giveItem({_p}, {_book})
+            send "&3&oReceived a &f%name of {_book}%&3&o." to {_p}
+            play sound "entity.chicken.egg" with volume 3 and pitch 0 to {_p}
+        chance of 2%:
+            if {language::%{_p}%} = "English":
+                set {_book} to {apprenticeexpbookEN}
+            else:
+                set {_book} to {apprenticeexpbook}
+            giveItem({_p}, {_book})
+            send "&3&oReceived a &f%name of {_book}%&3&o." to {_p}
+            play sound "entity.chicken.egg" with volume 3 and pitch 0 to {_p}
+    else if {_type} = "supermob":
+        #Artifacts
+        chance of 6*{_dropChanceMultiplier}%:
+            #Determines the random item drop
+            if {language::%{_p}%} = "English":
+                set {_lootTableArtifacts::*} to "Marksman's Anemone", "Vision of the Hunt", "Archer's Belt Pouch", "Hunter's Manuscript"
+            else:
+                set {_lootTableArtifacts::*} to "Anemon Strzelca", "Wizja Myślistwa", "Bukłak Łucznika", "Rękopis Łowcy"
+            set {_lootItem} to a random element of {_lootTableArtifacts::*}
+
+            #Assigns the star level and an appropriate item level
+            set {_chance2Star} to 38 ^ {_starFactor}
+            set {_chance3Star} to 12 ^ {_starFactor}
+            set {_chance4Star} to 5 ^ {_starFactor}
+            if {_starLevelDrop} is between 0 and {_chance4Star}:
+                #Drops a 4 star artifact
+                set {_starlvl} to 4
+            else if {_starLevelDrop} is between {_chance4Star}+0.001 and {_chance3Star}:
+                #Drops a 3 star artifact
+                set {_starlvl} to 3
+            else if {_starLevelDrop} is between {_chance3Star}+0.001 and {_chance2Star}:
+                #Drops a 2 star artifact
+                set {_starlvl} to 2
+            else:
+                #Drops a 1 star artifact
+                set {_starlvl} to 1
+            set {_ilvl} to ArtifactStarLevel({_starlvl}, {_mobLevel})
+            giveItem({_p}, Artifact({_lootItem}, {_starlvl}, {_ilvl}))
+            play sound "block.enchantment_table.use" with volume 3 and pitch 2 to {_p}
+            send "&d&oReceived &f%{_lootItem}% &e(Ilvl %{_ilvl}%&e, Star Level: %{_starlvl}%) &d&ofrom %name of {_e}%&d&o." to {_p}
+            play sound "entity.chicken.egg" with volume 3 and pitch 0 to {_p}
+        #Gear
+        chance of 8*{_dropChanceMultiplier}%:
+            #Determines the random item drop
+            set {_lootTableGear::*} to "Spirit of the Woods", "Verdant Blessing", "Cizin's Curse", "Tangled Boots", "Vision of the Serpent", "Quetzalcoatl's Creation", "Grasp of the Foregone Tribe", "Guardianship of the Deities" 
+            set {_lootTableGear::*} to {_lootTableGear::*} and "Nature's Curtain" and "Old Hunter's Handiwork" and "Outworn Gauntlets"
+            set {_lootTableGearTypes::*} to "Ring", "Necklace", "Ring", "Boots", "Helmet", "Helmet", "Shoulders", "Chestplate", "Cloak", "Bracers" and "Gloves"
+            set {_randomIndex} to a random integer between 1 and (size of {_lootTableGear::*})
+            set {_lootItem} to {_lootTableGear::%{_randomIndex}%}
+            set {_itemType} to {_lootTableGearTypes::%{_randomIndex}%}
+
+            set {_chanceType} to a random integer between 1 and 100
+            set {_chanceRare} to 18 ^ {_ilvlFactor}
+            set {_chanceUncommon} to 60 ^ {_ilvlFactor}
+
+            if {_chanceType} is between 1 and {_chanceRare}:
+                set {_itemLevel} to round(1 + ({_mobLevel}*0.82), 0)
+                set {_rarity} to "<##0070dd>Rare"
+            else if {_chanceType} is between {_chanceRare}+0.001 and {_chanceUncommon}:
+                set {_itemLevel} to round(1 + ({_mobLevel}*0.74), 0)
+                set {_rarity} to "<##1fef00>Uncommon"
+            else:
+                set {_itemLevel} to round(1 + ({_mobLevel}*0.66), 0)
+                set {_rarity} to "<##cccccc>Common"
+
+            set {_item} to Gear({_lootItem}, {_itemType}, {_itemLevel}, {_rarity}, (tag "PrimaryStat" of nbt of {karta::%{_p}%}))
+            giveItem({_p}, {_item})
+            play sound "item.armor.equip_netherite" with volume 3 and pitch 1 to {_p}
+            send "&d&oReceived &f%{_lootItem}% &e(Ilvl %{_itemLevel}%&e) &d&ofrom %name of {_e}%&d&o." to {_p}
+            play sound "entity.chicken.egg" with volume 3 and pitch 0 to {_p}
+        chance of 32%:
+            if {language::%{_p}%} = "English":
+                set {_book} to {noviceexpbookEN}
+            else:
+                set {_book} to {noviceexpbook}
+            giveItem({_p}, {_book})
+            send "&3&oReceived a &f%name of {_book}%&3&o." to {_p}
+            play sound "entity.chicken.egg" with volume 3 and pitch 0 to {_p}
+        chance of 16%:
+            if {language::%{_p}%} = "English":
+                set {_book} to {apprenticeexpbookEN}
+            else:
+                set {_book} to {apprenticeexpbook}
+            giveItem({_p}, {_book})
+            send "&3&oReceived a &f%name of {_book}%&3&o." to {_p}
+            play sound "entity.chicken.egg" with volume 3 and pitch 0 to {_p}
+    else if {_type} = "boss":
+        #Artifacts
+        chance of 6*{_dropChanceMultiplier}%:
+            #Determines the random item drop
+            if {language::%{_p}%} = "English":
+                set {_lootTableArtifacts::*} to "Marksman's Anemone", "Vision of the Hunt", "Archer's Belt Pouch", "Hunter's Manuscript"
+            else:
+                set {_lootTableArtifacts::*} to "Anemon Strzelca", "Wizja Myślistwa", "Bukłak Łucznika", "Rękopis Łowcy"
+            set {_lootItem} to a random element of {_lootTableArtifacts::*}
+
+            #Assigns the star level and an appropriate item level
+            set {_chance2Star} to 90 ^ {_starFactor}
+            set {_chance3Star} to 30 ^ {_starFactor}
+            set {_chance4Star} to 16 ^ {_starFactor}
+            if {_starLevelDrop} is between 0 and {_chance4Star}:
+                #Drops a 4 star artifact
+                set {_starlvl} to 4
+            else if {_starLevelDrop} is between {_chance4Star}+0.001 and {_chance3Star}:
+                #Drops a 3 star artifact
+                set {_starlvl} to 3
+            else if {_starLevelDrop} is between {_chance3Star}+0.001 and {_chance2Star}:
+                #Drops a 2 star artifact
+                set {_starlvl} to 2
+            else:
+                #Drops a 1 star artifact
+                set {_starlvl} to 1
+            set {_ilvl} to ArtifactStarLevel({_starlvl}, {_mobLevel})
+            giveItem({_p}, Artifact({_lootItem}, {_starlvl}, {_ilvl}))
+            play sound "block.enchantment_table.use" with volume 3 and pitch 2 to {_p}
+            send "&d&oReceived &f%{_lootItem}% &e(Ilvl %{_ilvl}%&e, Star Level: %{_starlvl}%) &d&ofrom %name of {_e}%&d&o." to {_p}
+            play sound "entity.chicken.egg" with volume 3 and pitch 0 to {_p}
+        #Gear
+        chance of 8*{_dropChanceMultiplier}%:
+            #Determines the random item drop
+            if {_e}'s name contains "Paileao":
+                set {_lootTableGear::*} to "Cizin's Curse" and "Quetzalcoatl's Creation" and "Guardianship of the Deities" and "Old Hunter's Handiwork" and "Outworn Gauntlets" and "Tangled Boots"
+                set {_lootTableGearTypes::*} to "Ring", "Helmet", "Chestplate", "Bracers", "Gloves" and "Boots"
+            else if {_e}'s name contains "Salvajer":
+                set {_lootTableGear::*} to "Spirit of the Woods", "Verdant Blessing" and "Nature's Curtain" and "Vision of the Serpent" and "Grasp of the Foregone Tribe" and "Tangled Boots"
+                set {_lootTableGearTypes::*} to "Ring", "Necklace", "Cloak", "Helmet", "Shoulders" and "Boots"
+            set {_randomIndex} to a random integer between 1 and (size of {_lootTableGear::*})
+            set {_lootItem} to {_lootTableGear::%{_randomIndex}%}
+            set {_itemType} to {_lootTableGearTypes::%{_randomIndex}%}
+
+            set {_chanceType} to a random integer between 1 and 100
+            set {_chanceRare} to 60 ^ {_ilvlFactor}
+            set {_chanceUncommon} to 100
+                
+            if {_chanceType} is between 1 and {_chanceRare}:
+                set {_itemLevel} to round(1 + ({_mobLevel}*0.82), 0)
+                set {_rarity} to "<##0070dd>Rare"
+            else if {_chanceType} is between {_chanceRare}+0.001 and {_chanceUncommon}:
+                set {_itemLevel} to round(1 + ({_mobLevel}*0.74), 0)
+                set {_rarity} to "<##1fef00>Uncommon"
+            else:
+                set {_itemLevel} to round(1 + ({_mobLevel}*0.66), 0)
+                set {_rarity} to "<##cccccc>Common"
+
+            set {_item} to Gear({_lootItem}, {_itemType}, {_itemLevel}, {_rarity}, (tag "PrimaryStat" of nbt of {karta::%{_p}%}))
+            giveItem({_p}, {_item})
+            play sound "item.armor.equip_netherite" with volume 3 and pitch 1 to {_p}
+            send "&d&oReceived &f%{_lootItem}% &e(Ilvl %{_itemLevel}%&e) &d&ofrom %name of {_e}%&d&o." to {_p}
+            play sound "entity.chicken.egg" with volume 3 and pitch 0 to {_p}
+        chance of 68%:
+            if {language::%{_p}%} = "English":
+                set {_book} to {noviceexpbookEN}
+            else:
+                set {_book} to {noviceexpbook}
+            giveItem({_p}, {_book})
+            send "&3&oReceived a &f%name of {_book}%&3&o." to {_p}
+            play sound "entity.chicken.egg" with volume 3 and pitch 0 to {_p}
+        chance of 28%:
+            if {language::%{_p}%} = "English":
+                set {_book} to {apprenticeexpbookEN}
+            else:
+                set {_book} to {apprenticeexpbook}
+            giveItem({_p}, {_book})
+            send "&3&oReceived a &f%name of {_book}%&3&o." to {_p}
+            play sound "entity.chicken.egg" with volume 3 and pitch 0 to {_p}
+        chance of 6%:
+            if {language::%{_p}%} = "English":
+                set {_book} to {adeptexpbookEN}
+            else:
+                set {_book} to {adeptexpbook}
+            giveItem({_p}, {_book})
+            send "&3&oReceived a &f%name of {_book}%&3&o." to {_p}
+            play sound "entity.chicken.egg" with volume 3 and pitch 0 to {_p}
+on slime split:
+    if tag "custom;ECMob" of nbt of event-entity is set:
+        cancel event
+on combust:
+    if tag "custom;ECMob" of nbt of event-entity is set:
+        cancel event
+    else if tag "custom;TowerDefenceMob" of nbt of event-entity is set:
+        cancel event
+    else if tag "custom;TowerDefenceTurret" of nbt of event-entity is set:
+        cancel event
+on entity transform:
+    if "%event-entity's world%" contains "groveofimmemorialruins":
+        cancel event
+on heal:
+    if tag "custom;ECMob" of nbt of event-entity is set:
+        if event-entity = witch:
+            set heal amount to heal amount*0.3
+
+on world change:
+    if "%event-world%" = "groveofimmemorialruins":
+        set {expAreaMayan} to {expAreaMayan} + 1
+        ExpAreaMayan(player)
+        wait 1 tick
+    if "%past event-world%" = "groveofimmemorialruins":
+        if {expAreaMayan} - 1 >= 0:
+            set {expAreaMayan} to {expAreaMayan}-1
+        if {expAreaMayan} = 0:
+            clear {expAreaMayan}
+        if {expAreaMayan} is not set:
+            set {_wait} to 60 seconds
+            while {expAreaMayan} is not set:
+                if {_wait} > 0 seconds:
+                    wait 1 second
+                    remove 1 second from {_wait}
+                else:
+                    stop loop
+            if {_wait} = 0 seconds:
+                loop all entities where [world of input = "groveofimmemorialruins"]:
+                    if loop-entity is not a player:
+                        kill loop-entity
+                set {expAreaMayanMobs} to 0
+                execute console command "keepchunks releaseregion worldguard groveofimmemorialruins groveofimmemorialruins"
+on region enter:
+    if "%region%" contains "ExpAreaRuinsPortal":
+        set {_location} to location of player
+        set {_loc} to location(546.9, 95, -1010.7, world "groveofimmemorialruins")
+        set pitch of {_loc} to 0
+        set yaw of {_loc} to 150
+        teleport player to {_loc}
+        play sound "block.portal.travel" with volume 2 and pitch 1 at player
+        wait 2 ticks
+        play sound "block.portal.travel" with volume 2 and pitch 1 at {_location}
+    else if "%region%" contains "ArenyHubPortal":
+        set {_location} to location of player
+        set {_loc} to location(0.5, 66, 0.5, world "groveofimmemorialruins")
+        set pitch of {_loc} to 0
+        set yaw of {_loc} to 180
+        teleport player to {_loc}
+        play sound "block.portal.travel" with volume 2 and pitch 1 at player
+        wait 2 ticks
+        play sound "block.portal.travel" with volume 2 and pitch 1 at {_location}
+
+on quit:
+    if "%player's world%" = "groveofimmemorialruins":
+        execute player command "spawn"
+
+#Have a list of blocks mobs can spawn on
+#Have a max amount of mobs that can spawn based on amount of players on the arena
+#Register amount of players on player arena enter on region enter
+
+#Gear drop % chance
+
+
+
+#Super mobs
