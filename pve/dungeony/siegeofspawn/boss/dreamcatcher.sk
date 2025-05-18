@@ -3,6 +3,7 @@ function DreamcatcherPlatforms(instance: number):
 
 function DreamcatcherFightAmbience(e: entity):
     DreamcatcherFightMusic({_e})
+    DreamcatcherPathfind({_e})
     set {_duration} to 0
     play sound "dungeons.siegeofspawn.dreamcatcher_wind_ambient" in ambient category with volume 5 and pitch 1 at {_e}
     while {_e} is alive:
@@ -58,7 +59,7 @@ function DreamcatcherSheepBeds(e: entity, instance: number):
             set {_partySize} to tag "custom;ECPartySize" of nbt of {_e}
             set {_instance} to tag "custom;ECDungeonInstance" of nbt of {_e}
             set {_affixes::*} to tag "custom;Affixes" of nbt of {_e}
-            set {_sheep} to SOSMobSpawn((location 0.5 above {_bedLocation}), sheep, "Sleeping Sheep", air, "Normal", 0, {_keystoneId}, {_partySize}, 10, {_instance}, {_affixes::*})
+            set {_sheep} to SOSMobSpawn((location 0.5 above {_bedLocation}), sheep, "Sleeping Sheep", air, "Normal", 0, {_keystoneId}, {_partySize}, 10, {_instance}, "Ranged", true, {_affixes::*})
             set {_sheep} to {_sheep} parsed as entity
             set tag "custom;ECImmuneToCC" of nbt of {_sheep} to true
             set tag "custom;DreamcatcherDreamSheep" of nbt of {_sheep} to true
@@ -70,7 +71,20 @@ function DreamcatcherSheepBeds(e: entity, instance: number):
             set {_sheepAmount} to metadata value "SheepAmount" of {_e}
             add 1 to {_sheepAmount}
             set metadata value "SheepAmount" of {_e} to {_sheepAmount}
-            add nbt from "{Invulnerable:1b}" to nbt of {_e}
+            set tag "Invulnerable" of nbt of {_e} to true
+            set {_rng} to a random integer between 1 and 3
+            if {_rng} = 1:
+                set {_msg} to "<##d4e4ff>Dreamcatcher &8> &fI'm out of dream energy... Quick! Somebody fall asleep!"
+                set {_sound} to "dungeons.siegeofspawn.dreamcatcher_sheep_spawn1"
+            else if {_rng} = 2:
+                set {_msg} to "<##d4e4ff>Dreamcatcher &8> &fLullaby... ♫ And good night... ♫"
+                set {_sound} to "dungeons.siegeofspawn.dreamcatcher_sheep_spawn2"
+            else:
+                set {_msg} to "<##d4e4ff>Dreamcatcher &8> &fWhy is it that anytime I harness the power of someone's dreams, I also get sheep?"
+                set {_sound} to "dungeons.siegeofspawn.dreamcatcher_sheep_spawn_first"
+            loop {-dungeonInstance%{_instance}%::*}:
+                play sound {_sound} with volume 3 and pitch 1 to loop-value
+                send {_msg} to loop-value
         set {_bedsActive} to 0
         wait 32 seconds  
     #Check if a bed is already present
@@ -100,12 +114,25 @@ on death of sheep:
             set {_bossuuid} to tag "custom;SheepBoss" of nbt of victim
             set {_boss} to {_bossuuid} parsed as entity
             set {_bed} to tag "custom;SheepBed" of nbt of victim
+            set {_instance} to tag "custom;ECDungeonInstance" of nbt of {_boss}
             clear metadata value "Bed%{_bed}%" of {_boss}
             set {_sheepAmount} to metadata value "SheepAmount" of {_boss}
             remove 1 from {_sheepAmount}
             set metadata value "SheepAmount" of {_boss} to {_sheepAmount}
             if {_sheepAmount} <= 0:
                 clear tag "Invulnerable" of nbt of {_boss}
+                set {_rng} to a random integer between 1 and 4
+                if {_rng} = 1:
+                    set {_msg} to "<##d4e4ff>Dreamcatcher &8> &fUgh, what is it with YOU and waking people UP?"
+                else if {_rng} = 2:
+                    set {_msg} to "<##d4e4ff>Dreamcatcher &8> &fWill you stop. Doing. THAT?!"
+                else if {_rng} = 3:
+                    set {_msg} to "<##d4e4ff>Dreamcatcher &8> &fAgh! My dream power! Oh- I mean, it's okay you just did that. No biggie."
+                else:
+                    set {_msg} to "<##d4e4ff>Dreamcatcher &8> &fI said stop it. Stop it, stop it, STOP IT!!!"
+                loop {-dungeonInstance%{_instance}%::*}:
+                    play sound "dungeons.siegeofspawn.dreamcatcher_sheep_slain%{_rng}%" with volume 3 and pitch 1 to loop-value
+                    send {_msg} to loop-value
             set {_bedLocation} to yaml value "DreamcatcherBed%{_bed}%" from "SOSspawnlocations"
             set {_bedLocation2} to block at location 1 east of {_bedLocation}
             set block at {_bedLocation} to air
@@ -115,6 +142,10 @@ on death of sheep:
 on death of ghast:
     if tag "custom;ECBoss" of nbt of victim is set:
         if name of victim contains "Dreamcatcher":
+            set {_instance} to tag "custom;ECDungeonInstance" of nbt of victim
+            loop {-dungeonInstance%{_instance}%::*}:
+                send "<##d4e4ff>Dreamcatcher &8> &fNOOOOOOOO!" to loop-value
+                play sound "dungeons.siegeofspawn.dreamcatcher_defeat" with volume 3 and pitch 1 to loop-value
             loop 4 times:
                 set {_bedLocation} to yaml value "DreamcatcherBed%loop-number%" from "SOSspawnlocations"
                 set block at {_bedLocation} to air
@@ -123,18 +154,24 @@ on death of ghast:
 function DreamcatcherStraySheep(e: entity):
     wait 13 seconds
     while {_e} is alive:
-        loop all blocks in radius 20 of {_e} where [input = stone]:
-            add loop-block to {_blocks::*}
+        loop all blocks in region "dreamcatcher" where [input is not air]:
+            if loop-block is not barrier:
+                if loop-block is not red bed:
+                    add loop-block to {_blocks::*}
         set {_randomBlock} to a random element of {_blocks::*}
+        broadcast {_randomBlock}
         set {_loc} to location 4 above {_randomBlock}
         set {_keystoneId} to metadata value "KeystoneId" of {_e}
         set {_partySize} to tag "custom;ECPartySize" of nbt of {_e}
         set {_instance} to tag "custom;ECDungeonInstance" of nbt of {_e}
         set {_affixes::*} to tag "custom;Affixes" of nbt of {_e}
-        set {_sheep} to SOSMobSpawn({_loc}, sheep, "Disoriented Sheep", air, "Normal", 0, {_keystoneId}, {_partySize}, 6, {_instance}, {_affixes::*})
+        set {_sheep} to SOSMobSpawn({_loc}, sheep, "Disoriented Sheep", air, "Normal", 0, {_keystoneId}, {_partySize}, 6, {_instance}, "Ranged", true, {_affixes::*})
         set {_sheep} to {_sheep} parsed as entity
         play sound "entity.puffer_fish.blow_up" with volume 4 and pitch 1 at {_randomBlock}
         SheepJump({_sheep})
+        loop {-dungeonInstance%{_instance}%::*}:
+            send "<##d4e4ff>Dreamcatcher &8> &fHahahahaha. Watch your step!" to loop-value
+            play sound "dungeons.siegeofspawn.dreamcatcher_disorientedsheep_spawn" with volume 3 and pitch 1 to loop-value
         #Check sheep's facing 
         wait 18 seconds
 
@@ -157,16 +194,19 @@ function DreamcatcherTeleport(e: entity):
 function DreamcatcherTornado(e: entity, instance: number):
     wait 6 seconds
     while {_e} is alive:
-        set {_randomMsg} to a random integer between 1 and 2
+        set {_randomMsg} to a random integer between 1 and 3
         if {_randomMsg} = 1:
-            set {_msg} to "<##d4e4ff>Dreamcatcher &8> &fDream Tornado!"
-        else:
+            set {_msg} to "<##d4e4ff>Dreamcatcher &8> &fA Dream Tornado warning is in effect!"
+        else if {_randomMsg} = 2:
             set {_msg} to "<##d4e4ff>Dreamcatcher &8> &fPrepare to be blown away!"
+        else:
+            set {_msg} to "<##d4e4ff>Dreamcatcher &8> &fTime to take you for a little spin!"
         loop {-dungeonInstance%{_instance}%::*}:
             send {_msg} to loop-value
+            play sound "dungeons.siegeofspawn.dreamcatcher_dreamtornado%{_randomMsg}%" with volume 3 and pitch 1 to loop-value
         set {_target} to a random element of {-dungeonInstance%{_instance}%::*}
         make {_e} look at {_target}
-        set {_loc2} to location(x-coordinate of {_e}, 142+3, z-coordinate of {_e}, world "%world of {_e}%")
+        set {_loc2} to location(x-coordinate of {_e}, 104, z-coordinate of {_e}, world "%world of {_e}%")
         set yaw of {_loc2} to yaw of {_e}
         loop 3 times:
             set {_loc3} to location (3-loop-number) below {_loc2}
@@ -238,8 +278,27 @@ function FallingBlockDelete(e: entity):
     wait 5 seconds
     kill {_e}
 
+function DreamcatcherPathfind(e: entity):
+    set {_nums::*} to 2, 3, 4, 5
+    while {_e} is alive:
+        set {_num} to a random element of {_nums::*}
+        set {_nums::*} to 1, 2, 3, 4, 5
+        remove {_num} from {_nums::*}
+        set {_loc} to yaml value "DreamcatcherFly%{_num}%" from "SOSspawnlocations"
+        make {_e} pathfind to {_loc}
+        wait 8 seconds
 
+function DreamcatcherCouncilDefeat(e: entity):
+    wait 3 seconds
+    play sound "dungeons.siegeofspawn.dreamcatcher_council_slain" with volume 3 and pitch 1 to {_e}
+    send "<##d4e4ff>Dreamcatcher &8> &fHi, RUINER! Me again." to {_e}
+    wait 2.6 seconds
+    send "<##d4e4ff>Dreamcatcher &8> &fSince getting the information I want out of those crazy scientists' dreams is taking LONGER than expected, I thought I might slow you down again." to {_e}
 
+function DreamcatcherGoshaDefeat(e: entity):
+    wait 3 seconds
+    play sound "dungeons.siegeofspawn.dreamcatcher_gosha_slain" with volume 3 and pitch 1 to {_e}
+    send "<##d4e4ff>Dreamcatcher &8> &fThis whole hero thing you're doing is getting REALLY tiresome, so I think it's time I finally put an end to it." to {_e}
 #sea creature particle + soound (nightmares)
 
 #platform
