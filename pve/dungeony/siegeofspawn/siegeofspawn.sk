@@ -31,7 +31,7 @@ function SOSSpawnInstance(keystoneId: text, partySize: integer, instance: intege
 
     #MOBS
     loop 2 times:
-        set {_ar} to SOSMobSpawn({_ArmorStand%loop-number%}, zombie, "&fKnight Armor", iron sword, "Ghost", 0, {_keystoneId}, {_partySize}, 15, {_instance}, "Melee", {_affixes::*})
+        set {_ar} to SOSMobSpawn({_ArmorStand%loop-number%}, zombie, "&fKnight Armor", iron sword, "Ghost", 0, {_keystoneId}, {_partySize}, 15, {_instance}, "Melee", true, {_affixes::*})
         set {_pot} to potion effect of speed of tier 1.3 without particles for 1 day
         add {_pot} to potion effects of {_ar}
         set metadata value "ArmorStand%loop-number%" of {_councilPehrek} to ({_ar} parsed as entity)
@@ -39,21 +39,21 @@ function SOSSpawnInstance(keystoneId: text, partySize: integer, instance: intege
     #DESTRUCTION MAGE
     loop 15 times: 
         set {_destructionMage%loop-number%Loc} to yaml value "Destruction Mage%loop-number%" from "SOSspawnlocations"
-        set {_mob} to SOSMobSpawn({_destructionMage%loop-number%Loc}, blaze, "Destruction Mage", air, "Fire", 1.8, {_keystoneId}, {_partySize}, 30, {_instance}, "Ranged", {_affixes::*}) parsed as entity
+        set {_mob} to SOSMobSpawn({_destructionMage%loop-number%Loc}, blaze, "Destruction Mage", air, "Fire", 1.8, {_keystoneId}, {_partySize}, 30, {_instance}, "Ranged", false, {_affixes::*}) parsed as entity
         if loop-number = 6:
             Inspiring({_mob}, {_inspiring}, {_instance})
         
     #DESTRUCTION ARCHER
     loop 6 times:
         set {_destructionArcher%loop-number%Loc} to yaml value "Destruction Archer%loop-number%" from "SOSspawnlocations"
-        set {_mob} to SOSMobSpawn({_destructionArcher%loop-number%Loc}, skeleton, "Destruction Archer", bow, "Fire", 1.3, {_keystoneId}, {_partySize}, 24, {_instance}, "Ranged", {_affixes::*}) parsed as entity
+        set {_mob} to SOSMobSpawn({_destructionArcher%loop-number%Loc}, skeleton, "Destruction Archer", bow, "Fire", 1.3, {_keystoneId}, {_partySize}, 24, {_instance}, "Ranged", false, {_affixes::*}) parsed as entity
         if loop-number = 2:
             Inspiring({_mob}, {_inspiring}, {_instance})
         
     #MAGIC TOME
     loop 11 times:
         set {_magicTome%loop-number%Loc} to yaml value "MagicTome%loop-number%" from "SOSspawnlocations"
-        set {_mob} to SOSMobSpawn({_magicTome%loop-number%Loc}, bee, "Magic Tome", air, "Magic", 0.9, {_keystoneId}, {_partySize}, 17, {_instance}, "Ranged", {_affixes::*}) parsed as entity
+        set {_mob} to SOSMobSpawn({_magicTome%loop-number%Loc}, bee, "Magic Tome", air, "Magic", 0.9, {_keystoneId}, {_partySize}, 17, {_instance}, "Ranged", false, {_affixes::*}) parsed as entity
         if loop-number = 2 or 6 or 8:
             Inspiring({_mob}, {_inspiring}, {_instance})
     
@@ -275,7 +275,7 @@ function SOSSpawnDreamcatcher(loc: location, keystoneId: string, partySize: inte
     set metadata value "KeystoneId" of {_x} to {_keystoneId}
     load chunk at location of {_x} with ticket
     return uuid of {_x}
-function SOSMobSpawn(loc: location, e: entity type, name: text, i: item, element: text, percent: number, keystoneId: string, partySize: integer, maxHealth: number, instance: integer, attackType: string, affixes: texts = "") :: string:
+function SOSMobSpawn(loc: location, e: entity type, name: text, i: item, element: text, percent: number, keystoneId: string, partySize: integer, maxHealth: number, instance: integer, attackType: string, summon: boolean, affixes: texts = "") :: string:
     spawn {_e} at {_loc} with nbt compound from "{Silent:1b}"
     set {_x} to last spawned entity
     set the name of {_x} to {_name}
@@ -312,7 +312,9 @@ function SOSMobSpawn(loc: location, e: entity type, name: text, i: item, element
     else if {_name} contains "Knight Armor":
         mobDisguise({_x}, "KnightArmor")
         add nbt from "{NoAI:1b}" to nbt of {_x}
+    if {_summon} = true:
         set tag "custom;ECSummon" of nbt of {_x} to true
+    set custom name of disguise of {_x} to {_name}
     set {_keystonelevel} to {-KeystoneLevel%{_instance}%}
     set {_healthModifier} to KeystoneModifiers({_keystonelevel})
     set {_damageModifier} to KeystoneModifiers({_keystonelevel})
@@ -615,12 +617,13 @@ on region enter:
             if 1 = 1: #if questline has been completed
                 if player is in a party:
                     if {karta::%player%} is set:
-                        play sound "block.portal.travel" with volume 2 and pitch 1 at player
+                        set {_oldLoc} to player's location
                         set {_loc} to location(-626.5, 81, -535.5, world "siegeofspawn1")
                         set yaw of {_loc} to 0
                         set pitch of {_loc} to 0
                         teleport the player to {_loc}
                         play sound "block.portal.travel" with volume 2 and pitch 1 to player
+                        play sound "block.portal.travel" with volume 2 and pitch 1 at {_oldLoc}
                     else:
                         if {language::%player%} = "English":
                             send "&cYou must have a Card selected to enter a Dungeon." to player
