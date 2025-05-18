@@ -61,9 +61,11 @@ function clearCombat(e: entity):
 	set {dmgdealt::%{_e}%} to 0
 	set {dps::%{_e}%} to 0
 	set {_uuid} to uuid of {_e}
-	set {tarcza::%{_uuid}%} to 0
+	shieldsClear({_e})
 	clear {healcard::*}
 	clear {dmgbreak::*}
+	clear {shieldcard::*}
+	clear {shieldtotal::*}
 	set {_id} to line 19 of lore of {karta::%{_e}%}
 	clear {mobilnosc::%{_e}%}
 	clear {wildfireDelphox::%{_e}%}
@@ -207,10 +209,12 @@ function HealRefresh(p: player, h: number):
 	if metadata value "ECEngaged" of {_p} is not set:
 		clear {_p}'s scoreboard
 		UpdateScoreboard({_p})
+
 function HealAssist(p: player, e: entity):
-	loop {incombatwith::%{_e}%::*}:
-		if {asyst::%uuid of loop-value%::*} does not contain uuid of {_p}:
-			add uuid of {_p} to {asyst::%uuid of loop-value%::*}
+	if {_p} != {_e}:
+		loop {incombatwith::%{_e}%::*}:
+			if {asyst::%uuid of loop-value%::*} does not contain uuid of {_p}:
+				add uuid of {_p} to {asyst::%uuid of loop-value%::*}
 on damage:
 	if attacker is a player:
 		if damage is not 0:
@@ -303,6 +307,7 @@ on leave:
 		clear {icicles::%player%}
 		set {astralpower::%player%} to 50
 		set {_id} to line 19 of lore of {karta::%player%}
+		replace all "&8Id " in {_id} with ""
 		clear {dmgbreak::%{kartaname::%player%}%::%{_id}%}
 
 		ClearPlayerStats(player) #Clears player stats inherited from the player's card
@@ -359,6 +364,7 @@ function LogDmgBreakdown(p: player):
 	else:
 		log "%{_data}% Total: %{dmgdealt::%{_p}%}% (| %{dps::%{_p}%}% dps)" to "logi/combat/combatdetails %{datatydzien}%-%{datatydzien2}%.log"
 	set {_id} to line 19 of lore of {karta::%{_p}%}
+	replace all "&8Id: " in {_id} with ""
 	set {_k} to {kartaname::%{_p}%}
 	set {_r::*} to sorted indices of {dmgbreak::%{_k}%::%{_id}%::*} in descending order
 	set {_size} to size of {_r::*}
@@ -385,57 +391,74 @@ function LogHealBreakdown(p: player):
 command /damagebreakdown:
 	aliases: /dmgbreakdown, /breakdown
 	trigger:
-		send "Coming soon (TM)" to player
-		send "Damage breakdown:" to player
-		if metadata value "ECEngaged" of player is set:
-			set {_t} to SecondsToMinutes("%{seconds::%player%}%")
-			send "Fight duration: %{_t}%" to player
-		else:
-			send "Fight duration: -" to player
-			set {_id} to line 19 of lore of {karta::%player%}
-			if {dmgbreak::%{kartaname::%player%}%::%{_id}%::*} is set:
-				clear {dmgbreak::%{kartaname::%player%}%::%{_id}%::*}
-		if {dmgdealt::%player%} is 0:
-			send "Total: - (- dps)" to player
-		else:
-			send "Total: %{dmgdealt::%player%}% (%{dps::%player%}% dps)" to player
-		set {_id} to line 19 of lore of {karta::%player%}
-		set {_k} to {kartaname::%player%}
-		set {_r::*} to sorted indices of {dmgbreak::%{_k}%::%{_id}%::*} in descending order
-		if {_r::*} is set:
-			set {_size} to size of {_r::*}
-			loop {_size} times:
-				set {_1} to ({_r::%loop-number%} in strict proper case)
-				add "%{_1}%: %{dmgbreak::%{_k}%::%{_id}%::%{_1}%}% (%({dmgbreak::%{_k}%::%{_id}%::%{_1}%}/{dmgdealt::%player%})*100%%%)" to {_breakdown::*}
-			if size of {_breakdown::*} > 1:
-				set {_breakdown} to join {_breakdown::*} by nl
-				#Aset {_message} to mini message from "<gradient:##f54242:##ffe270:##20e32a:##20b5e3:##7526bf>%{_breakdown}%"
-				set {_message} to mini message from "<gradient:##f54242:##ffe270:##20e32a>%{_breakdown}%"
-				send {_message} to player
-			else:
-				send "<##f54242>%{_breakdown::1}%" to player
+		CombatBreakdown2(player, "Damage")
 
 command /healingbreakdown:
 	aliases: /healbreakdown
 	trigger:
-		send "Coming soon (TM)" to player
-		send "Healing breakdown:" to player
-		if metadata value "ECEngaged" of player is set:
-			set {_t} to SecondsToMinutes("%{seconds::%player%}%")
-			send "Fight duration: %{_t}%" to player
-		else:
-			send "Fight duration: -" to player
-		if {healed::%player%} is 0:
-			send "Total: - (- hps)" to player
-		else:
-			send "Total: %{healed::%player%}% (%{hps::%player%}% hps)" to player
-		set {_id} to line 19 of lore of {karta::%player%}
-		set {_k} to {kartaname::%player%}
-		set {_r::*} to sorted indices of {healcard::%{kartaname::%player%}%::%{_id}%::*} in descending order
-		set {_size} to size of {_r::*}
-		loop {_size} times:
-			set {_1} to ({_r::%loop-number%} in strict proper case)
-			send "%{_1}%: %{healcard::%{_k}%::%{_id}%::%{_1}%}% (%({healcard::%{_k}%::%{_id}%::%{_1}%}/{healed::%player%})*100%%%)" to player
+		CombatBreakdown2(player, "Healing")
+		
+function CombatBreakdown2(p: player, type: text):
+	set {_id} to line 19 of lore of {karta::%{_p}%}
+	replace all "&8Id: " in {_id} with ""
+	set {_k} to {kartaname::%{_p}%}
+
+	
+	if {_type} = "Damage":
+		set {_text} to "dps"
+		set {_variable} to {dmgdealt::%{_p}%}
+		set {_ps} to {dps::%{_p}%}
+		set {_r::*} to sorted indices of {dmgbreak::%{_k}%::%{_id}%::*} in descending order
+		set {_source} to {dmgbreak::%{_k}%::%{_id}%}
+		if {_r::*} is set:
+			set {_size} to size of {_r::*}
+			loop {_size} times:
+				set {_1} to ({_r::%loop-number%} in strict proper case)
+				add "%{_1}%: %{dmgbreak::%{_k}%::%{_id}%::%{_1}%}% (%({dmgbreak::%{_k}%::%{_id}%::%{_1}%}/{dmgdealt::%{_p}%})*100%%%)" to {_breakdown::*}
+			if size of {_breakdown::*} > 1:
+				set {_breakdown} to join {_breakdown::*} by nl
+				set {_message} to mini message from "<gradient:##20e32a:##ffe270:##f54242>%{_breakdown}%"
+			else:
+				set {_message} to "<##20e32a>%{_breakdown::1}%"
+		
+	else if {_type} = "Healing":
+		set {_text} to "hps"
+		set {_variable} to {healed::%{_p}%}
+		set {_ps} to {hps::%{_p}%}
+		set {_r::*} to sorted indices of {healcard::%{_k}%::%{_id}%::*} in descending order
+		set {_source} to {healcard::%{_k}%::%{_id}%}
+		if {_r::*} is set:
+			set {_size} to size of {_r::*}
+			loop {_size} times:
+				set {_1} to ({_r::%loop-number%} in strict proper case)
+				add "%{_1}%: %{healcard::%{_k}%::%{_id}%::%{_1}%}% (%({healcard::%{_k}%::%{_id}%::%{_1}%}/{healed::%{_p}%})*100%%%)" to {_breakdown::*}
+			if size of {_breakdown::*} > 1:
+				set {_breakdown} to join {_breakdown::*} by nl
+				set {_message} to mini message from "<gradient:##03fc41:##69faff:##2faabd:##303f96>%{_breakdown}%"
+			else:
+				set {_message} to "<##03fc41>%{_breakdown::1}%"
+
+	send "Coming soon (TM)" to {_p}
+	send "%{_type}% breakdown:" to {_p}
+	if metadata value "ECEngaged" of {_p} is set:
+		set {_t} to SecondsToMinutes("%{seconds::%{_p}%}%")
+		send "Fight duration: %{_t}%" to {_p}
+	else:
+		send "Fight duration: -" to {_p}
+		set {_id} to line 19 of lore of {karta::%{_p}%}
+		replace all "&8Id: " in {_id} with ""
+		if {dmgbreak::%{kartaname::%{_p}%}%::%{_id}%::*} is set:
+			clear {dmgbreak::%{kartaname::%{_p}%}%::%{_id}%::*}
+		if {healcard::%{kartaname::%{_p}%}%::%{_id}%::*} is set:
+			clear {healcard::%{kartaname::%{_p}%}%::%{_id}%::*}
+	
+		
+	if {_variable} is 0:
+		send "Total: - (- %{_text}%)" to {_p}
+	else:
+		send "Total: %{_variable}% (%{_ps}% %{_text}%)" to {_p}
+	send {_message} to {_p}
+
 command /dmggraph [<text>] [<number>]:
 	trigger:
 		if arg-1 is "xilvia":
@@ -469,5 +492,6 @@ command /kill [<player>]:
 			kill arg-1
 function DamageBreakdown(p: player, e: entity, v: number):
 	set {_id} to line 19 of lore of {karta::%{_p}%}
+	replace all "&8Id: " in {_id} with ""
 	if metadata value "LastDamageCause" of {_e} is set:
 		add {_v} to {dmgbreak::%{kartaname::%{_p}%}%::%{_id}%::%uncolored (metadata value "LastDamageCause" of {_e} in strict proper case)%}
