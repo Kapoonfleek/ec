@@ -104,344 +104,286 @@ function Overhealing(p: player, target: entity, overheal: number):
 			HealRefresh({_p}, {_overheal})
 			if metadata value "DungeonInstance" of {_p} is set:
 				DungeonHeal({_p}, {_random}, {_overheal}, "Hydrodance")
-			if {circleofwater::%uuid of {_random}%} is not set:
-				set {circleofwater::%uuid of {_random}%} to true
-				CircleOfWater({_random})
-			set {_lore} to "&7Overhealing leczy najbliższy cel o &f%{_hydrodance}%%% &7wartości leczenia, priorytezując graczy."
-			set {_loreEN} to "&7Overhealing heals the nearest ally to your target by &f%{_hydrodance}%%% &7of the healing value, prioritizing players."
+			if metadata value "CircleOfWater%{_p}%" of {_random} is not set:
+				set metadata value "CircleOfWater%{_p}%" of {_random} to true
+				CircleOfWater({_random}, {_p})
+			set {_lore} to "&7Overhealing heals the nearest ally to your target by &f%{_hydrodance}%%% &7of the healing value, prioritizing players."
 			if {_random} is a player:
 				if {_overheal} > 0:
-					if {language::%{_random}%} = "English":
-						send formatted "%{kartacolor::%{_p}%}%%{_p}% &fhealed you. <tooltip:<##7cafbf>Hydrodance%nl%%{_loreEN}%>(<##baff8c>+%{_overheal}% HP&f)" to {_random}
-					else:
-						send formatted "%{kartacolor::%{_p}%}%%{_p}% &fuleczył cię. <tooltip:<##7cafbf>Hydrodance%nl%%{_lore}%>(<##baff8c>+%{_overheal}% HP&f)" to {_random}
+					send formatted "%{kartacolor::%{_p}%}%%{_p}% &fhealed you. <tooltip:<##7cafbf>Hydrodance%nl%%{_lore}%>(<##baff8c>+%{_overheal}% HP&f)" to {_random}
 			if {_overheal} > 0:
 				add {_overheal} to {healtotal::%{_p}%}
 				add {_overheal} to {healcard::%{kartaname::%{_p}%}%::%{_id}%}
 				add {_overheal} to {healcard::%{kartaname::%{_p}%}%::%{_id}%::Hydrodance}
 on rightclick:
-	if name of player's tool = "<##7cafbf>Healing Stream" or "<##7cafbf>Uzdrawiający Strumień":
+	if tag "Healing Stream" of nbt of player's tool is set:
 		cancel event
-		set {_x} to target of player
-		if {_x} is a living entity:
-			if {_x} is not player:
-				if tag "custom;ECMob" of nbt of {_x} is not set:
-					if {kartaname::%player%} = "Vaporeon":
-						if CanUseAbility(player) != false:
-							if {healingstream::charges::%player%} >= 0:
-								if {healingstream::charges::%player%} < 2:
-									if cooldown "healingstream%player%" is not finished:
-										if {tekstcd::%player%} = true:
-											set {_cdd} to cooldown "healingstream%player%"
-											if {language::%player%} = "English":
-												send "<##7cafbf>You must wait &f%{_cdd}%<##7cafbf> to use this ability." to player
-											else:
-												send "<##7cafbf>Musisz odczekać &f%{_cdd}%<##7cafbf>, aby użyć tej umiejętności." to player
-										stop
-									set {_id} to line 19 of lore of {karta::%player%}
-									if player's chestplate is golden nugget:
-										if name of player's chestplate contains "Serce Earthcrafta" or "Heart of Earthcraft":
-											if line 30 of lore of player's chestplate contains player's name:
-												set {_loreheart::*} to lore of player's chestplate
-									set {_crit} to ({criticalhit::%player%}/10)
-									set {_pospiech} to 1 + (({haste::%player%}/4))/100
-									set {_cd} to "%8/{_pospiech}%"
-									set {_heal} to 1.5 + ({utility::%player%}/80) + ({versatility::%player%}/240) + ({primarystat::%player%}/40)
-									set {_healcircle} to 0.8 + ({utility::%player%}/100) + ({versatility::%player%}/300) + ({primarystat::%player%}/50)
-									set {_mastery} to 1.1 + ({mastery::%player%}/370)
-									if cooldown "healingstream%player%" is finished:
-										AbilityUse(player, "Healing Stream")
-										set {_am} to item amount of player's tool
-										if {_am} > 1:
-											remove 1 of player's tool from player
-										#SAVING DROPS
-										loop {_loreheart::*}:
-											loop-value contains "Saving Drops":
-												add (2.75*{trait::Vaporeon::Saving Drops::%player%}) to {_savingdrops}
-										chance of {_savingdrops}%:
-											set {_drops} to true
-										HealingStreamCharge(player)
-										if {healingstream::charges::%player%} = 0:
-											if {_drops} is not true:
-												create cooldown "healingstream%player%" for ("%{_cd}% seconds" parsed as timespan)
-											set the cooldown of player's held item for player to cooldown "healingstream%player%"
-										if {healingstream::charges::%player%} > 0 :
-											remove 1 from {healingstream::charges::%player%}
-										#LORE
-										if {language::%player%} = "English":
-											if {healingstream::charges::%player%} = 1:
-												set {_ladunki} to "2 Charges"
-											if {healingstream::charges::%player%} = 0:
-												set {_ladunki} to "1 Charge"
-											if cooldown "healingstream%player%" > 0 seconds:
-												set {_ladunki} to "0 Charges"
-										else:
-											if {healingstream::charges::%player%} = 1:
-												set {_ladunki} to "2 Ładunki"
-											if {healingstream::charges::%player%} = 0:
-												set {_ladunki} to "1 Ładunek"
-											if cooldown "healingstream%player%" > 0 seconds:
-												set {_ladunki} to "0 Ładunków"								
-										set {_lore} to "&8Umiejętność%nl%&fInstant cast%nl%&7Cooldown: &f%{_cd}% sekund%nl%&7Użycie: &fPPM%nl%&f%{_ladunki}%%nl%<##7cafbf>Wysyła leczniczy strumień wody w stronę sojusznika.%nl%<##7cafbf>Po dotarciu, strumień uleczy go o &f%{_heal}% <##7cafbf>punktów zdrowia."
-										set {_loreEN} to "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cd}% seconds%nl%&7Use: &fRMB%nl%&f%{_ladunki}%%nl%<##7cafbf>Sends a healing stream toward an ally.%nl%<##7cafbf>Upon reaching its target, the stream will restore%nl%<##7cafbf>&f%{_heal}% <##7cafbf>health points to the affected ally."
-										if {language::%player%} = "English":
-											if name of player's tool does not contain "Healing Stream":
-												replace all "Uzdrawiający Strumień" in player's tool's name with "Healing Stream"
-											set lore of player's tool to {_loreEN}
-											loop all items in the inventory of player:
-												if name of loop-item contains "<##7cafbf>Circle of Water" or "<##7cafbf>Koło Wody":
-													set name of loop-item to "<##7cafbf>Circle of Water"
-													set lore of loop-item to "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &fnone%nl%&7Use: &fPassive%nl%<##7cafbf>Healing surrounds your target with a Circle of Water.%nl%<##7cafbf>Using Healing Stream on an ally affected by%nl%<##7cafbf>Circle of Water will detonate the circle, healing its%nl%<##7cafbf>target by an additional &f%{_healcircle}% <##7cafbf>health."
-													stop loop
-										else:
-											if name of player's tool does not contain "Uzdrawiający Strumień":
-												replace all "Healing Stream" in player's tool's name with "Uzdrawiający Strumień"
-											set lore of player's tool to {_lore}
-											loop all items in the inventory of player:
-												if name of loop-item contains "<##7cafbf>Circle of Water" or "<##7cafbf>Koło Wody":
-													set name of loop-item to "<##7cafbf>Koło Wody"
-													set lore of loop-item to "&8Umiejętność%nl%&fInstant cast%nl%&7Cooldown: &fbrak%nl%&7Użycie: &fPasywnie%nl%<##7cafbf>Leczenie otacza cel Wodnym Kołem.%nl%<##7cafbf>Użycie Uzdrawiajacego Strumienia na sojusznika%nl%<##7cafbf>otoczonego Wodnym Kołem zdetonuje koło, lecząc%nl%<##7cafbf>cel o dodatkowe &f%{_healcircle}% <##7cafbf>zdrowia."
-													stop loop
-										set {_id} to line 19 of lore of {karta::%player%}
-										set {_pospiech} to 1 + (({haste::%player%}/4))/100
-										play sound "block.water.ambient" with volume 5 and pitch 1 at player
-										loop blocks between player and {_x}:
-											#ZAMIENIĆ PARTICLE JAK BĘDZIE SKDRAGON
-											draw 1 of dust using dustOption((rgb 47, 69, 235), 1) at location of loop-block
-											#drawDot count 1, particle "redstone", RGB 47, 69, 235, center location of loop-block, rainbowMode false, visibleRange 32, pulseDelay 0, keepFor 5 ticks
-											wait 1 tick
-										if {_x} is alive:
-											if health of {_x} < (0.5*max health of {_x}):
-												set {_heal} to {_heal}*{_mastery}
-											chance of {_crit}%:
-												set {_heal} to {_heal}*2
-											Overhealing(player, {_x}, {_heal})
-											if {_heal} > ((max health of {_x}) - (health of {_x})):
-												set {_heal} to ((max health of {_x}) - (health of {_x}))
-												if {_heal} < 0:
-													set {_heal} to 0
-											heal {_x} by {_heal}
-											HealAssist(player, {_x})
+		if metadata value "HealingStreamCharges" of player is not set:
+			if tag "Talents;Row 1" of nbt of {karta::%player%} = "Undulation":
+				set {_maxCharges} to 3
+			else:
+				set {_maxCharges} to 2
+			set metadata value "HealingStreamCharges" of player to {_maxCharges}
+		set {_x} to TargetHealingStream(player, 100, false)
+		if {_x} is set:
+			if {kartaname::%player%} = "Vaporeon":
+				if isCastableVaporeon(player) = true:
+					if CanUseAbility(player) != false:
+						if cooldown "Healing StreamDoublePrevent%player%" is finished:
+							create cooldown "Healing StreamDoublePrevent%player%" for 1 tick
+							set {_id} to line 19 of lore of {karta::%player%}
+							if player's chestplate is golden nugget:
+								if name of player's chestplate contains "Serce Earthcrafta" or "Heart of Earthcraft":
+									if line 30 of lore of player's chestplate contains player's name:
+										set {_loreheart::*} to lore of player's chestplate
+							set {_crit} to ({criticalhit::%player%}/10)
+							set {_pospiech} to 1 + (({haste::%player%}/4))/100
+							set {_cd} to "%8/{_pospiech}% seconds" parsed as timespan
+							set {_heal} to 1.5 + ({utility::%player%}/80) + ({versatility::%player%}/240) + ({primarystat::%player%}/40)
+							set {_healcircle} to 0.8 + ({utility::%player%}/100) + ({versatility::%player%}/300) + ({primarystat::%player%}/50)
+							set {_mastery} to 1.1 + ({mastery::%player%}/370)
+							AbilityUse(player, "Healing Stream")
+							set {_am} to item amount of player's tool
+							if {_am} > 1:
+								remove 1 of player's tool from player
+							#SAVING DROPS
+							loop {_loreheart::*}:
+								loop-value contains "Saving Drops":
+									add (2.75*{trait::Vaporeon::Saving Drops::%player%}) to {_savingdrops}
+							chance of {_savingdrops}%:
+								set {_drops} to true
+							set {_charges} to metadata value "HealingStreamCharges" of player
+							remove 1 from {_charges}
+							set metadata value "HealingStreamCharges" of player to {_charges}
+							HealingStreamRecharge(player, {_cd})
+							if {_charges} = 1:
+								set {_chargesLore} to "%{_charges}% Charge"
+							else:
+								set {_chargesLore} to "%{_charges}% Charges"
+							set {_lore} to "&8Ability%nl%&f%{_charges}% Charges%nl%&fInstant cast%nl%&7Cooldown: &f%{_cd}%%nl%&7Use: &fRMB%nl%<##7cafbf>Sends a healing stream towards an ally.%nl%<##7cafbf>Upon reaching its target, the stream will%nl%<##7cafbf>restore &f%{_heal}% <##7cafbf>HP to the affected ally."
+							loop all items in the inventory of player:
+								if tag "Healing Stream" of nbt of (1 of loop-item) is set:
+									set lore of loop-item to {_lore}
+									if {_charges} > 0:
+										set item amount of loop-item to {_charges}
+										create cooldown "Healing Stream%player%" for {_cd}
+									else:
+										set the cooldown of loop-item for player to {_cd}
+									stop loop							
+							set {_id} to line 19 of lore of {karta::%player%}
+							set {_pospiech} to 1 + (({haste::%player%}/4))/100
+							play sound "block.water.ambient" with volume 3 and pitch 1 at player
+							play sound "skill.vaporeon_healingstream_cast" with volume 3 and pitch 1 at player
+							if metadata value "TidalWaves" of player is set:
+								set {_tidalWaves} to metadata value "TidalWaves" of player
+								clear metadata value "TidalWaves" of player
+								send title " " with subtitle " " to player for 1 second with fade in 0.0 second and fade out 0.0 second
+							loop blocks between player and {_x}:
+								draw 3 of dust using dustOption((rgb 47, 69, 235), 1) at location of loop-block with offset vector(0.15, 0.15, 0.15) with extra 0.03
+								draw 3 of bubble particle at location of loop-block with offset vector(0.15, 0.15, 0.15) with extra 0.03
+								wait 1 tick
+							if {_x} is alive:
+								if health of {_x} < (0.5*max health of {_x}):
+									set {_heal} to {_heal}*{_mastery}
+								if tag "Talents;Row 1" of nbt of {karta::%player%} = "Undulation":
+									set {_heal} to {_heal}*1.15
+								if {_tidalWaves} is set:
+									set {_tidalWavesBonus} to 1.3
+									if tag "Talents;Row 3" of nbt of {karta::%player%} = "High Tide":
+										set {_tidalWavesBonus} to {_tidalWavesBonus}*1.4
+									set {_heal} to {_heal}*{_tidalWavesBonus}^{_tidalWaves}
+									if tag "Talents;Row 4" of nbt of {karta::%player%} = "Coalescing Tides":
+										set {_coalescingTides} to true
+								chance of {_crit}%:
+									set {_heal} to {_heal}*2
+								if tag "Talents;Row 2" of nbt of {karta::%player%} = "Tidewaters":
+									Tidewaters(player, {_x}, {_heal})
+								if metadata value "Undercurrent" of player > 0:
+									set {_undercurrent} to metadata value "Undercurrent" of player
+									set {_heal} to {_heal}*(1 + 0.08*{_undercurrent})
+									set {_healcircle} to {_healcircle}*(1 + 0.08*{_undercurrent})
+									broadcast "UND %{_undercurrent}%"
+								broadcast {_heal}
+								play sound "skill.vaporeon_healingstream_hit" with volume 5 and pitch 1 at {_x}
+								
+								if tag "custom;ECMob" of nbt of {_x} is not set:
+									Heal(player, {_x}, {_heal}, "Healing Stream", "<##7cafbf>", {_lore})
+									if {_coalescingTides} is true:
+										play sound "entity.generic.splash" with volume 3 and pitch 1 at {_x}
+										set {_lore} to "&8Ability%nl%&f%{_charges}% Charges%nl%&fInstant cast%nl%&7Cooldown: &f%{_cd}%%nl%&7Use: &fRMB%nl%<##7cafbf>Sends a healing stream towards an ally.%nl%<##7cafbf>Upon reaching its target, the stream will%nl%<##7cafbf>restore &f%{_heal}*0.3% <##7cafbf>HP to the affected ally."
+										set {_coalescingRadius} to 5
+										coalescingTides(player, {_x}, {_coalescingRadius}, {_heal}, {_lore}, "heal")
+										#RIVERSPLIT
+									loop {_loreheart::*}:
+										loop-value contains "Riversplit":
+											add (5*{trait::Vaporeon::Riversplit::%player%}) to {_riversplit}
+									if {_riversplit} is set:
+										set {_heal} to ({_riversplit}/100)*{_heal}
+										loop all living entities in radius 15 around {_x}:
+											if tag "custom;ECMob" of nbt of loop-entity is not set:
+												if loop-entity is a player:
+													if loop-entity is not player:
+														if loop-entity is not {_x}:
+															set {_random} to loop-entity
+										if {_random} is not set:
+											loop all living entities in radius 15 around {_x}:
+												if tag "custom;ECMob" of nbt of loop-entity is not set:
+													if loop-entity is not a player:
+														if loop-entity is not {_x}:
+															set {_random} to loop-entity
+										Overhealing(player, {_random}, {_heal})
+										if {_heal} > ((max health of {_random}) - (health of {_random})):
+											set {_heal} to ((max health of {_random}) - (health of {_random}))
+											if {_heal} < 0:
+												set {_heal} to 0
+										if {_heal} > 0:
+											heal {_random} by {_heal}
+											HealAssist(player, {_random})
 											HealRefresh(player, {_heal})
 											if metadata value "DungeonInstance" of player is set:
-												DungeonHeal(player, {_x}, {_heal}, "Healing Stream")
-											if {_x} is a player:
-												if {_heal} > 0:
-													if {language::%{_x}%} = "English":
-														send formatted "%{kartacolor::%player%}%%player% &fhealed you. <tooltip:<##7cafbf>Healing Stream%nl%%{_loreEN}%>(<##baff8c>+%{_heal}% HP&f)" to {_x}
-													else:
-														send formatted "%{kartacolor::%player%}%%player% &fuleczył cię. <tooltip:<##7cafbf>Uzdrawiający Strumień%nl%%{_lore}%>(<##baff8c>+%{_heal}% HP&f)" to {_x}
-											if {_heal} > 0:
-												add {_heal} to {healtotal::%player%}
-												add {_heal} to {healcard::%{kartaname::%player%}%::%{_id}%}
-												add {_heal} to {healcard::%{kartaname::%player%}%::%{_id}%::Healing Stream}
-											#RIVERSPLIT
-											loop {_loreheart::*}:
-												loop-value contains "Riversplit":
-													add (5*{trait::Vaporeon::Riversplit::%player%}) to {_riversplit}
-											if {_riversplit} is set:
-												set {_heal} to ({_riversplit}/100)*{_heal}
-												loop all living entities in radius 15 around {_x}:
-													if tag "custom;ECMob" of nbt of loop-entity is not set:
-														if loop-entity is a player:
-															if loop-entity is not player:
-																if loop-entity is not {_x}:
-																	set {_random} to loop-entity
-												if {_random} is not set:
-													loop all living entities in radius 15 around {_x}:
-														if tag "custom;ECMob" of nbt of loop-entity is not set:
-															if loop-entity is not a player:
-																if loop-entity is not {_x}:
-																	set {_random} to loop-entity
-												if health of {_random} < (0.5*max health of {_random}):
-													set {_heal} to {_heal}*{_mastery}
-												chance of {_crit}%:
-													set {_heal} to {_heal}*2
-												Overhealing(player, {_random}, {_heal})
-												if {_heal} > ((max health of {_random}) - (health of {_random})):
-													set {_heal} to ((max health of {_random}) - (health of {_random}))
-													if {_heal} < 0:
-														set {_heal} to 0
-												if {_heal} > 0:
-													heal {_random} by {_heal}
-													HealAssist(player, {_random})
-													HealRefresh(player, {_heal})
-													if metadata value "DungeonInstance" of player is set:
-														DungeonHeal(player, {_random}, {_heal}, "Healing Stream")
-													if {_random} is a player:
-														if {language::%{_random}%} = "English":
-															send formatted "%{kartacolor::%player%}%%player% &fhealed you. <tooltip:<##7cafbf>Healing Stream%nl%%{_loreEN}%>(<##baff8c>+%{_heal}% HP&f)" to {_random}
-														else:
-															send formatted "%{kartacolor::%player%}%%player% &fuleczył cię. <tooltip:<##7cafbf>Uzdrawiający Strumień%nl%%{_lore}%>(<##baff8c>+%{_heal}% HP&f)" to {_random}
-												if {_heal} > 0:
-													add {_heal} to {healtotal::%player%}
-													add {_heal} to {healcard::%{kartaname::%player%}%::%{_id}%}
-													add {_heal} to {healcard::%{kartaname::%player%}%::%{_id}%::Healing Stream}
-												if {circleofwater::%uuid of {_random}%} is not set:
-													set {circleofwater::%uuid of {_random}%} to true
-													CircleOfWater({_random})
+												DungeonHeal(player, {_random}, {_heal}, "Healing Stream")
+											if {_random} is a player:
+												if {language::%{_random}%} = "English":
+													send formatted "%{kartacolor::%player%}%%player% &fhealed you. <tooltip:<##7cafbf>Healing Stream%nl%%{_loreEN}%>(<##baff8c>+%{_heal}% HP&f)" to {_random}
 												else:
-													clear {_flowofwater}
-													#FLOW OF WATER
-													loop {_loreheart::*}:
-														loop-value contains "Flow of Water":
-															add (4.5*{trait::Vaporeon::Flow of Water::%player%}) to {_flowofwater}
-													if {_flowofwater} is set:
-														chance of {_flowofwater}%:
-															set {_flow} to true
-													if {_flow} is not true:
-														clear {circleofwater::%uuid of {_random}%}
-													clear {_cascade}
-													#CASCADE
-													loop {_loreheart::*}:
-														loop-value contains "Cascade":
-															add (0.2*{trait::Vaporeon::Cascade::%player%}) to {_cascade}
-													if {_cascade} is set:
-														remove ("%{_cascade}% seconds" parsed as timespan) from cooldown "wybuchowybabelek%player%-%uuid of {_random}%"
-													if {healingstream::charges::%player%} < 2:
-														if {_drops} is true:
-															loop all items in the inventory of player:
-																if name of loop-item contains "<##7cafbf>Healing Stream" or "<##7cafbf>Uzdrawiający Strumień":
-																	set the cooldown of loop-item for player to 0 seconds
-																	stop loop
-															add 1 to {healingstream::charges::%player%}
-															give 1 of player's tool to player
-													if health of {_random} < (0.5*max health of {_random}):
-														set {_healcircle} to {_healcircle}*{_mastery}
-													chance of {_crit}%:
-														set {_healcircle} to {_healcircle}*2
-													Overhealing(player, {_random}, {_healcircle})
-													if {_healcircle} > ((max health of {_random}) - (health of {_random})):
-														set {_healcircle} to ((max health of {_random}) - (health of {_random}))
-														if {_healcircle} < 0:
-															set {_healcircle} to 0
-													heal {_random} by {_healcircle}
-													HealAssist(player, {_random})
-													set {_lore} to "<##7cafbf>Koło Wody%nl%&8Umiejętność%nl%&fInstant cast%nl%&7Cooldown: &fbrak%nl%&7Użycie: &fPasywnie%nl%<##7cafbf>Leczenie otacza cel Wodnym Kołem.%nl%<##7cafbf>Użycie Uzdrawiajacego Strumienia na sojusznika%nl%<##7cafbf>otoczonego Wodnym Kołem zdetonuje koło, lecząc%nl%<##7cafbf>cel o dodatkowe &f%{_healcircle}% <##7cafbf>zdrowia."
-													set {_loreEN} to "<##7cafbf>Circle of Water%nl%&8Ability%nl%&fInstant cast%nl%&7Cooldown: &fnone%nl%&7Use: &fPassive%nl%<##7cafbf>Healing surrounds your target with a Circle of Water.%nl%<##7cafbf>Using Healing Stream on an ally affected by%nl%<##7cafbf>Circle of Water will detonate the circle, healing its%nl%<##7cafbf>target by an additional &f%{_healcircle}% <##7cafbf>health."
-													HealRefresh(player, {_healcircle})
-													if metadata value "DungeonInstance" of player is set:
-														DungeonHeal(player, {_random}, {_healcircle}, "Circle of Water")
-													if {_random} is a player:
-														if {_healcircle} > 0:
-															if {language::%{_random}%} = "English":
-																send formatted "%{kartacolor::%player%}%%player% &fhealed you. <tooltip:%{_loreEN}%>(<##baff8c>+%{_healcircle}% HP&f)" to {_random}
-															else:
-																send formatted "%{kartacolor::%player%}%%player% &fuleczył cię. <tooltip:%{_lore}%>(<##baff8c>+%{_healcircle}% HP&f)" to {_random}
-													if {_healcircle} > 0:
-														add {_healcircle} to {healtotal::%player%}
-														add {_healcircle} to {healcard::%{kartaname::%player%}%::%{_id}%}
-														add {_healcircle} to {healcard::%{kartaname::%player%}%::%{_id}%::Circle of Water}
-													play sound "entity.player.splash.high_speed" with volume 3 and pitch 1 at {_random}
-												#if {_random} is a player:
-												#	set {_name} to name of party of {_random}
-												#	if {_name} is set:
-												#		set {_random}'s tab name to "&b[%{_name}%] &8(%{kolorek::%player%}%&l%{poziom::%player%}%%{kolorek::%player%}%&l⭐&8) &r%player's name% &a%player's health%&c❤"
-												#	else:
-												#		set {_random}'s tab name to "&8(%{kolorek::%player%}%&l%{poziom::%player%}%%{kolorek::%player%}%&l⭐&8) &r%player's name% &a%player's health%&c❤"
-												draw 15 of dust_color_transition using dustTransition(lime, lime, 1) at location of {_random} with offset vector(0.6, 0.9, 0.6)
-											#BOUND MOLECULES
+													send formatted "%{kartacolor::%player%}%%player% &fuleczył cię. <tooltip:<##7cafbf>Uzdrawiający Strumień%nl%%{_lore}%>(<##baff8c>+%{_heal}% HP&f)" to {_random}
+										if {_heal} > 0:
+											add {_heal} to {healtotal::%player%}
+											add {_heal} to {healcard::%{kartaname::%player%}%::%{_id}%}
+											add {_heal} to {healcard::%{kartaname::%player%}%::%{_id}%::Healing Stream}
+										if metadata value "CircleOfWater%player%" of {_random} is not set:
+											set metadata value "CircleOfWater%player%" of {_random} to true
+											CircleOfWater({_random}, player)
+										else:
+											clear {_flowofwater}
+											#FLOW OF WATER
 											loop {_loreheart::*}:
-												loop-value contains "Bound Molecules":
-													add (0.3*{trait::Vaporeon::Bound Molecules::%player%}) to {_molecules}
-											loop all living entities in radius 100 around the player:
-												if {circleofwater::%uuid of loop-entity%} is true:
-													if health of loop-entity < (0.5*max health of loop-entity):
-														set {_molecules} to {_molecules}*{_mastery}
-													chance of {_crit}%:
-														set {_molecules} to {_molecules}*2
-													Overhealing(player, loop-entity, {_molecules})
-													if {_molecules} > ((max health of loop-entity) - (health of loop-entity)):
-														set {_molecules} to ((max health of loop-entity) - (health of loop-entity))
-														if {_molecules} < 0:
-															set {_molecules} to 0
-													heal loop-entity by {_molecules}
-													HealAssist(player, loop-entity)
-													set {_lore} to "<##7cafbf>Bound Molecules%nl%<##7cafbf>Uzdrawiający Strumień &7leczy wszystkich sojuszników%nl%&7z aktywnym <##7cafbf>Kołem Wody &7o &f%{_molecules}% &7zdrowia."
-													set {_loreEN} to "<##7cafbf>Bound Molecules%nl%<##7cafbf>Healing Stream &7heals all allies with%nl%<##7cafbf>Circle of Water &7active by &f%{_molecules}% &7health."
-													HealRefresh(player, {_molecules})
-													if metadata value "DungeonInstance" of player is set:
-														DungeonHeal(player, loop-entity, {_molecules}, "Bound Molecules")
-													if loop-entity is a player:
-														if {_molecules} > 0:
-															if {language::%loop-entity%} = "English":
-																send formatted "%{kartacolor::%player%}%%player% &fhealed you. <tooltip:%{_loreEN}%>(<##baff8c>+%{_molecules}% HP&f)" to loop-entity
-															else:
-																send formatted "%{kartacolor::%player%}%%player% &fuleczył cię. <tooltip:%{_lore}%>(<##baff8c>+%{_molecules}% HP&f)" to loop-entity
-													if {_molecules} > 0:
-														add {_molecules} to {healtotal::%player%}
-														add {_molecules} to {healcard::%{kartaname::%player%}%::%{_id}%}
-														add {_molecules} to {healcard::%{kartaname::%player%}%::%{_id}%::Bound Molecules}
-											if {circleofwater::%uuid of {_x}%} is not set:
-												set {circleofwater::%uuid of {_x}%} to true
-												CircleOfWater({_x})
-											else:
-												#FLOW OF WATER
-												loop {_loreheart::*}:
-													loop-value contains "Flow of Water":
-														add (4.5*{trait::Vaporeon::Flow of Water::%player%}) to {_flowofwater}
-												if {_flowofwater} is set:
-													chance of {_flowofwater}%:
-														set {_flow} to true
-												if {_flow} is not true:
-													clear {circleofwater::%uuid of {_x}%}
-												#CASCADE
-												loop {_loreheart::*}:
-													loop-value contains "Cascade":
-														add (0.2*{trait::Vaporeon::Cascade::%player%}) to {_cascade}
-												if {_cascade} is set:
-													remove ("%{_cascade}% seconds" parsed as timespan) from cooldown "wybuchowybabelek%player%-%uuid of {_x}%"
-												if {healingstream::charges::%player%} < 2:
-													if {_drops} is true:
-														loop all items in the inventory of player:
-															if name of loop-item contains "<##7cafbf>Healing Stream" or "<##7cafbf>Uzdrawiający Strumień":
-																set the cooldown of loop-item for player to 0 seconds
-																stop loop
-														add 1 to {healingstream::charges::%player%}
-														give 1 of player's tool to player
-												if health of {_x} < (0.5*max health of {_x}):
-													set {_healcircle} to {_healcircle}*{_mastery}
-												chance of {_crit}%:
-													set {_healcircle} to {_healcircle}*2
-												Overhealing(player, {_x}, {_healcircle})
-												if {_healcircle} > ((max health of {_x}) - (health of {_x})):
-													set {_healcircle} to ((max health of {_x}) - (health of {_x}))
-													if {_healcircle} < 0:
-														set {_healcircle} to 0
-												heal {_x} by {_healcircle}
-												HealAssist(player, {_x})
-												set {_lore} to "<##7cafbf>Koło Wody%nl%&8Umiejętność%nl%&fInstant cast%nl%&7Cooldown: &fbrak%nl%&7Użycie: &fPasywnie%nl%<##7cafbf>Leczenie otacza cel Wodnym Kołem.%nl%<##7cafbf>Użycie Uzdrawiajacego Strumienia na sojusznika%nl%<##7cafbf>otoczonego Wodnym Kołem zdetonuje koło, lecząc%nl%<##7cafbf>cel o dodatkowe &f%{_healcircle}% <##7cafbf>zdrowia."
-												set {_loreEN} to "<##7cafbf>Circle of Water%nl%&8Ability%nl%&fInstant cast%nl%&7Cooldown: &fnone%nl%&7Use: &fPassive%nl%<##7cafbf>Healing surrounds your target with a Circle of Water.%nl%<##7cafbf>Using Healing Stream on an ally affected by%nl%<##7cafbf>Circle of Water will detonate the circle, healing its%nl%<##7cafbf>target by an additional &f%{_healcircle}% <##7cafbf>health."
-												HealRefresh(player, {_healcircle})
-												if metadata value "DungeonInstance" of player is set:
-													DungeonHeal(player, {_x}, {_healcircle}, "Circle of Water")
-												if {_x} is a player:
-													if {_healcircle} > 0:
-														if {language::%{_x}%} = "English":
-															send formatted "%{kartacolor::%player%}%%player% &fhealed you. <tooltip:%{_loreEN}%>(<##baff8c>+%{_healcircle}% HP&f)" to {_x}
-														else:
-															send formatted "%{kartacolor::%player%}%%player% &fuleczył cię. <tooltip:%{_lore}%>(<##baff8c>+%{_healcircle}% HP&f)" to {_x}
-												if {_healcircle} > 0:
-													add {_healcircle} to {healtotal::%player%}
-													add {_healcircle} to {healcard::%{kartaname::%player%}%::%{_id}%}
-													add {_healcircle} to {healcard::%{kartaname::%player%}%::%{_id}%::Circle of Water}
-												play sound "entity.player.splash.high_speed" with volume 3 and pitch 1 at {_x}
-											#if {_x} is a player:
-											#	set {_name} to name of party of {_x}
-											#	if {_name} is set:
-											#		set the {_x}'s tab name to "&b[%{_name}%] &8(%{kolorek::%player%}%&l%{poziom::%player%}%%{kolorek::%player%}%&l⭐&8) &r%player's name% &a%player's health%&c❤"
-											#	else:
-											#		set the {_x}'s tab name to "&8(%{kolorek::%player%}%&l%{poziom::%player%}%%{kolorek::%player%}%&l⭐&8) &r%player's name% &a%player's health%&c❤"
-											draw 15 of dust_color_transition using dustTransition(lime, lime, 1) at location of {_x} with offset vector(0.6, 0.9, 0.6)
+												loop-value contains "Flow of Water":
+													add (4.5*{trait::Vaporeon::Flow of Water::%player%}) to {_flowofwater}
+											if {_flowofwater} is set:
+												chance of {_flowofwater}%:
+													set {_flow} to true
+											if {_flow} is not true:
+												clear metadata value "CircleOfWater%player%" of {_random}
+											clear {_cascade}
+											#CASCADE
+											loop {_loreheart::*}:
+												loop-value contains "Cascade":
+													add (0.2*{trait::Vaporeon::Cascade::%player%}) to {_cascade}
+											if {_cascade} is set:
+												remove ("%{_cascade}% seconds" parsed as timespan) from cooldown "wybuchowybabelek%player%-%uuid of {_random}%"
+											set {_lore} to "&8Passive Ability%nl%&fInstant cast%nl%&7Cooldown: &fnone%nl%&7Use: &fPassive%nl%<##7cafbf>Healing surrounds your target with a%nl%<##8bbdf0>Circle of Water<##7cafbf>. <##7cafbf>Using <##8bbdf0>Healing Stream <##7cafbf>on%nl%<##7cafbf>an ally affected by <##8bbdf0>Circle of Water <##7cafbf>will%nl%<##7cafbf>detonate the circle, healing its target%nl%<##7cafbf>by an additional &f%{_healcircle}% <##7cafbf>HP." 
+											Heal(player, {_x}, {_healcircle}, "Circle of Water", "<##7cafbf>", {_lore})
+											play sound "entity.player.splash.high_speed" with volume 3 and pitch 1 at {_random}
+									#BOUND MOLECULES
+									loop {_loreheart::*}:
+										loop-value contains "Bound Molecules":
+											add (0.3*{trait::Vaporeon::Bound Molecules::%player%}) to {_molecules}
+									if {_molecules} is set:
+										loop all living entities where [metadata value "CircleOfWater%player%" of input is true]:
+											if health of loop-entity < (0.5*max health of loop-entity):
+												set {_molecules} to {_molecules}*{_mastery}
+											chance of {_crit}%:
+												set {_molecules} to {_molecules}*2
+											Overhealing(player, loop-entity, {_molecules})
+											if {_molecules} > ((max health of loop-entity) - (health of loop-entity)):
+												set {_molecules} to ((max health of loop-entity) - (health of loop-entity))
+												if {_molecules} < 0:
+													set {_molecules} to 0
+											heal loop-entity by {_molecules}
+											HealAssist(player, loop-entity)
+											set {_lore} to "<##7cafbf>Bound Molecules%nl%<##7cafbf>Uzdrawiający Strumień &7leczy wszystkich sojuszników%nl%&7z aktywnym <##7cafbf>Kołem Wody &7o &f%{_molecules}% &7zdrowia."
+											set {_loreEN} to "<##7cafbf>Bound Molecules%nl%<##7cafbf>Healing Stream &7heals all allies with%nl%<##7cafbf>Circle of Water &7active by &f%{_molecules}% &7health."
+											HealRefresh(player, {_molecules})
+											if metadata value "DungeonInstance" of player is set:
+												DungeonHeal(player, loop-entity, {_molecules}, "Bound Molecules")
+											if loop-entity is a player:
+												if {_molecules} > 0:
+													if {language::%loop-entity%} = "English":
+														send formatted "%{kartacolor::%player%}%%player% &fhealed you. <tooltip:%{_loreEN}%>(<##baff8c>+%{_molecules}% HP&f)" to loop-entity
+													else:
+														send formatted "%{kartacolor::%player%}%%player% &fuleczył cię. <tooltip:%{_lore}%>(<##baff8c>+%{_molecules}% HP&f)" to loop-entity
+											if {_molecules} > 0:
+												add {_molecules} to {healtotal::%player%}
+												add {_molecules} to {healcard::%{kartaname::%player%}%::%{_id}%}
+												add {_molecules} to {healcard::%{kartaname::%player%}%::%{_id}%::Bound Molecules}
+									if metadata value "CircleOfWater%player%" of {_x} is not set:
+										set metadata value "CircleOfWater%player%" of {_x} to true
+										CircleOfWater({_x}, player)
+									else:
+										#FLOW OF WATER
+										loop {_loreheart::*}:
+											loop-value contains "Flow of Water":
+												add (4.5*{trait::Vaporeon::Flow of Water::%player%}) to {_flowofwater}
+										if {_flowofwater} is set:
+											chance of {_flowofwater}%:
+												set {_flow} to true
+										if {_flow} is not true:
+											clear metadata value "CircleOfWater%player%" of {_x}
+										#CASCADE
+										loop {_loreheart::*}:
+											loop-value contains "Cascade":
+												add (0.2*{trait::Vaporeon::Cascade::%player%}) to {_cascade}
+										if {_cascade} is set:
+											remove ("%{_cascade}% seconds" parsed as timespan) from cooldown "wybuchowybabelek%player%-%uuid of {_x}%"
+										if {healingstream::charges::%player%} < {_maxCharges}:
+											if {_drops} is true:
+												loop all items in the inventory of player:
+													if tag "Healing Stream" of nbt of loop-item is set:
+														set the cooldown of loop-item for player to 0 seconds
+														stop loop
+												add 1 to {healingstream::charges::%player%}
+												give 1 of player's tool to player
+										if health of {_x} < (0.5*max health of {_x}):
+											set {_healcircle} to {_healcircle}*{_mastery}
+										chance of {_crit}%:
+											set {_healcircle} to {_healcircle}*2
+										Overhealing(player, {_x}, {_healcircle})
+										if {_healcircle} > ((max health of {_x}) - (health of {_x})):
+											set {_healcircle} to ((max health of {_x}) - (health of {_x}))
+											if {_healcircle} < 0:
+												set {_healcircle} to 0
+										heal {_x} by {_healcircle}
+										HealAssist(player, {_x})
+										set {_lore} to "&8Passive Ability%nl%&fInstant cast%nl%&7Cooldown: &fnone%nl%&7Use: &fPassive%nl%<##7cafbf>Healing surrounds your target with a%nl%<##8bbdf0>Circle of Water<##7cafbf>. <##7cafbf>Using <##8bbdf0>Healing Stream <##7cafbf>on%nl%<##7cafbf>an ally affected by <##8bbdf0>Circle of Water <##7cafbf>will%nl%<##7cafbf>detonate the circle, healing its target%nl%<##7cafbf>by an additional &f%{_healcircle}% <##7cafbf>HP." 
+										HealRefresh(player, {_healcircle})
+										if metadata value "DungeonInstance" of player is set:
+											DungeonHeal(player, {_x}, {_healcircle}, "Circle of Water")
+										if {_x} is a player:
+											if {_healcircle} > 0:
+												send formatted "%{kartacolor::%player%}%%player% &fhealed you. <tooltip:%{_lore}%>(<##baff8c>+%{_healcircle}% HP&f)" to {_x}
+										if {_healcircle} > 0:
+											add {_healcircle} to {healtotal::%player%}
+											add {_healcircle} to {healcard::%{kartaname::%player%}%::%{_id}%}
+											add {_healcircle} to {healcard::%{kartaname::%player%}%::%{_id}%::Circle of Water}
+										play sound "entity.player.splash.high_speed" with volume 3 and pitch 1 at {_x}
+									draw 3 of heart particle at location 0.5 above {_x} with offset vector(0.6, 0.9, 0.6)
 								else:
-									set {healingstream::charges::%player%} to 2
-					else:
-						if {language::%player%} = "English":
-							send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to player
-						else:
-							send "&8[&6Earthcraft&8] &6Nie masz wybranej wymaganej karty, by móc użyć tej umiejętności." to player
-						play sound "block.glass.break" with volume 3 and pitch 0 to player
-	if player's tool's name is "<##7cafbf>Explosive Bubble" or "<##7cafbf>Wybuchowy Bąbelek":
+									set {_x}'s last damage cause to sweep attack
+									set metadata value "LastDamageCause" of {_x} to "<##7cafbf>Healing Stream"
+									set metadata value "LastDamageCauseLore" of {_x} to {_lore}
+									set metadata value "Element" of player to "Water"
+									make player damage {_x} by {_heal}*2
+									if {_coalescingTides} is true:
+										play sound "entity.generic.splash" with volume 3 and pitch 1 at {_x}
+										set {_lore} to "&8Ability%nl%&f%{_charges}% Charges%nl%&fInstant cast%nl%&7Cooldown: &f%{_cd}%%nl%&7Use: &fRMB%nl%<##7cafbf>Sends a healing stream towards an ally.%nl%<##7cafbf>Upon reaching its target, the stream will%nl%<##7cafbf>restore &f%{_heal}*0.3% <##7cafbf>HP to the affected ally."
+										set {_coalescingRadius} to 5
+										coalescingTides(player, {_x}, {_coalescingRadius}, {_heal}, {_lore}, "damage")
+										broadcast "yes"
+				else:
+					if {tekstcd::%player%} = true:
+						set {_charges} to metadata value "HealingStreamCharges" of player
+						if {_charges} = 0:
+							set {_cdd} to cooldown "Healing Stream%player%"
+							send "<##7cafbf>You must wait &f%{_cdd}% <##7cafbf>to use this ability." to player
+					stop
+			else:
+				if {language::%player%} = "English":
+					send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to player
+				else:
+					send "&8[&6Earthcraft&8] &6Nie masz wybranej wymaganej karty, by móc użyć tej umiejętności." to player
+				play sound "block.glass.break" with volume 3 and pitch 0 to player
+	if player's tool's name is "<##7cafbf>Explosive Bubble":
 		cancel event
 		if {kartaname::%player%} = "Vaporeon":
 			if CanUseAbility(player) != false:
@@ -452,9 +394,11 @@ on rightclick:
 							set {_loreheart::*} to lore of player's chestplate
 				set {_crit} to ({criticalhit::%player%}/10)
 				set {_pospiech} to 1 + (({haste::%player%}/4))/100
-				set {_cd} to "%3/{_pospiech}%"
+				set {_cd} to "%1.5/{_pospiech}%"
 				set {_cdtarget} to "%20/{_pospiech}%"
-				set {_wait} to 10/{_pospiech}
+				set {_cdLore} to "%{_cd}% seconds" parsed as timespan
+				set {_cdtargetLore} to "%{_cdtarget}% seconds" parsed as timespan
+				set {_wait} to 8/{_pospiech}
 				set {_shield} to 3 + ({utility::%player%}/52) + ({versatility::%player%}/156) + {primarystat::%player%}/26
 				set {_damage} to 1 + ({damage::%player%}/60) + ({versatility::%player%}/180) + {primarystat::%player%}/30
 				set {_mastery} to 1.1 + ({mastery::%player%}/370)
@@ -475,10 +419,28 @@ on rightclick:
 							set {tarczavar::%{_uuid}%} to true
 							set {tarczavaporeon::%{_uuid}%} to true
 							AbilityUse(player, "Explosive Bubble")
+							if tag "Talents;Row 1" of nbt of {karta::%player%} = "Undercurrent":
+								set {_undercurrent} to metadata value "Undercurrent" of player
+								add 1 to {_undercurrent}
+								set metadata value "Undercurrent" of player to {_undercurrent}
 							#DOWNPOUR
 							loop {_loreheart::*}:
 								loop-value contains "Downpour":
 									add (0.5*{trait::Vaporeon::Downpour::%player%}) to {_downpour}
+							if tag "Talents;Row 2" of nbt of {karta::%player%} is set:
+								send title " " with subtitle "" to player for 1 minute with fade in 0.25 second and fade out 0 second
+								set {_tidalWaves} to metadata value "TidalWaves" of player
+								if {_tidalWaves} is not set:
+									set {_tidalWaves} to 0
+								if tag "Talents;Row 4" of nbt of {karta::%player%} = "Coalescing Tides":
+									set {_tidalWavesMax} to 4
+								else:
+									set {_tidalWavesMax} to 2
+								if {_tidalWaves} < {_tidalWavesMax}:
+									add 1 to {_tidalWaves}
+								set metadata value "TidalWaves" of player to {_tidalWaves}
+								play sound "skill.vaporeon_tidalwaves" with volume 3 and pitch 1 to player
+
 							if {_downpour} is set:
 								set {_yb} to block 2 blocks above {_i}
 								set {_zb} to block above {_yb}		
@@ -502,9 +464,9 @@ on rightclick:
 								HealRefresh(player, {_downpour})
 								if metadata value "DungeonInstance" of player is set:
 									DungeonHeal(player, {_i}, {_downpour}, "Downpour")
-								if {circleofwater::%uuid of {_i}%} is not set:
-									set {circleofwater::%uuid of {_i}%} to true
-									CircleOfWater({_i})
+								if metadata value "CircleOfWater%player%" of {_i} is not set:
+									set metadata value "CircleOfWater%player%" of {_i} to true
+									CircleOfWater({_i}, player)
 								if {_i} is a player:
 									if {_downpour} > 0:
 										if {language::%{_i}%} = "English":
@@ -516,12 +478,8 @@ on rightclick:
 									add {_downpour} to {healcard::%{kartaname::%player%}%::%{_id}%}
 									add {_downpour} to {healcard::%{kartaname::%player%}%::%{_id}%::Downpour}
 							HealAssist(player, {_i})
-							set {_lore} to "&8Umiejętność%nl%&fInstant cast%nl%&7Cooldown: &f%{_cd}% sekund | %{_cdtarget}% sekund na cel%nl%&7Użycie: &fPPM%nl%<##7cafbf>Otacza wybranego sojusznika wybuchowym bąbelkiem,%nl%<##7cafbf>zapewniając tarczę absorbującą &f%{_shield}% <##7cafbf>obrażeń.%nl%<##7cafbf>Po &f%{_wait}% sekundach <##7cafbf>bąbelek wybucha, zadającc%nl%&f%{_damage}% + pozostała wartość tarczy <##7cafbf>jako%nl%<##1ebbd7>Wodne <##7cafbf>obrażenia pobliskim wrogom."
-							set {_loreEN} to "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cd}% seconds | %{_cdtarget}% seconds per target%nl%&7Use: &fRMB%nl%<##7cafbf>Wraps an ally in an explosive bubble,%nl%<##7cafbf>which absorbs &f%{_shield}% <##7cafbf>damage.%nl%<##7cafbf>After &f%{_wait}% seconds<##7cafbf>, the bubble explodes,%nl%<##7cafbf>dealing &f%{_damage}% + remaining shield amount <##7cafbf>as <##1ebbd7>Water <##7cafbf>damage%nl%<##7cafbf>to enemies nearby."
-							if {language::%player%} = "English":
-								set lore of player's tool to {_loreEN}
-							else:
-								set lore of player's tool to {_lore}
+							set {_lore} to  "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdLore}% | %{_cdtargetLore}% per target%nl%&7Use: &fRMB%nl%<##7cafbf>Wraps an ally in an explosive bubble, which%nl%<##7cafbf>absorbs &f%{_shield}% <##7cafbf>damage. <##7cafbf>After &f%{_wait}% sec<##7cafbf>, the bubble%nl%<##7cafbf>explodes, <##7cafbf>dealing &f%{_damage}% + (remaining shield value)%nl%<##7cafbf>as <##1ebbd7>Water <##7cafbf>damage to nearby enemies.%nl% %nl%<##7cafbf>When <##7cafbf>Explosive Bubble <##7cafbf>is reapplied, the shield%nl%<##7cafbf>amount will be added to the existing shield,%nl%<##7cafbf>but the duration will not be refreshed."
+							set lore of player's tool to {_lore}
 							chance of {_crit}%:
 								set {_shield} to {_shield}*2
 							if health of {_i} > (0.5*max health of {_i}):
@@ -541,21 +499,9 @@ on rightclick:
 							else:
 								send action bar "<##d6dcff>TARCZA: %{tarcza::%{_uuid}%}%" to {_i}
 							play sound "block.bubble_column.whirlpool_inside" with volume 3 and pitch 1 at {_i}
-							add "%{_uuid}%bubble" to {particle::vaporeon::%player%::*}
-							add "%{_uuid}%splash" to {particle::vaporeon::%player%::*}
-							set {_shape} to a sphere with radius 3
-							set particle of {_shape} to bubble
-							draw {_shape} at {_i}
-							set {_shape} to a sphere with radius 3
-							set particle of {_shape} to splash
-							draw {_shape} at {_i}
-							#drawRings particle "waterbubble", center {_i}, id "%{_uuid}%bubble", rainbowMode false, randomRotation true, animated false, radius 1, ringCount 4, ringDensity 20, visibleRange 100, pulseDelay 2
-							#drawRings particle "watersplash", center {_i}, id "%{_uuid}%splash", rainbowMode true, randomRotation true, animated false, radius 1, ringCount 4, ringDensity 10, visibleRange 100, pulseDelay 1
-							wait ("%{_wait}% seconds" parsed as timespan)
-							#stopEffect "%{_uuid}%bubble"
-							#stopEffect "%{_uuid}%splash"
-							remove "%{_uuid}%bubble" from {particle::vaporeon::%player%::*}
-							remove "%{_uuid}%splash" from {particle::vaporeon::%player%::*}
+							set {_waitTime} to ("%{_wait}% seconds" parsed as timespan)
+							explosiveBubbleParticles({_i}, {_waitTime})
+							wait {_waitTime}
 							#HEAVY BUBBLES
 							loop {_loreheart::*}:
 								loop-value contains "Heavy Bubbles":
@@ -586,6 +532,10 @@ on rightclick:
 								clear {tarczavaporeon::%{_uuid}%}
 								clear {-tarczacaster::%{_uuid}%-%{_pid}%-Explosive Bubble}
 								send action bar " " to {_i}
+								if tag "Talents;Row 1" of nbt of {karta::%player%} = "Undercurrent":
+									set {_undercurrent} to metadata value "Undercurrent" of player
+									remove 1 from {_undercurrent}
+									set metadata value "Undercurrent" of player to {_undercurrent}
 						else:
 							if {tekstcd::%player%} = true:
 								set {_cdd} to cooldown "wybuchowybabelek%player%-%{_uuid}%"
@@ -621,14 +571,8 @@ on rightclick:
 				set {_crit} to ({criticalhit::%player%}/10)
 				set {_pospiech} to 1 + (({haste::%player%}/4))/100
 				set {_cd} to "%300/{_pospiech}% seconds" parsed as timespan
-				if {language::%player%} = "Polski":
-					set {_cdd} to "%{_cd}%"
-					replace all "minutes" in {_cd} with "minut"
-					replace all "seconds" in {_cd} with "sekund"
-					replace all "and" in {_cd} with "i"
 				set {_mastery} to 1.1 + ({mastery::%player%}/370)
-				set {_lore} to "&8Umiejętność%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdd}% %nl%&7Użycie: &fPPM%nl%<##7cafbf>Zamienia wszystkie tarcze na leczenie%nl%<##7cafbf>w ogromnym zasięgu wokół gracza. Leczenie%nl%<##7cafbf>z tej umiejętności może zostać wzmocnione przez%nl%<##7cafbf>mastery: Water Cycle i może trafić krytycznie."
-				set {_loreEN} to "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cd}%%nl%&7Use: &fRMB%nl%<##7cafbf>Reverses all shields to healing in a huge%nl%<##7cafbf>radius around the player. Healing from this%nl%<##7cafbf>ability benefits from Mastery: Water Cycle%nl%<##7cafbf>and can critically strike."
+				set {_lore} to "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cd}%%nl%&7Use: &fRMB%nl%<##7cafbf>Reverses all shields to healing in a huge%nl%<##7cafbf>radius around the player. Healing from this%nl%<##7cafbf>ability benefits from <##8bbdf0>Mastery: Water Cycles%nl%<##7cafbf>and can &f Critically Strike<##7cafbf>.%nl% %nl%<##8bbdf0>Reversal <##7cafbf>dispels all &fCurse<##7cafbf>, &fDisease<##7cafbf>, &fMagic%nl%<##7cafbf>and &fPoison <##7cafbf>debuffs from affected allies."
 				if {language::%player%} = "English":
 					set lore of player's tool to {_loreEN}
 				else:
@@ -641,67 +585,45 @@ on rightclick:
 					play sound "entity.elder_guardian.curse" with volume 5 and pitch 2 at player
 					SixStar(player)
 					play sound "entity.dragon_fireball.explode" with volume 5 and pitch 1.5 at player
-					loop all living entities in radius 100 around the player:
-						if {tarcza::%uuid of loop-entity%} > 0:
-							set {_tarcza} to {tarcza::%uuid of loop-entity%}
-							set {tarcza::%uuid of loop-entity%} to 0
-							loop {particle::vaporeon::%player%::*}:
-								if loop-value-2 contains uuid of loop-entity:
-									stopEffect "%uuid of loop-entity%bubble"
-									stopEffect "%uuid of loop-entity%splash"
-									remove loop-value-2 from {particle::vaporeon::%player%::*}
-							if loop-entity is alive:
-								set {_heal} to {_tarcza}
-								#HYDROTHERAPY
-								loop {_loreheart::*}:
-									loop-value-2 contains "Hydrotherapy":
-										add (2*{trait::Vaporeon::Hydrotherapy::%player%}) to {_hydrotherapy}
-								#HIGH TIDE
-								loop {_loreheart::*}:
-									loop-value-2 contains "High Tide":
-										add (0.8*{trait::Vaporeon::High Tide::%player%}) to {_heal}
-								if health of loop-entity < (0.5*max health of loop-entity):
-									set {_heal} to {_heal}*{_mastery}
-								chance of {_crit}%:
-									set {_heal} to {_heal}*2
-								Overhealing(player, loop-entity, {_heal})
-								if {_heal} > ((max health of loop-entity) - (health of loop-entity)):
-									set {_heal} to ((max health of loop-entity) - (health of loop-entity))
-									if {_heal} < 0:
-										set {_heal} to 0
-								heal loop-entity by {_heal}
-								HealAssist(player, loop-entity)
-								HealRefresh(player, {_heal})
-								if metadata value "DungeonInstance" of player is set:
-									DungeonHeal(player, loop-entity, {_heal}, "Reversal")
-								if loop-entity is a player:
-									if {_heal} > 0:
-										if {language::%loop-entity%} = "English":
-											send formatted "%{kartacolor::%player%}%%player% &fhealed you. <tooltip:<##7cafbf>Reversal%nl%%{_loreEN}%>(<##baff8c>+%{_heal}% HP&f)" to loop-entity
-										else:
-											send formatted "%{kartacolor::%player%}%%player% &fuleczył cię. <tooltip:<##7cafbf>Reversal%nl%%{_lore}%>(<##baff8c>+%{_heal}% HP&f)" to loop-entity
-								if {_heal} > 0:
-									add {_heal} to {healtotal::%player%}
-									add {_heal} to {healcard::%{kartaname::%player%}%::%{_id}%}
-									add {_heal} to {healcard::%{kartaname::%player%}%::%{_id}%::Reversal}
-								draw 15 of dust_color_transition using dustTransition(lime, lime, 1) at location of loop-entity with offset vector(0.6, 0.9, 0.6)
-								if tag "custom;ECMob" of nbt of loop-entity is not set:
-									if {circleofwater::%uuid of loop-entity%} is not set:
-										set {circleofwater::%uuid of loop-entity%} to true
-										CircleOfWater(loop-entity)
-							#drawLine particle redstone, RGB 47, 69, 235, center location of player, target location of loop-entity's head, id "%uuid of loop-entity%reversal", rainbowMode false, solid true, density 25, length 0, zigZag count 5, height 0, visibleRange 32, displacementXYZ 0, 1, 0, pulseDelay 3
-							#set {_part::*} to {_part::*} and uuid of loop-entity
-							if {tarczavar::%uuid of loop-entity%} is true:
-								set {tarczavar::%uuid of loop-entity%} to false
-							if {tarczavaporeon::%uuid of loop-entity%} is true:
-								clear {tarczavaporeon::%uuid of loop-entity%}
-							if loop-entity is a player:
-								send action bar " " to loop-entity
-							clear {_heal}
+					loop all living entities in radius 100 around the player where [{tarcza::%uuid of input%} > 0]:
+						set {_tarcza} to {tarcza::%uuid of loop-entity%}
+						set {tarcza::%uuid of loop-entity%} to 0
+						loop {particle::vaporeon::%player%::*}:
+							if loop-value-2 contains uuid of loop-entity:
+								#stopEffect "%uuid of loop-entity%bubble"
+								#stopEffect "%uuid of loop-entity%splash"
+								remove loop-value-2 from {particle::vaporeon::%player%::*}
+						if loop-entity is alive:
+							set {_heal} to {_tarcza}
+							if metadata value "Undercurrent" of player > 0:
+								set {_undercurrent} to metadata value "Undercurrent" of player
+								set {_heal} to {_heal}*(1 + 0.08*{_undercurrent})
+								broadcast "UND %{_undercurrent}%"
+							#HYDROTHERAPY
+							loop {_loreheart::*}:
+								loop-value-2 contains "Hydrotherapy":
+									add (2*{trait::Vaporeon::Hydrotherapy::%player%}) to {_hydrotherapy}
+							#HIGH TIDE
+							loop {_loreheart::*}:
+								loop-value-2 contains "High Tide":
+									add (0.8*{trait::Vaporeon::High Tide::%player%}) to {_heal}
+							Heal(player, loop-entity, {_heal}, "Reversal", "<##7cafbf>", {_lore})
+							if tag "custom;ECMob" of nbt of loop-entity is not set:
+								if metadata value "CircleOfWater%player%" of loop-entity is not set:
+									set metadata value "CircleOfWater%player%" of loop-entity to true
+									CircleOfWater(loop-entity, player)
+						#drawLine particle redstone, RGB 47, 69, 235, center location of player, target location of loop-entity's head, id "%uuid of loop-entity%reversal", rainbowMode false, solid true, density 25, length 0, zigZag count 5, height 0, visibleRange 32, displacementXYZ 0, 1, 0, pulseDelay 3
+						#set {_part::*} to {_part::*} and uuid of loop-entity
+						if {tarczavar::%uuid of loop-entity%} is true:
+							set {tarczavar::%uuid of loop-entity%} to false
+						if {tarczavaporeon::%uuid of loop-entity%} is true:
+							clear {tarczavaporeon::%uuid of loop-entity%}
+						if loop-entity is a player:
+							send action bar " " to loop-entity
+						clear {_heal}
 					clear {particle::vaporeon::%player%::*}
 					if {_hydrotherapy} is set:
-						set {_lore} to "<##7cafbf>Reversal &7przywraca &f%(2*{trait::Vaporeon::Hydrotherapy::%player%})% HP &7losowemu%nl%&7sojusznikowi za każdą odwróconą tarczę."
-						set {_loreEN} to "<##7cafbf>Reversal &7restores &f%(2*{trait::Vaporeon::Hydrotherapy::%player%})% HP &7to a random%nl%&7nearby ally for each shield reversed."
+						set {_lore} to "<##7cafbf>Reversal &7restores &f%(2*{trait::Vaporeon::Hydrotherapy::%player%})% HP &7to a random%nl%&7nearby ally for each shield reversed."
 						set {_players::*} to all players in radius 50 of player where [(health of input) < (max health of input)]
 						if {_players::*} is not set:
 							set {_players::*} to all players in radius 50 of player
@@ -725,15 +647,12 @@ on rightclick:
 						HealRefresh(player, {_hydrotherapy})
 						if metadata value "DungeonInstance" of player is set:
 							DungeonHeal(player, {_random}, {_hydrotherapy}, "Hydrotherapy")
-						if {circleofwater::%uuid of {_random}%} is not set:
-							set {circleofwater::%uuid of {_random}%} to true
-							CircleOfWater({_random})
+						if metadata value "CircleOfWater%player%" of {_random} is not set:
+							set metadata value "CircleOfWater%player%" of {_random} to true
+							CircleOfWater({_random}, player)
 						if {_random} is a player:
 							if {_hydrotherapy} > 0:
-								if {language::%{_random}%} = "English":
-									send formatted "%{kartacolor::%player%}%%player% &fhealed you. <tooltip:<##7cafbf>Hydrotherapy%nl%%{_loreEN}%>(<##baff8c>+%{_hydrotherapy}% HP&f)" to {_random}
-								else:
-									send formatted "%{kartacolor::%player%}%%player% &fuleczył cię. <tooltip:<##7cafbf>Hydrotherapy%nl%%{_lore}%>(<##baff8c>+%{_hydrotherapy}% HP&f)" to {_random}
+								send formatted "%{kartacolor::%player%}%%player% &fhealed you. <tooltip:<##7cafbf>Hydrotherapy%nl%%{_lore}%>(<##baff8c>+%{_hydrotherapy}% HP&f)" to {_random}
 						if {_hydrotherapy} > 0:
 							add {_hydrotherapy} to {healtotal::%player%}
 							add {_hydrotherapy} to {healcard::%{kartaname::%player%}%::%{_id}%}
@@ -756,29 +675,38 @@ on rightclick:
 			else:
 				send "&8[&6Earthcraft&8] &6Nie masz wybranej wymaganej karty, by móc użyć tej umiejętności." to player
 			play sound "block.glass.break" with volume 3 and pitch 0 to player
-function HealingStreamCharge(p: player):
-	wait 8 seconds
-	if {healingstream::charges::%{_p}%} < 1:
-		add 1 to {healingstream::charges::%{_p}%}
+
+function HealingStreamRecharge(p: player, cd: timespan):
+	wait {_cd}
+	set {_charges} to metadata value "HealingStreamCharges" of {_p}
+	add 1 to {_charges}
+	set metadata value "HealingStreamCharges" of {_p} to {_charges}
 	loop all items in the inventory of {_p}:
-		if loop-value's name contains "<##7cafbf>Healing Stream" or "<##7cafbf>Uzdrawiający Strumień":
-			set {_am} to item amount of loop-value
-			if {_am} < 2:
-				if {healingstream::charges::%{_p}%} > 0:
-					give 1 of loop-value to {_p}
-					if {language::%{_p}%} = "English":
-						if {healingstream::charges::%{_p}%} = 1:
-							set line 5 of lore of loop-value to "&f%({healingstream::charges::%{_p}%} + 1)% Charges"
-						if {healingstream::charges::%{_p}%} = 0:
-							set line 5 of lore of loop-value to "&f%({healingstream::charges::%{_p}%} + 1)% Charge"
-					else:
-						if {healingstream::charges::%{_p}%} = 1:
-							set line 5 of lore of loop-value to "&f%{healingstream::charges::%{_p}%}% Ładunki"
-						if {healingstream::charges::%{_p}%} = 0:
-							set line 5 of lore of loop-value to "&f%{healingstream::charges::%{_p}%}% Ładunek"
-					stop loop
-function CircleOfWater(e: entity):
-	while {circleofwater::%uuid of {_e}%} is true:
+		if tag "Healing Stream" of nbt of (1 of loop-item) is set:
+			if {_charges} > 0:
+				set item amount of loop-item to {_charges}
+				if {_charges} = 1:
+					set line 2 of lore of loop-item to "&f%{_charges}% Charge"
+				else:
+					set line 2 of lore of loop-item to "&f%{_charges}% Charges"
+				reset item cooldown of loop-item for {_p}
+				clear cooldown "Healing Stream%{_p}%"
+			else:
+				set line 2 of lore of loop-item to "&f%{_charges}% Charges"
+			stop loop
+
+function isCastableVaporeon(p: player) :: boolean:
+    if metadata value "ShadowyInsight" of {_p} = true:
+        set {_castable} to true
+    else:
+        if metadata value "HealingStreamCharges" of {_p} > 0:
+            set {_castable} to true
+    if {_castable} is not set:
+        set {_castable} to false
+    return {_castable}
+						
+function CircleOfWater(e: entity, p: player):
+	while metadata value "CircleOfWater%{_p}%" of {_e} is true:
 		if {_e} is alive:
 			set {_y} to 0
 			loop 45 times:
@@ -788,10 +716,132 @@ function CircleOfWater(e: entity):
 				rotate {_v} around y-axis by {_y}
 				add 8 to {_y}
 				draw 1 of dust using dustOption(blue, 1) at {_x} ~ {_v}
-				stop loop if {circleofwater::%uuid of {_e}%} is not true
+				stop loop if metadata value "CircleOfWater%{_p}%" of {_e} is not true
 				wait 1 tick
 		else:
 			stop loop
+
+function Tidewaters(p: player, x: entity, heal: number):
+	set {_haste} to 1 + (({haste::%{_p}%}/4))/100
+	set {_cd} to "%3/{_haste}% seconds" parsed as timespan
+	set {_healValue} to {_heal}*0.35
+	wait {_cd}
+	play sound "skill.vaporeon_healingstream_cast" with volume 3 and pitch 1.8 at {_p}
+	loop blocks between {_p} and {_x}:
+		draw 2 of dust using dustOption((rgb 47, 69, 235), 1) at location of loop-block with offset vector(0.05, 0.05, 0.05) with extra 0.01
+		draw 2 of bubble particle at location of loop-block with offset vector(0.15, 0.15, 0.15) with extra 0.03
+		wait 1 tick
+	if {_x} is alive:
+		play sound "skill.vaporeon_healingstream_hit" with volume 5 and pitch 1.8 at {_x}
+		set {_lore} to "&8Talent%nl%&fInstant cast%nl%&7Cooldown: &fnone%nl%&7Use: &fPassive%nl%<##7cafbf>Healing Stream sends a second stream of%nl%&7revitalising waters at the affected ally after%nl%&f%{_cd}%&7, reduced by <##19943e> Haste&7. The second%nl%&7stream restores &f35%% &7of the initial value as HP%nl%&7to the ally."
+		if tag "custom;ECMob" of nbt of {_x} is not set:
+			Heal({_p}, {_x}, {_healValue}, "Tidewaters", "<##7cafbf>", {_lore})
+		else:
+			set {_x}'s last damage cause to sweep attack
+			set metadata value "LastDamageCause" of {_x} to "<##7cafbf>Tidewaters"
+			set metadata value "LastDamageCauseLore" of {_x} to {_lore}
+			set metadata value "Element" of {_p} to "Water"
+			make {_p} damage {_x} by {_healValue}*2
+		broadcast {_healValue}
+
+function Heal(p: player, x: entity, heal: number, spell: text, col: text, lore: text, sendMessage: boolean = true):
+	set {_id} to line 19 of lore of {karta::%{_p}%}
+	Overhealing({_p}, {_x}, {_heal})
+	if {_heal} > ((max health of {_x}) - (health of {_x})):
+		set {_heal} to ((max health of {_x}) - (health of {_x}))
+		if {_heal} < 0:
+			set {_heal} to 0
+	heal {_x} by {_heal}
+	HealAssist({_p}, {_x})
+	HealRefresh({_p}, {_heal})
+	if metadata value "DungeonInstance" of {_p} is set:
+		DungeonHeal({_p}, {_x}, {_heal}, "%{_spell}%")
+	if {_heal} > 0:
+		if {_x} is a player:
+			if {_sendMessage} != false:
+				send formatted "%{kartacolor::%{_p}%}%%{_p}% &fhealed you. <tooltip:%{_col}%%{_spell}%%nl%%{_lore}%>(<##baff8c>+%{_heal}% HP&f)" to {_x}
+		add {_heal} to {healtotal::%{_p}%}
+		add {_heal} to {healcard::%{kartaname::%{_p}%}%::%{_id}%}
+		add {_heal} to {healcard::%{kartaname::%{_p}%}%::%{_id}%::%{_spell}%}
+
+function explosiveBubbleParticles(e: entity, wait: timespan):
+	set {_uuid} to uuid of {_e}
+	while {tarczavaporeon::%{_uuid}%} is true:
+		set {_shape} to a sphere with radius 2
+		set particle of {_shape} to bubble
+		draw {_shape} at {_e}
+		set {_shape} to a sphere with radius 2
+		set particle of {_shape} to splash
+		draw {_shape} at {_e}
+		wait 1 seconds
+	set {_shape} to a sphere with radius 2
+	set particle of {_shape} to cloud particle
+	draw {_shape} at {_e}
+
+function TargetHealingStream(p: player, length: number, passThrough: boolean) :: entity:
+	set {_x} to 0
+	set {_l} to 0
+	loop {_length} times:
+		add 1 to {_x}
+		add 0.25 to {_l}
+		set {_rg%{_x}%} to location {_l} meters infront of {_p}
+		set {_rg%{_x}%} to location 1.25 meters above {_rg%{_x}%}
+	set {_x} to 0
+	loop {_length} times:
+		add 1 to {_x}
+		loop entities in radius 1 around {_rg%{_x}%}:
+			if loop-entity is not {_p}:
+				if loop-entity is not an armor stand:
+					if loop-entity is a living entity:
+						if loop-entity is not an arrow:
+							if loop-entity is alive:
+								if tag "custom;ECMob" of nbt of loop-entity is not set:
+									set {_entity} to loop-entity
+									return {_entity}
+									stop
+								else:
+									if tag "Talents;Row 5" of nbt of {karta::%{_p}%} = "Tidebringer":
+										set {_entity} to loop-entity
+										return {_entity}
+										stop
+		if {_passThrough} is not true:
+			loop blocks in radius 0.5 around {_rg%{_x}%}:
+				if loop-block is solid:
+					stop
+	return {_entity}
+
+function coalescingTides(p: player, x: entity, radius: number, heal: number, lore: string, type: string):
+	set {_heal} to {_heal}*0.3
+	if {_type} = "heal":
+		set {_allies::*} to loopAlliesAroundTarget({_x}, {_radius}, false)
+		if size of {_allies::*} > 0:
+			loop {_allies::*}:
+				draw 15 of rain particle at location above loop-value with offset vector(0.5, 0.5, 0.5) with extra 0.03
+				Heal({_p}, loop-value, {_heal}*0.3, "Healing Stream", "<##7cafbf>", {_lore})
+		else:
+			draw 15 of rain particle at location above {_x} with offset vector(0.5, 0.5, 0.5) with extra 0.03
+			Heal({_p}, {_x}, {_heal}*0.3, "Healing Stream", "<##7cafbf>", {_lore})
+	else:
+		set {_enemies::*} to LoopEntitiesAroundTarget({_x}, {_radius}, false)
+		wait 1 tick
+		if size of {_enemies::*} > 0:
+			loop {_enemies::*}:
+				if loop-value is alive:
+					draw 15 of rain particle at location above loop-value with offset vector(0.5, 0.5, 0.5) with extra 0.03
+					set loop-value's last damage cause to sweep attack
+					set metadata value "LastDamageCause" of loop-value to "<##7cafbf>Healing Stream"
+					set metadata value "LastDamageCauseLore" of loop-value to {_lore}
+					set metadata value "Element" of {_p} to "Water"
+					make {_p} damage loop-value by {_heal}*2
+					broadcast "%{_heal}% Coalescing"
+		else:
+			if {_x} is alive:
+				draw 15 of rain particle at location above {_x} with offset vector(0.5, 0.5, 0.5) with extra 0.03
+				set {_x}'s last damage cause to sweep attack
+				set metadata value "LastDamageCause" of {_x} to "<##7cafbf>Healing Stream"
+				set metadata value "LastDamageCauseLore" of {_x} to {_lore}
+				set metadata value "Element" of {_p} to "Water"
+				make {_p} damage {_x} by {_heal}*2
 #KONCEPT PASYWKI (LECZENIE PO TARCZY)
 #HEALING WATERS
 #if {tarcza::%{_uuid}%} > 0:
@@ -861,12 +911,12 @@ function CircleOfWater(e: entity):
 #		set {_x} to target of player
 #		if {mob::%{_x}%} is not true:
 #			set {_cd} to "%8/{_pospiech}% seconds" parsed as timespan
-#			if cooldown "healingstream%player%" is finished:
+#			if cooldown "Healing Stream%player%" is finished:
 #				set {_id} to line 19 of lore of {karta::%player%}
 #				set {_pospiech} to 1 + (({haste::%player%}/4) + ({pospiech::%{_id}%}/4))/100
 #				set {_cd} to "%6/{_pospiech}% seconds" parsed as timespan
 #				set the cooldown of player's held item for player to {_cd}
-#				create cooldown "healingstream%player%" for {_cd}
+#				create cooldown "Healing Stream%player%" for {_cd}
 #				play sound "block.water.ambient" with volume 5 and pitch 1 at player
 #				loop blocks between player and {_x}:
 #					drawDot count 1, particle "redstone", RGB 47, 69, 235, center location of loop-block, rainbowMode false, visibleRange 32, pulseDelay 0, keepFor 5 ticks
@@ -881,7 +931,7 @@ function CircleOfWater(e: entity):
 #			else: 
 #				cancel event
 #				if {tekstcd::%player%} = true:
-#					set {_cdd} to cooldown "healingstream%player%"
+#					set {_cdd} to cooldown "Healing Stream%player%"
 #					if {language::%player%} = "English":
 #						send "<##7cafbf>You must wait &f%{_cdd}%<##7cafbf> to use this ability." to player
 #					else:
