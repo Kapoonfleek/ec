@@ -1,28 +1,5 @@
 function data() :: string:
-	#API
-	
-	#set {_x} to text from "https://worldtimeapi.org/api/timezone/Europe/Amsterdam"
-	#set {_json} to json from {_x}
-	#set {_time} to value "unixtime" of {_json}
-	#add 7200 to {_time}
-	#set {_data} to unix date of {_time} formatted as "HH:mm:ss dd.MM.yyyy"
-
-	#OWN
-
-	set {_t} to now formatted as "HH.mm.ss dd.MM.yyyy"
-	set {_l::*} to "%{_t}%" split at "."
-	set {_x} to {_l::1}
-	set {_x} to {_x} parsed as number
-	add 1 to {_x}
-	if {_x} = 24:
-		set {_x} to 0
-	if {_x} = 25:
-		set {_x} to 1
-	if {_x} = 26:
-		set {_x} to 2
-	if {_x} < 10:
-		set {_x} to "0%{_x}%"
-	set {_data} to "%{_x}%:%join {_l::2} and {_l::3} with ":"%.%join {_l::4} and {_l::5} with "."%"
+	set {_data} to now formatted as "HH:mm:ss dd.MM.yyyy"
 	return {_data}
 
 options:
@@ -92,6 +69,11 @@ function runAt6Announcement():
 		wait 1 second
 	
 on skript start:
+	make embed:
+		set title of embed to {_name} in strict proper case
+		set author of embed to "The server has started!"
+		set embed color of the embed to lime
+	post embed to channel with id "900397064251379752"
 	wait 2 ticks
 	set {-dungeons} to 0
 	execute console command "gamerule naturalRegeneration false"
@@ -204,7 +186,8 @@ on skript start:
 	#	kill loop-value
 	#	clear {leaderboard::*}
 	clear {dmgdealt::*}
-	execute console command "mv load groveofimmemorialruins"
+	#execute console command "mv load groveofimmemorialruins"
+	#execute console command "mv load arcticbattlefield"
 	execute console command "keepchunks keepregion worldguard groveofimmemorialruins groveofimmemorialruins"
 	execute console command "keepchunks keepregion worldguard arcticbattlefield arcticbattlefield"
 	wait 2 seconds
@@ -245,6 +228,11 @@ on skript stop:
 			kill loop-entity
 	clear {lingeringInsanityHaste::*}
 	clear {hasteVoidform::*}
+	make embed:
+		set title of embed to {_name} in strict proper case
+		set author of embed to "The server has stopped!"
+		set embed color of the embed to red
+	post embed to channel with id "900397064251379752"
 	#wait 2 ticks
 	#loop {leaderboard::*}:
 	#	kill loop-value
@@ -255,7 +243,11 @@ on skript stop:
 on join:
 	if player is invulnerable:
 		make player vulnerable
+	set tag "custom;ECMovementSpeed" of nbt of player to player's walking speed
 	set {_month} to getDayMonth("month")
+	if player is not whitelisted:
+		set {_data} to data()
+		log "%{_data}% | %player% joined the server." to "logi/login-nonwhitelisted.log"
 	set {_winter::*} to 12, 1, 2
 	if {_winter::*} contains {_month}:
 		if amount of online players = 1:
@@ -312,13 +304,12 @@ on item despawn:
 
 function notifyPlayerDailyReward(p: player):
 	while {dailyready::%{_p}%} != false:
+		stop loop if metadata value "DailyRewardReminderHidden" of {_p} is set
 		wait 15 minutes
+		stop loop if {dailyready::%{_p}%} = false
 		send " " to {_p}
 		send " " to {_p}
-		if {language::%{_p}%} = "English":
-			send formatted "Reminder: &o<##54d6ff>(<##a3dcff>&o!<##54d6ff>&o) <##a3dcff>&oYou have not yet claimed your daily reward. You can visit the &f&ospawn centre <##a3dcff>&oto do so. <command:/dailyrewardreminder hide><tooltip:&fHides the daily reward reminder for today.>&f(Click here to hide this message)" to {_p}
-		else:
-			send formatted "Przypomnienie: &o<##54d6ff>(<##a3dcff>&o!<##54d6ff>&o) <##a3dcff>&oNie odebrano jeszcze dzisiaj dziennej nagrody. Aby to zrobić, możesz odwiedzić &f&ocentrum spawnu<##a3dcff>&o! <command:/dailyrewardreminder hide><tooltip:&fChowa przypomnienie o dziennej nagrodzie na dziś.>&f(Kliknij tutaj, by schować wiadomość)" to {_p}
+		send formatted "Reminder: &o<##54d6ff>(<##a3dcff>&o!<##54d6ff>&o) <##a3dcff>&oYou have not yet claimed your daily reward. You can visit the &f&ospawn centre <##a3dcff>&oto do so. <command:/dailyrewardreminder hide><tooltip:&fHides the daily reward reminder for today.>&f(Click here to hide this message)" to {_p}
 		set {_pitch} to 1
 		loop 3 times:
 			play sound "block.note_block.cow_bell" with volume 3 and pitch {_pitch} to {_p}
@@ -326,7 +317,7 @@ function notifyPlayerDailyReward(p: player):
 			play sound "block.note_block.didgeridoo" with volume 3 and pitch {_pitch} to {_p}
 			add 0.334 to {_pitch}
 			wait 2 ticks
-		stop loop if metadata value "DailyRewardReminderHidden" of {_p} is set
+		
 
 function doubleExpDayReminder(p: player):
 	wait 6 seconds
