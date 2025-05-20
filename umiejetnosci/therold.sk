@@ -72,6 +72,7 @@ function VoidEruptionAbilityCast(p: player):
                                         stop
                                     set metadata value "Voidform" of {_p} to true
                                     AbilityUse({_p}, "Void Eruption")
+                                    buffRegister({_p}, "Voidform", 5, "", "Value", "active", "-")
                                     play sound "skill.therold.void_eruption_cast" with volume 3 and pitch 1 at {_p}
                                     set {_crit} to 0 + ({criticalhit::%{_p}%}/10)
                                     loop all items in the inventory of {_p}:
@@ -432,7 +433,7 @@ function ShadowWordPainAbilityCast(p: player):
                                 set {_damage} to {_damage}*1.2
                                 set {_damageSWPTicks} to {_damageSWPTicks}*1.2
                             set {_target}'s last damage cause to sweep attack
-                            set {_lore} to "&8Ability%nl%&fInstant cast%nl%&7Global Cooldown: &f%{_cd}%%nl%&7Use: &fRMB%nl%<##613e82>A word of darkness that causes%nl%&f%{_damage}% <##431d53>Ghost <##613e82>damage instantly, and an%nl%<##613e82>additional &f%(round({_SWPDuration}/(2/{_pospiech}), 0))*{_damageSWPTicks}% <##431d53>Ghost <##613e82>damage over%nl%&f%{_SWPDuration}% sec<##613e82>.%nl% %nl%&fGenerates 3 Insanity."
+                            set {_lore} to "&8Ability%nl%&fInstant cast%nl%&7Global Cooldown: &f%{_cd}%%nl%&7Use: &fRMB%nl%<##613e82>A word of darkness that causes%nl%&f%{_damage}% <##431d53>Ghost <##613e82>damage instantly, and%nl%<##613e82>an additional &f%(round({_SWPDuration}/(2/{_pospiech}), 0))*{_damageSWPTicks}% <##431d53>Ghost <##613e82>damage%nl%<##613e82>over &f%{_SWPDuration}% sec<##613e82>.%nl% %nl%&fGenerates 3 Insanity."
                             set metadata value "LastDamageCauseEN" of {_target} to "<##462566>Shadow Word: Pain"
                             set metadata value "LastDamageCause" of {_target} to "<##462566>Shadow Word: Pain"
                             set metadata value "LastDamageCauseLore" of {_target} to {_lore}
@@ -1028,6 +1029,7 @@ on right click:
 function ExitVoidform(p: player):
     clear metadata value "Voidform" of {_p}
     remove levitation from {_p}
+    buffClear({_p}, "Voidform")
     if tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Lingering Insanity":
         set {lingeringInsanityHaste::%{_p}%} to (metadata value "Voidform Stacks" of {_p})*4
         set {hasteVoidform::%{_p}%} to (metadata value "Voidform Stacks" of {_p})*4
@@ -1117,7 +1119,7 @@ function ShadowWordPain(p: player, target: entity):
                     if metadata value "Voidform" of {_p} is set:
                         set {_instantDamage} to {_instantDamage}*1.2
                     set {_gcd} to "%1.5/{_pospiech}% seconds" parsed as timespan
-                    set {_lore} to "&8Ability%nl%&fInstant cast%nl%&7Global Cooldown: &f%{_gcd}%%nl%&7Use: &fRMB%nl%<##613e82>A word of darkness that causes%nl%&f%{_instantDamage}% <##431d53>Ghost <##613e82>damage instantly, and an%nl%<##613e82>additional &f%(round({_SWPDuration}/(2/{_pospiech}), 0))*{_damage}% <##431d53>Ghost <##613e82>damage over%nl%&f%{_SWPDuration}% sec<##613e82>.%nl% %nl%&fGenerates 3 Insanity."
+                    set {_lore} to "&8Ability%nl%&fInstant cast%nl%&7Global Cooldown: &f%{_gcd}%%nl%&7Use: &fRMB%nl%<##613e82>A word of darkness that causes%nl%&f%{_instantDamage}% <##431d53>Ghost <##613e82>damage instantly, and%nl%<##613e82>an additional &f%(round({_SWPDuration}/(2/{_pospiech}), 0))*{_damage}% <##431d53>Ghost <##613e82>damage%nl%<##613e82>over &f%{_SWPDuration}% sec<##613e82>.%nl% %nl%&fGenerates 3 Insanity."
                     set lore of loop-item to {_lore}
                 else if loop-item = purple dye named "<##613e82>Shadowy Apparitions" with nbt from "{CustomModelData:3,ShadowyApparitions:1b}":
                     set {_shadowyApparitionsDamage} to (0.8 + (({damage::%{_p}%}/88) + ({versatility::%{_p}%}/264) + {primarystat::%{_p}%}/44))
@@ -1262,6 +1264,9 @@ function MindFlay(p: player, target: entity, cast: number):
                         set {_voidRayStacks} to metadata value "VoidRayStacks" of {_p}
                         add 1 to {_voidRayStacks}
                         set metadata value "VoidRayStacks" of {_p} to {_voidRayStacks}
+                set {_voidRayStacks} to "%metadata value "VoidRayStacks" of {_p}%"
+                set {_voidRayDuration} to "%metadata value "VoidRayDuration" of {_p}%"
+                buffRegister({_p}, "Void Ray", 1, "", "Stacks", {_voidRayStacks}, durationShort({_voidRayDuration}))
             if canBeCCed({_target}) = true:
                 set {_potion} to potion effect of slowness of tier 3.34 without particles for {_tickTime}
                 add {_potion} to potion effects of {_target}
@@ -1476,12 +1481,14 @@ function TwistOfFate(p: player):
         set metadata value "TwistOfFate" of {_p} to false
         while metadata value "TwistOfFateDuration" of {_p} > 0 seconds:
             set {_duration} to metadata value "TwistOfFateDuration" of {_p}
+            buffRegister({_p}, "Twist", 1, "", "-", "-", durationShort("%{_duration}%"))
             remove 1 second from {_duration}
             set metadata value "TwistOfFateDuration" of {_p} to {_duration}
             wait 1 second
             if 0 seconds >= metadata value "TwistOfFateDuration" of {_p}:
                 clear metadata value "TwistOfFateDuration" of {_p}
                 clear metadata value "TwistOfFate" of {_p}
+                buffClear({_p}, "Twist")
                 stop loop
 
 function ShadowWordVoidRecharge(p: player, cd: timespan):
@@ -1526,12 +1533,14 @@ function VoidRay(p: player):
     if metadata value "VoidRayStacks" of {_p} is set:
         while metadata value "VoidRayDuration" of {_p} > 0 seconds:
             set {_duration} to metadata value "VoidRayDuration" of {_p}
+            buffRegister({_p}, "Void Ray", 1, "", "Stacks", "%metadata value "VoidRayStacks" of {_p}%", durationShort("%{_duration}%"))
             remove 1 second from {_duration}
             set metadata value "VoidRayDuration" of {_p} to {_duration}
             wait 1 second
             if 0 seconds >= metadata value "VoidRayDuration" of {_p}:
                 clear metadata value "VoidRayDuration" of {_p}
                 clear metadata value "VoidRayStacks" of {_p}
+                buffClear({_p}, "Void Ray")
                 stop loop 
 
 function Mania(p: player):
@@ -1540,9 +1549,11 @@ function Mania(p: player):
         playerMoveSpeedUpdate({_p})
         set {_p}'s walking speed to ({_p}'s walking speed)*{_speedBuff}
         set {_p}'s flying speed to ({_p}'s walking speed)*{_speedBuff}
+        buffRegister({_p}, "Mania", 1, "", "Value", "%{insanity::%{_p}%}/5%%% ", "-")
             
 function LingeringInsanity(p: player):
     while {lingeringInsanityHaste::%{_p}%} > 0:
+        buffRegister({_p}, "Lingering", 2, "", "Value", "%{lingeringInsanityHaste::%{_p}%}% ", "-")
         wait 2 seconds
         if {hasteVoidform::%{_p}%} - 4 > 0:
             set {hasteVoidform::%{_p}%} to {hasteVoidform::%{_p}%} - 4
@@ -1551,6 +1562,7 @@ function LingeringInsanity(p: player):
         set {lingeringInsanityHaste::%{_p}%} to {lingeringInsanityHaste::%{_p}%} - 4
     clear metadata value "LingeringInsanity" of {_p}
     clear {lingeringInsanityHaste::%{_p}%}
+    buffClear({_p}, "Lingering")
 
 function ShadowWordDeathRecharge(p: player, cd: timespan):
     wait {_cd}

@@ -66,6 +66,7 @@ function clearCombat(e: entity):
 	clear {dmgbreak::*}
 	clear {shieldcard::*}
 	clear {shieldtotal::*}
+	clearBuffs({_e})
 	set {_id} to line 19 of lore of {karta::%{_e}%}
 	clear {mobilnosc::%{_e}%}
 	clear {wildfireDelphox::%{_e}%}
@@ -218,81 +219,89 @@ function HealAssist(p: player, e: entity):
 on damage:
 	if attacker is a player:
 		if damage is not 0:
-			#set metadata value "ECEngaged" of attacker to true
-			CombatRefresh(victim, attacker)
-			if {incombatwith::%attacker%::*} does not contain victim:
-				add uuid of victim to {incombatwith::%attacker%::*}
-			if metadata value "ECEngaged" of attacker is not set:
-				set {dmgdealt::%attacker%} to 0
-				set {dps::%attacker%} to 0
-				set {_id} to line 19 of lore of {karta::%attacker%}
-				if {kartaname::%attacker%} = "Cresselia":
-					ShootingStars(attacker)
-					AstralPower(attacker)
-				if metadata value "DungeonInstance" of attacker is not set:
-					clear scoreboard of attacker
-				set metadata value "ECEngaged" of attacker to 59
-				if name of attacker = "agnes":
-					set {agnesstop} to true
-					#equip citizen 6512 with diamond sword
-				while metadata value "ECEngaged" of attacker > -1:
-					if metadata value "ECEngaged" of attacker > 0:
-						inCombat(attacker)
-						wait 1 second
-						set {_tag} to metadata value "ECEngaged" of attacker
-						remove 1 from {_tag}
-						set metadata value "ECEngaged" of attacker to {_tag}
+			if victim is not a player:
+				combatInitiate(attacker, victim)
+
+	if victim is a player:
+		if attacker is alive:
+			if damage is not 0:
+				combatInitiate(victim, attacker)
+
+function combatInitiate(att: entity, vict: entity):
+	CombatRefresh({_vict}, {_att})
+	if {incombatwith::%{_att}%::*} does not contain {_vict}:
+		add uuid of {_vict} to {incombatwith::%{_att}%::*}
+	if metadata value "ECEngaged" of {_att} is not set:
+		set {dmgdealt::%{_att}%} to 0
+		set {dps::%{_att}%} to 0
+		set {_id} to line 19 of lore of {karta::%{_att}%}
+		if {kartaname::%{_att}%} = "Cresselia":
+			ShootingStars({_att})
+			AstralPower({_att})
+		if metadata value "DungeonInstance" of {_att} is not set:
+			clear scoreboard of {_att}
+		set metadata value "ECEngaged" of {_att} to 59
+		if name of {_att} = "agnes":
+			set {agnesstop} to true
+			#equip citizen 6512 with diamond sword
+		while metadata value "ECEngaged" of {_att} > -1:
+			if metadata value "ECEngaged" of {_att} > 0:
+				inCombat({_att})
+				wait 1 second
+				set {_tag} to metadata value "ECEngaged" of {_att}
+				remove 1 from {_tag}
+				set metadata value "ECEngaged" of {_att} to {_tag}
+			else:
+				set {_data} to data()
+				if {hps::%{_att}%} > 0:
+					log "%{_data}% %{_att}% exit combat with %{dmgdealt::%{_att}%}% damage dealt, | %{dps::%{_att}%}% DPS, %{healed::%{_att}%}% health healed and %{hps::%{_att}%}% HPS. Fight duration: %{seconds::%{_att}%}% seconds" to "logi/combat/combatdetails %{datatydzien}%-%{datatydzien2}%.log"
+				else:
+					log "%{_data}% %{_att}% exit combat with %{dmgdealt::%{_att}%}% damage dealt and | %{dps::%{_att}%}% DPS. Fight duration: %{seconds::%{_att}%}% seconds" to "logi/combat/combatdetails %{datatydzien}%-%{datatydzien2}%.log"
+				log "%{_data}% Damage breakdown of %{_att}%:" to "logi/combat/combatdetails %{datatydzien}%-%{datatydzien2}%.log"	
+				clearCombat({_att})
+	else:
+		set metadata value "ECEngaged" of {_att} to 59
+	if {seconds::%{_att}%} > 0:
+		set {dps::%{_att}%} to {dmgdealt::%{_att}%}/{seconds::%{_att}%}
+	else:
+		set {dps::%{_att}%} to {dmgdealt::%{_att}%}
+	set {_health1} to {_vict}'s health
+	wait 1 tick
+	if {_health1} != {_vict}'s health:
+		if metadata value "DungeonInstance" of {_att} is not set:
+			if title of {_att}'s scoreboard is set:
+				if {meter::%{_att}%} is not "healing":
+					set {_kolorek} to KolorekScoreboard({_att})
+					set title of {_att}'s scoreboard to "&f&l«-───▬ %{_kolorek}%&lEC &f&l▬───-»"
+					set line 12 of {_att}'s scoreboard to ""
+					if {language::%{_att}%} = "English":
+						set line 11 of {_att}'s scoreboard to " &fIn combat for: %{_kolorek}%%{seconds::%{_att}%}% seconds     "
 					else:
-						set {_data} to data()
-						if {hps::%attacker%} > 0:
-							log "%{_data}% %attacker% exit combat with %{dmgdealt::%attacker%}% damage dealt, | %{dps::%attacker%}% DPS, %{healed::%attacker%}% health healed and %{hps::%attacker%}% HPS. Fight duration: %{seconds::%attacker%}% seconds" to "logi/combat/combatdetails %{datatydzien}%-%{datatydzien2}%.log"
-						else:
-							log "%{_data}% %attacker% exit combat with %{dmgdealt::%attacker%}% damage dealt and | %{dps::%attacker%}% DPS. Fight duration: %{seconds::%attacker%}% seconds" to "logi/combat/combatdetails %{datatydzien}%-%{datatydzien2}%.log"
-						log "%{_data}% Damage breakdown of %attacker%:" to "logi/combat/combatdetails %{datatydzien}%-%{datatydzien2}%.log"	
-						clearCombat(attacker)
-			else:
-				set metadata value "ECEngaged" of attacker to 59
-			if {seconds::%attacker%} > 0:
-				set {dps::%attacker%} to {dmgdealt::%attacker%}/{seconds::%attacker%}
-			else:
-				set {dps::%attacker%} to {dmgdealt::%attacker%}
-			set {_health1} to victim's health
-			wait 1 tick
-			if {_health1} != victim's health:
-				if metadata value "DungeonInstance" of attacker is not set:
-					if title of attacker's scoreboard is set:
-						if {meter::%attacker%} is not "healing":
-							set {_kolorek} to KolorekScoreboard(attacker)
-							set title of attacker's scoreboard to "&f&l«-───▬ %{_kolorek}%&lEC &f&l▬───-»"
-							set line 12 of attacker's scoreboard to ""
-							if {language::%attacker%} = "English":
-								set line 11 of attacker's scoreboard to " &fIn combat for: %{_kolorek}%%{seconds::%attacker%}% seconds     "
-							else:
-								set line 11 of attacker's scoreboard to " &fW walce od: %{_kolorek}%%{seconds::%attacker%}% sekund     "
-							set line 10 of attacker's scoreboard to " "
-							set {_x} to first element of createTop("dmgdealt", 5, "[P]")
-							set {_x2} to 2nd element of createTop("dmgdealt", 5, "[P]")
-							set {_x3} to 3rd element of createTop("dmgdealt", 5, "[P]")
-							set {_x4} to 4th element of createTop("dmgdealt", 5, "[P]")
-							set {_x5} to 5th element of createTop("dmgdealt", 5, "[P]")
-							if {dmgdealt::%{_x}%} > 0:
-								set line 9 of attacker's scoreboard to "  &f1. &f%{ikonkakarta::%{_x}%}%%{kartacolor::%{_x}%}%%first element of createTop("dmgdealt", 5, "[P]")% &f%first element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x}%}%DMG | &f%{dps::%{_x}%}% %{kartacolor::%{_x}%}%DPS"
-							if {dmgdealt::%{_x2}%} > 0:
-								set line 8 of attacker's scoreboard to "  &f2. &f%{ikonkakarta::%{_x2}%}%%{kartacolor::%{_x2}%}%%2nd element of createTop("dmgdealt", 5, "[P]")% &f%2nd element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x2}%}%DMG | &f%{dps::%{_x2}%}% %{kartacolor::%{_x2}%}%DPS"
-							if {dmgdealt::%{_x3}%} > 0:
-								set line 7 of attacker's scoreboard to "  &f3. &f%{ikonkakarta::%{_x3}%}%%{kartacolor::%{_x3}%}%%3rd element of createTop("dmgdealt", 5, "[P]")% &f%3rd element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x3}%}%DMG | &f%{dps::%{_x3}%}% %{kartacolor::%{_x3}%}%DPS"
-							if {dmgdealt::%{_x4}%} > 0:
-								set line 6 of attacker's scoreboard to "  &f4. %{ikonkakarta::%{_x4}%}%%{kartacolor::%{_x4}%}%%4th element of createTop("dmgdealt", 5, "[P]")% &f%4th element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x4}%}%DMG | &f%{dps::%{_x4}%}% %{kartacolor::%{_x4}%}%DPS"
-							if {dmgdealt::%{_x5}%} > 0:
-								set line 5 of attacker's scoreboard to "  &f5. %{ikonkakarta::%{_x5}%}%%{kartacolor::%{_x5}%}%%5th element of createTop("dmgdealt", 5, "[P]")% &f%5th element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x5}%}%DMG | &f%{dps::%{_x5}%}% %{kartacolor::%{_x5}%}%DPS"
-							set line 4 of attacker's scoreboard to ""
-			if metadata value "ECEngaged" of attacker is not set:
-				if metadata value "DungeonInstance" of attacker is not set:
-					clear attacker's scoreboard
-					UpdateScoreboard(attacker)
-			#while metadata value "ECEngaged" of attacker = true:
-				#add 1 to {seconds::%attacker%}
-				#wait 1 second
+						set line 11 of {_att}'s scoreboard to " &fW walce od: %{_kolorek}%%{seconds::%{_att}%}% sekund     "
+					set line 10 of {_att}'s scoreboard to " "
+					set {_x} to first element of createTop("dmgdealt", 5, "[P]")
+					set {_x2} to 2nd element of createTop("dmgdealt", 5, "[P]")
+					set {_x3} to 3rd element of createTop("dmgdealt", 5, "[P]")
+					set {_x4} to 4th element of createTop("dmgdealt", 5, "[P]")
+					set {_x5} to 5th element of createTop("dmgdealt", 5, "[P]")
+					if {dmgdealt::%{_x}%} > 0:
+						set line 9 of {_att}'s scoreboard to "  &f1. &f%{ikonkakarta::%{_x}%}%%{kartacolor::%{_x}%}%%first element of createTop("dmgdealt", 5, "[P]")% &f%first element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x}%}%DMG | &f%{dps::%{_x}%}% %{kartacolor::%{_x}%}%DPS"
+					if {dmgdealt::%{_x2}%} > 0:
+						set line 8 of {_att}'s scoreboard to "  &f2. &f%{ikonkakarta::%{_x2}%}%%{kartacolor::%{_x2}%}%%2nd element of createTop("dmgdealt", 5, "[P]")% &f%2nd element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x2}%}%DMG | &f%{dps::%{_x2}%}% %{kartacolor::%{_x2}%}%DPS"
+					if {dmgdealt::%{_x3}%} > 0:
+						set line 7 of {_att}'s scoreboard to "  &f3. &f%{ikonkakarta::%{_x3}%}%%{kartacolor::%{_x3}%}%%3rd element of createTop("dmgdealt", 5, "[P]")% &f%3rd element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x3}%}%DMG | &f%{dps::%{_x3}%}% %{kartacolor::%{_x3}%}%DPS"
+					if {dmgdealt::%{_x4}%} > 0:
+						set line 6 of {_att}'s scoreboard to "  &f4. %{ikonkakarta::%{_x4}%}%%{kartacolor::%{_x4}%}%%4th element of createTop("dmgdealt", 5, "[P]")% &f%4th element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x4}%}%DMG | &f%{dps::%{_x4}%}% %{kartacolor::%{_x4}%}%DPS"
+					if {dmgdealt::%{_x5}%} > 0:
+						set line 5 of {_att}'s scoreboard to "  &f5. %{ikonkakarta::%{_x5}%}%%{kartacolor::%{_x5}%}%%5th element of createTop("dmgdealt", 5, "[P]")% &f%5th element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x5}%}%DMG | &f%{dps::%{_x5}%}% %{kartacolor::%{_x5}%}%DPS"
+					set line 4 of {_att}'s scoreboard to ""
+	if metadata value "ECEngaged" of {_att} is not set:
+		if metadata value "DungeonInstance" of {_att} is not set:
+			clear {_att}'s scoreboard
+			UpdateScoreboard({_att})
+	#while metadata value "ECEngaged" of {_att} = true:
+		#add 1 to {seconds::%{_att}%}
+		#wait 1 second
 on leave:
 	wait 60 seconds
 	if player is not online:
@@ -391,14 +400,14 @@ function LogHealBreakdown(p: player):
 command /damagebreakdown:
 	aliases: /dmgbreakdown, /breakdown
 	trigger:
-		CombatBreakdown2(player, "Damage")
+		CombatBreakdown(player, "Damage")
 
 command /healingbreakdown:
 	aliases: /healbreakdown
 	trigger:
-		CombatBreakdown2(player, "Healing")
+		CombatBreakdown(player, "Healing")
 		
-function CombatBreakdown2(p: player, type: text):
+function CombatBreakdown(p: player, type: text):
 	set {_id} to line 19 of lore of {karta::%{_p}%}
 	replace all "&8Id: " in {_id} with ""
 	set {_k} to {kartaname::%{_p}%}

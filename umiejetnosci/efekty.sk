@@ -115,6 +115,52 @@ function pathfind(e: entity, e2: entity):
 function CritVisual(e: entity):
     draw 20 crit at location above {_e} with offset vector(0.3, 0.4, 0.3) with extra 0.06
 
+function sort(indices: strings, values: numbers, descending: boolean = true) :: strings:
+    loop {_indices::*}: 
+        set {_sort::%{_values::%loop-index%}%.%loop-index%} to loop-value in proper case
+    return (reversed {_sort::*}) if {_descending} is true, else {_sort::*}
+
+function buffRegister(p: player, buff: text, prio: integer, icon: text, type: text, value: text, duration: text):
+    if tag "custom;BuffList;%{_buff}%" of nbt of {_p} is not set:
+        set tag "custom;BuffList;%{_buff}%;Priority" of nbt of {_p} to {_prio}
+        set tag "custom;BuffList;%{_buff}%;Start" of nbt of {_p} to unix timestamp of now
+        set tag "custom;BuffList;%{_buff}%;Icon" of nbt of {_p} to {_icon}
+        set tag "custom;BuffList;%{_buff}%;Value" of nbt of {_p} to {_value}
+        set tag "custom;BuffList;%{_buff}%;Type" of nbt of {_p} to {_type}
+        set tag "custom;BuffList;%{_buff}%;Duration" of nbt of {_p} to {_duration}
+    else:
+        set tag "custom;BuffList;%{_buff}%;Value" of nbt of {_p} to {_value}
+        if {_duration} != "-":
+            set tag "custom;BuffList;%{_buff}%;Duration" of nbt of {_p} to {_duration}
+        
+
+function buffClear(p: player, buff: text):
+    clear tag "custom;BuffList;%{_buff}%" of nbt of {_p}
+
+function durationShort(duration: text) :: text:
+    replace all " seconds" and " second" in {_duration} with " sec"
+    return {_duration}
+    
+function buffsReturn(p: player) :: strings:
+    if tag "custom;BuffList" of nbt of {_p} is set:
+        set {_highestPriority} to 0
+        loop nbt tags of tag "custom;BuffList" of nbt of {_p}:
+            set {_priority} to (tag "custom;BuffList;%loop-value%;Priority" of nbt of {_p})
+            if {_priority} > {_highestPriority}:
+                set {_highestPriority} to {_priority}
+            set {_buff::%{_priority}%::%loop-value%} to tag "custom;BuffList;%loop-value%;Start" of nbt of {_p}
+        
+        loop {_highestPriority} times:
+            add (sort((indices of {_buff::%loop-value%::*}), {_buff::%loop-value%::*})) to {_buffs::*}
+            stop loop if size of {_buffs::*} = 5
+
+        return {_buffs::*}
+    else:
+        return ""
+
+function clearBuffs(p: entity):
+    clear tag "custom;BuffList" of nbt of {_p}
+
 function amountOfDots(p: player, e: entity) :: number:
     if metadata value "AmountOfDots%{_p}%" of {_e} is not set:
         set {_x} to 0
