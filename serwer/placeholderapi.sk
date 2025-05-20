@@ -91,31 +91,30 @@ on papi request for prefix "ec":
         set the result to {stardust::%player%}
     else if the identifier is "cosmicflux":
         set the result to {cosmicflux::%player%}
-    else if the identifier is "buff1":
-        if metadata value "ECEngaged" of player is set:
-            if {kartaname::%player%} = "Brother Therold":
-                if tag "Talents;Row 1" of nbt of {karta::%player%} = "Twist of Fate":
-                    if metadata value "TwistOfFateDuration" of player is set:
-                        set {_tofDuration} to seconds of metadata value "TwistOfFateDuration" of player
-                        set {_buff} to "&f Twist of Fate: %{_tofDuration}% sec"
-                    else:
-                        set {_buff} to " "
+    else if the identifier contains "buff":
+        if (nbt tags of tag "custom;BuffList" of nbt of player) is set:
+            set {_buffs::*} to buffsReturn(player)
+            set {_size} to size of {_buffs::*}
+            set {_buffIndex} to the identifier
+            replace all "buff" in {_buffIndex} with ""
+            set {_buffIndex} to {_buffIndex} parsed as integer
+
+            set {_buff} to {_buffs::%{_buffIndex}%}
+            if {_buff} is set:
+                set {_icon} to tag "custom;BuffList;%{_buff}%;Icon" of nbt of player
+                set {_value} to tag "custom;BuffList;%{_buff}%;Value" of nbt of player
+                set {_duration} to tag "custom;BuffList;%{_buff}%;Duration" of nbt of player
+                if {_duration} != "-":
+                    if tag "custom;BuffList;%{_buff}%;Type" of nbt of player = "Stacks":
+                        set the result to "&f%{_icon}% %{_buff}% (%{_value}%): %{_duration}%"
+                    else if tag "custom;BuffList;%{_buff}%;Type" of nbt of player is set:
+                        set the result to "&f%{_icon}% %{_buff}%: %{_duration}%"
+                else:
+                    set the result to "&f%{_icon}% %{_buff}%: %{_value}%"
+            else:
+                set the result to ""
         else:
-            set {_buff} to " "
-        set the result to {_buff}
-    else if the identifier is "buff2":
-        if metadata value "ECEngaged" of player is set:
-            if {kartaname::%player%} = "Brother Therold":
-                if tag "Talents;Row 3" of nbt of {karta::%player%} = "Void Ray":
-                    if metadata value "VoidRayDuration" of player is set:
-                        set {_voidRayDuration} to seconds of metadata value "VoidRayDuration" of player
-                        set {_voidRayStacks} to metadata value "VoidRayStacks" of player
-                        set {_buff} to "&f Void Ray: %{_voidRayDuration}% sec (%{_voidRayStacks}%)"
-                    else:
-                        set {_buff} to " "
-        else:
-            set {_buff} to " "
-        set the result to {_buff}
+            set the result to ""
     else if the identifier is "primarystat":
         set {_health} to {health::%player%}
         if {_health} is not set:
@@ -125,77 +124,67 @@ on papi request for prefix "ec":
                 set {_primaryStat} to 0
             else:
                 set {_primaryStat} to {primarystat::%player%}
-            set the result to "<##59c1e3> Intellect: &f%{_primaryStat}% "
+            set the result to "<##59c1e3> Intellect: &f%{_primaryStat}%"
         else if tag "PrimaryStat" of nbt of {karta::%player%} = "Agility":
             if {agility::%player%} is not set:
                 set {_primaryStat} to 0
             else:
                 set {_primaryStat} to {agility::%player%}
-            set the result to "<##5ee359> &fAgility: %{_primaryStat}% &8| <##c0ff02> &fHealth: %{_health}%"
+            set the result to "<##5ee359> &fAgility: &r%{_primaryStat}%"
         if tag "PrimaryStat" of nbt of {karta::%player%} = "Strength":
             if {strength::%player%} is not set:
                 set {_primaryStat} to 0
             else:
                 set {_primaryStat} to {strength::%player%}
-            set the result to "<##e35959> &fStength: %{_primaryStat}% &8| <##c0ff02> &fHealth: %{_health}%"
-    else if the identifier is "stats1":
-        set {_damage} to {damage::%player%}
-        set {_resistance} to {resistance::%player%}
-        if {_damage} is not set:
-            set {_damage} to 0
-        if {_resistance} is not set:
-            set {_resistance} to 0
-        set the result to "<##f74428> Damage: &f180"
-    else if the identifier is "stats2":
-        set {_mobility} to {mobility::%player%}
-        set {_utility} to {utility::%player%}
-        if {_mobility} is not set:
-            set {_mobility} to 0
-        if {_utility} is not set:
-            set {_utility} to 0
-        set the result to "<##ae78d0> Utility: &f91"
-    else if the identifier is "stats3":
-        set {_mobility} to {mobility::%player%}
-        set {_utility} to {utility::%player%}
-        if {_mobility} is not set:
-            set {_mobility} to 0
-        if {_utility} is not set:
-            set {_utility} to 0
-        set the result to "<##f53b98> Mastery: &f12"
-    else if the identifier is "stats4":
-        set {_mobility} to {mobility::%player%}
-        set {_utility} to {utility::%player%}
-        if {_mobility} is not set:
-            set {_mobility} to 0
-        if {_utility} is not set:
-            set {_utility} to 0
-        set the result to "<##19943e> Haste: &f25"
+            set the result to "<##e35959> &fStength: %{_primaryStat}%"
+    else if the identifier contains "stat_":
+        set {_stats::*} to retrieveTopStats(player)
+        set {_i} to the identifier
+        replace all "stat_" in {_i} with ""
+        set {_i} to {_i} parsed as integer
+        set {_stat} to returnStatIcon(({_stats::%{_i}%} in strict proper case))
+        replace all " " in {_stats::%{_i}%} with ""
+        set the result to "%{_stat}%: %{%{_stats::%{_i}%}%::%player%}%"
 
 function placeholderDamage(p: player, num: number) :: string:
     if metadata value "ECEngaged" of {_p} is set:
         set {_string} to ""
         set {_stringNegative} to ""
-        set {_topDamage::*} to createTop("dmgdealt", 5, "[P]")
-        set {_player} to {_topDamage::%{_num}%}
-        if {dps::%{_player}%} > 0:
-            set {_damageValues::*} to createTop("dmgdealt", 5, "[V]")
-            set {_damageValue} to {_damageValues::%{_num}%}
-            set {_dps} to {dps::%{_player}%}
-            set {_text} to "%{_player}% %{_damageValue}% DMG | %{_dps}% DPS"
-            set {_length} to length of {_text}
-            set {_cardBackground} to "%last color of name of {karta::%{_p}%}%"
-            set {_split::*} to {_text} split at " "
-            #if size of {_split::*} > 4:
-            #    set {_length} to {_length} - 2
-            #loop (length of {_player}'s name) times:
-             #   set {_stringNegative} to "%{_stringNegative}%%{_cardBackground}%"
-            #loop rounded (length of {_player}'s name)*2.5 times:
-            #    set {_string} to "%{_string}%"
-            #set {_return} to "%{_num}%.%{ikonkakarta::%{_player}%}%&r%{_stringNegative}%&r%{_string}%%{_text}%"
-            set {_return} to "%{_num}%. %{ikonkakarta::%{_player}%}% %{_text}%"
-
+        if {meter::%{_p}%} is not set:
+            set {_topDamage::*} to createTop("dmgdealt", 5, "[P]")
+            set {_player} to {_topDamage::%{_num}%}
+            if {dps::%{_player}%} > 0:
+                set {_damageValues::*} to createTop("dmgdealt", 5, "[V]")
+                set {_damageValue} to {_damageValues::%{_num}%}
+                set {_dps} to {dps::%{_player}%}
+                set {_text} to "%{_player}% | %{_damageValue}% DMG"
+                set {_length} to length of {_text}
+                set {_cardBackground} to "%last color of name of {karta::%{_p}%}%"
+                set {_split::*} to {_text} split at " "
+                #if size of {_split::*} > 4:
+                #    set {_length} to {_length} - 2
+                #loop (length of {_player}'s name) times:
+                #   set {_stringNegative} to "%{_stringNegative}%%{_cardBackground}%"
+                #loop rounded (length of {_player}'s name)*2.5 times:
+                #    set {_string} to "%{_string}%"
+                #set {_return} to "%{_num}%.%{ikonkakarta::%{_player}%}%&r%{_stringNegative}%&r%{_string}%%{_text}%"
+                set {_return} to "%{_num}%. %{ikonkakarta::%{_player}%}% %{_text}%"
+            else:
+                set {_return} to ""
         else:
-            set {_return} to ""
+            set {_topHealing::*} to createTop("healed", 5, "[P]")
+            set {_player} to {_topHealing::%{_num}%}
+            if {hps::%{_player}%} > 0:
+                set {_healValues::*} to createTop("healed", 5, "[V]")
+                set {_healValue} to {_healValues::%{_num}%}
+                set {_hps} to {hps::%{_player}%}
+                set {_text} to "%{_player}% | %{_healValue}% HEAL"
+                set {_length} to length of {_text}
+                set {_cardBackground} to "%last color of name of {karta::%{_p}%}%"
+                set {_split::*} to {_text} split at " "
+                set {_return} to "%{_num}%. %{ikonkakarta::%{_player}%}% %{_text}%"
+            else:
+                set {_return} to ""
 
         return {_return}
     else:
