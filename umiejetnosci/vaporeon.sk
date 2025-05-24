@@ -69,51 +69,58 @@ on leave:
 		loop 10 times:
 			clear {traits::Vaporeon::%loop-number%::opis::%player%}
 
-function Overhealing(p: player, target: entity, overheal: number):
+function Overhealing(p: player, target: entity, overheal: number, ability: text):
 	if {_overheal} > ((max health of {_target}) - (health of {_target})):
-		set {_players::*} to all players in radius 20 of {_target} where [(tag "custom;ECMob" of nbt of input is not set)]
-		if {_players::*} is not set:
-			set {_players::*} to all living entities in radius 20 of {_target}  where [(tag "custom;ECMob" of nbt of input is not set)]
-		set {_random} to a random element of {_players::*}
 		set {_overheal} to {_overheal} - ((max health of {_target}) - (health of {_target}))
-		set {_id} to line 19 of lore of {karta::%{_p}%}
-		if {_p}'s chestplate is golden nugget:
-			if name of {_p}'s chestplate contains "Serce Earthcrafta" or "Heart of Earthcraft":
-				if line 30 of lore of {_p}'s chestplate contains {_p}'s name:
-					set {_loreheart::*} to lore of {_p}'s chestplate
-		set {_crit} to ({criticalhit::%{_p}%}/10)
-		set {_masteryScaling} to 370
-		if tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Overflow":
-			set {_masteryScaling} to {_masteryScaling}*0.8
-		set {_mastery} to 1.1 + ({mastery::%{_p}%}/{_masteryScaling})
-		#HYDRO DANCE
-		loop {_loreheart::*}:
-			loop-value contains "Hydrodance":
-				add (5*{trait::Vaporeon::Hydrodance::%{_p}%}) to {_hydrodance}
-		if {_hydrodance} is set:
-			set {_overheal} to ({_hydrodance}/100)*{_overheal}
-			if health of {_random} < (0.5*max health of {_random}):
-				set {_overheal} to {_overheal}*{_mastery}
-			chance of {_crit}%:
-				set {_overheal} to {_overheal}*2
-			if {_overheal} > ((max health of {_random}) - (health of {_random})):
-				set {_overheal} to ((max health of {_random}) - (health of {_random}))
-				if {_overheal} < 0:
-					set {_overheal} to 0
-			heal {_random} by {_overheal}
-			HealAssist({_p}, {_random})
-			HealRefresh({_p}, {_overheal})
-			if metadata value "DungeonInstance" of {_p} is set:
-				DungeonHeal({_p}, {_random}, {_overheal}, "Hydrodance")
-			CircleOfWaterApply({_p}, {_random}, "Hydrodance")
-			set {_lore} to "&7Overhealing heals the nearest ally to your target by &f%{_hydrodance}%%% &7of the healing value, prioritizing players."
-			if {_random} is a player:
-				if {_overheal} > 0:
-					send formatted "%{kartacolor::%{_p}%}%%{_p}% &fhealed you. <tooltip:<##7cafbf>Hydrodance%nl%%{_lore}%>(<##baff8c>+%{_overheal}% HP&f)" to {_random}
-			if {_overheal} > 0:
-				add {_overheal} to {healtotal::%{_p}%}
-				add {_overheal} to {healcard::%{kartaname::%{_p}%}%::%{_id}%}
-				add {_overheal} to {healcard::%{kartaname::%{_p}%}%::%{_id}%::Hydrodance}
+
+		
+		if {kartaname::%{_p}%} = "Vaporeon":
+			loop all players in radius 20 of {_target}:
+				if uuid of loop-player != uuid of {_target}:
+					if health of loop-player < (max health of loop-player):
+						set {_players::*} to {_players::*} and loop-player
+			if {_players::*} is not set:
+				loop all living entities in radius 20 of {_target} where [input is not a player]:
+					if tag "custom;ECMob" of nbt of loop-entity is not set:
+						if health of loop-entity < (max health of loop-entity):
+							set {_players::*} to {_players::*} and loop-entity
+				if {_players::*} is not set:
+					loop all entities in radius 20 of {_target}:
+						if tag "custom;ECMob" of nbt of loop-entity is set:
+							set {_players::*} to {_players::*} and loop-entity
+
+			loop {_players::*}:
+				set {_maxhealth::%uuid of loop-value%} to (health of loop-value/max health of loop-value)
+
+			set {_targets::*} to sorted indices of {_maxhealth::*} in ascending order
+			set {_entity} to {_targets::1} parsed as entity
+
+			set {_crit} to ({criticalhit::%{_p}%}/10)
+			set {_masteryScaling} to 370
+			if tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Overflow":
+				set {_masteryScaling} to {_masteryScaling}/1.2
+			set {_mastery} to 1.1 + ({mastery::%{_p}%}/{_masteryScaling})
+			
+			if tag "Talents;Row 5" of nbt of {karta::%{_p}%} = "Hydrodance":
+				set {_overheal} to 0.3*{_overheal}
+				if health of {_entity} < (0.5*max health of {_entity}):
+					set {_overheal} to {_overheal}*{_mastery}
+				chance of {_crit}%:
+					set {_overheal} to {_overheal}*2
+				set {_lore} to "<##7cafbf>Overhealing heals the nearest ally%nl%<##7cafbf>by &f30%% <##7cafbf>of the overheal value. If no%nl%<##7cafbf>eligible allies are nearby, overhealing%nl%<##7cafbf>will instead &fdamage <##7cafbf>nearby enemies%nl%<##7cafbf>by &f20%% <##7cafbf>of the value."
+				if tag "custom;ECMob" of nbt of {_entity} is not set:
+					Heal({_p}, {_entity}, {_overheal}, "Hydrodance", "<##7cafbf>", {_lore})
+				else:
+					set {_entity}'s last damage cause to sweep attack
+					set metadata value "LastDamageCause" of {_entity} to "<##7cafbf>Hydrodance"
+					set metadata value "LastDamageCauseLore" of {_entity} to {_lore}
+					set metadata value "Element" of {_p} to "Water"
+					make {_p} damage {_entity} by {_overheal}*2
+				play sound "entity.generic.swim" with volume 2.5 and pitch 1.25 at {_entity}
+				draw 40 of fishing particle at {_entity} with offset vector(0.45, 0.55, 0.45) with extra 0.05
+		else:
+			set {_overheal} to {_overheal} - ((max health of {_target}) - (health of {_target}))
+
 on rightclick:
 	if tag "Healing Stream" of nbt of player's tool is set:
 		cancel event
@@ -141,7 +148,7 @@ on rightclick:
 							set {_heal} to 1.5 + ({utility::%player%}/80) + ({versatility::%player%}/240) + ({primarystat::%player%}/40)
 							set {_masteryScaling} to 370
 							if tag "Talents;Row 3" of nbt of {karta::%player%} = "Overflow":
-								set {_masteryScaling} to {_masteryScaling}*0.8
+								set {_masteryScaling} to {_masteryScaling}/1.2
 							set {_mastery} to 1.1 + ({mastery::%player%}/{_masteryScaling})
 							AbilityUse(player, "Healing Stream")
 							set {_am} to item amount of player's tool
@@ -230,7 +237,7 @@ on rightclick:
 													if loop-entity is not a player:
 														if loop-entity is not {_x}:
 															set {_random} to loop-entity
-										Overhealing(player, {_random}, {_heal})
+										Overhealing(player, {_random}, {_heal}, "123")
 										if {_heal} > ((max health of {_random}) - (health of {_random})):
 											set {_heal} to ((max health of {_random}) - (health of {_random}))
 											if {_heal} < 0:
@@ -294,9 +301,9 @@ on rightclick:
 				set {_damage} to 1 + ({damage::%player%}/60) + ({versatility::%player%}/180) + {primarystat::%player%}/30
 				set {_masteryScaling} to 370
 				if tag "Talents;Row 3" of nbt of {karta::%player%} = "Overflow":
-					set {_masteryScaling} to {_masteryScaling}*0.8
+					set {_masteryScaling} to {_masteryScaling}/1.2
 				set {_mastery} to 1.1 + ({mastery::%player%}/{_masteryScaling})
-				if cooldown "wybuchowybabelek%player%" is finished:
+				if cooldown "Explosive Bubble%player%" is finished:
 					if target of player is set:
 						if player's target is a player:
 							set {_i} to target of player
@@ -306,10 +313,10 @@ on rightclick:
 						set {_i} to player
 					if {_i} is set:
 						set {_uuid} to uuid of {_i}
-						if cooldown "wybuchowybabelek%player%-%{_uuid}%" is finished:
+						if cooldown "Explosive Bubble%player%-%{_uuid}%" is finished:
 							set the cooldown of player's held item for player to ("%{_cd}% seconds" parsed as timespan)
-							create cooldown "wybuchowybabelek%player%" for ("%{_cd}% seconds" parsed as timespan)
-							create cooldown "wybuchowybabelek%player%-%{_uuid}%" for ("%{_cdtarget}% seconds" parsed as timespan)
+							create cooldown "Explosive Bubble%player%" for ("%{_cd}% seconds" parsed as timespan)
+							create cooldown "Explosive Bubble%player%-%{_uuid}%" for ("%{_cdtarget}% seconds" parsed as timespan)
 
 							AbilityUse(player, "Explosive Bubble")
 							if tag "Talents;Row 1" of nbt of {karta::%player%} = "Undercurrent":
@@ -348,7 +355,7 @@ on rightclick:
 									set {_downpour} to {_downpour}*{_mastery}
 								chance of {_crit}%:
 									set {_downpour} to {_downpour}*2
-								Overhealing(player, {_i}, {_downpour})
+								Overhealing(player, {_i}, {_downpour}, "Downpour")
 								if {_downpour} > ((max health of {_i}) - (health of {_i})):
 									set {_downpour} to ((max health of {_i}) - (health of {_i}))
 									if {_downpour} < 0:
@@ -415,7 +422,7 @@ on rightclick:
 									set metadata value "Undercurrent" of player to {_undercurrent}
 						else:
 							if {tekstcd::%player%} = true:
-								set {_cdd} to cooldown "wybuchowybabelek%player%-%{_uuid}%"
+								set {_cdd} to cooldown "Explosive Bubble%player%-%{_uuid}%"
 								if {language::%player%} = "English":
 									send "<##7cafbf>You must wait &f%{_cdd}%<##7cafbf> to use this ability on that target." to player
 								else:
@@ -424,7 +431,7 @@ on rightclick:
 				else:
 					cancel event
 					if {tekstcd::%player%} = true:
-						set {_cdd} to cooldown "wybuchowybabelek%player%"
+						set {_cdd} to cooldown "Explosive Bubble%player%"
 						if {language::%player%} = "English":
 							send "<##7cafbf>You must wait &f%{_cdd}%<##7cafbf> to use this ability." to player
 						else:
@@ -450,7 +457,7 @@ on rightclick:
 				set {_cd} to "%300/{_pospiech}% seconds" parsed as timespan
 				set {_masteryScaling} to 370
 				if tag "Talents;Row 3" of nbt of {karta::%player%} = "Overflow":
-					set {_masteryScaling} to {_masteryScaling}*0.8
+					set {_masteryScaling} to {_masteryScaling}/1.2
 				set {_mastery} to 1.1 + ({mastery::%player%}/{_masteryScaling})
 				set {_lore} to "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cd}%%nl%&7Use: &fRMB%nl%<##7cafbf>Reverses all shields to healing in a huge%nl%<##7cafbf>radius around the player. Healing from this%nl%<##7cafbf>ability benefits from <##8bbdf0>Mastery: Water Cycles%nl%<##7cafbf>and can &f Critically Strike<##7cafbf>.%nl% %nl%<##8bbdf0>Reversal <##7cafbf>dispels all &fCurse<##7cafbf>, &fDisease<##7cafbf>, &fMagic%nl%<##7cafbf>and &fPoison <##7cafbf>debuffs from affected allies."
 				LoreUpdate(player, "Reversal", {_lore})
@@ -506,7 +513,7 @@ on rightclick:
 							set {_hydrotherapy} to {_hydrotherapy}*{_mastery}
 						chance of {_crit}%:
 							set {_hydrotherapy} to {_hydrotherapy}*2
-						Overhealing(player, {_random}, {_hydrotherapy})
+						Overhealing(player, {_random}, {_hydrotherapy}, "123")
 						if {_hydrotherapy} > ((max health of {_random}) - (health of {_random})):
 							set {_hydrotherapy} to ((max health of {_random}) - (health of {_random}))
 							if {_hydrotherapy} < 0:
@@ -580,6 +587,8 @@ function CircleOfWater(e: entity, p: player):
 				rotate {_v} around y-axis by {_y}
 				add 8 to {_y}
 				draw 1 of dust using dustOption(blue, 1) at {_x} ~ {_v}
+				draw 1 of rain particle at {_x} ~ {_v} with offset vector(0.5, 0, 0.5)
+				draw 1 of dripping dripstone water at {_x} ~ {_v}
 				stop loop if metadata value "CircleOfWater%{_p}%" of {_e} is not true
 				wait 1 tick
 		else:
@@ -597,7 +606,7 @@ function Tidewaters(p: player, x: entity, heal: number):
 		wait 1 tick
 	if {_x} is alive:
 		play sound "skill.vaporeon_healingstream_hit" with volume 5 and pitch 1.8 at {_x}
-		set {_lore} to "&8Talent%nl%&fInstant cast%nl%&7Cooldown: &fnone%nl%&7Use: &fPassive%nl%<##7cafbf>Healing Stream sends a second stream of%nl%##7cafbf>revitalising waters at the affected ally after%nl%&f%{_cd}%##7cafbf>, reduced by <##19943e> Haste##7cafbf>. The second%nl%##7cafbf>stream restores &f35%% ##7cafbf>of the initial value as HP%nl%##7cafbf>to the ally."
+		set {_lore} to "&8Talent%nl%&fInstant cast%nl%&7Cooldown: &fnone%nl%&7Use: &fPassive%nl%<##7cafbf>Healing Stream sends a second stream of%nl%<##7cafbf>revitalising waters at the affected ally after%nl%&f%{_cd}%<##7cafbf>, reduced by <##19943e> Haste<##7cafbf>. The second%nl%<##7cafbf>stream restores &f35%% <##7cafbf>of the initial value as HP%nl%<##7cafbf>to the ally."
 		if tag "custom;ECMob" of nbt of {_x} is not set:
 			Heal({_p}, {_x}, {_healValue}, "Tidewaters", "<##7cafbf>", {_lore})
 			CircleOfWaterApply({_p}, {_x}, "Tidewaters")
@@ -611,7 +620,8 @@ function Tidewaters(p: player, x: entity, heal: number):
 function CircleOfWaterApply(p: player, x: entity, ability: string):
 	if metadata value "CircleOfWater%{_p}%" of {_x} is not set:
 		set metadata value "CircleOfWater%{_p}%" of {_x} to true
-		CircleOfWater({_x}, {_p})
+		if {_ability} != "Searage":
+			CircleOfWater({_x}, {_p})
 	else:
 		if tag "Constellation;CONSTELLATION 6" of nbt of {karta::%{_p}%} is set:
 			CircleOfWaterDetonate({_p}, {_x})
@@ -623,9 +633,10 @@ function CircleOfWaterDetonate(p: player, x: entity):
 	set {_healcircle} to 0.8 + ({utility::%{_p}%}/100) + ({versatility::%{_p}%}/300) + ({primarystat::%{_p}%}/50)
 	set {_masteryScaling} to 370
 	if tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Overflow":
-		set {_masteryScaling} to {_masteryScaling}*0.8
+		set {_masteryScaling} to {_masteryScaling}/1.2
 	set {_mastery} to 1.1 + ({mastery::%{_p}%}/{_masteryScaling})
 	set {_crit} to ({criticalhit::%{_p}%}/10)
+	set {_crit} to 100
 	loop {_loreheart::*}:
 		loop-value contains "Bound Molecules":
 			add (0.3*{trait::Vaporeon::Bound Molecules::%{_p}%}) to {_molecules}
@@ -635,7 +646,7 @@ function CircleOfWaterDetonate(p: player, x: entity):
 				set {_molecules} to {_molecules}*{_mastery}
 			chance of {_crit}%:
 				set {_molecules} to {_molecules}*2
-			Overhealing({_p}, loop-entity, {_molecules})
+			Overhealing({_p}, loop-entity, {_molecules}, "123")
 			if {_molecules} > ((max health of loop-entity) - (health of loop-entity)):
 				set {_molecules} to ((max health of loop-entity) - (health of loop-entity))
 				if {_molecules} < 0:
@@ -657,12 +668,13 @@ function CircleOfWaterDetonate(p: player, x: entity):
 				add {_molecules} to {healtotal::%{_p}%}
 				add {_molecules} to {healcard::%{kartaname::%{_p}%}%::%{_id}%}
 				add {_molecules} to {healcard::%{kartaname::%{_p}%}%::%{_id}%::Bound Molecules}
+	clear metadata value "CircleOfWater%{_p}%" of {_x}
 	#CASCADE
 	loop {_loreheart::*}:
 		loop-value contains "Cascade":
 			add (0.2*{trait::Vaporeon::Cascade::%{_p}%}) to {_cascade}
 	if {_cascade} is set:
-		remove ("%{_cascade}% seconds" parsed as timespan) from cooldown "wybuchowybabelek%{_p}%-%uuid of {_x}%"
+		remove ("%{_cascade}% seconds" parsed as timespan) from cooldown "Explosive Bubble%{_p}%-%uuid of {_x}%"
 	if tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Overflow":
 		set {_healcircle} to {_healcircle}*{_mastery}
 	else:
@@ -676,17 +688,31 @@ function CircleOfWaterDetonate(p: player, x: entity):
 			set {_healcircle} to {_healcircle}*3.3
 		else:
 			set {_healcircle} to {_healcircle}*2
+		if tag "Talents;Row 4" of nbt of {karta::%{_p}%} = "Searage":
+			chance of 30%:
+				CircleOfWaterApply({_p}, {_x}, "Searage")
+				play sound "ambient.underwater.exit" with volume 2.5 and pitch 2 at {_x}
+
 	set {_lore} to "&8Passive Ability%nl%&fInstant cast%nl%&7Cooldown: &fnone%nl%&7Use: &fPassive%nl%<##7cafbf>Healing surrounds your target with a%nl%<##8bbdf0>Circle of Water<##7cafbf>. <##7cafbf>Using <##8bbdf0>Healing Stream <##7cafbf>on%nl%<##7cafbf>an ally affected by <##8bbdf0>Circle of Water <##7cafbf>will%nl%<##7cafbf>detonate the circle, healing its target%nl%<##7cafbf>by an additional &f%{_healcircle}% <##7cafbf>HP." 
 	Heal({_p}, {_x}, {_healcircle}, "Circle of Water", "<##7cafbf>", {_lore})
 	play sound "entity.player.splash.high_speed" with volume 3 and pitch 1 at {_x}
 	draw 3 of heart particle at location 0.5 above {_x} with offset vector(0.6, 0.9, 0.6)
-	clear metadata value "CircleOfWater%{_p}%" of {_x}
+	if tag "Talents;Row 4" of nbt of {karta::%{_p}%} = "Searage":
+		loop LoopEntitiesAroundTarget({_x}, 6, false):
+			set loop-entity's last damage cause to sweep attack
+			set metadata value "LastDamageCause" of loop-entity to "<##7cafbf>Circle of Water"
+			set metadata value "LastDamageCauseLore" of loop-entity to {_lore}
+			set metadata value "Element" of {_p} to "Water"
+			make {_p} damage loop-entity by 2*({_healcircle})
+			draw 15 of bubble pop particle at location 1 above loop-entity with offset vector(0.6, 0.45, 0.6) with extra 0.03
+
+	
 
 function Heal(p: player, x: entity, heal: number, spell: text, col: text, lore: text, sendMessage: boolean = true):
 	if {_x} is alive:
 		set {_id} to line 19 of lore of {karta::%{_p}%}
 		replace all "&8Id: " in {_id} with ""
-		Overhealing({_p}, {_x}, {_heal})
+		Overhealing({_p}, {_x}, {_heal}, {_spell})
 		if {_heal} > ((max health of {_x}) - (health of {_x})):
 			healAboveMaxHealth({_p}, {_x}, ((max health of {_x}) - (health of {_x})-{_heal}))
 			set {_heal} to ((max health of {_x}) - (health of {_x}))
@@ -698,12 +724,25 @@ function Heal(p: player, x: entity, heal: number, spell: text, col: text, lore: 
 		if metadata value "DungeonInstance" of {_p} is set:
 			DungeonHeal({_p}, {_x}, {_heal}, "%{_spell}%")
 		if {_heal} > 0:
+			onHealEvents({_p}, {_x})
 			if {_x} is a player:
 				if {_sendMessage} != false:
 					send formatted "%{kartacolor::%{_p}%}%%{_p}% &fhealed you. <tooltip:%{_col}%%{_spell}%%nl%%{_lore}%>(<##baff8c>+%{_heal}% HP&f)" to {_x}
+					if {_p} != {_x}:
+						send formatted "&fYou healed %{kartacolor::%{_p}%}%%{_x}%&f. <tooltip:%{_col}%%{_spell}%%nl%%{_lore}%>(<##baff8c>+%{_heal}% HP&f)" to {_p}
 			add {_heal} to {healtotal::%{_p}%}
 			add {_heal} to {healcard::%{kartaname::%{_p}%}%::%{_id}%}
 			add {_heal} to {healcard::%{kartaname::%{_p}%}%::%{_id}%::%{_spell}%}
+		
+function onHealEvents(p: player, e: entity):
+	if {kartaname::%{_p}%} = "Vaporeon":
+		if tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Current Control":
+			set {_haste} to 1 + (({haste::%{_p}%}/4))/100
+			set {_cd} to (20/{_haste})*0.025
+			set {_uuid} to uuid of {_e}
+			if cooldown "Explosive Bubble%{_p}%-%{_uuid}%" is set:
+				remove ("%{_cd}% seconds" parsed as timespan) from cooldown "Explosive Bubble%{_p}%-%{_uuid}%"
+
 
 function selfHealModifiers(p: entity, heal: number) :: number:
 	if {kartaname::%{_p}%} = "Brother Therold":
