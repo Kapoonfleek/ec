@@ -1,0 +1,759 @@
+import:
+    java.lang.Double
+
+on rightclick:
+    if boolean tag "Future Sight" of custom nbt of player's tool is set:
+        if {kartaname::%player%} = "Espeon":
+            if CanUseAbility(player) != false:
+                set {_target} to Target(player, 100, false)
+                if {_target} is set:
+                    if cooldown "Future Sight%player%" is finished:
+                        if metadata value "casting" of player is not set:
+                            set {_bonusHaste} to metadata value "EspeonBonusHaste" of player
+                            set {_bonusInt} to metadata value "EspeonBonusIntellect" of player
+                            set {_haste} to Haste(player) + (({_bonusHaste}/4)/100)
+                            set {_cd} to "%1/{_haste}% seconds" parsed as timespan
+                            set {_addStacks} to 1
+                            set {_futureSight} to "%4/{_haste}% seconds" parsed as timespan
+
+                            create cooldown "Future Sight%player%" for {_cd}
+                            AbilityUse(player, "Future Sight")
+                            if metadata value "casting" of player is set:
+                                clear metadata value "cast" of player
+                                stopCastSoundEspeon(player)
+                                send action bar "&cInterrupted" to player
+                            
+                            set {_primaryStat} to {primarystat::%player%} + {_bonusInt}
+                            set {_damage} to (16 + (({damage::%player%}/3.5) + ({versatility::%player%}/10.5) + ({_primaryStat})/1.75))
+                            set {_loreDur} to "%{_futureSight}%"
+                            replace all "onds" and "ond" in {_loreDur} with ""
+                            set {_lore} to "&8Basic Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cd}%%nl%&7Use: &fRMB%nl%<##d48bc3>Prepares an attack on a target enemy that%nl%<##d48bc3>deals &f%{_damage}% <##d84af7>Psychic <##d48bc3>damage after &f%{_loreDur}%<##d48bc3>.%nl% %nl%<##d48bc3>If &f <##f7b2e7>Future Sight <##d48bc3>is used on an enemy that%nl%<##d48bc3>already has the spell <##d48bc3>applied on them, it%nl%<##d48bc3>refreshes the duration, but does not add%nl%<##d48bc3>a stack."
+                            loop all items in the inventory of player:
+                                if boolean tag "Future Sight" of custom nbt of (1 of loop-item) is set:
+                                    set lore of loop-item to {_lore}
+                                    set the cooldown of loop-item for player to {_cd}
+
+                            combatInitiate(player, {_target})
+
+                            if metadata value "Mind Transfer" of player is true:
+                                broadcast "slut"
+                                clear metadata value "Mind Transfer" of player
+
+                                set {_stacks} to metadata value "Future Sight%player%" of player
+                                clearFutureSight(player, player)
+
+                                futureSightSkill(player, {_target}, {_futureSight}, {_stacks})
+
+                                futureSightParticle(player, {_target}, {_futureSight})
+                                futureSightEffect(player, {_target}, {_futureSight})
+
+                            else:
+                                broadcast "A"
+                                futureSightSkill(player, {_target}, {_futureSight}, {_addStacks})
+                                set {_duration} to metadata value "Future Sight-Duration%player%" of {_target}
+
+                                futureSightParticle(player, {_target}, {_duration})
+                                futureSightEffect(player, {_target}, {_duration})
+                    else: 
+                        if {tekstcd::%player%} = true:
+                            set {_cdd} to cooldown "Future Sight%player%"
+                            send "<##d48bc3>You must wait &f%{_cdd}% <##d48bc3>to use this ability." to player
+                        stop
+                            
+
+    else if boolean tag "Mind Transfer" of custom nbt of player's tool is set:
+        if {kartaname::%player%} = "Espeon":
+            if CanUseAbility(player) != false:
+                if cooldown "Mind Transfer%player%" is finished:
+                    set {_bonusHaste} to metadata value "EspeonBonusHaste" of player
+                    set {_haste} to Haste(player) + (({_bonusHaste}/4)/100)
+                    set {_cd} to "%5/{_haste}% seconds" parsed as timespan
+                    set {_casttime} to "%round((5/{_haste}), 1)% seconds" parsed as timespan
+                    set {_extraTime} to "%10/{_haste}% seconds" parsed as timespan
+                    set {_futureSight} to "%20/{_haste}% seconds" parsed as timespan
+
+                    set {_radius} to 30 + {crowdcontrol::%player%}/8
+                    set {_addStacks} to 1
+                    set {_lore2} to "<##d48bc3>If &f <##f7b2e7>Future Sight <##d48bc3>detonates while held by%nl%<##d48bc3>Espeon, they will instead take all &fdamage.%nl%<##d48bc3>Taking control of over &f50 stacks <##d48bc3>at once%nl%<##d48bc3>will overwhelm Espeon and cause their mind%nl%<##d48bc3>to explode."
+                    set {_lore} to "&8Basic Ability%nl%&fInstant cast &7| &f%{_casttime}% cast%nl%&7Cooldown: &f%{_cd}%%nl%&7Use: &fRMB &7| &fSNEAK + RMB%nl%<##d48bc3>Increases the &f <##f7b2e7>Future Sight &fstack count%nl%<##d48bc3>on the target by &f1 <##d48bc3>and adds an additional%nl%&f10 sec <##d48bc3>to the fall duration of the spell.%nl% %nl%<##d48bc3>If <##f7b2e7>Mind Transfer <##d48bc3>is used while &fsneaking<##d48bc3>, this%nl%<##d48bc3>ability transfers all &f <##f7b2e7>Future Sight &fstacks%nl%<##d48bc3>from targets within &f30 blocks <##d48bc3>onto Espeon.%nl% %nl%<##d48bc3>The next &f <##f7b2e7>Future Sight <##d48bc3>used afterward%nl%<##d48bc3>will add &fall stacks <##d48bc3>from Espeon to the &fstack%nl%&fcount <##d48bc3>of the select target.%nl% %nl%%{_lore2}%"
+                    
+                    if player is sneaking:
+                        set {_FS} to "Future Sight%player%"
+                        if cooldown "MindTransferEffect%player%" is finished:
+                            create cooldown "MindTransferEffect%player%" for {_casttime}
+                            loop all entities in radius {_radius} around the player where [metadata value {_FS} of input is set]:
+                                add 1 to {_targets}
+                                add metadata value "Future Sight%player%" of loop-entity to {_totalStacks}
+                                mindTransferEffect(player, loop-entity, {_casttime})
+
+                            if {_targets} > 0:
+                                set {_targets} to 0
+                                clear metadata value "cast" of player
+                                clear metadata value "casting" of player
+                                if metadata value "cast" of player is not set:
+                                    play sound "skill.therold.mindblast_precast" with volume 3 and pitch 1 at player
+                                    set metadata value "casting" of player to "Mind Transfer"
+                                    if metadata value "channeling" of player is set:
+                                        clear metadata value "channeling" of player
+                                        stopCastSoundEspeon(player)
+                                    set metadata value "cast" of player to {_casttime}
+                                    set {_pitch} to 1
+                                    
+                                    while metadata value "casting" of player = "Mind Transfer":
+                                        if metadata value "cast" of player is not set:
+                                            clear metadata value "casting" of player
+                                            clear cooldown "MindTransferEffect%player%"
+                                            stop
+                                        if {_casttime} > 0 seconds:
+                                            play sound "block.amethyst_cluster.fall" with volume 2 and pitch {_pitch} at player
+                                            add 0.05 to {_pitch}
+
+                                            set {_cst} to "%{_casttime}%"
+                                            send action bar "Casting... %{_cst}% |  FS: %{_totalStacks}%" to player
+
+                                            loop all entities in radius {_radius} around the player where [metadata value {_FS} of input is set]:
+                                                add 1 to {_tr}
+                                            stop loop if {_tr} is not set
+                                            clear {_tr}
+                                            wait 0.1 seconds
+                                            remove 0.1 seconds from {_casttime}
+                                        else:
+                                            clear metadata value "casting" of player
+                                            send action bar "" to player
+                                else:
+                                    clear cooldown "MindTransferEffect%player%"
+                                    stop 
+                                clear metadata value "casting" of player
+                                clear metadata value "cast" of player
+                                stop sound "skill.therold.mindblast_precast" for all players in radius 2 around player
+                                if {_casttime} > 0 seconds:
+                                    send action bar "&cInterrupted" to player
+                                    clear cooldown "MindTransferEffect%player%"
+                                    stop
+
+                                create cooldown "Mind Transfer%player%" for {_cd}
+                                AbilityUse(player, "Mind Transfer")
+                                play sound "skill.beast_master.cobra_shot" with volume 3 and pitch 1 on player
+
+                                loop all entities in radius {_radius} around the player where [metadata value {_FS} of input is set]:
+                                    add 1 to {_targets}
+                                    set {_stacks} to metadata value {_FS} of loop-value
+                                    add {_stacks} to {_addTotalStacks}
+                                    clearFutureSight(player, loop-value)
+                                    set {_lastEntity} to loop-value
+
+
+                                if {_targets} > 0:
+                                    if {_addTotalStacks} > 50:
+                                        clearFutureSight(player, player)
+                                        set player's last damage cause to sweep attack
+                                        set metadata value "Element" of player to "Psychic"
+                                        set metadata value "LastDamageCause" of player to "<##d48bc3>Future Sight"
+                                        set metadata value "LastDamageCauseLore" of player to {_lore}
+                                        set metadata value "IgnoreModifiers" of player to true
+                                        make player damage player by (player's max health*2)
+                                        send " %player% became overwhelmed by their mental power." to all players
+                                    else:
+                                        combatInitiate(player, {_lastEntity})
+                                    
+                                        futureSightSkill(player, player, {_futureSight}, {_addTotalStacks}, true)
+                                        futureSightParticle(player, player, {_futureSight})
+                                        futureSightEffect(player, player, {_futureSight})
+                                        play sound "skill.espeon.mindtransfer" with volume 3 and pitch 0 at player
+                                        set metadata value "Mind Transfer" of player to true
+
+                                loop all items in the inventory of player:
+                                    if boolean tag "Mind Transfer" of custom nbt of (1 of loop-item) is set:
+                                        set lore of loop-item to {_lore}
+                                        set the cooldown of loop-item for player to {_cd}
+                            else:
+                                send "<##d48bc3>There are no &feligible targets <##d48bc3>nearby." to player
+                                play sound "block.glass.break" with volume 3 and pitch 0 to player
+                    else:
+                        set {_target} to Target(player, 100, false)
+                        if {_target} is set:
+                            if metadata value "Future Sight%player%" of {_target} is set:
+                                if metadata value "casting" of player is not set:
+                                    create cooldown "Mind Transfer%player%" for {_cd}
+                                    set the cooldown of player's held item for player to {_cd}
+                                    set lore of player's tool to {_lore}
+
+                                    AbilityUse(player, "Mind Transfer")
+                                    
+                                    combatInitiate(player, {_target})
+
+                                    set {_timeRemaining} to metadata value "Future Sight-Duration%player%" of {_target}
+                                    set {_newDuration} to {_timeRemaining} + {_extraTime}
+                                    set metadata value "Future Sight-Duration-Max%player%" of {_target} to {_newDuration}
+                            
+                                    futureSightSkill(player, {_target}, {_newDuration}, {_addStacks}, true)
+                                    futureSightParticle(player, {_target}, {_newDuration})
+                                    futureSightEffect(player, {_target}, {_newDuration})
+
+                                    play sound "skill.beast_master.kill_command" with volume 3 and pitch 1 on player
+                else: 
+                    if {tekstcd::%player%} = true:
+                        set {_cdd} to cooldown "Mind Transfer%player%"
+                        send "<##d48bc3>You must wait &f%{_cdd}% <##d48bc3>to use this ability." to player
+                    stop
+    else if boolean tag "Time Warp" of custom nbt of player's tool is set:
+        if {kartaname::%player%} = "Espeon":
+            if CanUseAbility(player) != false:
+                if metadata value "casting" of player is not set:
+                    if cooldown "Time Warp%player%" is finished:
+                        set {_timeWarpCd} to 3 seconds
+                        set {_timeWarpHaste} to 120
+                        set {_timeWarpDuration} to 40 seconds
+                        set {_timeWarpRadius} to 50
+                        create cooldown "Time Warp%player%" for {_timeWarpCd}
+                        set the cooldown of player's held item for player to {_timeWarpCd}
+                        set {_lore} to "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown:  &f%{_timeWarpCd}%%nl%&7Use: &fRMB%nl%<##d48bc3>Warp the flow of time, increasing &f <##f7b2e7>Haste%nl%<##d48bc3>by &f%{_timeWarpHaste}% <##d48bc3>for all party <##d48bc3>members for &f%seconds of {_timeWarpDuration}% sec<##d48bc3>.%nl% %nl%<##d48bc3>If the player is not in a party or no party%nl%<##d48bc3>members can be found, grant the &f <##f7b2e7>Haste%nl%<##d48bc3>bonus to all allies within &f%{_timeWarpRadius}% blocks <##d48bc3>instead."
+                        set lore of player's tool to {_lore}
+
+                        set {_partymembers::*} to party members of party of player where [input is online]
+
+                        play sound "skill.espeon.timewarp" with volume 4 and pitch 1 on player
+                        play sound "skill.espeon.timewarp_cast" with volume 4 and pitch 1 on player
+                        set {_message} to " %player% used  Time Warp and granted you <##19943e> &f%{_timeWarpHaste}% Haste&f!"
+                        
+                        if size of {_partymembers::*} > 1:
+                            loop {_partymembers::*}:
+                                add {_timeWarpHaste} to {bonusHaste::%loop-value%}
+                                send {_message} to loop-value
+                                timeWarpDuration(player, loop-value, {_timeWarpDuration})
+                                timeWarpVFX(loop-value)
+                        else:
+                            loop all players in radius {_timeWarpRadius} around the player where [input is online]:
+                                add loop-player to {_partymembers::*}
+
+                                add {_timeWarpHaste} to {bonusHaste::%loop-player%}
+                                send {_message} to loop-player
+                                timeWarpDuration(player, loop-player, {_timeWarpDuration})
+                                timeWarpVFX(loop-player)
+
+                        wait {_timeWarpDuration}
+
+                        loop {_partymembers::*}:
+                            remove {_timeWarpHaste} from {bonusHaste::%loop-value%}
+                            buffClear(loop-value, "Time Warp")
+                    else: 
+                        if {tekstcd::%player%} = true:
+                            set {_cdd} to cooldown "Time Warp%player%"
+                            send "<##d48bc3>You must wait &f%{_cdd}% <##d48bc3>to use this ability." to player
+                        stop
+
+            #if player starts casting one ability while casting the other, both are casting at the same time - fix
+            #add cast time to future sight
+            #add visual to future sight casttime
+            #add passive + visual
+            #add ult
+            #add time warp vfx while active
+
+
+function timeWarpDuration(p: player, target: player, timeWarpDuration: timespan):
+    if metadata value "Time Warp%{_p}%" of {_target} is not set:
+        set metadata value "Time Warp%{_p}%" of {_target} to {_timeWarpDuration}
+    else:
+        add {_timeWarpDuration} to metadata value "Time Warp%{_p}%" of {_target}
+        stop
+    while metadata value "Time Warp%{_p}%" of {_target} > 0 seconds:
+        stop loop if {_p} is not alive
+        set {_duration} to metadata value "Time Warp%{_p}%" of {_target}
+        buffRegister({_target}, "Time Warp", 1, "", "-", "-", durationShort("%{_duration}%"))
+        wait 1 second
+        remove 1 second from metadata value "Time Warp%{_p}%" of {_target}
+    remove {_timeWarpHaste} from {bonusHaste::%{_target}%}
+    if {bonusHaste::%{_target}%} < 0:
+        set {bonusHaste::%{_target}%} to 0
+    clear metadata value "Time Warp%{_p}%" of {_target}
+    buffClear({_target}, "Time Warp")
+                        
+function futureSightEffect(p: player, target: entity, dur: timespan):
+    set {_id} to random 10 char string from charset `0-9` `a-z`
+    set string tag "FutureSightEffectID%{_p}%" of custom nbt of {_target} to {_id}
+
+    set {_targetLoc} to location 10 above {_target}
+    play sound "skill.espeon.futuresight" with volume 3 and pitch 1.5 at (location at {_target})
+    spawn an armor stand at {_targetLoc} with nbt from "{Invisible:1b,Invulnerable:1b,Silent:1b,NoGravity:1b,Pose:{Head:[180.0f,0.0f,0.0f]}}"
+    broadcast "distance between: %distance between {_targetLoc} and {_target}%"
+
+    set {_fallDuration} to {_dur}
+
+    set {_seconds} to seconds of {_fallDuration}
+
+
+    set {_e} to last spawned armor stand
+    set boolean tag "ECAbility" of custom nbt of {_e} to true 
+    set {_y} to 0
+    set {_shape} to a solid tetrahedron with radius 2
+    set side length of {_shape} to 1.2
+    set {_locStar} to location of {_e}
+    set {_count} to 0
+    set {_vec} to vector between {_locStar} and {_targetLoc}
+
+    create a new custom dust_color_transition particle with:
+        count: 1
+        velocity: outwards
+        force: true
+        data: dustTransition(magenta, white, 0.4)
+    set particle of {_shape} to last created particle
+
+    futureSightParticle({_p}, {_target}, {_fallDuration})
+
+    set {_time} to now
+    set {_pitch} to 1
+
+    set uuid tag "FutureSightVisual%{_p}%" of custom nbt of {_target} to {_e}
+
+    while {_e} is alive:
+        if string tag "FutureSightEffectID%{_p}%" of custom nbt of {_target} != {_id}:
+            kill {_e}
+            stop
+
+        set {_targetLoc} to location at {_target}
+        set {_vec} to vector between {_locStar} and {_targetLoc}
+        set {_dist} to distance between {_locStar} and {_targetLoc}-1.5
+
+        if {_count} is divisible by 3:
+            draw 15 of reverse_portal at location 3.5 above {_e} with offset vector(5/{_count}, 1.5, 5/{_count}) with extra 0.03 with force
+        set vector length of {_vec} to {_count} * ({_dist}/({_seconds}*20))
+        teleport {_e} to {_locStar} ~ {_vec}
+
+        add nbt from "{Rotation:[%{_y}%.0f,%{_y}%.0f]}" to nbt of {_e}
+        draw shape {_shape} at {_locStar} ~ {_vec}
+        set {_h} to location 0.3 below {_locStar}
+        set {_rad} to Double.valueOf(1/{_seconds})
+        rotate shape {_shape} around vector(1, 1, 1) by {_rad} radians
+
+
+        stop loop if {_count} = ({_seconds}*20)
+        wait 1 tick
+        add 1 to {_count}
+        add 10 to {_y}     
+        
+        if (rounded {_count}) is divisible by (rounded {_seconds}):
+            play sound "block.amethyst_block.break" with volume 3 and pitch {_pitch} at {_locStar} ~ {_vec}
+            play sound "entity.ender_eye.death" with volume 3 and pitch {_pitch} at {_locStar} ~ {_vec}
+            add 0.05 to {_pitch}
+            combatInitiate({_p}, {_target})
+
+    broadcast {_count}
+    kill {_e}
+    broadcast difference between now and {_time}
+    play sound "entity.illusioner.prepare_mirror" with volume 3 and pitch 2 at (location at {_e})
+    play sound "block.note_block.bass" with volume 3 and pitch 2 at (location at {_e})
+    play sound "entity.ender_eye.death" with volume 3 and pitch 2 at (location at {_e})
+    play sound "entity.generic.explode" with volume 3 and pitch 2 at (location at {_e})
+    play sound "skill.espeon.futuresight" with volume 3 and pitch 0 at (location at {_e})
+
+    clear string tag "FutureSightEffectID%{_p}%" of custom nbt of {_e}
+
+
+function futureSightSkill(p: player, target: entity, dur: timespan, addAmount: number, addStack: boolean = false):
+
+    set {_FS} to "Future Sight%{_p}%"
+
+    if {_addStack} = false:
+        if metadata value "Future Sight-Duration-Max%{_p}%" of {_target} is not set:
+            set metadata value "Future Sight-Duration-Max%{_p}%" of {_target} to {_dur}
+
+        set {_max} to metadata value "Future Sight-Duration-Max%{_p}%" of {_target}
+        set metadata value "Future Sight-Duration%{_p}%" of {_target} to {_max}
+        broadcast metadata value "Future Sight-Duration%{_p}%" of {_target}
+    else:
+        set metadata value "Future Sight-Duration%{_p}%" of {_target} to {_dur}
+    
+
+    if metadata value "Future Sight%{_p}%" of {_target} is not set:
+        set metadata value "Future Sight%{_p}%" of {_target} to {_addAmount}
+        set {_intellectGain} to 0.5 + {mastery::%{_p}%}/40
+        set {_hasteGain} to 1.5 + {mastery::%{_p}%}/16
+
+        loop all entities where [metadata value {_FS} of input is set]:
+            add 1 to {_targets}
+            add metadata value "Future Sight%{_p}%" of loop-entity to {_totalStacks}
+        
+        send action bar "&f FS: %{_totalStacks}%" to {_p}
+
+        set metadata value "EspeonBonusIntellect" of {_p} to (0.5 + {mastery::%{_p}%}/40)*{_totalStacks}
+        set metadata value "EspeonBonusHaste" of {_p} to (1.5 + {mastery::%{_p}%}/16)*{_totalStacks}
+        
+        clear {_targets}
+        clear {_totalStacks}
+        
+        while metadata value "Future Sight-Duration%{_p}%" of {_target} > 0 seconds: 
+            stop if {_target} is not alive
+            wait 1 tick
+            remove 1 tick from metadata value "Future Sight-Duration%{_p}%" of {_target}
+        
+        set {_futureSightStacks} to metadata value "Future Sight%{_p}%" of {_target}
+
+        if {_futureSightStacks} is set:
+            set {_bonusInt} to metadata value "EspeonBonusIntellect" of {_p}
+            set {_bonusHaste} to metadata value "EspeonBonusHaste" of {_p}
+
+            set {_crit} to 0 + ({criticalhit::%{_p}%}/10)
+            set {_primaryStat} to {primarystat::%{_p}%} + {_bonusInt}
+            set {_damage} to (16 + (({damage::%{_p}%}/3.5) + ({versatility::%{_p}%}/10.5) + ({_primaryStat})/1.75))
+
+            set {_target}'s last damage cause to sweep attack
+            set {_haste} to Haste({_p}) + (({_bonusHaste}/4)/100)
+            set {_cd} to "%10/{_haste}% seconds" parsed as timespan
+
+            set {_loreDur} to "%{_dur}%"
+            replace all "onds" and "ond" in {_loreDur} with ""
+            set {_lore} to "&8Basic Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cd}%%nl%&7Use: &fRMB%nl%<##d48bc3>Prepares an attack on a target enemy that%nl%<##d48bc3>deals &f%{_damage}% <##d84af7>Psychic <##d48bc3>damage after &f%{_loreDur}%<##d48bc3>.%nl% %nl%<##d48bc3>If &f <##f7b2e7>Future Sight <##d48bc3>is used on an enemy that%nl%<##d48bc3>already has the spell <##d48bc3>applied on them, it%nl%<##d48bc3>refreshes the duration, but does not add%nl%<##d48bc3>a stack."
+            set metadata value "LastDamageCause" of {_target} to "<##d48bc3>Future Sight"
+            set metadata value "LastDamageCauseLore" of {_target} to {_lore}
+            set metadata value "Element" of {_p} to "Psychic"
+            
+            broadcast "%{_futureSightStacks}% stacks"
+            clear metadata value "Future Sight%{_p}%" of {_target}
+            clear metadata value "Future Sight-Duration%{_p}%" of {_target}
+            clear metadata value "Future Sight-Duration-Max%{_p}%" of {_target}
+            clear uuid tag "FutureSightVisual%{_p}%" of custom nbt of {_target}
+
+            set {_damage} to {_damage}*{_futureSightStacks}
+
+            chance of {_crit}%:
+                set {_damage} to {_damage}*2
+
+            make {_p} damage {_target} by {_damage}*2
+
+        if {_target} = {_p}:
+            clear metadata value "Mind Transfer" of {_p}
+            broadcast "Ye"
+    else:
+        if {_addStack} = true:
+            add {_addAmount} to metadata value "Future Sight%{_p}%" of {_target}
+    
+    loop all entities where [metadata value {_FS} of input is set]:
+        add 1 to {_targets}
+        add metadata value "Future Sight%{_p}%" of loop-entity to {_totalStacks}
+
+    if {_targets} is not set:
+        clear metadata value "EspeonBonusIntellect" of {_p}
+        clear metadata value "EspeonBonusHaste" of {_p}
+    else:
+        set metadata value "EspeonBonusIntellect" of {_p} to (0.5 + {mastery::%{_p}%}/40)*{_totalStacks}
+        set metadata value "EspeonBonusHaste" of {_p} to (1.5 + {mastery::%{_p}%}/16)*{_totalStacks}
+
+    if {_totalStacks} is not set:
+        set {_totalStacks} to 0
+    send action bar "&f FS: %{_totalStacks}%" to {_p}
+        
+
+function futureSightParticle(p: player, e: entity, dur: timespan):
+    set {_id} to random 10 char string from charset `0-9` `a-z`
+    set string tag "FutureSightParticleID%{_p}%" of custom nbt of {_e} to {_id}
+
+    set {_radiusTriangle} to 1
+    set {_radiusCircle} to 1.5
+    set {_radiusCircle2} to 2.25
+
+    set {_seconds} to seconds of {_dur}
+
+    create a new custom dust_color_transition particle with:
+        count: 1
+        velocity: outwards
+        force: true
+        data: dustTransition(magenta, white, 1)
+    set {_particle} to last created particle
+
+    set {_count} to 0
+    
+    while metadata value "Future Sight%{_p}%" of {_e} is set:
+        set {_currentId} to string tag "FutureSightParticleID%{_p}%" of custom nbt of {_e}
+        stop if {_currentId} != {_id}
+        stop if {_e} is not alive
+        
+        set {_triangle} to a triangle with radius {_radiusTriangle}
+        set particle of {_triangle} to end_rod
+
+        set {_circle} to a circle with radius {_radiusCircle}
+        set particle of {_circle} to {_particle}
+
+        set {_circle2} to a circle with radius {_radiusCircle2}
+        set particle of {_circle2} to reverse_portal
+        
+        rotate shape {_triangle} around vector(0, 1, 0) by {_count}/20 radians
+
+        set {_radiusCircle} to {_radiusCircle}-({_radiusCircle}/({_seconds}*20))
+        set {_radiusCircle2} to {_radiusCircle2}-({_radiusCircle2}/({_seconds}*20))
+        set {_radiusTriangle} to {_radiusTriangle}-({_radiusTriangle}/({_seconds}*20))
+        
+        draw shape {_triangle} at {_e}
+        draw shape {_circle} at {_e}
+        draw shape {_circle2} at {_e}
+
+        set {_count} to {_count} + 1
+
+        wait 1 tick
+
+    clear string tag "FutureSightParticleID%{_p}%" of custom nbt of {_e}
+
+function stopCastSoundEspeon(p: player):
+    stop sound "a.a" for {_p}
+    
+function timeWarpVFX(p: player):
+    set {_triangle1} to a solid triangle with radius 0.5
+    set particle of {_triangle1} to end_rod
+    rotate shape {_triangle1} around z-axis by 90 degrees
+
+    set {_triangle2} to a solid triangle with radius 0.5
+    set particle of {_triangle2} to end_rod
+    rotate shape {_triangle2} around z-axis by 90 degrees
+    rotate shape {_triangle2} around x-axis by 180 degrees
+
+    set {_dg} to (({_p}'s yaw) * -1) - 90
+    rotate shape {_triangle1} around y-axis by {_dg} degrees
+    rotate shape {_triangle2} around y-axis by {_dg} degrees
+
+    create a new custom reverse_portal particle with:
+        count: 3
+        extra: 0.2
+        velocity: outwards
+        force: true
+    set {_particle} to last created particle
+
+    create a new custom reverse_portal particle with:
+        count: 3
+        extra: 0.2
+        velocity: inwards
+        force: true
+    set {_particle2} to last created particle
+
+    set {_triangle3} to a triangle with radius 0.75
+    set particle of {_triangle3} to {_particle}
+    rotate shape {_triangle3} around z-axis by 90 degrees
+    rotate shape {_triangle3} around y-axis by {_dg} degrees
+
+    set {_triangle4} to a triangle with radius 0.75
+    set particle of {_triangle4} to {_particle}
+    rotate shape {_triangle4} around z-axis by 90 degrees
+    rotate shape {_triangle4} around x-axis by 180 degrees
+    rotate shape {_triangle4} around y-axis by {_dg} degrees
+
+    set {_triangle5} to a triangle with radius 0.75
+    set particle of {_triangle5} to {_particle2}
+    rotate shape {_triangle5} around z-axis by 90 degrees
+    rotate shape {_triangle5} around y-axis by {_dg} degrees
+
+    set {_triangle6} to a triangle with radius 0.75
+    set particle of {_triangle6} to {_particle2}
+    rotate shape {_triangle6} around z-axis by 90 degrees
+    rotate shape {_triangle6} around x-axis by 180 degrees
+    rotate shape {_triangle6} around y-axis by {_dg} degrees
+
+
+    set {_loc} to location 3 above {_p}
+    set {_loc2} to location 4 above {_p}
+    set {_loc3} to location 2 above {_p}
+    
+
+    set {_view} to vector from yaw {_loc2}'s yaw and pitch {_loc2}'s pitch
+
+    set {_helix} to a spiral with radius 0.75 and height 3 and winding rate of 0.3 loops per meter
+    set particle of {_helix} to falling_obsidian_tear
+    rotate shape {_helix} around y-axis by {_dg} degrees
+
+    set {_helix2} to a anti-clockwise helix with radius 0.75 and height 3 and winding rate of 0.3 loops per meter
+    set particle of {_helix2} to falling_obsidian_tear
+    rotate shape {_helix2} around y-axis by {_dg} degrees
+
+    set {_helix3} to a spiral with radius 1.25 and height 3 and winding rate of 0.3 loops per meter
+    set particle of {_helix3} to witch particle
+    rotate shape {_helix3} around y-axis by {_dg} degrees
+
+    set {_helix4} to a anti-clockwise helix with radius 1.25 and height 3 and winding rate of 0.3 loops per meter
+    set particle of {_helix4} to witch particle
+    rotate shape {_helix4} around y-axis by {_dg} degrees
+
+    draw an animation of shape {_triangle1} at {_loc} over 0.25 seconds:
+        set {_vectors::*} to points of drawn shape
+        dress({_loc}, {_vectors::*})
+    draw an animation of shape {_triangle2} at {_loc2} over 0.25 seconds
+
+    draw an animation of shape {_helix} at {_loc3} over 1.75 seconds
+    draw an animation of shape {_helix2} at {_loc3} over 1.75 seconds
+    draw an animation of shape {_helix3} at {_loc3} over 2 seconds
+    draw an animation of shape {_helix4} at {_loc3} over 2 seconds
+
+    draw an animation of shape {_triangle3} at {_loc} over 0.5 seconds
+    draw an animation of shape {_triangle4} at {_loc2} over 0.5 seconds
+
+    draw an animation of shape {_triangle5} at {_loc} over 0.75 seconds
+    draw an animation of shape {_triangle6} at {_loc2} over 0.75 seconds
+
+function clearFutureSight(p: player, e: entity):
+    clear string tag "FutureSightEffectID%{_p}%" of custom nbt of {_e}
+    clear string tag "FutureSightParticleID%{_p}%" of custom nbt of {_e}
+    clear metadata value "Future Sight%{_p}%" of {_e}
+    clear metadata value "Future Sight-Duration%{_p}%" of {_e}
+    clear metadata value "Future Sight-Duration-Max%{_p}%" of {_e}
+
+function mindTransferEffect(p: player, target: entity, dur: timespan):
+
+    set {_spawnLoc} to uuid tag "FutureSightVisual%{_p}%" of custom nbt of {_target}
+    set {_spawnLoc} to {_spawnLoc} parsed as entity
+
+    set {_targetLoc} to location of {_spawnLoc}
+    play sound "skill.espeon.futuresight" with volume 3 and pitch 1.5 at (location at {_target})
+    
+    spawn an armor stand at {_targetLoc} with nbt from "{Invisible:1b,Invulnerable:1b,Silent:1b,NoGravity:1b,Pose:{Head:[180.0f,0.0f,0.0f]}}"
+    broadcast "distance between: %distance between {_targetLoc} and {_target}%"
+
+    set {_fallDuration} to {_dur}
+
+    set {_seconds} to seconds of {_fallDuration}
+
+    set {_locP} to location 10 above {_p}
+    set {_icosa} to a icosahedron with radius 2
+    set particle of {_icosa} to reverse_portal
+    
+    draw an animation of the shape {_icosa} at {_locP} over {_dur}
+
+
+    set {_e} to last spawned armor stand
+    set boolean tag "ECAbility" of custom nbt of {_e} to true 
+    set {_y} to 0
+    set {_shape} to a solid tetrahedron with radius 2
+    set side length of {_shape} to 1.2
+    set {_locStar} to location of {_e}
+    set {_count} to 0
+    set {_vec} to vector between {_locStar} and {_targetLoc}
+
+    create a new custom dust_color_transition particle with:
+        count: 1
+        velocity: outwards
+        force: true
+        data: dustTransition(purple, white, 0.4)
+    set particle of {_shape} to last created particle
+
+
+    set {_time} to now
+    set {_pitch} to 1
+
+    while {_e} is alive:
+
+        set {_targetLoc} to {_locP}
+        set {_vec} to vector between {_locStar} and {_targetLoc}
+        set {_dist} to distance between {_locStar} and {_targetLoc}-1.5
+
+        set vector length of {_vec} to {_count} * ({_dist}/({_seconds}*20))
+        teleport {_e} to {_locStar} ~ {_vec}
+
+        add nbt from "{Rotation:[%{_y}%.0f,%{_y}%.0f]}" to nbt of {_e}
+        draw shape {_shape} at {_locStar} ~ {_vec}
+        set {_h} to location 0.3 below {_locStar}
+        set {_rad} to Double.valueOf(1/{_seconds})
+        rotate shape {_shape} around vector(1, 1, 1) by {_rad} radians
+
+
+        stop loop if {_count} = ({_seconds}*20)
+        wait 1 tick
+        add 1 to {_count}
+        add 10 to {_y}     
+        
+        if (rounded {_count}) is divisible by (rounded {_seconds}):
+            play sound "block.amethyst_block.break" with volume 3 and pitch {_pitch} at {_locStar} ~ {_vec}
+            play sound "entity.ender_eye.death" with volume 3 and pitch {_pitch} at {_locStar} ~ {_vec}
+            add 0.05 to {_pitch}
+            combatInitiate({_p}, {_target})
+
+        
+        if metadata value "Future Sight%{_p}%" of {_target} is not set:
+            if distance between {_e} and {_locP} < 2:
+                set {_line1} to a line from {_spawnLoc} to {_locP}
+                set {_line2} to a line from {_locStar} ~ {_vec} to {_locP}
+                set {_line3} to a line from location above {_p} to {_locP}
+                set particle of {_line1} to reverse_portal
+                set particle of {_line2} to reverse_portal
+                set particle of {_line3} to reverse_portal
+                draw shape {_line1}
+                draw shape {_line2}
+                draw shape {_line3}
+
+                play sound "entity.illusioner.prepare_mirror" with volume 3 and pitch 2 at (location at {_e})
+                play sound "entity.allay.item_thrown" with volume 3 and pitch 1 at (location at {_e})
+                play sound "block.beacon.activate" with volume 3 and pitch 2 at (location at {_e})
+
+                set particle of {_icosa} to reverse_portal
+                draw shape {_icosa} at {_locP}
+
+            else:
+                set {_pit} to 0
+                loop 4 times:
+                    play sound "block.glass.break" with volume 3 and pitch {_pit} at {_locStar} ~ {_vec}
+                    add 0.5 to {_pit}
+                
+                set particle of {_shape} to falling_obsidian_tear
+                draw shape {_shape} at {_locStar} ~ {_vec}
+            stop
+    
+
+
+function FutureSightEspeon(p: player, target: entity):
+    play sound "skill.cresselia.fullmoon_cast" with volume 3 and pitch 1.67 at {_target}
+    set metadata value "FutureSightStacks" of {_target} to 1
+    set {_randomIncrease} to a random number between 10 and 40
+    set {_loc} to location of {_target}
+    set y-coordinate of {_loc} to (y-coordinate of {_target} + {_randomIncrease})
+    spawn an armor stand at {_loc} with nbt from "{Invulnerable:1b,NoGravity:1b,Pose:{Head:[180.0f,0.0f,0.0f]}}"
+    set {_u} to uuid of last spawned armor stand
+    execute console command "disguuid %{_u}% KrystaAirlines"
+    set {_e} to last spawned armor stand
+    FutureSightEspeonEffect({_p}, {_target}, {_e})
+    
+    
+function FutureSightEspeonEffect(p: player, target: entity, e: entity):
+    set {_bonusHaste} to metadata value "EspeonBonusHaste" of {_p}
+    set {_haste} to Haste({_p}) + (({_bonusHaste}/4)/100)
+    set {_y} to 0
+    set {_locMoon} to location of {_e}
+    set {_count} to 0
+    set {_moonSpeed} to 0.15*{_haste}
+    while {_e} is alive:
+        set {_targetLoc} to location 0.5 below {_target}
+        set {_vec} to vector between {_locMoon} and {_targetLoc}
+        if {_count} is divisible by 2:
+            set {_loc} to location of {_e}
+            add 3 to y-location of {_loc}
+            draw 1 of witch particle at {_loc}
+            draw 1 of portal particle at {_e}
+        set vector length of {_vec} to {_count} * {_moonSpeed}
+        teleport {_e} to {_locMoon} ~ {_vec}
+        add nbt from "{Rotation:[%{_y}%.0f,%{_y}%.0f]}" to nbt of {_e}
+        stop loop if distance between {_e} and {_target} < 1
+        if metadata value "FutureSightStacks" of {_target} is not set:
+            kill {_e}
+            FutureSightEspeon({_p}, {_p})
+            stop
+        wait 1 tick
+        add 1 to {_count}
+        add 10 to {_y}
+    kill {_e}
+    set {_enemies::*} to LoopEntitiesAroundTarget({_target}, 5, true)
+    play sound "entity.generic.splash" with volume 3 and pitch 0.23 at {_target}
+    play sound "entity.generic.explode" with volume 3 and pitch 0.23 at {_target}
+    clear metadata value "FutureSightStacks" of {_target}
+                            
+on falling block land:
+    if event-entity is falling tnt block:
+        cancel event
+on death:
+    if victim is a ghast:
+        clear drops
+    if victim is a sheep:
+        clear drops 
+
+function kshp(e: entity):
+    wait 7 seconds
+    kill {_e}
+
+function pshg(e: entity):
+    while {_e} is alive:
+        push {_e} upwards with speed 0.15
+        set {_f} to a random vector
+        set (velocity of {_e}) to a random vector
+        wait 1 ticks
