@@ -9,32 +9,69 @@ define new bot named "Earthcraft":
         # "1068544290436948048"
         set the presence of the bot named "Earthcraft" to playing "Earthcraft"
         send "[EarthcraftDiscord] The Earthcraft Bot has loaded successfully!" to console
+        make embed:
+            set author of embed to "The server has started!"
+            set embed color of the embed to lime
+        post last embed to channel with id "900397064251379752"
 
-on load:
+        set {_level} to new slash command named "card" with description "Displays information about a Card with the given id."
+        add new string option named "name" with description "Card name" to options of {_level}
+        add new string option named "id" with description "Card id" to options of {_level}
+        add new locale data for "pl" with value "karta" to name localizations of {_level}
+        add new locale data for "pl" with value "nazwa" to description localizations of {_level}
+        add new locale data for "pl" with value "id karty" to description localizations of {_level}
+
+        set {_linkaccount} to new slash command named "linkaccount" with description "Links an in-game player username with a Discord username."
+        add new string option named "code" with description "unique code obtained from the in-game /linkaccount command" to options of {_linkaccount}
+        add new locale data for "pl" with value "polaczkonto" to name localizations of {_linkaccount}
+        add new locale data for "pl" with value "kod" to description localizations of {_linkaccount}
+
+        set {_cardlist} to new slash command named "cardlist" with description "Links Card IDs and their respective owners."
+        add new string option named "name" with description "Card name" to options of {_cardlist}
+        add new locale data for "pl" with value "listakart" to name localizations of {_cardlist}
+        add new locale data for "pl" with value "nazwa" to description localizations of {_cardlist}
+        set {_bot} to bot named "Earthcraft"
+
+        set {_refreshBot} to new slash command named "refreshbot" with description "for my badge"
+
+        update {_level} and {_linkaccount} and {_cardlist} and {_refreshBot} globally in {_bot}
+        
+
+#on load:
     #post "Hello World!" to text channel with id "1068544290436948048" # specific channel
-    set {_level} to new slash command named "card" with description "Displays information about a Card with the given id."
-    add new string option named "name" with description "Card name" to options of {_level}
-    add new string option named "id" with description "Card id" to options of {_level}
-    add new locale data for "pl" with value "karta" to name localizations of {_level}
-    add new locale data for "pl" with value "nazwa" to description localizations of {_level}
-    add new locale data for "pl" with value "id karty" to description localizations of {_level}
-
-    set {_linkaccount} to new slash command named "linkaccount" with description "Links an in-game player username with a Discord username."
-    add new string option named "code" with description "unique code obtained from the in-game /linkaccount command" to options of {_linkaccount}
-    add new locale data for "pl" with value "polaczkonto" to name localizations of {_linkaccount}
-    add new locale data for "pl" with value "kod" to description localizations of {_linkaccount}
-
-    set {_cardlist} to new slash command named "cardlist" with description "Links Card IDs and their respective owners."
-    add new string option named "name" with description "Card name" to options of {_cardlist}
-    add new locale data for "pl" with value "listakart" to name localizations of {_cardlist}
-    add new locale data for "pl" with value "nazwa" to description localizations of {_cardlist}
-    set {_bot} to bot named "Earthcraft"
-
-    set {_refreshBot} to new slash command named "refreshbot" with description "for my badge"
-
-    update {_level} and {_linkaccount} and {_cardlist} and {_refreshBot} globally in {_bot}
-
+    
     #update {_linkaccount} globally in {_bot}
+
+	
+function resetMessage(type: string):
+	wait 10 seconds
+	if {_type} = "daily":
+		make embed:
+			set author of embed to "EarthCraft"
+			set title of embed to "The Daily Reset has occured"
+			set embed color of the embed to lime
+			set description of embed to "**Daily Reset**%nl%• Your daily Stardust limit has reset!%nl%• A new Daily Reward is awaiting you!"
+			set {_icon} to "https://i.imgur.com/Iei2Uf1.png"                  
+			set author icon of embed to {_icon}
+			set {_emotes::*} to ":)", "^_^", "^-^", ":D", "!!!", ">:)" and ":P"
+			set {_text} to a random element of {_emotes::*}
+			set footer of embed to {_text}
+			set timestamp of embed to now
+		post last embed to channel with id "900397064251379752"
+	else if {_type} = "weekly":
+		make embed:
+			set author of embed to "EarthCraft"
+			set title of embed to "The Weekly Reset has occured"
+			set embed color of the embed to red
+			set description of embed to "**Weekly Reset**%nl%• Work Orders have been reset!%nl%• Weekly rewards are awaiting you in the Grand Vault!%nl%• The Stellar Chest's card for this week has changed!"
+			set {_icon} to "https://i.imgur.com/UiRf56w.png"                  
+			set author icon of embed to {_icon}
+			set {_emotes::*} to ":)", "^_^", "^-^", ":D", "!!!", ">:)" and ":P"
+			set {_text} to a random element of {_emotes::*}
+			set footer of embed to {_text}
+			set timestamp of embed to now
+
+		post last embed to channel with id "900397064251379752"
 
 on slash command:
     if discord id of event-channel = "777982524139765800" or "900397064251379752":
@@ -204,7 +241,7 @@ on slash command:
                 broadcast {discordCodes::*}
                 reply with hidden "The entered code was not recognized."
         else if event-string = "refreshbot":
-            reply with "Thank you for helping me refresh <@&900385261786120212>'s BADGE"
+            reply with uncolored "Thank you for helping me refresh <@&&900385261786120212>'s BADGE"
         else if event-string is "cardlist":
             set {_name} to argument "name" as string
             if {_name} is set:
@@ -243,7 +280,7 @@ on slash command:
                                 set {_cardImage} to {_cardImages::%{_index}%}
                                 stop loop                     
                         set thumbnail of embed to {_cardImage}
-                    reply with embed
+                        post last embed to event-channel
                 else:
                     reply with hidden "No cards with the provided name have been found."
             else:
@@ -255,14 +292,14 @@ on join:
         set embed color of the embed to lime
         set {_player} to "https://mc-heads.net/avatar/%player%"                  
         set author icon of embed to {_player}
-    post embed to channel with id "900397064251379752"
+    post last embed to channel with id "900397064251379752"
 on leave:
     make embed:
         set author of embed to "%player% left the server"
         set embed color of the embed to red
         set {_player} to "https://mc-heads.net/avatar/%player%"                  
         set author icon of embed to {_player}
-    post embed to channel with id "900397064251379752"
+    post last embed to channel with id "900397064251379752"
 
 function StellarCardDiscord(p: player, card: string):
     make embed:
@@ -280,7 +317,8 @@ function StellarCardDiscord(p: player, card: string):
         set {_player} to "https://mc-heads.net/avatar/%{_p}%"                  
         set author icon of embed to {_player}
         set {_data::*} to data() split at " "
-        set footer of embed to {_data::1}
+        set footer of embed to first element of {_data::*}
+    post last embed to channel with id "900397064251379752"
 
 on message receive:
     if event is from guild:
@@ -293,13 +331,14 @@ on message receive:
                 if message attachments of event-message exists:
                     set {_attachments::*} to message attachments of event-message
                 loop {_attachments::*}:
-                    set {_attachments::%loop-index%} to "&f%file name of loop-value% &9&n%loop-value's url%"
+                    set {_attachments::%loop-index%} to "<tooltip:&9&n%loop-value's url%><link:%loop-value's url%>&9&n%file name of loop-value%"
                 set {_messageContent} to "%message content of event-message%"
+                set {_messageContent} to unformatted {_messageContent}
                 if {_messageContent} = "":
                     if {_attachments::*} is set:
                         set {_messageContent} to (join {_attachments::*} by " ")
                 else if {_messageContent} contains "http" or "www":
-                    set {_messageContent} to "&9&n%{_messageContent}%"
+                    set {_messageContent} to "&9[LINK] <link:%{_messageContent}%>&9&n%{_messageContent}%"
                 if mentioned members of event-message is set:
                     loop mentioned members of event-message:
                         add loop-value to {_mentionedMembers::*}
@@ -322,11 +361,7 @@ on message receive:
                         replace all "<:xdd:1208802789715873822>" in {_message} with ""
                     if {_message} contains "🥰":
                         replace all "🥰" in {_message} with ""
-                    if {_message} contains "-formatted":
-                        replace all "-formatted" in {_message} with ""
-                        broadcast formatted {_message}
-                    else:
-                        broadcast {_message}
+                    broadcast formatted {_message}
                 if "%message content of event-message%" contains "<@881202434029006910>":
                     set {_tag::*} to mention tag of event-user split at "##"
                     show typing status in event-channel
@@ -343,46 +378,31 @@ on message receive:
 command /discord [<text>] [<text>] [<text>]:
     trigger:
         if arg-1 = "help" or "list" or "":
-            if {language::%player%} = "English":
-                send "<##7289da>[EarthCraft Discord] &fCommand list:" to player
-                send "<##7289da>-/discord preferences name &f- Changes the displayed name for all players when you send a message through <##7289da>Discord&f. This preference can be set to either your in-game name or your <##7289da>Discord &fname. <##7289da>-use arguments: &fin-game <##7289da>or &fdiscord" to player
-                send "<##7289da>-/discord preferences reminder &f- Turns off the account linking reminder that's shown on login." to player
-            else:
-                send "<##7289da>[EarthCraft Discord] &fLista komend:" to player
-                send "<##7289da>-/discord preferencje nazwa &f- Zmienia wyświetlaną nazwe dla wszystkich graczy przy wysyłaniu wiadomości przez <##7289da>Discord&f. Ta preferencja może zostać ustawiona na nazwę użytkownika w grze, lub nazę użytkownika na <##7289da>Discord&f. <##7289da>-użyj argumentów: &fin-game <##7289da>lub &fdiscord" to player
-                send "<##7289da>-/discord preferences reminder &f- Wyłącza przypomnienie o połączeniu konta przy logowaniu." to player
+            send "<##7289da>[EarthCraft Discord] &fCommand list:" to player
+            send "<##7289da>-/discord preferences name &f- Changes the displayed name for all players when you send a message through <##7289da>Discord&f. This preference can be set to either your in-game name or your <##7289da>Discord &fname. <##7289da>-use arguments: &fin-game <##7289da>or &fdiscord" to player
+            send "<##7289da>-/discord preferences reminder &f- Turns off the account linking reminder that's shown on login." to player
         if arg-1 = "preferences" or "preferencje":
             if arg-2 = "name" or "nazwa":
-                if {language::%player%} = "English":
-                    if arg-3 is "in-game" or "discord":
-                        load yaml "plugins/Skript/playerdata/admin/%uuid of player%-Admin.yml" as "dataAdmin-%player%"
-                        set yaml value "Player.Preferred Discord Name" in "dataAdmin-%player%" to arg-3
-                        save yaml "dataAdmin-%player%"
-                        send "<##7289da>[EarthCraft Discord] &fSuccessfully set your preferred name in global messages to &7&o%arg-3%&f." to player
-                    else:
-                        send "<##7289da>[EarthCraft Discord] &fNo argument was been given for the preferred name or used an incorrect argument. Possible arguments are &7&oin-game&f and &7&odiscord&f." to player
+                if arg-3 is "in-game" or "discord":
+                    load yaml "plugins/Skript/playerdata/admin/%uuid of player%-Admin.yml" as "dataAdmin-%player%"
+                    set yaml value "Player.Preferred Discord Name" in "dataAdmin-%player%" to arg-3
+                    save yaml "dataAdmin-%player%"
+                    send "<##7289da>[EarthCraft Discord] &fSuccessfully set your preferred name in global messages to &7&o%arg-3%&f." to player
                 else:
-                    if arg-3 is "in-game" or "discord":
-                        load yaml "plugins/Skript/playerdata/admin/%uuid of player%-Admin.yml" as "dataAdmin-%player%"
-                        set yaml value "Player.Preferred Discord Name" in "dataAdmin-%player%" to arg-3
-                        save yaml "dataAdmin-%player%"
-                        send "<##7289da>[EarthCraft Discord] &fPomyślnie ustawiono preferowaną nazwę w wiadmościach na &7&o%arg-3%&f." to player
-                    else:
-                        send "<##7289da>[EarthCraft Discord] &fNie podano argumentu na preferowaną nazwę, lub użyto złego argumentu. Możliwe argumenty to &7&oin-game&f, oraz &7&odiscord&f." to player
+                    send "<##7289da>[EarthCraft Discord] &fNo argument was been given for the preferred name or used an incorrect argument. Possible arguments are &7&oin-game&f and &7&odiscord&f." to player
             else if arg-2 = "reminder":
-                if {language::%player%} = "English":
-                    send "<##7289da>[EarthCraft Discord] &fSuccessfully disabled account linking reminders." to player
-                else:
-                    send "<##7289da>[EarthCraft Discord] &fPomyślnie wyłączono przypomnienia o połączeniu konta przy logowaniu." to player
+                send "<##7289da>[EarthCraft Discord] &fSuccessfully disabled account linking reminders." to player
                 load yaml "plugins/Skript/playerdata/admin/%uuid of player%-Admin.yml" as "dataAdmin-%player%"
                 set yaml value "Player.Discord Reminders" in "dataAdmin-%player%" to "Disabled"
                 save yaml "dataAdmin-%player%"
+        
+command /discordmsg [<text>] [<text>]:
+    trigger:
+        set {_msg} to full command
+        replace all "%arg-1% " in {_msg} with ""
+        replace all "discordmsg " in {_msg} with ""
+        post {_msg} to text channel with id arg-1
 
-on chat:
-    if {chatstop} is not true:
-        if {kanal::%player%} is not set:
-            set {_data::*} to data() split at " "
-            post "%{_data::1}% | %player%: %unformatted message%" to text channel with id "900397064251379752" # earthcraft -> "900397064251379752" # specific channel
 
 command /accountsync:
     aliases: /polaczkonto, /linkaccount
@@ -391,28 +411,20 @@ command /accountsync:
         if yaml value "Player Accounts.%player's uuid%.Discord ID" in "Discord" is not set:
             set {_code} to random 8 char string from charset `0-9`
             if metadata value "DiscordCode" of player is not set:
-                broadcast {_code}
                 set metadata value "DiscordCode" of player to {_code}
                 add {_code} to {discordCodes::*}
                 set yaml value "Accounts.Unlinked.%{_code}%" in "Discord" to (player's uuid)
-                if {language::%player%} = "English":
-                    send "<##7289da>[EarthCraft Discord] &fYour unique code is %{_code}%. Use /linkaccount <code> on <##7289da>Discord &fto link or update your username." to player
-                else:
-                    send "<##7289da>[EarthCraft Discord] &fTwój unikalny kod to %{_code}%. Użyj /polaczkonto <kod>, lub /linkaccount <kod> na <##7289da>Discordzie&f, by połączyć, lub zaktualizować nazwę użytkownika." to player
+                send "<##7289da>[EarthCraft Discord] &fYour unique code is %{_code}%. Use /linkaccount <code> on <##7289da>Discord &fto link or update your username." to player
                 save yaml "Discord"
                 unload yaml "Discord"
             else:
-                if {language::%player%} = "English":
-                    send "<##7289da>[EarthCraft Discord] &fYour unique code is %metadata value "DiscordCode" of player%. Use /linkaccount <code> on <##7289da>Discord &fto link or update your username." to player
-                else:
-                    send "<##7289da>[EarthCraft Discord] &fTwój unikalny kod to %metadata value "DiscordCode" of player%. Użyj /polaczkonto <kod>, lub /linkaccount <kod> na <##7289da>Discordzie&f, by połączyć, lub zaktualizować nazwę użytkownika." to player
+                send "<##7289da>[EarthCraft Discord] &fYour unique code is %metadata value "DiscordCode" of player%. Use /linkaccount <code> on <##7289da>Discord &fto link or update your username." to player
         else:
-            if {language::%player%} = "English":
-                send "<##7289da>[EarthCraft Discord] &fYour <##7289da>Discord &faccount has already been linked to EarthCraft." to player
-            else:
-                send "<##7289da>[EarthCraft Discord] &fTwoje konto <##7289da>Discord &fzostało już połączone z EarthCraft." to player
+            send "<##7289da>[EarthCraft Discord] &fYour <##7289da>Discord &faccount has already been linked to EarthCraft." to player
 
 on join:
-    set channel topic of channel with id "900397064251379752" to "Players Online: %number of online players%  |  IP: 194.213.3.150:25605  |  Dynmap: http://194.213.3.150:8101  |  Bluemap: http://194.213.3.150:8191"
+    wait 1 tick
+    set channel topic of channel with id "900397064251379752" to "Players Online: %number of online players%  |  IP: mc.earthcraft.uk  |  Dynmap: mc.earthcraft.uk:8101  |  Bluemap: mc.earthcraft.uk:8191"
 on quit:
-    set channel topic of channel with id "900397064251379752" to "Players Online: %number of online players%  |  IP: 194.213.3.150:25605  |  Dynmap: http://194.213.3.150:8101  |  Bluemap: http://194.213.3.150:8191"
+    wait 1 tick
+    set channel topic of channel with id "900397064251379752" to "Players Online: %number of online players%  |  IP: mc.earthcraft.uk  |  Dynmap: mc.earthcraft.uk:8101  |  Bluemap: mc.earthcraft.uk:8191"

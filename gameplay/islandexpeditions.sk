@@ -1,0 +1,185 @@
+
+on rightclick on gold block:
+    if player's name = "Pehrek":
+        AzeriteOreMine(player, event-block)
+
+on place of gold block:
+    set {_azeriteOreType::*} to "Shard", "Crystal" and "Chunk"
+    set {_w} to a random element of {_azeriteOreType::*}
+    set string tag "AzeriteVeinType" of custom nbt of event-block to {_w}
+
+on rightclick on a player:
+    if name of clicked player = "Flynn Fairwind":
+        if cooldown "Flynn Fairwind-Talk%player%" is finished:
+            send "                   |~" to player
+            send "             |/    w" to player
+            send "            / (   (|   \" to player
+            send "          /( (/   |)  |\" to player
+            send "  ____  ( (/    (|   | )  ," to player
+            send " |----\ (/ |    /|   |'\ /^;" to player
+            send "\---*---Y--+-----+---+--/(" to player
+            send " \------*---*--*---*--/" to player
+            send "  '~~ ~~~~~~~~~~~~~~~" to player
+            create cooldown "Flynn Fairwind-Talk%player%" for 3 seconds
+            play sound "npc.flynnfairwind.greeting" with volume 3 and pitch 1 to player
+            play sound "entity.experience_orb.pickup" with volume 3 and pitch 1 to player
+            send "&lSet Sail for Island Expeditions!" to player
+            send "" to player
+            send "&nSelect difficulty:" to player
+            send "" to player
+            set {_tooltipLevel} to "Required Card Level:"
+            set {_tooltip} to "Recommended Item Level:"
+            send formatted "<tooltip:%{_tooltip}% 40%nl%%{_tooltipLevel}% 20>&a[Normal]  <tooltip:%{_tooltip}% 70%nl%%{_tooltipLevel}% 40>&6[Heroic]  <tooltip:%{_tooltip}% 100%nl%%{_tooltipLevel}% 60>&4[Mythic]  <tooltip:Coming soon!>&b[PVP]" to player
+#To do:
+
+#When difficulty is selected, play ship sail sound
+#Send message: You are now queued for Island Expedition with (players from party)
+
+function AzeriteOreMine(p: player, ore: block):
+    set {_typeOfOre} to string tag "AzeriteVeinType" of custom nbt of {_ore}
+
+    if {_typeOfOre} = "crystal":
+        set {_azerite} to 270
+        set {_casttime} to 6 seconds
+    else if {_typeOfOre} = "chunk":
+        set {_azerite} to 190
+        set {_casttime} to 4 seconds
+    else if {_typeOfOre} = "shard":
+        set {_azerite} to 110
+        set {_casttime} to 2 seconds
+
+    set {_distance} to 5
+    set {_castTimeValue} to "%{_casttime}%"
+    replace all " seconds" and " second" in {_castTimeValue} with ""
+    set {_castTimeValue} to {_castTimeValue} parsed as number
+    set {_originalCastTimeValue} to {_castTimeValue}
+    
+    if metadata value "cast" of {_p} is not set:
+        set metadata value "casttimemax" of {_p} to {_casttime}
+        set metadata value "mining" of {_p} to true
+        set metadata value "cast" of {_p} to {_casttime}
+        set {_break} to 0
+
+        while metadata value "mining" of {_p} = true:
+            if metadata value "channeling" of {_p} is set:
+                clear metadata value "channeling" of {_p}
+            if metadata value "cast" of {_p} is not set:
+                clear metadata value "mining" of {_p}
+                stop
+            stop loop if distance between {_p} and {_ore} > {_distance}
+            if {_casttime} > 0 seconds:
+                set metadata value "casttimeleft" of {_p} to {_casttime}
+                send action bar "Mining... %{_casttime}% " to {_p}
+                if {_castTimeValue} is divisible by 1:
+                    play sound "misc.mine_ore" with volume 2 and pitch 1 at {_p}
+                    make {_p} swing their hand
+                    add 1/{_originalCastTimeValue} to {_break}
+                    make all players see damage of {_ore} as {_break}
+                wait 0.1 seconds
+                remove 0.1 seconds from {_casttime}
+                remove 0.1 from {_castTimeValue}
+            else:
+                clear metadata value "mining" of {_p}
+                send action bar "" to {_p}
+    else:
+        stop
+    clear metadata value "mining" of {_p}
+    clear metadata value "cast" of {_p}
+    clear metadata value "casttime" of {_p}
+    clear metadata value "casttimemax" of {_p}
+    if {_casttime} > 0 seconds:
+        send action bar "&cCancelled" to {_p}
+        stop
+    play sound "azerite.collect" with volume 2 and pitch 1 at {_p}
+    send "<##fff200>+%{_azerite}% Azerite Collected <##e8ce81>from Azerite %{_typeOfOre}%" to {_p}
+    set block at {_ore} to air
+
+on damage:
+    if metadata value "mining" of victim is set:
+        clear metadata value "mining" of victim
+
+#convert azerite variable to oldazerite
+
+command /dajmito:
+    trigger:
+        set {_count} to 0
+        loop (mobs in radius 20 around player) sorted by distance from player:
+            if loop-entity is a zombie:
+                add 1 to {_count}
+                #play sound "skill.jolteon.volt_control" with volume 3 and pitch 1.2 at loop-entity
+                if {_count} = 1:
+                    set {_shape} to a line from player to loop-entity
+                    set particle of {_shape} to smoke particle
+                    draw {_shape} at location 0.85 above player
+                    set {_shape} to a line from player to loop-entity
+                    set particle of {_shape} to item particle using gold block
+                    draw {_shape} at location 1 above player
+                    set {_lastEntity} to loop-entity
+                    set {_shape} to a line from player to loop-entity
+                else:
+                    wait 2 ticks
+                    set {_shape} to a line from {_lastEntity} to loop-entity
+                    set particle of {_shape} to smoke particle
+                    draw {_shape} at location 0.85 above {_lastEntity}
+                    set {_shape} to a line from {_lastEntity} to loop-entity
+                    set particle of {_shape} to item particle using gold block
+                    draw {_shape} at location 1 above {_lastEntity}
+                    set {_lastEntity} to loop-entity
+
+                set last damage cause of loop-entity to sweep attack
+                make player damage loop-entity by 1
+                play sound "skill.graves.gunshot" with volume 3 and pitch 1.45 at loop-entity
+
+    
+                
+command /dajmito2:
+    trigger:
+        set {_count} to 0
+        loop (mobs in radius 12 around player) sorted by distance from player:
+            if loop-entity is a zombie:
+                add 1 to {_count}
+                play sound "entity.witch.throw" with volume 3 and pitch 1 at loop-entity
+                if {_count} = 1:
+                    spawn 1 trident above player
+                    set {_f} to last spawned trident
+                    push {_f} (direction from player to loop-entity) with speed 0.05
+                    killTrident({_f})
+                    set gravity of last spawned trident to false
+                    set vector length of last spawned trident's velocity to 0.7
+                    set boolean tag uuid of loop-entity of custom nbt of {_f} to true
+                stop loop
+
+command /dajmito3:
+    trigger:
+        set {_y} to data()
+        if {language::%player%} = "English":
+            set {_karta} to {espeonkartaswEN}
+            set {_id} to random 8 char string from charset `0-9` `a-z`
+            add "&8Id: %{_id}%" to lore of {_karta}
+            add "&8Dropped: %{_y}%" to lore of {_karta}
+        if player can hold {_karta}:
+            give {_karta} to player
+        else:
+            drop {_karta} at player
+                
+on projectile collide:
+    if event-projectile is trident:
+        loop (mobs in radius 12 around event-projectile) sorted by distance from event-projectile:
+            if loop-entity is a zombie:
+                if boolean tag uuid of loop-entity of custom nbt of event-projectile is not set:
+                    set boolean tag uuid of loop-entity of custom nbt of event-projectile to true
+                    wait 2 ticks
+                    play sound "entity.witch.throw" with volume 3 and pitch 1 at loop-entity
+                    push event-projectile upwards with velocity 0.02
+                    push event-projectile (direction from event-projectile to loop-entity) with speed 0.1
+                    set gravity of event-projectile to false
+                    set vector length of event-projectile's velocity to 0.7
+                    set boolean tag "DealtDamage" of custom nbt of event-projectile to false
+                    set long tag "damage" of custom nbt of event-projectile to 0.0
+
+                    stop loop
+
+function killTrident(e: entity):
+    wait 12 seconds
+    kill {_e}
+

@@ -1,4 +1,4 @@
-on papi request for prefix "ec":
+placeholderapi placeholder with the prefix "ec":
     if the identifier is "playerlevel":
         set the result to {poziom::%player%}
     else if the identifier is "playerexp":
@@ -15,26 +15,19 @@ on papi request for prefix "ec":
                 set {_id} to uncolored line 19 of lore of {karta::%player%}
                 replace all "Id: " in {_id} with ""
                 set {_name} to uncolored name of {karta::%player%}
-                load yaml "plugins/Skript/playerdata/karty/%{_name}%/%{_id}%.yml" as "kartyPh-%player%"
-                if yaml value "Card.Level" in "kartyPh-%player%" is set:
-                    set {_level} to yaml value "Card.Level" in "kartyPh-%player%"
-                else:
-                    set {_level} to 0
-                unload yaml "kartyPh-%player%"
                 set the result to "%{ikonkakarta::%player%}% %{_name}%"
         else:
             set the result to "-"
     else if the identifier is "cardlevel":
         if line 19 of lore of {karta::%player%} contains "Id: ":
-            set {_id} to uncolored line 19 of lore of {karta::%player%}
-            replace all "Id: " in {_id} with ""
-            load yaml "plugins/Skript/playerdata/karty/%uncolored name of {karta::%player%}%/%{_id}%.yml" as "kartyPh-%player%"
-            set {_level} to yaml value "Card.Level" in "kartyPh-%player%"
-            unload yaml "kartyPh-%player%"
-            if {_level} is not set:
-                set the result to "-"
+            if yaml "kartyPh-%player%" is loaded:
+                set {_level} to yaml value "Card.Level" in "kartyPh-%player%"
+                if {_level} is not set:
+                    set the result to "0"
+                else:
+                    set the result to "%{_level}%"
             else:
-                set the result to "%{_level}%"
+                set the result to "0"
         else:
             set the result to "-"
     else if the identifier is "party":
@@ -92,59 +85,145 @@ on papi request for prefix "ec":
     else if the identifier is "cosmicflux":
         set the result to {cosmicflux::%player%}
     else if the identifier contains "buff":
-        if (nbt tags of tag "custom;BuffList" of nbt of player) is set:
+        if yaml "Buffs%uuid of player%" is loaded:
             set {_buffs::*} to buffsReturn(player)
-            set {_size} to size of {_buffs::*}
-            set {_buffIndex} to the identifier
-            replace all "buff" in {_buffIndex} with ""
-            set {_buffIndex} to {_buffIndex} parsed as integer
+            if {_buffs::*} is set:
+                set {_size} to size of {_buffs::*}
+                set {_buffIndex} to the identifier
+                replace all "buff" in {_buffIndex} with ""
+                set {_buffIndex} to {_buffIndex} parsed as integer
 
-            set {_buff} to {_buffs::%{_buffIndex}%}
-            if {_buff} is set:
-                set {_icon} to tag "custom;BuffList;%{_buff}%;Icon" of nbt of player
-                set {_value} to tag "custom;BuffList;%{_buff}%;Value" of nbt of player
-                set {_duration} to tag "custom;BuffList;%{_buff}%;Duration" of nbt of player
-                if {_duration} != "-":
-                    if tag "custom;BuffList;%{_buff}%;Type" of nbt of player = "Stacks":
-                        set the result to "&f%{_icon}% %{_buff}% (%{_value}%): %{_duration}%"
-                    else if tag "custom;BuffList;%{_buff}%;Type" of nbt of player is set:
-                        set the result to "&f%{_icon}% %{_buff}%: %{_duration}%"
+                set {_buff} to {_buffs::%{_buffIndex}%}
+                if {_buff} is set:
+                    set {_icon} to yaml value "Buffs.%{_buff}%.Icon" in "Buffs%uuid of player%"
+                    set {_value} to yaml value "Buffs.%{_buff}%.Value" in "Buffs%uuid of player%"
+                    set {_duration} to yaml value "Buffs.%{_buff}%.Duration" in "Buffs%uuid of player%"
+                    if {_duration} != "-":
+                        if yaml value "Buffs.%{_buff}%.Type" in "Buffs%uuid of player%" = "Stacks":
+                            set the result to "&f%{_icon}% %{_buff}% (%{_value}%): %{_duration}%"
+                        else if yaml value "Buffs.%{_buff}%.Type" in "Buffs%uuid of player%" is set:
+                            set the result to "&f%{_icon}% %{_buff}%: %{_duration}%"
+                    else:
+                        set the result to "&f%{_icon}% %{_buff}%: %{_value}%"
+                        broadcast "Hej"
                 else:
-                    set the result to "&f%{_icon}% %{_buff}%: %{_value}%"
+                    set the result to ""
             else:
                 set the result to ""
         else:
             set the result to ""
     else if the identifier is "primarystat":
+        set {_primaryStat} to metadata value "PrimaryStatType" of player
         set {_health} to {health::%player%}
         if {_health} is not set:
             set {_health} to 0
-        if tag "PrimaryStat" of nbt of {karta::%player%} = "Intellect":
+        if {_primaryStat} = "Intellect":
             if {primarystat::%player%} is not set:
                 set {_primaryStat} to 0
             else:
-                set {_primaryStat} to {primarystat::%player%}
-            set the result to "<##59c1e3> Intellect: &f%{_primaryStat}%"
-        else if tag "PrimaryStat" of nbt of {karta::%player%} = "Agility":
+                set {_primaryStat} to {primarystat::%player%} + bonusStat(player, "Intellect")
+            set the result to "<##59c1e3> &fIntellect: &f%{_primaryStat}%"
+        else if {_primaryStat} = "Agility":
             if {agility::%player%} is not set:
                 set {_primaryStat} to 0
             else:
                 set {_primaryStat} to {agility::%player%}
             set the result to "<##5ee359> &fAgility: &r%{_primaryStat}%"
-        if tag "PrimaryStat" of nbt of {karta::%player%} = "Strength":
+        if {_primaryStat} = "Strength":
             if {strength::%player%} is not set:
                 set {_primaryStat} to 0
             else:
                 set {_primaryStat} to {strength::%player%}
-            set the result to "<##e35959> &fStength: %{_primaryStat}%"
+            set the result to "<##e35959> &fStrength: %{_primaryStat}%"
     else if the identifier contains "stat_":
-        set {_stats::*} to retrieveTopStats(player)
+        set {_stats::*} to retrieveTopStats(player, "values")
+        set {_indices::*} to retrieveTopStats(player, "indices")
+
         set {_i} to the identifier
         replace all "stat_" in {_i} with ""
         set {_i} to {_i} parsed as integer
-        set {_stat} to returnStatIcon(({_stats::%{_i}%} in strict proper case))
+        set {_stat} to returnStatIcon(({_indices::%{_i}%} in strict proper case))
+
         replace all " " in {_stats::%{_i}%} with ""
-        set the result to "%{_stat}%: %{%{_stats::%{_i}%}%::%player%}%"
+        set the result to "%{_stat}%: %{_stats::%{_i}%}%"
+    else if the identifier contains "topPlayerLevel":
+        set {_players::*} to createTop("poziom", 5, "[I]. [P] &8| &e[V]")
+        
+        set {_i} to the identifier
+        replace "topPlayerLevel" in {_i} with ""
+
+        if {_players::%{_i}%} contains "%player%":
+            set {_result} to "&a%{_players::%{_i}%}%"
+            replace all "&e" in {_result} with "&6"
+        else:
+            set {_result} to "&f%{_players::%{_i}%}%"
+
+        if {_i} = "1":
+            set {_result} to "&e👑 %{_result}%"
+        else if {_i} = "2":
+            set {_result} to "<##dbdbdb>👑 %{_result}%"
+        else if {_i} = "3":
+            set {_result} to "<##cd7f32>👑 %{_result}%"
+
+        if the identifier = "topPlayerLevel6":
+            if createTop("poziom", 5, "[P]") does not contain "%player%":
+                set {_playerTopLevel::*} to sorted indices of {poziom::*} in descending order
+                set {_playerTop::*} to {poziom::*}
+                sort {_playerTop::*} in descending order
+                loop {_playerTopLevel::*}:
+                    if loop-value = player:
+                        set {_result} to "&8>> &a%loop-index%. %loop-value% &8| &6%{_playerTop::%loop-index%}%"
+                        stop loop
+            else:
+                set {_result} to ""
+
+        
+        set the result to {_result}
+    else if the identifier contains "topMining":
+        set {_playerTopMining::*} to indices of {stone::*}
+        
+        loop indices of {deepslate::*} where [input is not in {_playerTopMining::*}]:
+            set {_playerTopMining::*} to {_playerTopMining::*} and loop-value
+
+        loop {_playerTopMining::*}:
+            set {_minedBlocks::%loop-value%} to {stone::%loop-value%} + ({deepslate::%loop-value%}*2)
+        
+        set {_topMinedBlocks::*} to {_minedBlocks::*} 
+        sort {_topMinedBlocks::*} in descending order
+        set {_topMinedPlayers::*} to sorted indices of {_minedBlocks::*} in descending order
+
+
+        set {_i} to the identifier
+        replace "topMining" in {_i} with ""
+
+        loop 5 times:
+            set {_top5::%loop-number%} to {_topMinedPlayers::%loop-number%}
+        
+        if {_topMinedPlayers::%{_i}%} = "%player%":
+            set {_result} to "&a%{_i}%. %{_topMinedPlayers::%{_i}%}% &8| &6%formatNumberEc({_topMinedBlocks::%{_i}%})%" in strict proper case
+        else:
+            set {_result} to "&f%{_i}%. %{_topMinedPlayers::%{_i}%}% &8| &e%formatNumberEc({_topMinedBlocks::%{_i}%})%" in strict proper case
+        
+        if {_i} = "1":
+            set {_result} to "&e👑 %{_result}%"
+        else if {_i} = "2":
+            set {_result} to "<##dbdbdb>👑 %{_result}%"
+        else if {_i} = "3":
+            set {_result} to "<##cd7f32>👑 %{_result}%"
+
+        if the identifier = "topMining6":
+            if {_top5::*} does not contain "%player%":
+                loop {_topMinedPlayers::*}:
+                    if loop-value = player:
+                        set {_result} to "&8>> &a%loop-index%. %loop-value% &8| &6%formatNumberEc({_topMinedBlocks::%loop-index%})%" in strict proper case
+                        stop loop
+            else:
+                set {_result} to ""
+
+        
+        set the result to {_result}
+
+
 
 function placeholderDamage(p: player, num: number) :: string:
     if metadata value "ECEngaged" of {_p} is set:

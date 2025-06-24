@@ -25,7 +25,9 @@ command /enderchest [<number>]:
 							else:
 								set {@enderchest} to chest inventory with 3 rows named "Ender Chest"
 							loop 27 times:
-								set slot (loop-number - 1) of {@enderchest} to yaml value "Enderchest %arg-1%.Contents.%loop-number%" from "Enderchest%player%"
+								set {_slot} to yaml value "%loop-number%" from "Enderchest%arg-1%%player%"
+								if {_slot} != "-":
+									set slot (loop-number - 1) of {@enderchest} to {_slot}
 							open {@enderchest} to player
 							set metadata value "OpenEnderchest" of player to arg-1
 							play sound "block.ender_chest.open" with volume 5 and pitch 1 to player
@@ -71,8 +73,13 @@ command /ec [<number>]:
 								set {@enderchest} to chest inventory with 3 rows named {_name}
 							else:
 								set {@enderchest} to chest inventory with 3 rows named "Ender Chest"
+							if  yaml "Enderchest%player%" is loaded:
+								broadcast "loaded"
+							broadcast "%arg-1% arg-1 "
 							loop 27 times:
-								set slot (loop-number - 1) of {@enderchest} to  yaml value "Enderchest %arg-1%.Contents.%loop-number%" from "Enderchest%player%"
+								set {_slot} to yaml value "%loop-number%" from "Enderchest%arg-1%%player%"
+								if {_slot} != "-":
+									set slot (loop-number - 1) of {@enderchest} to {_slot}
 							open {@enderchest} to player
 							set metadata value "OpenEnderchest" of player to arg-1
 							play sound "block.ender_chest.open" with volume 5 and pitch 1 to player
@@ -95,15 +102,17 @@ command /ec [<number>]:
 						play sound "block.glass.break" with volume 3 and pitch 0 to player
 		else if arg-1 = 1:
 			open player's enderchest to player
+
 function setEnderchest(p: player):
-	load yaml "plugins/Skript/playerdata/enderchesty/Enderchest-%uuid of {_p}%.yml" as "Enderchest%{_p}%"
+	if yaml "Enderchest%{_p}%" is not loaded:
+		load yaml "plugins/Skript/playerdata/enderchesty/Enderchest-%uuid of {_p}%.yml" as "Enderchest%{_p}%"
 	set yaml value "Enderchest 1.Owned" in "Enderchest%{_p}%" to "Owned"
 	loop 6 times:
 		set {_%loop-number%} to yaml value "Enderchest %loop-number%.Owned" in "Enderchest%{_p}%"
 		if {_%loop-number%} is not set:
-			set yaml value "{_p}.Enderchests.%loop-number%" in "dataAdmin-%{_p}%" to "Not Owned"
+			set yaml value "Player.Enderchests.%loop-number%" in "dataAdmin-%{_p}%" to "Not Owned"
 		else:
-			set yaml value "{_p}.Enderchests.%loop-number%" in "dataAdmin-%{_p}%" to "Owned"
+			set yaml value "Player.Enderchests.%loop-number%" in "dataAdmin-%{_p}%" to "Owned"
 		if loop-number = 1:
 			set yaml value "Enderchest %loop-number%.Owned" in "Enderchest%{_p}%" to "Owned"
 			set yaml value "Enderchest %loop-number%.Name" in "Enderchest%{_p}%" to "Enderchest"
@@ -111,8 +120,9 @@ function setEnderchest(p: player):
 			set yaml value "Enderchest %loop-number%.Owned" in "Enderchest%{_p}%" to "Not Owned"
 			set yaml value "Enderchest %loop-number%.Name" in "Enderchest%{_p}%" to "Enderchest"
 		loop 27 times:
-			set yaml value "Enderchest %loop-number-1%.Contents.%loop-number-2%" in "Enderchest%{_p}%" to "-"
+			set yaml value "%loop-number-2%" in "Enderchest%loop-number-1%%{_p}%" to "-"
 	save yaml "Enderchest%{_p}%"
+
 on rightclick:
 	if clicked player's name = "Sedriah":
 		cancel event
@@ -139,8 +149,8 @@ on inventory click:
 							set {@sedriah} to chest inventory with 1 row named "Enderchests"
 						else:
 							set {@sedriah} to chest inventory with 1 row named "Enderchesty"
-						set slot 0 and 1 of {@sedriah} to black glass pane named " "
-						set slot 7 and 8 of {@sedriah} to black glass pane named " "
+						set slot 0 and 1 of {@sedriah} to black stained glass pane named " "
+						set slot 7 and 8 of {@sedriah} to black stained glass pane named " "
 						loop 5 times:
 							if {language::%player%} = "English":
 								if yaml value "Enderchest %1 + loop-number%.Owned" from "dataAdmin-%player%" is not set:
@@ -161,8 +171,8 @@ on inventory click:
 							set {@sedriah} to chest inventory with 1 row named "Enderchest names"
 						else:
 							set {@sedriah} to chest inventory with 1 row named "Nazwy enderchestów"
-						set slot 0 and 1 of {@sedriah} to black glass pane named " "
-						set slot 7 and 8 of {@sedriah} to black glass pane named " "
+						set slot 0 and 1 of {@sedriah} to black stained glass pane named " "
+						set slot 7 and 8 of {@sedriah} to black stained glass pane named " "
 						loop 5 times:
 							if {language::%player%} = "English":
 								set slot 1 + loop-number of {@sedriah} to ender chest named "&fEnderchest %1 + loop-number%" with lore "&7Enderchest name: &fnone" and " " and "&fClick to set a name for this" and "&fenderchest."
@@ -317,7 +327,7 @@ on chat:
 			send "&8[&6Earthcraft&8] &7Pomyślnie wybrano &6%message% &7jako nazwę dla enderchestu &6%{namewybieranie::%player%}%&7." to player
 		play sound "entity.player.levelup" with volume 5 and pitch 1.1 to player
 		clear {namewybieranie::%player%}
-		save yaml "Enderchest::%player%"
+		save yaml "Enderchest%player%"
 #on damage of player:
 # name of tool of attacker is "something"
 # cooldown "attack%attacker%" is finished:
@@ -330,12 +340,12 @@ on inventory close:
 	if event-inventory = {@enderchest}:
 		set {_ec} to metadata value "OpenEnderchest" of player
 		loop 27 times:
-			set yaml value "Enderchest %{_ec}%.Contents.%loop-number%" from "Enderchest%player%" to slot (loop-number - 1) of {@enderchest}
+			set yaml value "%loop-number%" in "Enderchest%{_ec}%%player%" to slot (loop-number - 1) of {@enderchest}
 		save yaml "Enderchest%player%"
 		play sound "block.ender_chest.close" with volume 5 and pitch 1 to player
 	if event-inventory = player's enderchest:
 		loop 27 times:
-			set yaml value "Enderchest 1.Contents.%loop-number%" from "Enderchest%player%" to slot (loop-number - 1) of enderchest of player
+			set yaml value "%loop-number%" in "Enderchest1%player%" to slot (loop-number - 1) of enderchest of player
 		play sound "block.ender_chest.close" with volume 5 and pitch 1 to player
 		save yaml "Enderchest%player%"
 on skript stop:

@@ -1,92 +1,89 @@
 #The Council of Admins
 on shoot:
-    if tag "custom" of nbt compound of shooter is set:
-        set {_custom} to tag "custom" of nbt compound of shooter
-        if tag "ECBoss" of {_custom} is set:
-            if uncolored name of shooter = "Dreamcatcher":
-                cancel event
-            else if uncolored name of shooter = "Balthazar":
-                cancel event
-            else if uncolored name of shooter = "merimelle":
-                cancel event
-                if tag "ECIntermission" of {_custom} is not set:
-                    set {_instance} to tag "ECDungeonInstance" of {_custom}
-                    loop {-dungeonInstance%{_instance}%::*}:
-                        if metadata value "DungeonInstance" of loop-value is set:
-                            set {_playerInstance} to metadata value "DungeonInstance" of loop-value
-                            if {_instance} = {_playerinstance}:
-                                add loop-value to {_targets::*}
-                    set {_target} to a random element of {_targets::*}
-                    set {_l} to location 0.4 blocks right of shooter's location
-                    increase {_l}'s y-coordinate by 0.8
-                    set {_vec} to vector between shooter and block 0.5 above {_target}
-                    if tag "ECEnhancedBow" of {_custom} is set:
-                        play sound "entity.player.splash" with volume 3 and pitch 2 at shooter
+    if boolean tag "ECBoss" of custom nbt of shooter is set:
+        if uncolored name of shooter = "Dreamcatcher":
+            cancel event
+        else if uncolored name of shooter = "Balthazar":
+            cancel event
+        else if uncolored name of shooter = "merimelle":
+            cancel event
+            if boolean tag "ECIntermission" of custom nbt of shooter is not set:
+                set {_instance} to int tag "ECDungeonInstance" of custom nbt of shooter
+                loop {dungeonInstance%{_instance}%::*}:
+                    if metadata value "DungeonInstance" of loop-value is set:
+                        set {_playerInstance} to metadata value "DungeonInstance" of loop-value
+                        if {_instance} = {_playerinstance}:
+                            add loop-value to {_targets::*}
+                set {_target} to a random element of {_targets::*}
+                set {_l} to location 0.4 blocks right of shooter's location
+                increase {_l}'s y-coordinate by 0.8
+                set {_vec} to vector between shooter and block 0.5 above {_target}
+                if boolean tag "ECEnhancedBow" of custom nbt of shooter is set:
+                    play sound "entity.player.splash" with volume 3 and pitch 2 at shooter
+                else:
+                    play sound "entity.skeleton.shoot" with volume 3 and pitch 2 at shooter
+                set {_lore} to "..."
+                set {_loreEN} to "..."
+                loop round(distance between {_l} and {_target}) / 0.3 times:
+                    set {_vec} to vector between {_l} and block 0.5 above {_target}
+                    set vector length of {_vec} to loop-value * 0.3
+                    if boolean tag "ECEnhancedBow" of custom nbt of shooter is set:
+                        draw 1 of dripping water at {_l} ~ {_vec}
                     else:
-                        play sound "entity.skeleton.shoot" with volume 3 and pitch 2 at shooter
-                    set {_lore} to "..."
-                    set {_loreEN} to "..."
-                    loop round(distance between {_l} and {_target}) / 0.3 times:
-                        set {_vec} to vector between {_l} and block 0.5 above {_target}
-                        set vector length of {_vec} to loop-value * 0.3
-                        if tag "ECEnhancedBow" of {_custom} is set:
-                            draw 1 of dripping water at {_l} ~ {_vec}
-                        else:
-                            draw 1 of rain at {_l} ~ {_vec}
-                        draw 1 of dust using dustOption((rgb 61, 88, 209), 1) at {_l} ~ {_vec}
-                        wait 1 tick
-                    if shooter is alive:
-                        if {-dungeonInstance%{_instance}%::*} contains {_target}:
-                            if {_target} is alive:
-                                set {_energy} to tag "ECEnergy" of {_custom}
-                                if {_energy} is not set:
-                                    set tag "ECEnergy" of {_custom} to 6
+                        draw 1 of rain at {_l} ~ {_vec}
+                    draw 1 of dust using dustOption((rgb 61, 88, 209), 1) at {_l} ~ {_vec}
+                    wait 1 tick
+                if shooter is alive:
+                    if {dungeonInstance%{_instance}%::*} contains {_target}:
+                        if {_target} is alive:
+                            set {_energy} to int tag "ECEnergy" of custom nbt of shooter
+                            if {_energy} is not set:
+                                set int tag "ECEnergy" of custom nbt of shooter to 6
+                            else:
+                                add 6 to {_energy}
+                            if boolean tag "ECEnhancedBow" of custom nbt of shooter is set:
+                                set {_damage} to 1.75
+                                if metadata value "WaterShotKnockup" of {_target} is set:
+                                    set {_watershotcount} to metadata value "WaterShotKnockup" of {_target}
+                                    add 1 to {_watershotcount}
+                                    if {_watershotcount} >= 3:
+                                        set {_watershotcount} to 0
+                                        push {_target} upwards with velocity 2.5
+                                        add 14 to {_energy}
+                                        clear metadata value "casting" of {_target}
+                                        add 2 to {_damage}
+                                        set {_potion} to potion effect of slow falling of tier 1 without particles for 4 seconds
+                                        add {_potion} to potion effects of {_target}
+                                        play sound "entity.firework_rocket.launch" with volume 3 and pitch 2 at {_target}
+                                    set metadata value "WaterShotKnockup" of {_target} to {_watershotcount}
                                 else:
-                                    add 6 to {_energy}
-                                if tag "ECEnhancedBow" of {_custom} is set:
-                                    set {_damage} to 1.75
-                                    if metadata value "WaterShotKnockup" of {_target} is set:
-                                        set {_watershotcount} to metadata value "WaterShotKnockup" of {_target}
-                                        add 1 to {_watershotcount}
-                                        if {_watershotcount} >= 3:
-                                            set {_watershotcount} to 0
-                                            push {_target} upwards with velocity 2.5
-                                            add 14 to {_energy}
-                                            clear metadata value "casting" of {_target}
-                                            add 2 to {_damage}
-                                            set {_potion} to potion effect of slow falling of tier 1 without particles for 4 seconds
-                                            add {_potion} to potion effects of {_target}
-                                            play sound "entity.firework_rocket.launch" with volume 3 and pitch 2 at {_target}
-                                        set metadata value "WaterShotKnockup" of {_target} to {_watershotcount}
-                                    else:
-                                        set metadata value "WaterShotKnockup" of {_target} to 1
-                                else:
-                                    set {_damage} to 1
-                                DamageProperties({_target}, shooter, "<##2889eb>Hydrostrzał", "<##2889eb>Hydroshot", {_lore}, {_loreEN}, {_damage})
-                                play sound "entity.player.splash" with volume 3 and pitch 2 to {_target}
-                                if {_energy} >= 50:
-                                    if metadata value "50EnergyCast" of shooter is not set:
-                                        NetherZone(shooter, 1)
-                                        set {_uuid} to uuid of shooter
-                                        set metadata value "50EnergyCast" of shooter to true
-                                if {_energy} >= 100:
-                                    NetherZone(shooter, 2)
+                                    set metadata value "WaterShotKnockup" of {_target} to 1
+                            else:
+                                set {_damage} to 1
+                            DamageProperties({_target}, shooter, "<##2889eb>Hydrostrzał", "<##2889eb>Hydroshot", {_lore}, {_loreEN}, {_damage})
+                            play sound "entity.player.splash" with volume 3 and pitch 2 to {_target}
+                            if {_energy} >= 50:
+                                if metadata value "50EnergyCast" of shooter is not set:
+                                    NetherZone(shooter, 1)
                                     set {_uuid} to uuid of shooter
-                                    clear metadata value "50EnergyCast" of shooter
-                                    set {_energy} to ({_energy} - 100)
-                                set tag "ECEnergy" of {_custom} to {_energy}
-                                set {_entity} to tag "ECTextAbove" of {_custom} parsed as entity
-                                wait 1 tick
-                                set the display name of {_entity} to "&6&lBOSS &e(%{_energy}%)"
-        else:
-            if shooter's name contains "Destruction Mage":
-                cancel event
+                                    set metadata value "50EnergyCast" of shooter to true
+                            if {_energy} >= 100:
+                                NetherZone(shooter, 2)
+                                set {_uuid} to uuid of shooter
+                                clear metadata value "50EnergyCast" of shooter
+                                set {_energy} to ({_energy} - 100)
+                            set int tag "ECEnergy" of custom nbt of shooter to {_energy}
+                            set {_entity} to string tag "ECTextAbove" of custom nbt of shooter parsed as entity
+                            wait 1 tick
+                            set the display name of {_entity} to "&6&lBOSS &e(%{_energy}%)"
+    else:
+        if shooter's name contains "Destruction Mage":
+            cancel event
 
 function NetherZone(e: entity, i: integer):
-    set {_custom} to tag "custom" of nbt of {_e}
-    set {_instance} to tag "ECDungeonInstance" of {_custom}
+    set {_instance} to int tag "ECDungeonInstance" of custom nbt of {_e}
     if metadata value "ECPulled" of {_e} is set:
-        set {_target} to a random element of {-dungeonInstance%{_instance}%::*}
+        set {_target} to a random element of {dungeonInstance%{_instance}%::*}
         play sound "entity.wither.hurt" with volume 3 and pitch 1.6 to {_target}
         NetherZoneExpire({_target}, {_e}, {_i})
 
@@ -106,7 +103,7 @@ function NetherZoneExpire(p: player, e: entity, i: integer):
     play sound "entity.generic.explode" with volume 2 and pitch 2 at {_p}
     set {_x} to block under {_p}
     wait 1 tick
-    set {_mobInstance} to tag "custom;ECDungeonInstance" of nbt of {_e}
+    set {_mobInstance} to int tag "ECDungeonInstance" of custom nbt of {_e}
     set {_playerInstance} to metadata value "DungeonInstance" of {_p}
     if {_playerInstance} = {_mobInstance}:
         if {_e} is alive:
@@ -146,14 +143,13 @@ on jump:
             cancel event
 function HyperBloomTimer(e: entity):
     set {_timer} to 40 seconds
-    set {_custom} to tag "custom" of nbt compound of {_e}
-    set {_instance} to tag "ECDungeonInstance" of {_custom}
+    set {_instance} to int tag "ECDungeonInstance" of custom nbt of {_e}
     while {_e} is alive:
         if {_timer} > 0 seconds:
             set {_timertext::*} to "%{_timer}%" split at " "
-            loop {-dungeonInstance%{_instance}%::*}:
+            loop {dungeonInstance%{_instance}%::*}:
                 #send action bar {_timertext::1} to loop-value
-                set {_id} to tag "ECBossBossBar" of {_custom}
+                set {_id} to string tag "ECBossBossBar" of custom nbt of {_e}
                 if boss bar with id {_id} is set:
                     set bar title of boss bar with id {_id} to "%name of {_e}% (%{_timertext::1}% sec)"
             remove 1 second from {_timer}
@@ -164,17 +160,16 @@ function HyperBloomTimer(e: entity):
 function HyperBloomEnd(e: entity):
     wait 40 seconds
     if {_e} is alive:
-        set {_custom} to tag "custom" of nbt compound of {_e}
-        if tag "ECIntermission" of {_custom} is set:
-            set {_instance} to tag "ECDungeonInstance" of {_custom}
-            loop {-intermissionLilaloc::%{_e}%::*}:
+        if boolean tag "ECIntermission" of custom nbt of {_e} is set:
+            set {_instance} to int tag "ECDungeonInstance" of custom nbt of {_e}
+            loop {intermissionLilaloc::%{_e}%::*}:
                 if block at loop-value is not air:
                     if block at loop-value is azure bluet:
                         heal {_e} by 0.06*(max health of {_e})
                         set {_shape} to solid cylinder with radius 1 and height 3
                         set particle of {_shape} to dust particle using dustOption(lime, 1)
                         draw {_shape} at {_e}
-                        set {_id} to tag "ECBossBossBar" of {_custom}
+                        set {_id} to string tag "ECBossBossBar" of custom nbt of {_e}
                         if boss bar with id {_id} is set:
                             set bar progress of boss bar with id {_id} to rounded ({_e}'s health/{_e}'s max health)*100
                     else if block at loop-value is cornflower:
@@ -197,17 +192,17 @@ function HyperBloomEnd(e: entity):
             if {_dmgreduction} is set:
                 add {_dmgreduction} to metadata value "DamageReduction" of {_e}
             if {_time} is set:
-                loop {-dungeonInstance%{_instance}%::*}:
+                loop {dungeonInstance%{_instance}%::*}:
                     set {_instanceTarget} to metadata value "DungeonInstance" of loop-value
                     if {_instance} = {_instanceTarget}:
                         Sleep(loop-value, {_time})
             set {_lore} to "..."
             set {_loreEN} to "..."
-            set {_blocks::*} to {-intermissionLilaloc::%{_e}%::*}
-            clear {-intermissionLilaloc::%{_e}%::*}
-            clear {-intermissionLila::%{_e}%::*}
+            set {_blocks::*} to {intermissionLilaloc::%{_e}%::*}
+            clear {intermissionLilaloc::%{_e}%::*}
+            clear {intermissionLila::%{_e}%::*}
             loop {_blocks::*}:
-                if block at loop-value is a flower:
+                if block at loop-value is tagged with tag "flowers":
                     set block at loop-value to air
                     play sound "block.grass.break" with volume 2 and pitch 1 at loop-value
             set {_radius} to 4
@@ -218,34 +213,33 @@ function HyperBloomEnd(e: entity):
                 add 3 to {_radius}
                 wait 0.33 seconds
             if size of {_blocks::*}-5 > 0:
-                loop {-dungeonInstance%{_instance}%::*}:
+                loop {dungeonInstance%{_instance}%::*}:
                     set {_instanceTarget} to metadata value "DungeonInstance" of loop-value
                     if {_instance} = {_instanceTarget}:
                         DamageProperties(loop-value, {_e}, "<##607c3c>Overbloom", "<##607c3c>Overbloom", {_lore}, {_loreEN}, (5*(size of {_blocks::*}-5)))
-            delete tag "ECIntermission" of {_custom}
-            delete tag "Invulnerable" of nbt of {_e}
-            delete tag "NoAI" of nbt of {_e}
-            teleport {_e} to {-previouslocation::%{_e}%}
-            clear {-previouslocation::%{_e}%}
-        #loop {-dungeonInstance%{_instance}%::*}:
+            clear boolean tag "ECIntermission" of custom nbt of {_e}
+            clear boolean tag "Invulnerable" of nbt of {_e}
+            clear boolean tag "NoAI" of nbt of {_e}
+            teleport {_e} to {previouslocation::%{_e}%}
+            clear {previouslocation::%{_e}%}
+        #loop {dungeonInstance%{_instance}%::*}:
 function HyperBloomPickFlower(p: player, block: block):
     set {_bossuuid} to metadata value "CouncilOfAdminsIntermissionPlant" of {_block}
     set {_boss} to {_bossuuid} parsed as entity
     set {_playerInstance} to metadata value "DungeonInstance" of {_p}
-    set {_customBoss} to tag "custom" of nbt compound of {_boss}
-    set {_bossInstance} to tag "ECDungeonInstance" of {_customBoss}
+    set {_bossInstance} to int tag "ECDungeonInstance" of custom nbt of {_boss}
     if {_playerInstance} = {_bossInstance}:
         set {_lore} to "..."
         set {_loreEN} to "..."
         set {_loreWither} to "..."
         set {_loreWitherEN} to "..."
-        if {-intermissionLilaloc::%{_boss}%::*} contains location of {_block}:
+        if {intermissionLilaloc::%{_boss}%::*} contains location of {_block}:
             set {_shape} to a sphere with radius 1
             if block at {_block} is not wither rose:
                 set particle of {_shape} to dust particle using dustOption(green, 1)
                 play sound "block.vine.break" with volume 3 and pitch {_pitch} at {_block}
                 #DamageProperties({_p}, {_boss}, "<##607c3c>Hiperrozkwit", "<##607c3c>Hyperbloom", {_lore}, {_loreEN}, (0.02*max health of {_p}))
-                remove location of {_block} from {-intermissionLilaloc::%{_boss}%::*}
+                remove location of {_block} from {intermissionLilaloc::%{_boss}%::*}
             else:
                 set particle of {_shape} to dust particle using dustOption(black, 1)
                 play sound "entity.wither.spawn" with volume 3 and pitch {_pitch} at {_block}
@@ -256,18 +250,18 @@ function HyperBloomPickFlower(p: player, block: block):
             set block at {_block} to air
             set {_pitch} to a random number between 0 and 2
             clear metadata value "CouncilOfAdminsIntermissionPlant" of {_block}
-        set {_size} to size of {-intermissionLilaloc::%{_boss}%::*}
-        loop {-dungeonInstance%{_bossInstance}%::*}:
+        set {_size} to size of {intermissionLilaloc::%{_boss}%::*}
+        loop {dungeonInstance%{_bossInstance}%::*}:
             if {language::%loop-value%} = "English":
                 send action bar "Flowers left: %{_size}%" to loop-value
             else:
                 send action bar "Pozostałe kwiaty: %{_size}%" to loop-value
         if ({_size} - 5) = 0:
-            delete tag "ECIntermission" of {_customBoss}
-            delete tag "Invulnerable" of nbt of {_boss}
-            delete tag "NoAI" of nbt of {_boss}
-            teleport {_boss} to {-previouslocation::%{_boss}%} 
-            clear {-previouslocation::%{_boss}%}
+            delete boolean tag "ECIntermission" of custom nbt of {_boss}
+            delete boolean tag "Invulnerable" of nbt of {_boss}
+            delete boolean tag "NoAI" of nbt of {_boss}
+            teleport {_boss} to {previouslocation::%{_boss}%} 
+            clear {previouslocation::%{_boss}%}
 
 function Sleep(p: player, t: timespan):
     set {stun::%{_p}%} to true
@@ -280,8 +274,7 @@ function Sleep(p: player, t: timespan):
 #PEHREK:
 #STORMHIT
 function Stormhit(e: entity):
-    set {_custom} to tag "custom" of nbt of {_e}
-    set {_instance} to tag "ECDungeonInstance" of {_custom}
+    set {_instance} to int tag "ECDungeonInstance" of custom nbt of {_e}
     if metadata value "ECPulled" of {_e} is set:
         set {_radius} to 2
         set {_loc} to location of {_e}
@@ -293,7 +286,7 @@ function Stormhit(e: entity):
                 set {_vectors::*} to points of drawn shape
                 loop {_vectors::*}:
                     add 1 to {_everyThird}
-                    if {_everyThird} is divisible by 2:
+                    if {_everyThird} is divisible by 8:
                         strike lightning effect at {_loc} ~ loop-value
                         loop all players in radius 1 around {_loc} ~ loop-value:
                             set {_instanceTarget} to metadata value "DungeonInstance" of loop-player
@@ -312,24 +305,23 @@ function Stormhit(e: entity):
 #60% TRIGGERS AND 30% INTERMISSIONS
 on damage:
     if attacker is a player:
-        if tag "custom" of nbt compound of victim is set:
-            set {_custom} to tag "custom" of nbt compound of victim
-            set {_instance} to tag "ECDungeonInstance" of {_custom}
+        if int tag "ECDungeonInstance" of custom nbt of victim is set:
+            set {_instance} to int tag "ECDungeonInstance" of custom nbt of victim
             if (health of victim - damage) < (0.3*max health of victim):
                 if metadata value "Raging" of victim is not set:
-                    if {-affixes%{_instance}%::*} contains "Raging":
+                    if {affixes%{_instance}%::*} contains "Raging":
                         Raging(victim)
-            if tag "ECBoss" of {_custom} is set:
+            if boolean tag "ECBoss" of custom nbt of victim is set:
                 if name of victim contains "Balthazar":
                     if (health of victim - damage) < (0.05*max health of victim):
-                        if tag "ECCutsceneEnd" of {_custom} is not set:
+                        if tag "ECCutsceneEnd" of custom nbt of victim is not set:
                             cancel event
                             if victim's health > (0.05*max health of victim):
                                 set victim's health to (0.05*max health of victim)
                                 make victim invulnerable
-                            if tag "EC5PercentTriggered" of {_custom} is not set:
-                                set tag "EC5PercentTriggered" of {_custom} to 1
-                                set tag "RP" of {_custom} to 1
+                            if boolean tag "EC5PercentTriggered" of custom nbt of victim is not set:
+                                set boolean tag "EC5PercentTriggered" of custom nbt of victim to true
+                                set boolean tag "RP" of custom nbt of victim to true
                                 clear victim's target
                                 clear metadata value "MagicSigils" of victim
                                 set {_BalthazarLoc} to yaml value "Balthazar" from "SOSspawnlocations"
@@ -340,25 +332,28 @@ on damage:
                                 make victim pathfind to {_lecternLoc}
                                 BalthazarEscape(victim, {_lecternLoc})
                                 CheckIfReachedBalthazar(victim, {_lecternLoc})
-                            if tag "ECLastAttacker" of {_custom} is not set:
-                                set tag "ECLastAttacker" of {_custom} to uuid of attacker
-                                set tag "ECDamageCauseBalthazar" of {_custom} to metadata value "LastDamageCauseEN" of victim
+                            if string tag "ECLastAttacker" of custom nbt of victim is not set:
+                                set string tag "ECLastAttacker" of custom nbt of victim to uuid of attacker
+                                set string tag "ECDamageCauseBalthazar" of custom nbt of victim to metadata value "LastDamageCause" of victim
                                 set {_councilBalthazarLoc} to yaml value "Balthazar" from "SOSspawnlocations"
                                 if distance between victim and {_councilBalthazarLoc} <= 12:
                                     teleport victim to {_councilBalthazarLoc}
                     wait 1 tick
-                    if tag "EC5PercentTriggered" of {_custom} is not set:
+                    if boolean tag "EC5PercentTriggered" of custom nbt of victim is not set:
                         if (health of victim/max health of victim)*100 <= 40:
-                            if tag "EC40PercentTriggered" of {_custom} is not set:
+                            if boolean tag "EC40PercentTriggered" of custom nbt of victim is not set:
                                 #Player orbit on mask on
-                                #set tag "EC40PercentTriggered" of {_custom} to 1
+                                #set boolean tag "EC40PercentTriggered" of custom nbt of victim to 1
                                 #set {_loc} to location of victim
                                 #teleport the victim to location 10 above victim
                                 draw 30 dust using portal at location at victim with offset vector(0.4, 0.6, 0.4) with extra 0.03
                                 draw 30 witch particle at location at victim with offset vector(0.4, 0.6, 0.4) with extra 0.03
                                 set gravity of victim to off
                                 disguise victim as "BalthazarUltimate"
-                                #loop {-dungeonInstance%{_instance}%::*}:
+                                set custom name of disguise of victim to "Balthazar"
+                                play sound "entity.ender_dragon.hurt" with volume 4 and pitch 1 at victim
+                                play sound "block.end_portal.spawn" with volume 4 and pitch 2 at victim
+                                #loop {dungeonInstance%{_instance}%::*}:
                                 #    if loop-value is alive:
                                 #        if distance between victim and loop-value <= 40:
                                 #            set {_%loop-value%-loc} to location of loop-value
@@ -369,16 +364,16 @@ on damage:
                                 #        if victim is alive:
                                 #            set {_v} to vector 4, 1, 4
                                 #            rotate {_v} around y-axis by {_y}
-                                #            set {_size} to size of {-dungeonInstance%{_instance}%::*}
+                                #            set {_size} to size of {dungeonInstance%{_instance}%::*}
                                 #            loop {_size} times:
                                 #                set {_v::%loop-number-2%} to vector 4, 1, 4
                                 #                rotate {_v::%loop-number-2%} around y-axis by {_y::%loop-number-2%}
                                 #                add 6 to {_y::%loop-number-2%}
-                                #                if {-dungeonInstance%{_instance}%::%loop-number-2%} is alive:
-                                #                    if distance between victim and {-dungeonInstance%{_instance}%::%loop-number-2%} <= 40:
-                                #                        teleport {-dungeonInstance%{_instance}%::%loop-number-2%} to victim ~ {_v::%loop-number-2%}
+                                #                if {dungeonInstance%{_instance}%::%loop-number-2%} is alive:
+                                #                    if distance between victim and {dungeonInstance%{_instance}%::%loop-number-2%} <= 40:
+                                #                        teleport {dungeonInstance%{_instance}%::%loop-number-2%} to victim ~ {_v::%loop-number-2%}
                                 #        wait 1 tick
-                                #loop {-dungeonInstance%{_instance}%::*}:
+                                #loop {dungeonInstance%{_instance}%::*}:
                                 #    if loop-value is alive:
                                 #        if distance between victim and loop-value <= 40:
                                 #            push loop-value downwards with velocity 3
@@ -386,28 +381,28 @@ on damage:
                                 #set gravity of victim to on
                                 #teleport the victim to {_loc}
                                 #wait 0.6 seconds
-                                #loop {-dungeonInstance%{_instance}%::*}:
+                                #loop {dungeonInstance%{_instance}%::*}:
                                 #    if loop-value is alive:
                                 #        teleport loop-value to {_%loop-value%-loc}
                 else if name of victim contains "Gosha":
                     wait 1 tick
                     if (health of victim/max health of victim)*100 <= 40:
-                        if tag "EC40PercentTriggered" of {_custom} is not 1:
-                            set tag "EC40PercentTriggered" of {_custom} to 1
+                        if boolean tag "EC40PercentTriggered" of custom nbt of victim is not true:
+                            set boolean tag "EC40PercentTriggered" of custom nbt of victim to true
                             GoshaCallMinions(victim)
                     else if (health of victim/max health of victim)*100 <= 60:
-                        if tag "EC60PercentTriggered" of {_custom} is not 1:
-                            set tag "EC60PercentTriggered" of {_custom} to 1
+                        if boolean tag "EC60PercentTriggered" of custom nbt of victim is not true:
+                            set boolean tag "EC60PercentTriggered" of custom nbt of victim to true
                             GoshaCallMinions(victim)
                     else if (health of victim/max health of victim)*100 <= 80:
-                        if tag "EC80PercentTriggered" of {_custom} is not 1:
-                            set tag "EC80PercentTriggered" of {_custom} to 1
+                        if boolean tag "EC80PercentTriggered" of custom nbt of victim is not true:
+                            set boolean tag "EC80PercentTriggered" of custom nbt of victim to true
                             GoshaCallMinions(victim)
                 else if name of victim contains "merimelle":
                     wait 1 tick
                     if (health of victim/max health of victim)*100 <= 60:
-                        if tag "EC60PercentTriggered" of {_custom} is not 1:
-                            set tag "EC60PercentTriggered" of {_custom} to 1
+                        if boolean tag "EC60PercentTriggered" of custom nbt of victim is not true:
+                            set boolean tag "EC60PercentTriggered" of custom nbt of victim to true
                             loop 60 times:
                                 set {_v} to vector 4, 1, 4
                                 rotate {_v} around y-axis by {_y}
@@ -419,7 +414,7 @@ on damage:
                             draw {_shape} at victim's location
                             set {_lore} to "..."
                             set {_loreEN} to "..."
-                            loop {-dungeonInstance%{_instance}%::*}:
+                            loop {dungeonInstance%{_instance}%::*}:
                                 if distance between victim and loop-value <= 50:
                                     set {_v} to vector from victim and loop-value
                                     set standard length of {_v} to 5
@@ -427,9 +422,9 @@ on damage:
                                     DamageProperties(loop-value, victim, "<##2889eb>Hydro Vortex", "<##2889eb>Hydro Vortex", {_lore}, {_loreEN}, 8)
                             EnhancedBowCouncilofAdmins(victim)
                     if (health of victim/max health of victim)*100 <= 30:
-                        if tag "EC30PercentTriggered" of {_custom} is not set:
-                            set tag "EC30PercentTriggered" of {_custom} to true
-                            set tag "ECIntermission" of {_custom} to true
+                        if boolean tag "EC30PercentTriggered" of custom nbt of victim is not set:
+                            set boolean tag "EC30PercentTriggered" of custom nbt of victim to true
+                            set boolean tag "ECIntermission" of custom nbt of victim to true
                             add nbt from "{NoAI:1b,Invulnerable:1b}" to nbt of victim
                             set {_uuid} to uuid of victim
                             play sound "block.lava.extinguish" with volume 5 and pitch 0.2 at victim
@@ -446,42 +441,42 @@ on damage:
                                             if block above loop-block is air:
                                                 add location of loop-block to {_list::*}
                             broadcast "Yes?"
-                            broadcast {-dungeonInstance%{_instance}%::*}
-                            set {_size} to (size of {-dungeonInstance%{_instance}%::*})
+                            broadcast {dungeonInstance%{_instance}%::*}
+                            set {_size} to (size of {dungeonInstance%{_instance}%::*})
                             broadcast "%{_size}% Size"
                             broadcast "%{_instance}% Instance"
                             loop 15*{_size} times:
                                 set {_var} to random element out of {_list::*}
                                 set block at {_var} to grass block
-                                if loop-number <= 20*(size of {-dungeonInstance%{_instance}%::*}):
+                                if loop-number <= 20*(size of {dungeonInstance%{_instance}%::*}):
                                     set block above block at {_var} to a random element of {_plants::*}
                                 else:
                                     set block above block at {_var} to wither rose
-                                add type of block at {_var} to {-intermissionLila::%victim%::*}
-                                add location of block above block at {_var} to {-intermissionLilaloc::%victim%::*}
+                                add type of block at {_var} to {intermissionLila::%victim%::*}
+                                add location of block above block at {_var} to {intermissionLilaloc::%victim%::*}
                                 set metadata value "CouncilOfAdminsIntermissionPlant" of block above block at {_var} to uuid of victim
-                            set {-previouslocation::%victim%} to victim's location
+                            set {previouslocation::%victim%} to victim's location
                             set {_location} to yaml value "The Council of Admins (merimelle)" from "SOSspawnlocations"
                             teleport victim to {_location}
-                            set {_entity} to (tag "ECTextAbove" of {_custom} parsed as entity)
+                            set {_entity} to (string tag "ECTextAbove" of custom nbt of victim parsed as entity)
                             set {_loctag} to {_location}
                             increase {_loctag}'s y-coordinate by 1.55
                             teleport {_entity} to {_loctag}
                 else if name of victim contains "Pehrek":
                     wait 1 tick
                     if (health of victim/max health of victim)*100 <= 60:
-                        if tag "EC60PercentTriggered" of {_custom} is not 1:
-                            set tag "EC60PercentTriggered" of {_custom} to 1
+                        if boolean tag "EC60PercentTriggered" of custom nbt of victim is not true:
+                            set boolean tag "EC60PercentTriggered" of custom nbt of victim to true
                             add nbt from "{Invulnerable:1b}" to nbt of victim
                             loop 2 times:
                                 #set {_ar} to (metadata value "ArmorStand%loop-number%" of uuid of victim) parsed as entity
                                 set {_ar} to metadata value "ArmorStand%loop-number%" of victim
-                                clear tag "NoAI" of nbt of {_ar}
+                                clear boolean tag "NoAI" of nbt of {_ar}
                                 broadcast {_ar}
                                 set {_ar}'s target to attacker
                             set metadata value "KnightArmor" of victim to true
                             set metadata value "ECSummonAggro" of victim to true
-                            loop {-dungeonInstance%{_instance}%::*}:
+                            loop {dungeonInstance%{_instance}%::*}:
                                 loop 6 times:
                                     set {_z} to a random number between -1.5 and 1.5
                                     set {_x} to a random number between -1.5 and 1.5
@@ -497,62 +492,60 @@ on damage:
                                             teleport victim to loop-value-1
                                     OffHandAttack(victim, loop-value-1)
                                     ShadowStrike(victim, loop-value-1)
-                                    broadcast tag "custom;ShadowStrikeDebuff" of nbt of attacker
+                                    broadcast int tag "ShadowStrikeDebuff" of nbt of attacker
                                     wait 0.2 seconds
                             if block at location behind attacker is air:
                                 teleport the victim to location behind attacker
                             else:
                                 teleport the victim to attacker
-                            clear tag "Invulnerable" of nbt of victim
+                            clear boolean tag "Invulnerable" of nbt of victim
                     if (health of victim/max health of victim)*100 <= 30:
-                        if tag "EC30PercentTriggered" of {_custom} is not set:
-                            set tag "EC30PercentTriggered" of {_custom} to true
-                            set tag "ECIntermission" of {_custom} to true
+                        if boolean tag "EC30PercentTriggered" of custom nbt of victim is not set:
+                            set boolean tag "EC30PercentTriggered" of custom nbt of victim to true
+                            set boolean tag "ECIntermission" of custom nbt of victim to true
     else:
-        if tag "custom" of nbt compound of attacker is set:
-            set {_custom} to tag "custom" of nbt compound of attacker
-            if tag "ECBoss" of {_custom} is set:
-                if name of attacker = "&fPehrek":
-                    if victim is not invulnerable:
-                        if victim is alive:
-                            if damage is not 0:
-                                DamageProperties({_v}, {_e}, "<##554196>Ostrze Cienia", "<##554196>Shadow Dagger", {_lore}, {_loreEN}, 0.5)
-                                if metadata value "ECShadowStrikeAttackCount" of attacker is not set:
-                                    set metadata value "ECShadowStrikeAttackCount" of attacker to 1
+        if boolean tag "ECBoss" of custom nbt of attacker is set:
+            if name of attacker = "&fPehrek":
+                if victim is not invulnerable:
+                    if victim is alive:
+                        if damage is not 0:
+                            DamageProperties({_v}, {_e}, "<##554196>Ostrze Cienia", "<##554196>Shadow Dagger", {_lore}, {_loreEN}, 0.5)
+                            if metadata value "ECShadowStrikeAttackCount" of attacker is not set:
+                                set metadata value "ECShadowStrikeAttackCount" of attacker to 1
+                            else:
+                                set {_SSAttackCount} to metadata value "ECShadowStrikeAttackCount" of attacker
+                                add 1 to {_SSAttackCount}
+                                set {_energy} to int tag "ECEnergy" of custom nbt of attacker
+                                if {_energy} is not set:
+                                    set int tag "ECEnergy" of custom nbt of attacker to 4
                                 else:
-                                    set {_SSAttackCount} to metadata value "ECShadowStrikeAttackCount" of attacker
-                                    add 1 to {_SSAttackCount}
-                                    set {_energy} to tag "ECEnergy" of {_custom}
-                                    if {_energy} is not set:
-                                        set tag "ECEnergy" of {_custom} to 4
+                                    add 4 to {_energy}
+                                if {_SSAttackCount} = 4:
+                                    teleport attacker to location 2 behind victim
+                                    add 12 to {_energy}
+                                    OffHandAttack(attacker, victim)
+                                    set {_SSAttackCount} to 0
+                                    if int tag "ShadowStrike" of custom nbt of attacker is not set:
+                                        set int tag "ShadowStrike" of custom nbt of attacker to 1
                                     else:
-                                        add 4 to {_energy}
-                                    if {_SSAttackCount} = 4:
-                                        teleport attacker to location 2 behind victim
-                                        add 12 to {_energy}
-                                        OffHandAttack(attacker, victim)
-                                        set {_SSAttackCount} to 0
-                                        if tag "ShadowStrike" of {_custom} is not set:
-                                            set tag "ShadowStrike" of {_custom} to 1
-                                        else:
-                                            set {_num} to tag "ShadowStrike" of {_custom}
-                                            add 1 to {_num}
-                                            set tag "ShadowStrike" of {_custom} to {_num}
-                                            if tag "ShadowStrike" of {_custom} = 2:
-                                                set tag "ShadowStrike" of {_custom} to 0
-                                                ShadowStrike(attacker, victim)
-                                                add 12 to {_energy}
-                                    set metadata value "ECShadowStrikeAttackCount" of attacker to {_SSAttackCount}
-                                    if {_energy} >= 100:
-                                        Stormhit(attacker)
-                                        #set {stun::%attacker%} to true
-                                        set {_energy} to {_energy} - 100
-                                        set {_uuid} to uuid of attacker
-                                        make attacker's disguise sneak
-                                    set tag "ECEnergy" of {_custom} to {_energy}
-                                    set {_entity} to tag "ECTextAbove" of {_custom} parsed as entity
-                                    wait 1 tick
-                                    set the display name of {_entity} to "&6&lBOSS &e(%{_energy}%)"
+                                        set {_num} to int tag "ShadowStrike" of custom nbt of attacker
+                                        add 1 to {_num}
+                                        set int tag "ShadowStrike" of custom nbt of attacker to {_num}
+                                        if int tag "ShadowStrike" of custom nbt of attacker = 2:
+                                            set int tag "ShadowStrike" of custom nbt of attacker to 0
+                                            ShadowStrike(attacker, victim)
+                                            add 12 to {_energy}
+                                set metadata value "ECShadowStrikeAttackCount" of attacker to {_SSAttackCount}
+                                if {_energy} >= 100:
+                                    Stormhit(attacker)
+                                    #set {stun::%attacker%} to true
+                                    set {_energy} to 0
+                                    set {_uuid} to uuid of attacker
+                                    make attacker's disguise sneak
+                                set int tag "ECEnergy" of custom nbt of attacker to {_energy}
+                                set {_entity} to string tag "ECTextAbove" of custom nbt of attacker parsed as entity
+                                wait 1 tick
+                                set the display name of {_entity} to "&6&lBOSS &e(%{_energy}%)"
 
 function OffHandAttack(e: entity, v: entity):
     set {_potion} to potion effect of invisibility of tier 2 without particles for 1 second
@@ -566,29 +559,29 @@ function OffHandAttack(e: entity, v: entity):
     set {_e}'s target to {_v}
 
 function ShadowStrike(e: entity, target: entity):
-    set {_debuff} to tag "custom;ShadowStrikeDebuff" of nbt of {_target}
+    set {_debuff} to int tag "ShadowStrikeDebuff" of nbt of {_target}
     if {_debuff} is not set:
         set {_debuff} to 1
     else:
         add 1 to {_debuff}
-    set tag "custom;ShadowStrikeDebuff" of nbt of {_target} to {_debuff}
+    set int tag "ShadowStrikeDebuff" of nbt of {_target} to {_debuff}
     play sound "entity.cat.hiss" with volume 2 and pitch 0 at {_e}
 
-on rightclick on any flower:
-    if metadata value "DungeonInstance" of player is set:
-        HyperBloomPickFlower(player, clicked block)
+on rightclick:
+    if clicked block is tagged with tag "flowers":
+        if metadata value "DungeonInstance" of player is set:
+            HyperBloomPickFlower(player, clicked block)
 
 function KnightArmorAggro(e: entity, p: entity):
     if metadata value "KnightArmor" of {_e} is set:
         loop 2 times:
             set {_ar} to metadata value "ArmorStand%loop-number%" of {_e}
-            clear tag "NoAI" of nbt of {_ar}
+            clear boolean tag "NoAI" of nbt of {_ar}
             broadcast {_ar}
             set {_ar}'s target to {_p}
 
 function EnhancedBowCouncilofAdmins(e: entity):
-    set {_custom} to tag "custom" of nbt compound of {_e}
-    set tag "ECEnhancedBow" of {_custom} to true
+    set boolean tag "ECEnhancedBow" of custom nbt of {_e} to true
     while {_e} is alive:
         set {_shape} to star with 5 points, inner radius 0.5, and outer radius 1
         set particle of {_shape} to dripping_water

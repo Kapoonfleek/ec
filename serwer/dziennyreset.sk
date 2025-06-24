@@ -47,7 +47,7 @@ function runAt6():
 		if {stellarrotation} = 5:
 			set {stellarrotation} to 1
 	set {dziennyreset} to true
-	kill {-leaderboard::*}
+	kill {leaderboard::*}
 	clear {dailyResetSoon}
 	restart server
 
@@ -63,19 +63,19 @@ function runAt6Announcement():
 	loop 30 times:
 		if {_s} = 30, 20, 15, 10 or 5:
 			broadcast "&aDaily reset will happen in %{_s}% seconds!"
+			if {_s} = 5:
+				make embed:
+					set author of embed to "The server has stopped!"
+					set embed color of the embed to red
+				post last embed to channel with id "900397064251379752"
 		else if {_s} < 5:
 			broadcast "&aDaily reset will happen in %{_s}% seconds!"
 		remove 1 from {_s}
 		wait 1 second
 	
 on skript start:
-	make embed:
-		set title of embed to {_name} in strict proper case
-		set author of embed to "The server has started!"
-		set embed color of the embed to lime
-	post embed to channel with id "900397064251379752"
 	wait 2 ticks
-	set {-dungeons} to 0
+	set {dungeons} to 0
 	execute console command "gamerule naturalRegeneration false"
 	load yaml "plugins/Skript/serverstats/stats.yml" as "serverstats"
 	if {dziennyreset} is true:
@@ -84,19 +84,8 @@ on skript start:
 		set {_data} to data()
 		log "%{_data}% Dzienny reset nastąpił!" to "logi/serwer.log"
 		if {tygodniowyreset} is not true:
-			#execute console command "discord broadcast ##earthcraft %{_data}% | Dzienny reset nastąpił!"
-			make embed:
-				set author of embed to "EarthCraft"
-				set title of embed to "The Daily Reset has occured"
-				set embed color of the embed to lime
-				set description of embed to "**Daily Reset**%nl%• Your daily Stardust limit has reset!%nl%• A new Daily Reward is awaiting you!"
-				set {_icon} to "https://i.imgur.com/Iei2Uf1.png"                  
-				set author icon of embed to {_icon}
-				set {_emotes::*} to ":)", "^_^", "^-^", ":D", "!!!", ">:)" and ":P"
-				set {_text} to a random element of {_emotes::*}
-				set footer of embed to {_text}
-				set timestamp of embed to now
-			post embed to channel with id "900397064251379752"
+			resetMessage("daily")
+
 		loop all offline players:
 			set {dziennylimit::stardust::%loop-offline player%} to {poziom::%loop-offline player%}
 			if {dailyready::%loop-offline player%} = true:
@@ -108,6 +97,7 @@ on skript start:
 				else:
 					set {dailynagroda::%loop-offline player%} to 1
 			set {dresetwiad::%loop-offline player%} to true
+
 		execute console command "noinvincibility on"
 		Leaderboard(1, "mobskilled")
 		set {_day} to text from "https://current-time-api.vercel.app/api/current-date" parsed as number
@@ -117,6 +107,7 @@ on skript start:
 		set {_n2} to floor(({_month} + 9) / 12)
 		set {_n3} to (1 + floor(({_year} - 4 * floor({_year} / 4) + 2) / 3))
 		set {_dayoftheyear} to {_n1} - ({_n2} * {_n3}) + {_day} - 30
+
 		loop all offline players:
 			if {dataurodzin::%loop-offline player%} is set:
 				set {_data::*} to {dataurodzin::%loop-offline player%} split at "."
@@ -136,25 +127,15 @@ on skript start:
 				else:
 					if {urodzinydzien::%loop-offline player%} is set:
 						clear {urodzinydzien::%loop-offline player%}
+
 	if {tygodniowyreset} is true:
 		set {tygodniowyreset} to false
 		send "Tygodniowy reset nastąpił!" to console
 		set {doubleXPFriday} to true
 		set {_data} to data()
 		log "%{_data}% Tygodniowy reset nastąpił!" to "logi/serwer.log"
-		make embed:
-			set author of embed to "EarthCraft"
-			set title of embed to "The Weekly Reset has occured"
-			set embed color of the embed to red
-			set description of embed to "**Weekly Reset**%nl%• Work Orders have been reset!%nl%• Weekly rewards are awaiting you in the Grand Vault!%nl%• The Stellar Chest's card for this week has changed!"
-			set {_icon} to "https://i.imgur.com/UiRf56w.png"                  
-			set author icon of embed to {_icon}
-			set {_emotes::*} to ":)", "^_^", "^-^", ":D", "!!!", ">:)" and ":P"
-			set {_text} to a random element of {_emotes::*}
-			set footer of embed to {_text}
-			set timestamp of embed to now
-		post embed to channel with id "900397064251379752"
-		#execute console command "discord broadcast ##earthcraft %{_data}% | Tygodniowy reset nastąpił!"
+		resetMessage("weekly")
+
 		loop all offline players:
 			set {tresetwiad::%loop-offline player%} to true
 			clear {zlecenia::%loop-offline player%::*}
@@ -179,6 +160,7 @@ on skript start:
 		set {datatydzien2} to "%{_day}%.%{_datadzien}%"
 	else:
 		clear {doubleXPFriday}
+
 	UpdateTopDungeons({topKeystones::1}, {topKeystonesPath::1}, "top")
 	UpdateTopDungeons({mostRecentKeystone}, {mostRecentKeystonePath}, "recent")
 	NewPlayerHologram()
@@ -212,12 +194,12 @@ on skript stop:
 	load yaml "plugins/Skript/dungeonconfig/KeystoneHolderIDs.yml" as "keystoneIds"
 	set {_size} to yaml value "IDs Registered" in "keystoneIds"
 	loop {_size} times:
-		clear {-KeystoneHolderLoc%loop-number%}
-		clear {-dungeonInstance%loop-number%::*}
-		clear {-DungeonTimer%loop-number%}
-		clear {-DungeonTimerLimit%loop-number%}
-		clear {-deaths%loop-number%}
-		clear {-dungeonBosses%loop-number%}
+		clear {KeystoneHolderLoc%loop-number%}
+		clear {dungeonInstance%loop-number%::*}
+		clear {DungeonTimer%loop-number%}
+		clear {DungeonTimerLimit%loop-number%}
+		clear {deaths%loop-number%}
+		clear {dungeonBosses%loop-number%}
 	unload yaml "keystoneIds"
 	DungeonStatsFileAverageUpdate()
 	loop all entities where [input's world = "groveofimmemorialruins"]:
@@ -228,11 +210,9 @@ on skript stop:
 			kill loop-entity
 	clear {lingeringInsanityHaste::*}
 	clear {hasteVoidform::*}
-	make embed:
-		set title of embed to {_name} in strict proper case
-		set author of embed to "The server has stopped!"
-		set embed color of the embed to red
-	post embed to channel with id "900397064251379752"
+	delete all yaml from directory "plugins/Skript/scripts/combat/Shields"
+	delete all yaml from directory "plugins/Skript/scripts/combat/Buffs"
+	
 	#wait 2 ticks
 	#loop {leaderboard::*}:
 	#	kill loop-value
@@ -240,10 +220,11 @@ on skript stop:
 	#loop {standard::*}:
 	#	kill loop-value
 	#clear {standard::*}
+
 on join:
 	if player is invulnerable:
 		make player vulnerable
-	set tag "custom;ECMovementSpeed" of nbt of player to player's walking speed
+	set long tag "ECMovementSpeed" of nbt of player to player's walking speed
 	set {_month} to getDayMonth("month")
 	if player is not whitelisted:
 		set {_data} to data()
@@ -296,21 +277,19 @@ on join:
 		execute player command "noinvincibility on"
 
 on pickup:
-	if tag "custom;CantDespawn" of nbt of event-dropped item is set:
+	if boolean tag "CantDespawn" of custom nbt of event-dropped item is set:
 		cancel event
 on item despawn:
-	if tag "custom;CantDespawn" of nbt of event-dropped item is set:
+	if boolean tag "CantDespawn" of custom nbt of event-dropped item is set:
 		cancel event
 
 function notifyPlayerDailyReward(p: player):
 	while {dailyready::%{_p}%} != false:
-		stop loop if metadata value "DailyRewardReminderHidden" of {_p} is set
 		wait 15 minutes
 		stop loop if {dailyready::%{_p}%} = false
 		stop loop if {_p} is not online
-		send " " to {_p}
-		send " " to {_p}
-		send formatted "Reminder: &o<##54d6ff>(<##a3dcff>&o!<##54d6ff>&o) <##a3dcff>&oYou have not yet claimed your daily reward. You can visit the &f&ospawn centre <##a3dcff>&oto do so. <command:/dailyrewardreminder hide><tooltip:&fHides the daily reward reminder for today.>&f(Click here to hide this message)" to {_p}
+		stop loop if metadata value "DailyRewardReminderHidden" of {_p} is set
+		send formatted "Reminder: &4(&c&l&o!&4&o) &cYou have not yet claimed your daily reward. You can visit the &lspawn centre &cto do so. <command:/dailyrewardreminder hide><tooltip:&fHides the daily reward reminder for today.>&4(Click here to hide this message)" to {_p}
 		set {_pitch} to 1
 		loop 3 times:
 			play sound "block.note_block.cow_bell" with volume 3 and pitch {_pitch} to {_p}
@@ -323,10 +302,6 @@ function notifyPlayerDailyReward(p: player):
 function doubleExpDayReminder(p: player):
 	wait 6 seconds
 	set {_dexp} to mini message from "<gradient:##daa3ff:##ff42fc>Double Exp Friday:"
-	if {language::%{_p}%} = "English":
-		set {_d2} to mini message from "<gradient:##daa3ff:##ff42fc>double EXP day"
-		send "&5(&d&l🫧&5) %{_dexp}% &fToday marks a %{_d2}%&f! Enjoy double player EXP from all sources!" to {_p}
-	else:
-		set {_d2} to mini message from "<gradient:##daa3ff:##ff42fc>dzień podwójnego EXP"
-		send "&5(&d&l🫧&5) %{_dexp}% &fDzisiaj odbywa się %{_d2}%&f! Ciesz się podwójnym EXP gracza ze wszystkich źródeł!" to {_p}
+	set {_d2} to mini message from "<gradient:##daa3ff:##ff42fc>Double EXP Day"
+	send "&5(&d&l🫧&5) %{_dexp}% &fToday marks a %{_d2}%&f! Enjoy double player EXP from all sources!" to {_p}
 	play sound "entity.player.levelup" with volume 2 and pitch 0.6 to {_p}

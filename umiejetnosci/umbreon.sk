@@ -59,19 +59,19 @@ on rightclick:
 		if {kartaname::%player%} = "Umbreon":
 			if CanUseAbility(player) != false:
 				set {_target} to target entity of player
-				if tag "custom;ECMob" of nbt of {_target} is set:
+				if boolean tag "ECMob" of custom nbt of {_target} is set:
 					if distance between player and {_target} < 3:
 						set {_id} to line 19 of lore of {karta::%player%}
-						set {_pospiech} to 1 + (({haste::%player%}/4))/100
+						set {_pospiech} to Haste(player)
 						set {_baseCd} to 3
 						set {_damage} to 5 + ({damage::%player%}/30) + ({versatility::%player%}/90 + {primarystat::%player%}/20)
-						if tag "Talents;Row 1" of nbt of {karta::%player%} = "Quick Claw":
+						if string tag "Talents;Row 1" of custom nbt of {karta::%player%} = "Quick Claw":
 							set {_damage} to {_damage}*0.75
 							set {_baseCd} to {_baseCd}*0.5
-						else if tag "Talents;Row 1" of nbt of {karta::%player%} = "Heavy Claw":
+						else if string tag "Talents;Row 1" of custom nbt of {karta::%player%} = "Heavy Claw":
 							set {_damage} to {_damage}*1.875
 							set {_baseCd} to {_baseCd}*1.25
-						else if tag "Talents;Row 1" of nbt of {karta::%player%} = "Sharp Claw":
+						else if string tag "Talents;Row 1" of custom nbt of {karta::%player%} = "Sharp Claw":
 							set {_damage} to {_damage}*1.5
 						set {_cd} to "%{_baseCd}/{_pospiech}% seconds" parsed as timespan
 						set {_cdd} to {_baseCd}/{_pospiech}
@@ -84,7 +84,7 @@ on rightclick:
 							create cooldown "nightslash%player%" for {_cd}
 							AbilityUse(player, "Night Slash")
 							set {_loops} to 1
-							if tag "Talents;Row 1" of nbt of {karta::%player%} is set:
+							if string tag "Talents;Row 1" of custom nbt of {karta::%player%} is set:
 								chance of 40%:
 									add 1 to {_loops}
 							#REPLICATING SHADOWS
@@ -205,7 +205,7 @@ function MoonlightOrbRadius(pid: text):
 			#draw 1 of dust using dustOption((rgb 255, 216, 89), 1) at {moonlightorb::%{_pid}%} ~ {_v}
 			draw 1 of dust particle using dustOption((rgb 255, 228, 140), 1) at {moonlightorb::%{_pid}%} ~ {_v}
 		loop all living entities in radius {radiusorb::%{_pid}%} around {moonlightorb::%{_pid}%}:
-			if tag "custom;ECMob" of nbt of loop-entity is set:
+			if boolean tag "ECMob" of custom nbt of loop-entity is set:
 				if canBeCCed(loop-entity) = true:
 					apply slowness 2 to loop-entity for 1 seconds
 			else:
@@ -215,6 +215,16 @@ function MoonlightOrbRadius(pid: text):
 		wait 0.75 seconds
 		
 function NightSlashBonusReset(target: entity):
+	set {_star} to a circle of radius 0.6
+	create a new custom dust_color_transition particle with:
+		count: 0
+		velocity: outwards
+		extra: 0.5
+		force: true
+		data: dustTransition(black, gray, 1)
+	set particle of {_star} to last created particle
+	draw shape {_star} at {_target} for 6 seconds
+
 	wait 6 seconds
 	clear {nightslash::debuff::%{_target}%}
 	
@@ -225,7 +235,7 @@ on rightclick:
 			if {kartaname::%player%} = "Umbreon":
 				if CanUseAbility(player) != false:
 					set {_id} to line 19 of lore of {karta::%player%}
-					set {_pospiech} to 1 + (({haste::%player%}/4))/100
+					set {_pospiech} to Haste(player)
 					set {_cd} to "%16/{_pospiech}% seconds" parsed as timespan
 					set {_cdd} to 16/{_pospiech}
 					set {_damage} to 2 + ({damage::%player%}/90) + ({versatility::%player%}/270 + {primarystat::%player%}/45)
@@ -282,7 +292,7 @@ on rightclick:
 						#drawWarpRings style 1, particle "redstone", RGB 255, 216, 89, center location of {_x}, id "%player%-1", rainbowMode false, scan true, height 0.1, radius {radiusorb::%{_pid}%}, ringCount 40, ringDensity 10, visibleRange 32, pulseDelay 0
 						#drawArc particle "redstone", center location of player, target location of target block, id "%player%-2", rainbowMode true, density 50, height 2, pitchMultiplier 8, visibleRange 30, displacementX 0, displacementY 4, displacementZ 0
 						loop all living entities in radius {radiusorb::%{_pid}%} around {_x}:
-							if tag "custom;ECMob" of nbt of loop-entity is set:
+							if boolean tag "ECMob" of custom nbt of loop-entity is set:
 								set metadata value "Element" of player to "Light"
 								set loop-entity's last damage cause to sweep attack
 								set metadata value "LastDamageCauseEN" of loop-entity to "<##555555>Moonlight Orb"
@@ -348,7 +358,7 @@ function Finality(p: player, t: entity, d: number):
 	set {radiusorb::%{_pid}%} to 3
 	drawSphere style 1, particle "blockcrack", material yellow wool, center location of {_y}, id "%{_pid}%", rainbowMode false, radius 0.8, density 75, visibleRange 100, pulseDelay 1
 	loop all living entities in radius {radiusorb::%{_pid}%} around {_x}:
-		if tag "custom;ECMob" of nbt of loop-entity is set:
+		if boolean tag "ECMob" of custom nbt of loop-entity is set:
 			set metadata value "Element" of {_p} to "Light"
 			set loop-entity's last damage cause to sweep attack
 			set metadata value "LastDamageCauseEN" of loop-entity to "<##555555>Moonlight Orb"
@@ -374,7 +384,7 @@ on rightclick:
 					cancel event
 					play sound "entity.enderman.scream" with volume 5 and pitch 0 at player
 					set {_id} to line 19 of lore of {karta::%player%}
-					set {_pospiech} to 1 + (({haste::%player%}/4))/100
+					set {_pospiech} to Haste(player)
 					set {_cd} to "%600/{_pospiech}% seconds" parsed as timespan
 					set {_cdd} to {_cd}
 					if {language::%player%} = "Polski":
@@ -406,7 +416,7 @@ on rightclick:
 					AbilityUse(player, "End Game")
 					set the cooldown of player's held item for player to cooldown "endgame%player%"
 					loop all living entities in radius 120 around the player:
-						if tag "custom;ECMob" of nbt of loop-entity is set:
+						if boolean tag "ECMob" of custom nbt of loop-entity is set:
 							if canBeCCed(loop-entity) = true:
 								apply blindness 2 to loop-entity for 10 seconds
 							if health of loop-entity < ({_exec}*(max health of loop-entity)):

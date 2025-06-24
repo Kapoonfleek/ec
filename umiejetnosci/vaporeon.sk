@@ -81,12 +81,12 @@ function Overhealing(p: player, target: entity, overheal: number, ability: text)
 						set {_players::*} to {_players::*} and loop-player
 			if {_players::*} is not set:
 				loop all living entities in radius 20 of {_target} where [input is not a player]:
-					if tag "custom;ECMob" of nbt of loop-entity is not set:
+					if boolean tag "ECMob" of custom nbt of loop-entity is not set:
 						if health of loop-entity < (max health of loop-entity):
 							set {_players::*} to {_players::*} and loop-entity
 				if {_players::*} is not set:
 					loop all entities in radius 20 of {_target}:
-						if tag "custom;ECMob" of nbt of loop-entity is set:
+						if boolean tag "ECMob" of custom nbt of loop-entity is set:
 							set {_players::*} to {_players::*} and loop-entity
 
 			loop {_players::*}:
@@ -97,18 +97,18 @@ function Overhealing(p: player, target: entity, overheal: number, ability: text)
 
 			set {_crit} to ({criticalhit::%{_p}%}/10)
 			set {_masteryScaling} to 370
-			if tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Overflow":
+			if string tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Overflow":
 				set {_masteryScaling} to {_masteryScaling}/1.2
 			set {_mastery} to 1.1 + ({mastery::%{_p}%}/{_masteryScaling})
 			
-			if tag "Talents;Row 5" of nbt of {karta::%{_p}%} = "Hydrodance":
+			if string tag "Talents;Row 5" of nbt of {karta::%{_p}%} = "Hydrodance":
 				set {_overheal} to 0.3*{_overheal}
 				if health of {_entity} < (0.5*max health of {_entity}):
 					set {_overheal} to {_overheal}*{_mastery}
 				chance of {_crit}%:
 					set {_overheal} to {_overheal}*2
 				set {_lore} to "<##7cafbf>Overhealing heals the nearest ally%nl%<##7cafbf>by &f30%% <##7cafbf>of the overheal value. If no%nl%<##7cafbf>eligible allies are nearby, overhealing%nl%<##7cafbf>will instead &fdamage <##7cafbf>nearby enemies%nl%<##7cafbf>by &f20%% <##7cafbf>of the value."
-				if tag "custom;ECMob" of nbt of {_entity} is not set:
+				if boolean tag "ECMob" of custom nbt of {_entity} is not set:
 					Heal({_p}, {_entity}, {_overheal}, "Hydrodance", "<##7cafbf>", {_lore})
 				else:
 					set {_entity}'s last damage cause to sweep attack
@@ -122,10 +122,11 @@ function Overhealing(p: player, target: entity, overheal: number, ability: text)
 			set {_overheal} to {_overheal} - ((max health of {_target}) - (health of {_target}))
 
 on rightclick:
-	if tag "Healing Stream" of nbt of player's tool is set:
+	if boolean tag "Healing Stream" of custom nbt of player's tool is set:
 		cancel event
+		broadcast "czesc"
 		if metadata value "HealingStreamCharges" of player is not set:
-			if tag "Talents;Row 1" of nbt of {karta::%player%} = "Undulation":
+			if string tag "Talents;Row 1" of custom nbt of {karta::%player%} = "Undulation":
 				set {_maxCharges} to 3
 			else:
 				set {_maxCharges} to 2
@@ -138,16 +139,15 @@ on rightclick:
 						if cooldown "Healing StreamDoublePrevent%player%" is finished:
 							create cooldown "Healing StreamDoublePrevent%player%" for 1 tick
 							set {_id} to line 19 of lore of {karta::%player%}
-							if player's chestplate is golden nugget:
-								if name of player's chestplate contains "Serce Earthcrafta" or "Heart of Earthcraft":
-									if line 30 of lore of player's chestplate contains player's name:
-										set {_loreheart::*} to lore of player's chestplate
+							if boolean tag "HeartOfEarthcraft" of custom nbt of player's chestplate is true:
+								if string tag "Owner" of custom nbt of player's chestplate = player:
+									set {_loreheart::*} to lore of player's chestplate
 							set {_crit} to ({criticalhit::%player%}/10)
-							set {_pospiech} to 1 + (({haste::%player%}/4))/100
+							set {_pospiech} to Haste(player)
 							set {_cd} to "%8/{_pospiech}% seconds" parsed as timespan
 							set {_heal} to 1.5 + ({utility::%player%}/80) + ({versatility::%player%}/240) + ({primarystat::%player%}/40)
 							set {_masteryScaling} to 370
-							if tag "Talents;Row 3" of nbt of {karta::%player%} = "Overflow":
+							if string tag "Talents;Row 3" of custom nbt of {karta::%player%} = "Overflow":
 								set {_masteryScaling} to {_masteryScaling}/1.2
 							set {_mastery} to 1.1 + ({mastery::%player%}/{_masteryScaling})
 							AbilityUse(player, "Healing Stream")
@@ -170,7 +170,7 @@ on rightclick:
 								set {_chargesLore} to "%{_charges}% Charges"
 							set {_lore} to "&8Ability%nl%&f%{_charges}% Charges%nl%&fInstant cast%nl%&7Cooldown: &f%{_cd}%%nl%&7Use: &fRMB%nl%<##7cafbf>Sends a healing stream towards an ally.%nl%<##7cafbf>Upon reaching its target, the stream will%nl%<##7cafbf>restore &f%{_heal}% <##7cafbf>HP to the affected ally."
 							loop all items in the inventory of player:
-								if tag "Healing Stream" of nbt of (1 of loop-item) is set:
+								if boolean tag "Healing Stream" of nbt of (1 of loop-item) is set:
 									set lore of loop-item to {_lore}
 									if {_charges} > 0:
 										set item amount of loop-item to {_charges}
@@ -179,7 +179,7 @@ on rightclick:
 										set the cooldown of loop-item for player to {_cd}
 									stop loop							
 							set {_id} to line 19 of lore of {karta::%player%}
-							set {_pospiech} to 1 + (({haste::%player%}/4))/100
+							set {_pospiech} to Haste(player)
 							play sound "block.water.ambient" with volume 3 and pitch 1 at player
 							play sound "skill.vaporeon_healingstream_cast" with volume 3 and pitch 1 at player
 							if metadata value "TidalWaves" of player is set:
@@ -193,25 +193,25 @@ on rightclick:
 							if {_x} is alive:
 								if health of {_x} < (0.5*max health of {_x}):
 									set {_heal} to {_heal}*{_mastery}
-								if tag "Talents;Row 1" of nbt of {karta::%player%} = "Undulation":
+								if string tag "Talents;Row 1" of custom nbt of {karta::%player%} = "Undulation":
 									set {_heal} to {_heal}*1.15
 								if {_tidalWaves} is set:
 									set {_tidalWavesBonus} to 1.3
-									if tag "Talents;Row 3" of nbt of {karta::%player%} = "High Tide":
+									if string tag "Talents;Row 3" of custom nbt of {karta::%player%} = "High Tide":
 										set {_tidalWavesBonus} to {_tidalWavesBonus}*1.4
 									set {_heal} to {_heal}*{_tidalWavesBonus}^{_tidalWaves}
-									if tag "Talents;Row 4" of nbt of {karta::%player%} = "Coalescing Tides":
+									if string tag "Talents;Row 4" of custom nbt of {karta::%player%} = "Coalescing Tides":
 										set {_coalescingTides} to true
 								chance of {_crit}%:
 									set {_heal} to {_heal}*2
-								if tag "Talents;Row 2" of nbt of {karta::%player%} = "Tidewaters":
+								if string tag "Talents;Row 2" of custom nbt of {karta::%player%} = "Tidewaters":
 									Tidewaters(player, {_x}, {_heal})
 								if metadata value "Undercurrent" of player > 0:
 									set {_undercurrent} to metadata value "Undercurrent" of player
 									set {_heal} to {_heal}*(1 + 0.08*{_undercurrent})
 								play sound "skill.vaporeon_healingstream_hit" with volume 5 and pitch 1 at {_x}
 								
-								if tag "custom;ECMob" of nbt of {_x} is not set:
+								if boolean tag "ECMob" of custom nbt of {_x} is not set:
 									Heal(player, {_x}, {_heal}, "Healing Stream", "<##7cafbf>", {_lore})
 									CircleOfWaterApply(player, {_x}, "Healing Stream")
 									if {_coalescingTides} is true:
@@ -226,14 +226,14 @@ on rightclick:
 									if {_riversplit} is set:
 										set {_heal} to ({_riversplit}/100)*{_heal}
 										loop all living entities in radius 15 around {_x}:
-											if tag "custom;ECMob" of nbt of loop-entity is not set:
+											if boolean tag "ECMob" of custom nbt of loop-entity is not set:
 												if loop-entity is a player:
 													if loop-entity is not player:
 														if loop-entity is not {_x}:
 															set {_random} to loop-entity
 										if {_random} is not set:
 											loop all living entities in radius 15 around {_x}:
-												if tag "custom;ECMob" of nbt of loop-entity is not set:
+												if boolean tag "ECMob" of custom nbt of loop-entity is not set:
 													if loop-entity is not a player:
 														if loop-entity is not {_x}:
 															set {_random} to loop-entity
@@ -281,17 +281,16 @@ on rightclick:
 				else:
 					send "&8[&6Earthcraft&8] &6Nie masz wybranej wymaganej karty, by móc użyć tej umiejętności." to player
 				play sound "block.glass.break" with volume 3 and pitch 0 to player
-	if player's tool's name is "<##7cafbf>Explosive Bubble":
+	else if boolean tag "Explosive Bubble" of custom nbt of player's tool is set:
 		cancel event
 		if {kartaname::%player%} = "Vaporeon":
 			if CanUseAbility(player) != false:
 				set {_id} to line 19 of lore of {karta::%player%}
-				if player's chestplate is golden nugget:
-					if name of player's chestplate contains "Serce Earthcrafta" or "Heart of Earthcraft":
-						if line 30 of lore of player's chestplate contains player's name:
-							set {_loreheart::*} to lore of player's chestplate
+				if boolean tag "HeartOfEarthcraft" of custom nbt of player's chestplate is true:
+					if string tag "Owner" of custom nbt of player's chestplate = player:
+						set {_loreheart::*} to lore of player's chestplate
 				set {_crit} to ({criticalhit::%player%}/10)
-				set {_pospiech} to 1 + (({haste::%player%}/4))/100
+				set {_pospiech} to Haste(player)
 				set {_cd} to "%1.5/{_pospiech}%"
 				set {_cdtarget} to "%20/{_pospiech}%"
 				set {_cdLore} to "%{_cd}% seconds" parsed as timespan
@@ -300,7 +299,7 @@ on rightclick:
 				set {_shield} to 6 + ({utility::%player%}/52) + ({versatility::%player%}/156) + {primarystat::%player%}/26
 				set {_damage} to 1 + ({damage::%player%}/60) + ({versatility::%player%}/180) + {primarystat::%player%}/30
 				set {_masteryScaling} to 370
-				if tag "Talents;Row 3" of nbt of {karta::%player%} = "Overflow":
+				if string tag "Talents;Row 3" of custom nbt of {karta::%player%} = "Overflow":
 					set {_masteryScaling} to {_masteryScaling}/1.2
 				set {_mastery} to 1.1 + ({mastery::%player%}/{_masteryScaling})
 				if cooldown "Explosive Bubble%player%" is finished:
@@ -319,22 +318,18 @@ on rightclick:
 							create cooldown "Explosive Bubble%player%-%{_uuid}%" for ("%{_cdtarget}% seconds" parsed as timespan)
 
 							AbilityUse(player, "Explosive Bubble")
-							if tag "Talents;Row 1" of nbt of {karta::%player%} = "Undercurrent":
+							if string tag "Talents;Row 1" of custom nbt of {karta::%player%} = "Undercurrent":
 								set {_undercurrent} to metadata value "Undercurrent" of player
 								add 1 to {_undercurrent}
 								set metadata value "Undercurrent" of player to {_undercurrent}
 
-							#DOWNPOUR
-							loop {_loreheart::*}:
-								loop-value contains "Downpour":
-									add (0.5*{trait::Vaporeon::Downpour::%player%}) to {_downpour}
 
-							if tag "Talents;Row 2" of nbt of {karta::%player%} is set:
+							if string tag "Talents;Row 2" of custom nbt of {karta::%player%} is set:
 								send title " " with subtitle "" to player for 1 minute with fade in 0.25 second and fade out 0 second
 								set {_tidalWaves} to metadata value "TidalWaves" of player
 								if {_tidalWaves} is not set:
 									set {_tidalWaves} to 0
-								if tag "Talents;Row 4" of nbt of {karta::%player%} = "Coalescing Tides":
+								if string tag "Talents;Row 4" of custom nbt of {karta::%player%} = "Coalescing Tides":
 									set {_tidalWavesMax} to 4
 								else:
 									set {_tidalWavesMax} to 2
@@ -342,41 +337,6 @@ on rightclick:
 									add 1 to {_tidalWaves}
 								set metadata value "TidalWaves" of player to {_tidalWaves}
 								play sound "skill.vaporeon_tidalwaves" with volume 3 and pitch 1 to player
-
-							if {_downpour} is set:
-								set {_yb} to block 2 blocks above {_i}
-								set {_zb} to block above {_yb}		
-								loop all blocks in radius 2 around {_zb}:
-									if y-coordinate of loop-block = y-coordinate of {_zb}:
-										draw 1 of cloud at location of loop-block
-								loop all blocks in radius 2 around {_yb}:
-									draw 1 of rain at location of loop-block
-								if health of {_i} < (0.5*max health of {_i}):
-									set {_downpour} to {_downpour}*{_mastery}
-								chance of {_crit}%:
-									set {_downpour} to {_downpour}*2
-								Overhealing(player, {_i}, {_downpour}, "Downpour")
-								if {_downpour} > ((max health of {_i}) - (health of {_i})):
-									set {_downpour} to ((max health of {_i}) - (health of {_i}))
-									if {_downpour} < 0:
-										set {_downpour} to 0
-								heal {_i} by {_downpour}
-								set {_lore} to "<##7cafbf>Downpour%nl%<##7cafbf>Wybuchowy Bąbelek &7przywołuje leczniczy deszcz nad celem,%nl%&7przywracając &f%{_downpour}% &7zdrowia."
-								set {_loreEN} to "<##7cafbf>Downpour%nl%<##7cafbf>Explosive Bubble &7summons a healing rain above its target,%nl%&7restoring &f%{_downpour}% &7health."
-								HealRefresh(player, {_downpour})
-								if metadata value "DungeonInstance" of player is set:
-									DungeonHeal(player, {_i}, {_downpour}, "Downpour")
-								CircleOfWaterApply(player, {_i}, "Downpour")
-								if {_i} is a player:
-									if {_downpour} > 0:
-										if {language::%{_i}%} = "English":
-											send formatted "%{kartacolor::%player%}%%player% &fhealed you. <tooltip:%{_loreEN}%>(<##baff8c>+%{_downpour}% HP&f)" to {_i}
-										else:
-											send formatted "%{kartacolor::%player%}%%player% &fuleczył cię. <tooltip:%{_lore}%>(<##baff8c>+%{_downpour}% HP&f)" to {_i}
-								if {_downpour} > 0:
-									add {_downpour} to {healtotal::%player%}
-									add {_downpour} to {healcard::%{kartaname::%player%}%::%{_id}%}
-									add {_downpour} to {healcard::%{kartaname::%player%}%::%{_id}%::Downpour}
 
 							set {_lore} to  "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdLore}% | %{_cdtargetLore}% per target%nl%&7Use: &fRMB%nl%<##7cafbf>Wraps an ally in an explosive bubble, which%nl%<##7cafbf>absorbs &f%{_shield}% <##7cafbf>damage. <##7cafbf>After &f%{_wait}% sec<##7cafbf>, the bubble%nl%<##7cafbf>explodes, <##7cafbf>dealing &f%{_damage}% + (remaining shield value)%nl%<##7cafbf>as <##1ebbd7>Water <##7cafbf>damage to nearby enemies.%nl% %nl%<##7cafbf>When <##7cafbf>Explosive Bubble <##7cafbf>is reapplied, the shield%nl%<##7cafbf>amount will be added to the existing shield,%nl%<##7cafbf>but the duration will not be refreshed."
 							set lore of player's tool to {_lore}
@@ -398,11 +358,12 @@ on rightclick:
 								loop-value contains "Heavy Bubbles":
 									add (0.15*{trait::Vaporeon::Heavy Bubbles::%player%}) to {_heavybubbles}
 
-							if tag "custom;Shields;%{_shieldNumber}%" of nbt of {_i} is set:
+							if yaml value "Shields.%{_shieldNumber}%" in "Shields%uuid of {_i}%" is set:
 								play sound "entity.dragon_fireball.explode" with volume 3 and pitch 1 at {_i}
+								set {_shieldTarget} to yaml value "Shields.%{_shieldNumber}%.Amount" in "Shields%uuid of {_i}%"
 								loop all living entities in radius 10 around {_i}:
-									if tag "custom;ECMob" of nbt of loop-entity is set:
-										set {_shieldTarget} to tag "custom;Shields;%{_shieldNumber}%;Amount" of nbt of {_i}
+									if boolean tag "ECMob" of custom nbt of loop-entity is set:
+										set {_damage} to 1 + ({damage::%player%}/60) + ({versatility::%player%}/180) + {primarystat::%player%}/30
 										chance of {_crit}%:
 											set {_damage} to {_damage}*2
 										if {_heavybubbles} is true:
@@ -416,10 +377,25 @@ on rightclick:
 										make player damage loop-entity by 2*({_dmg})
 								shieldExpire({_i}, {_shieldNumber})
 								send action bar " " to {_i}
-								if tag "Talents;Row 1" of nbt of {karta::%player%} = "Undercurrent":
+								
+								if string tag "Talents;Row 1" of custom nbt of {karta::%player%} = "Undercurrent":
 									set {_undercurrent} to metadata value "Undercurrent" of player
 									remove 1 from {_undercurrent}
 									set metadata value "Undercurrent" of player to {_undercurrent}
+
+							if string tag "Talents;Row 2" of custom nbt of {karta::%player%} = "Downpour":
+								set {_downpour} to {_shieldTarget}*0.25
+								broadcast {_shieldTarget}
+								if health of {_i} < (0.5*max health of {_i}):
+									set {_downpour} to {_downpour}*{_mastery}
+								chance of {_crit}%:
+									set {_downpour} to {_downpour}*2
+								broadcast {_downpour}
+								set {_lore} to "<##7cafbf>When an Explosive Bubble detonates, a%nl%<##7cafbf>healing rain is summoned above the target,%nl%<##7cafbf>restoring &f25%% <##7cafbf>of the remaining shield value%nl%<##7cafbf>as HP to the ally."
+								Heal(player, {_i}, {_downpour}, "Downpour", "<##7cafbf>", {_lore})
+								CircleOfWaterApply(player, {_i}, "Downpour")
+								draw 20 of cloud particle at location 2 above {_i} with offset vector(0.05, 0.01, 0.05) with extra 0.02
+								draw 20 of rain particle at location 1 above {_i} with offset vector(0.05, 0.01, 0.05) with extra 0.02
 						else:
 							if {tekstcd::%player%} = true:
 								set {_cdd} to cooldown "Explosive Bubble%player%-%{_uuid}%"
@@ -448,15 +424,14 @@ on rightclick:
 		if {kartaname::%player%} = "Vaporeon":
 			if CanUseAbility(player) != false:
 				set {_id} to line 19 of lore of {karta::%player%}
-				if player's chestplate is golden nugget:
-					if name of player's chestplate contains "Serce Earthcrafta" or "Heart of Earthcraft":
-						if line 30 of lore of player's chestplate contains player's name:
-							set {_loreheart::*} to lore of player's chestplate
+				if boolean tag "HeartOfEarthcraft" of custom nbt of player's chestplate is true:
+					if string tag "Owner" of custom nbt of player's chestplate = player:
+						set {_loreheart::*} to lore of player's chestplate
 				set {_crit} to ({criticalhit::%player%}/10)
-				set {_pospiech} to 1 + (({haste::%player%}/4))/100
+				set {_pospiech} to Haste(player)
 				set {_cd} to "%300/{_pospiech}% seconds" parsed as timespan
 				set {_masteryScaling} to 370
-				if tag "Talents;Row 3" of nbt of {karta::%player%} = "Overflow":
+				if string tag "Talents;Row 3" of custom nbt of {karta::%player%} = "Overflow":
 					set {_masteryScaling} to {_masteryScaling}/1.2
 				set {_mastery} to 1.1 + ({mastery::%player%}/{_masteryScaling})
 				set {_lore} to "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cd}%%nl%&7Use: &fRMB%nl%<##7cafbf>Reverses all shields to healing in a huge%nl%<##7cafbf>radius around the player. Healing from this%nl%<##7cafbf>ability benefits from <##8bbdf0>Mastery: Water Cycles%nl%<##7cafbf>and can &f Critically Strike<##7cafbf>.%nl% %nl%<##8bbdf0>Reversal <##7cafbf>dispels all &fCurse<##7cafbf>, &fDisease<##7cafbf>, &fMagic%nl%<##7cafbf>and &fPoison <##7cafbf>debuffs from affected allies."
@@ -472,7 +447,10 @@ on rightclick:
 					loop all living entities in radius 100 around the player where [shieldFind(player, input, "Explosive Bubble") is set]:
 						if loop-entity is alive:
 							set {_shieldNum} to shieldFind(player, loop-entity, "Explosive Bubble")
-							set {_shield} to tag "custom;Shields;%{_shieldNum}%;Amount" of nbt of loop-entity
+							if yaml "Shields%uuid of loop-entity%" is not loaded:
+								load yaml "plugins/Skript/combat/Shields/%uuid of loop-entity%" as "Shields%uuid of loop-entity%"
+
+							set {_shield} to yaml value "Shields.%{_shieldNum}%.Amount" in "Shields%uuid of loop-entity%"
 							set {_shield} to "%{_shield}%" parsed as number
 							shieldExpire(loop-entity, {_shieldNum})
 							
@@ -490,7 +468,7 @@ on rightclick:
 									add (0.8*{trait::Vaporeon::High Tide::%player%}) to {_heal}
 
 							Heal(player, loop-entity, {_heal}, "Reversal", "<##7cafbf>", {_lore})
-							if tag "custom;ECMob" of nbt of loop-entity is not set:
+							if boolean tag "ECMob" of custom nbt of loop-entity is not set:
 								CircleOfWaterApply(player, loop-entity, "Reversal")
 
 						if loop-entity is a player:
@@ -507,7 +485,7 @@ on rightclick:
 							set {_players::*} to all living entities in radius 50 of player where [(health of input) < (max health of input)]
 						if {_players::*} is not set:
 							set {_players::*} to all living entities in radius 50 of player
-						set {_players::*} to {_players::*} where [(tag "custom;ECMob" of nbt of input is not set)]
+						set {_players::*} to {_players::*} where [(boolean tag "ECMob" of custom nbt of input is not set)]
 						set {_random} to a random element of {_players::*}
 						if health of {_random} < (0.5*max health of {_random}):
 							set {_hydrotherapy} to {_hydrotherapy}*{_mastery}
@@ -556,7 +534,7 @@ function HealingStreamRecharge(p: player, cd: timespan):
 	add 1 to {_charges}
 	set metadata value "HealingStreamCharges" of {_p} to {_charges}
 	loop all items in the inventory of {_p}:
-		if tag "Healing Stream" of nbt of (1 of loop-item) is set:
+		if boolean tag "Healing Stream" of nbt of (1 of loop-item) is set:
 			if {_charges} > 0:
 				set item amount of loop-item to {_charges}
 				if {_charges} = 1:
@@ -595,7 +573,7 @@ function CircleOfWater(e: entity, p: player):
 			stop loop
 
 function Tidewaters(p: player, x: entity, heal: number):
-	set {_haste} to 1 + (({haste::%{_p}%}/4))/100
+	set {_haste} to Haste({_p})
 	set {_cd} to "%3/{_haste}% seconds" parsed as timespan
 	set {_healValue} to {_heal}*0.35
 	wait {_cd}
@@ -607,7 +585,7 @@ function Tidewaters(p: player, x: entity, heal: number):
 	if {_x} is alive:
 		play sound "skill.vaporeon_healingstream_hit" with volume 5 and pitch 1.8 at {_x}
 		set {_lore} to "&8Talent%nl%&fInstant cast%nl%&7Cooldown: &fnone%nl%&7Use: &fPassive%nl%<##7cafbf>Healing Stream sends a second stream of%nl%<##7cafbf>revitalising waters at the affected ally after%nl%&f%{_cd}%<##7cafbf>, reduced by <##19943e> Haste<##7cafbf>. The second%nl%<##7cafbf>stream restores &f35%% <##7cafbf>of the initial value as HP%nl%<##7cafbf>to the ally."
-		if tag "custom;ECMob" of nbt of {_x} is not set:
+		if boolean tag "ECMob" of custom nbt of {_x} is not set:
 			Heal({_p}, {_x}, {_healValue}, "Tidewaters", "<##7cafbf>", {_lore})
 			CircleOfWaterApply({_p}, {_x}, "Tidewaters")
 		else:
@@ -623,7 +601,7 @@ function CircleOfWaterApply(p: player, x: entity, ability: string):
 		if {_ability} != "Searage":
 			CircleOfWater({_x}, {_p})
 	else:
-		if tag "Constellation;CONSTELLATION 6" of nbt of {karta::%{_p}%} is set:
+		if boolean tag "Constellation;CONSTELLATION 6" of nbt of {karta::%{_p}%} is set:
 			CircleOfWaterDetonate({_p}, {_x})
 		else:
 			if {_ability} = "Healing Stream":
@@ -632,7 +610,7 @@ function CircleOfWaterApply(p: player, x: entity, ability: string):
 function CircleOfWaterDetonate(p: player, x: entity):
 	set {_healcircle} to 0.8 + ({utility::%{_p}%}/100) + ({versatility::%{_p}%}/300) + ({primarystat::%{_p}%}/50)
 	set {_masteryScaling} to 370
-	if tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Overflow":
+	if string tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Overflow":
 		set {_masteryScaling} to {_masteryScaling}/1.2
 	set {_mastery} to 1.1 + ({mastery::%{_p}%}/{_masteryScaling})
 	set {_crit} to ({criticalhit::%{_p}%}/10)
@@ -675,7 +653,7 @@ function CircleOfWaterDetonate(p: player, x: entity):
 			add (0.2*{trait::Vaporeon::Cascade::%{_p}%}) to {_cascade}
 	if {_cascade} is set:
 		remove ("%{_cascade}% seconds" parsed as timespan) from cooldown "Explosive Bubble%{_p}%-%uuid of {_x}%"
-	if tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Overflow":
+	if string tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Overflow":
 		set {_healcircle} to {_healcircle}*{_mastery}
 	else:
 		if health of {_x} < (0.5*max health of {_x}):
@@ -684,11 +662,11 @@ function CircleOfWaterDetonate(p: player, x: entity):
 		set {_undercurrent} to metadata value "Undercurrent" of {_p}
 		set {_healcircle} to {_healcircle}*(1 + 0.08*{_undercurrent})
 	chance of {_crit}%:
-		if tag "Talents;Row 1" of nbt of {karta::%{_p}%} = "Flow of the Tides":
+		if string tag "Talents;Row 1" of nbt of {karta::%{_p}%} = "Flow of the Tides":
 			set {_healcircle} to {_healcircle}*3.3
 		else:
 			set {_healcircle} to {_healcircle}*2
-		if tag "Talents;Row 4" of nbt of {karta::%{_p}%} = "Searage":
+		if string tag "Talents;Row 4" of nbt of {karta::%{_p}%} = "Searage":
 			chance of 30%:
 				CircleOfWaterApply({_p}, {_x}, "Searage")
 				play sound "ambient.underwater.exit" with volume 2.5 and pitch 2 at {_x}
@@ -697,7 +675,7 @@ function CircleOfWaterDetonate(p: player, x: entity):
 	Heal({_p}, {_x}, {_healcircle}, "Circle of Water", "<##7cafbf>", {_lore})
 	play sound "entity.player.splash.high_speed" with volume 3 and pitch 1 at {_x}
 	draw 3 of heart particle at location 0.5 above {_x} with offset vector(0.6, 0.9, 0.6)
-	if tag "Talents;Row 4" of nbt of {karta::%{_p}%} = "Searage":
+	if string tag "Talents;Row 4" of nbt of {karta::%{_p}%} = "Searage":
 		loop LoopEntitiesAroundTarget({_x}, 6, false):
 			set loop-entity's last damage cause to sweep attack
 			set metadata value "LastDamageCause" of loop-entity to "<##7cafbf>Circle of Water"
@@ -736,8 +714,8 @@ function Heal(p: player, x: entity, heal: number, spell: text, col: text, lore: 
 		
 function onHealEvents(p: player, e: entity):
 	if {kartaname::%{_p}%} = "Vaporeon":
-		if tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Current Control":
-			set {_haste} to 1 + (({haste::%{_p}%}/4))/100
+		if string tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Current Control":
+			set {_haste} to Haste({_p})
 			set {_cd} to (20/{_haste})*0.025
 			set {_uuid} to uuid of {_e}
 			if cooldown "Explosive Bubble%{_p}%-%{_uuid}%" is set:
@@ -746,7 +724,7 @@ function onHealEvents(p: player, e: entity):
 
 function selfHealModifiers(p: entity, heal: number) :: number:
 	if {kartaname::%{_p}%} = "Brother Therold":
-		if tag "Talents;Row 2" of nbt of {karta::%{_p}%} = "Body and Soul":
+		if string tag "Talents;Row 2" of nbt of {karta::%{_p}%} = "Body and Soul":
 			set {_heal} to {_heal}*1.06
 	return {_heal}
 
@@ -755,15 +733,17 @@ function healAboveMaxHealth(p: player, x: entity, heal: number):
 		set {_heal} to {_heal}*-1
 	if {_p} = {_x}:
 		if {kartaname::%{_p}%} = "Brother Therold":
-			if tag "Talents;Row 2" of nbt of {karta::%{_p}%} = "Mental Fortitude":
+			if string tag "Talents;Row 2" of nbt of {karta::%{_p}%} = "Mental Fortitude":
 				set {_mentalFortitude} to ({_p}'s max health/4.25)-3 + {primarystat::%{_p}%}/8.75
 				set {_lore} to "&8Talent%nl%&fInstant cast%nl%&7Cooldown: &fnone%nl%&7Use: &fPassive%nl%<##613e82>Healing from Vampiric Touch when you are at%nl%<##613e82>maximum health will shield you for the same%nl%<##613e82>amount. Shield cannot exceed &f%{_mentalFortitude}% <##613e82>damage%nl%<##613e82>absorbed."
 				Shield({_p}, {_x}, {_heal} + 0.00, "Mental Fortitude", "<##613e82>", {_lore}, {_mentalFortitude}, false, true)
-				if tag "custom;ShieldsActive" of nbt of {_x} > 0:
-					set {_shieldsActive} to tag "custom;ShieldsActive" of nbt of {_x}
+				if int tag "ShieldsActive" of nbt of {_x} > 0:
+					set {_shieldsActive} to int tag "ShieldsActive" of nbt of {_x}
 					loop {_shieldsActive} times:
-						if tag "custom;Shields;%loop-number%;Name" of nbt of {_x} = "Mental Fortitude":
-							set {_shieldTotal} to tag "custom;Shields;%loop-number%;Amount" of nbt of {_x}
+						if yaml "Shields%uuid of {_x}%" is not loaded:
+							load yaml "plugins/Skript/combat/Shields/%uuid of {_x}%" as "Shields%uuid of {_x}%"
+						if yaml value "Shields.%loop-number%.Name" in "Shields%uuid of {_x}%" = "Mental Fortitude":
+							set {_shieldTotal} to yaml value "Shields.%loop-number%.Amount" in "Shields%uuid of {_x}%"
 							stop loop
 					buffRegister({_p}, "Mental", 3, "", "Value", " %{_shieldTotal}%", "-")
 
@@ -777,30 +757,33 @@ function Shield(p: player, x: entity, shield: number, spell: text, col: text, lo
 		
 				
 		set {_existingShield} to metadata value "ShieldTotal" of {_x}
-		set {_shieldsActive} to tag "custom;ShieldsActive" of nbt of {_x}
+		if yaml "Shields%uuid of {_x}%" is not loaded:
+			load yaml "plugins/Skript/combat/Shields/%uuid of {_x}%" as "Shields%uuid of {_x}%"
+
+		set {_shieldsActive} to yaml value "ShieldsActive" in "Shields%uuid of {_x}%"
 
 		loop {_shieldsActive} times:
-			if tag "custom;Shields;%loop-number%;Caster" of nbt of {_x} = "%{_p}%":
-				if tag "custom;Shields;%loop-number%;Name" of nbt of {_x} = {_spell}:
+			if yaml value "Shields.%loop-number%.Caster" in "Shields%uuid of {_x}%" = "%{_p}%":
+				if yaml value "Shields.%loop-number%.Name" in "Shields%uuid of {_x}%" = {_spell}:
 					set {_shieldAlreadyActive} to true
-					set {_amount} to tag "custom;Shields;%{_shieldsActive}%;Amount" of nbt of {_x}
+					set {_amount} to yaml value "Shields.%loop-number%.Amount" in "Shields%uuid of {_x}%"
 					if {_maxShield} > 0:
 						if {_amount} + {_shield} > {_maxShield}:
 							set {_shield} to {_maxShield} - {_amount}
 					add {_shield} to {_amount}
 					add {_shield} to {_existingShield}
 					set metadata value "ShieldTotal" of {_x} to {_existingShield}
-					set tag "custom;Shields;%{_shieldsActive}%;Amount" of nbt of {_x} to {_amount}
+					set yaml value "Shields.%loop-number%.Amount" in "Shields%uuid of {_x}%" to {_amount}
 					stop loop
 
 		if {_shieldAlreadyActive} != true:
 			add 1 to {_shieldsActive}
-			set tag "custom;Shields;%{_shieldsActive}%;Name" of nbt of {_x} to {_spell}
-			set tag "custom;Shields;%{_shieldsActive}%;Caster" of nbt of {_x} to "%{_p}%"
-			set tag "custom;Shields;%{_shieldsActive}%;Amount" of nbt of {_x} to {_shield}
+			set yaml value "Shields.%{_shieldsActive}%.Name" in "Shields%uuid of {_x}%" to {_spell}
+			set yaml value "Shields.%{_shieldsActive}%.Caster" in "Shields%uuid of {_x}%" to "%{_p}%"
+			set yaml value "Shields.%{_shieldsActive}%.Amount" in "Shields%uuid of {_x}%" to {_shield}
 			set metadata value "ShieldTotal" of {_x} to {_shield}
 
-		set tag "custom;ShieldsActive" of nbt of {_x} to {_shieldsActive}
+		set yaml value "ShieldsActive" in "Shields%uuid of {_x}%" to {_shieldsActive}
 		if metadata value "ShieldTotal" of {_x} < 0:
 			set metadata value "ShieldTotal" of {_x} to 0
 
@@ -811,51 +794,61 @@ function Shield(p: player, x: entity, shield: number, spell: text, col: text, lo
 				send formatted "%{kartacolor::%{_p}%}%%{_p}% &fshielded you. <tooltip:%{_col}%%{_spell}%%nl%%{_lore}%>(<##baff8c>+%{_shield}% Shield&f)" to {_x}
 			if {_sendActionBar} != false:
 				send action bar "%{kartacolor::%{_p}%}% Shield: &f%{_shieldTotal}%" to {_x}
+		save yaml "Shields%uuid of {_x}%"
 	return {_shieldsActive}
 
 function shieldFind(p: entity, x: entity, shield: text) :: integer:
-	set {_shieldsActive} to tag "custom;ShieldsActive" of nbt of {_x}
+	if yaml "Shields%uuid of {_x}%" is not loaded:
+		load yaml "plugins/Skript/combat/Shields/%uuid of {_x}%" as "Shields%uuid of {_x}%"
+		
+	set {_shieldsActive} to yaml value "ShieldsActive" in "Shields%uuid of {_x}%"
+
 	loop {_shieldsActive} times:
-		if tag "custom;Shields;%loop-number%;Caster" of nbt of {_x} = "%{_p}%":
-			if tag "custom;Shields;%loop-number%;Name" of nbt of {_x} = {_shield}:
+		if yaml value "Shields.%loop-number%.Caster" in "Shields%uuid of {_x}%" = "%{_p}%":
+			if yaml value "Shields.%loop-number%.Name" in "Shields%uuid of {_x}%" = {_shield}:
 				set {_num} to {_shieldsActive}
 				stop loop
 	return {_num}
 
 
 function shieldExpire(x: entity, num: integer):
-	set {_amount} to tag "custom;Shields;%{_num}%;Amount" of nbt of {_x}
-	clear tag "custom;Shields;%{_num}%" of nbt of {_x}
-	set {_shieldsActive} to tag "custom;ShieldsActive" of nbt of {_x}
+	if yaml "Shields%uuid of {_x}%" is not loaded:
+		load yaml "plugins/Skript/combat/Shields/%uuid of {_x}%" as "Shields%uuid of {_x}%"
+
+	set {_amount} to yaml value "Shields.%{_num}%.Amount" in "Shields%uuid of {_x}%"
+	clear yaml value "Shields.%{_num}%" in "Shields%uuid of {_x}%"
+	set {_shieldsActive} to yaml value "ShieldsActive" in "Shields%uuid of {_x}%"
 	remove 1 from {_shieldsActive}
-	set tag "custom;ShieldsActive" of nbt of {_x} to {_shieldsActive}
+	set yaml value "ShieldsActive" in "Shields%uuid of {_x}%" to {_shieldsActive}
 	set {_totalShields} to metadata value "ShieldTotal" of {_x}
 	remove {_amount} from {_totalShields}
 	set metadata value "ShieldTotal" of {_x} to {_totalShields}
-	if tag "custom;ShieldsActive" of nbt of {_x} = 0:
-		clear tag "custom;Shields" of nbt of {_x}
-		clear tag "custom;ShieldsActive" of nbt of {_x}
+	save yaml "Shields%uuid of {_x}%"
 
 function shieldsClear(x: entity):
-	set {_amount} to tag "custom;ShieldsActive" of nbt of {_x}
-	loop {_amount} times:
-		clear tag "custom:Shields;%loop-number%;Amount" of nbt of {_x}
-		clear tag "custom:Shields;%loop-number%;Name" of nbt of {_x}
-		clear tag "custom:Shields;%loop-number%;Caster" of nbt of {_x}
-		clear tag "custom:Shields;%loop-number%" of nbt of {_x}
-	clear tag "custom:Shields" of nbt of {_x}
-	clear tag "custom;ShieldsActive" of nbt of {_x}
+	if yaml "Shields%uuid of {_x}%" is loaded:
+		set {_amount} to yaml value "ShieldsActive" in "Shields%uuid of {_x}%"
+		loop {_amount} times:
+			clear yaml value "Shields.%loop-number%.Amount" in "Shields%uuid of {_x}%"
+			clear yaml value "Shields.%loop-number%.Name" in "Shields%uuid of {_x}%"
+			clear yaml value "Shields.%loop-number%.Caster" in "Shields%uuid of {_x}%"
+			clear yaml value "Shields.%loop-number%" in "Shields%uuid of {_x}%"
+		save yaml "Shields%uuid of {_x}%"
 	clear metadata value "ShieldTotal" of {_x}
 
 function shieldDamageEvent(x: entity, dmg: number) :: number:
-	set {_shieldsActive} to tag "custom;ShieldsActive" of nbt of {_x}
+	if yaml "Shields%uuid of {_x}%" is not loaded:
+		load yaml "plugins/Skript/combat/Shields/%uuid of {_x}%" as "Shields%uuid of {_x}%"
+
+	set {_shieldsActive} to yaml value "ShieldsActive" in "Shields%uuid of {_x}%"
+
 	set {_num} to 1
 	while {_oldestShield} is not set:
-		if tag "custom;Shields;%{_num}%" of nbt of {_x} is set:
+		if yaml value "Shields.%{_num}%.Amount" in "Shields%uuid of {_x}%" is set:
 			set {_oldestShield} to {_num}
-			set {_shieldCaster} to (tag "custom;Shields;%{_num}%;Caster" of nbt of {_x}) parsed as player
-			set {_shieldAmount} to (tag "custom;Shields;%{_num}%;Amount" of nbt of {_x})
-			set {_shieldName} to (tag "custom;Shields;%{_num}%;Name" of nbt of {_x})
+			set {_shieldCaster} to (yaml value "Shields.%{_num}%.Caster" in "Shields%uuid of {_x}%") parsed as entity
+			set {_shieldAmount} to (yaml value "Shields.%{_num}%.Amount" in "Shields%uuid of {_x}%")
+			set {_shieldName} to (yaml value "Shields.%{_num}%.Name" in "Shields%uuid of {_x}%")
 		add 1 to {_num}
 	set {_id} to line 19 of lore of {karta::%{_shieldCaster}%}
 	replace all "&8Id: " in {_id} with ""
@@ -863,29 +856,31 @@ function shieldDamageEvent(x: entity, dmg: number) :: number:
 		set {_shieldTotal} to metadata value "ShieldTotal" of {_x}
 		set {_shieldTotal} to {_shieldTotal} - {_dmg}
 		set metadata value "ShieldTotal" of {_x} to {_shieldTotal}
-		add ({_dmg}) to {healtotal::%{_shieldCaster}%}
-		add ({_dmg}) to {healcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%}
-		add ({_dmg}) to {healcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%::%{_shieldName}%}
-		add ({_dmg}) to {shieldtotal::%{_shieldCaster}%}
-		add ({_dmg}) to {shieldcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%}
-		add ({_dmg}) to {shieldcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%::%{_shieldName}%}
-		HealAssist({_shieldCaster}, {_x})
-		HealRefresh({_shieldCaster}, {_dmg})
+		if {_shieldCaster} is a player:
+			add ({_dmg}) to {healtotal::%{_shieldCaster}%}
+			add ({_dmg}) to {healcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%}
+			add ({_dmg}) to {healcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%::%{_shieldName}%}
+			add ({_dmg}) to {shieldtotal::%{_shieldCaster}%}
+			add ({_dmg}) to {shieldcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%}
+			add ({_dmg}) to {shieldcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%::%{_shieldName}%}
+			HealAssist({_shieldCaster}, {_x})
+			HealRefresh({_shieldCaster}, {_dmg})
 		remove {_dmg} from {_shieldAmount}
-		set tag "custom;Shields;%{_oldestShield}%;Amount" of nbt of {_x} to {_shieldAmount}
+		set yaml value "Shields.%{_oldestShield}%.Amount" in "Shields%uuid of {_x}%" to {_shieldAmount}
 		if metadata value "DungeonInstance" of {_x} is set:
 			DungeonShield({_shieldCaster}, {_x}, {_dmg}, {_shieldName})
 		set {_dmg} to 0
 	else:
 		set {_dmg} to {_dmg}-{_shieldAmount}
-		add ({_shieldAmount}) to {healtotal::%{_shieldCaster}%}
-		add ({_shieldAmount}) to {healcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%}
-		add ({_shieldAmount}) to {healcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%::%{_shieldName}%}
-		add ({_shieldAmount}) to {shieldtotal::%{_shieldCaster}%}
-		add ({_shieldAmount}) to {shieldcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%}
-		add ({_shieldAmount}) to {shieldcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%::%{_shieldName}%}
-		HealAssist({_shieldCaster}, {_x})
-		HealRefresh({_shieldCaster}, {_shieldAmount})
+		if {_shieldCaster} is a player:
+			add ({_shieldAmount}) to {healtotal::%{_shieldCaster}%}
+			add ({_shieldAmount}) to {healcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%}
+			add ({_shieldAmount}) to {healcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%::%{_shieldName}%}
+			add ({_shieldAmount}) to {shieldtotal::%{_shieldCaster}%}
+			add ({_shieldAmount}) to {shieldcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%}
+			add ({_shieldAmount}) to {shieldcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%::%{_shieldName}%}
+			HealAssist({_shieldCaster}, {_x})
+			HealRefresh({_shieldCaster}, {_shieldAmount})
 		if metadata value "DungeonInstance" of {_x} is set:
 			DungeonShield({_shieldCaster}, {_x}, {_shieldAmount}, {_shieldName})
 		set metadata value "ShieldTotal" of {_x} to 0
@@ -899,6 +894,7 @@ function shieldDamageEvent(x: entity, dmg: number) :: number:
 		play sound "item.shield.break" with volume 3 and pitch 1 to {_x}
 	if {_dmg} is not set:
 		set {_dmg} to 0
+	save yaml "Shields%uuid of {_x}%"
 	return {_dmg}
 
 function explosiveBubbleParticles(e: entity, wait: timespan):
@@ -932,15 +928,13 @@ function TargetHealingStream(p: player, length: number, passThrough: boolean) ::
 					if loop-entity is a living entity:
 						if loop-entity is not an arrow:
 							if loop-entity is alive:
-								if tag "custom;ECMob" of nbt of loop-entity is not set:
+								if boolean tag "ECMob" of custom nbt of loop-entity is not set:
 									set {_entity} to loop-entity
 									return {_entity}
-									stop
 								else:
-									if tag "Talents;Row 5" of nbt of {karta::%{_p}%} = "Tidebringer":
+									if string tag "Talents;Row 5" of nbt of {karta::%{_p}%} = "Tidebringer":
 										set {_entity} to loop-entity
 										return {_entity}
-										stop
 		if {_entity} is not set:
 			set {_entity} to {_p}
 

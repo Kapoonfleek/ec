@@ -1,0 +1,132 @@
+function playerHead(texture: string) :: item:
+    set {_i::*} to uuid int array 
+    set {_nbt} to nbt from "{SkullOwner:{Id:[I;%{_i::1}%,%{_i::2}%,%{_i::3}%,%{_i::4}%],Properties:{textures:[{Value:""%{_texture}%""}]}}"
+    return player head with nbt {_nbt}
+
+function workOrderCreateMenu(p: player):
+    set metadata tag "workOrderListAdmin" of {_p} to chest inventory with 6 rows named "Work Orders"
+    set {_wo} to metadata tag "workOrderListAdmin" of {_p}
+    set slot 53 of {_wo} to blaze rod named "&fNext Page" with lore "&7Click here to navigate to%nl%&7the next page."
+    set slots (integers between 45 and 52) of {_wo} to black stained glass pane named " "
+    set slot 45 of {_wo} to barrier named "&cClose Panel" with lore "&7Click here to close this panel."
+    set slot 49 of {_wo} to magma cream named "&eCreate Work Order" with lore "&7Click here to create a Work Order."
+    load yaml "plugins/Skript/playerdata/quests/workorders.yml" as "workOrdersAdmin"
+    loop yaml node keys "Work Orders" in "workOrdersAdmin":
+        add 1 to {_size}
+        loop 10 times:
+            if yaml value "Work Orders.%loop-value-1%.Rewards.Level %loop-number%" in "workOrdersAdmin" is set:
+                add 1 to {_num}
+        if {_num} = 10:
+            set {_text} to "&afinished"
+        else:
+            set {_text} to "&cunfinished &8(%{_num}/10*100%%%)"
+        clear {_num}
+        set {_skin} to yaml value "Work Orders.%loop-value%.Skin" in "workOrdersAdmin"
+        if length of {_skin} > 4:
+            set {_i::*} to uuid int array
+            set {_skinValue} to "&aset!"
+            set {_nbt} to nbt from "{SkullOwner:{Id:[I;%{_i::1}%,%{_i::2}%,%{_i::3}%,%{_i::4}%],Properties:{textures:[{Value:""%{_skin}%""}]}}"
+        else:
+            set {_skinValue} to "&cnot set"
+            set {_nbt} to ""
+        set slot {_size}-1 of {_wo} to player head named "&f%loop-value%" with lore "&eWork Order Giver %nl%%nl%&7ID: &f%{_size}%%nl%&7Skin: %{_skinValue}%%nl%&7Reputation Rewards: &a%{_text}%%nl%&7Work Order Amount: &f0%nl% %nl%&fClick here to edit" with nbt {_nbt}
+        clear {_skinValue}
+    unload yaml "workOrdersAdmin"
+    open {_wo} to {_p}
+
+command /quest [<text>]:
+    trigger:
+        if arg-1 = "create":
+            if player's name = "Pehrek":
+                send "a" to player
+            else:
+                send "&c&oThis command is only usable by an admin." to player
+        
+command /workorder [<text>]:
+    trigger:
+        if arg-1 = "create":
+            if player's name = "Pehrek":
+                workOrderCreateMenu(player)
+            else:
+                send "&c&oThis command is only usable by an admin." to player
+
+on inventory click:
+    if player's current inventory = metadata tag "workOrderListAdmin" of player:
+        cancel event
+        if event-slot is not air:
+            play sound "ui.menu_select" with volume 1 and pitch 1 to player
+        if index of event-slot = 49:
+            close player's inventory
+            set metadata value "workOrderCreateName" of player to true
+            send " " to player
+            send "&3WO | &fEnter a name for the Work Order giver in chat:" to player
+        else if index of event-slot = 45:
+            close player's inventory
+        else if index of event-slot is between 0 and 44:
+            if event-slot is a player head:
+                close player's inventory
+                set metadata tag "workOrderGiverEdit" of player to chest inventory with 3 rows named "Work Order Giver Edit"
+                set {_wo} to metadata tag "workOrderGiverEdit" of player
+                set slot 11 of {_wo} to ward armour trim smithing template named "&fSkin" with lore "&7Enter the skin value of the giver of%nl%&7the Work Order." with nbt from "{HideFlags:127}"
+                set slot 14 of {_wo} to glistering melon slice named "&fRewards" with lore "&7Enter the names and types of%nl%&7reputaton rewards."
+                set slots 12 of {_wo} to blaze rod named "&fReturn" with lore "&7Click here to return."
+                set slot 13 of {_wo} to trial key named "&fCreate Work Order" with lore "&7Click here to create a Work Order%nl%&7for this entity."
+                set slot 4 of {_wo} to clicked slot
+                open metadata tag "workOrderGiverEdit" of player to player
+    else if player's current inventory = metadata tag "workOrderGiverEdit" of player:
+        cancel event
+        if event-slot is not air:
+            play sound "ui.menu_select" with volume 1 and pitch 1 to player
+        if index of event-slot = 11:
+            set {_name} to uncolored name of slot 4 of player's current inventory
+            close player's inventory
+            send " " to player
+            send "&6WO | &fEnter a skin value for the Work Order giver in the given book." to player
+            set {_book} to writable book named "&fEnter Skin Value" with lore "&7Enter the skin value for the Work%nl%&7Order giver in this book." with nbt from "{""minecraft:custom_data"":{""SkinValueBook"":1b}}"
+            set page 3 of {_book} to {_name}
+        else if index of event-slot = 12:
+            close player's inventory
+            workOrderCreateMenu(player)
+        else if index of event-slot = 13:
+            close player's inventory
+            set metadata tag "workOrderCrateAdmin" of {_p} to chest inventory with 3 rows named "Create Work Order"
+            set {_wo} to metadata tag "workOrderCreateAdmin" of {_p}
+            set slot 10 of {_wo} to paper named "&fSet Name"
+            set slot 11 of {_wo} to diamond named "&fSet Objective" #per difficulty (requirement, have something, etc.)
+            set slot 12 of {_wo} to emerald named "&fAdd Reward" #per difficulty
+            set slot 13 of {_wo} to writable book named "&fSet description"
+            #workorders/torbjorn
+
+on book sign:
+    if string tag "SkinValueBook" of custom nbt of event-item is set:
+        event.setSigning(false)
+        cancel event
+        set {_name} to page 3 of event-item
+        send "&6WO | &fSuccessfully set the Work Order giver's skin value!" to player
+        send " " to player
+        load yaml "plugins/Skript/playerdata/quests/workorders.yml" as "workOrdersAdmin"
+        set yaml value "Work Orders.%{_name}%.Skin" in "workOrdersAdmin" to "%page 1 of event-item%%page 2 of event-item%"
+        save yaml "workOrdersAdmin"
+        unload yaml "workOrdersAdmin"
+        workOrderCreateMenu(player)
+        wait 1 tick
+        loop all items in the inventory of player:
+            if string tag "SkinValueBook" of custom nbt of loop-item is set:
+                remove loop-item from the inventory of player
+                stop loop
+        
+on chat:
+    if metadata value "workOrderCreateName" of player = true:
+        cancel event
+        set {_name} to message
+        clear metadata value "workOrderCreateName" of player
+        send "&3WO | &fSuccessfully picked &3%{_name}% &fas the name for the Work Order giver!" to player
+        send " " to player
+        load yaml "plugins/Skript/playerdata/quests/workorders.yml" as "workOrdersAdmin"
+        set yaml value "Work Orders.%{_name}%.Skin" in "workOrdersAdmin" to ""
+        set yaml value "Work Orders.%{_name}%.Rewards" in "workOrdersAdmin" to ""
+        save yaml "workOrdersAdmin"
+        unload yaml "workOrdersAdmin"
+        workOrderCreateMenu(player)
+        
+

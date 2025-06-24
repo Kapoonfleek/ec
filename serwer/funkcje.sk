@@ -11,11 +11,39 @@
 #		log "%{_data}% Gracz %{_p}% właśnie zdobył osiągnięcie [Znawca Kamieni]" to "logi/osiagniecia.log"
 #		loop all players:
 #			send formatted "&fGracz %{_p}% właśnie zdobył osiągnięcie <tooltip:&aWykop 1000 kamieni szlachetnych>&a[Znawca Kamieni]" to loop-player
+
+effect change client side equipment %string% of %entity% to %itemstack% for %players%:
+    trigger:
+        set {_slot} to expression-1 in upper case
+        {_slot} is "CHEST" or "FEET" or "HEAD" or "LEGS" or "MAINHAND" or "OFFHAND"
+        set {_entity} to expression-2
+        {_entity} is an entity
+        set {_item} to expression-3 ? air
+        set {_nmsItem} to nms of (random item out of {_item})
+        {_nmsItem} is set
+        set {_players::*} to expression-4
+        set {_packet} to new play_server_entity_equipment packet
+        set field 0 of {_packet} to {_entity}
+        set {_itemSlot} to enum {_slot} from nms class "world.entity.EnumItemSlot"
+        set {_pair} to pair {_itemSlot} with {_nmsItem}
+        set field 1 of {_packet} to {_pair} # Auto-convert as List
+        send {_players::*} packet {_packet}
+
+function formatNumberEc(num: number) :: string:
+	if {_num} >= 1000000:
+		set {_number} to "%{_num}/1000000%M"
+	else if {_num} > 1000:
+		set {_number} to "%{_num}/1000%K"
+	else:
+		set {_number} to "%{_num}%"
+	return {_number}
+
+		
 function StatyHologram(p: player, t: text):
 	set {_loc} to block 2 blocks in front of {_p}
 	spawn 1 armor stand at {_loc}
-	add nbt compound from "{Invisible:1}" to nbt of last spawned armor stand
-	add nbt compound from "{NoGravity:1}" to nbt of last spawned armor stand
+	add nbt compound from "{Invisible:1b}" to nbt of last spawned armor stand
+	add nbt compound from "{NoGravity:1b}" to nbt of last spawned armor stand
 	add nbt compound from "{NoBasePlate:1b,ShowArms:1b,Pose:{LeftLeg:[0f,0f,338f],RightLeg:[0f,0f,24f]}}" to nbt of last spawned armor stand
 	set the display name of last spawned armor stand to "%{_t}%"
 	set {_f} to last spawned armor stand
@@ -37,8 +65,8 @@ function getDayMonth(input: string) :: number:
 
 function giveItem(p: player, item: item):
 	if {_p} is alive:
-		set {_give} to give or return {_item} to {_p}
-		if {_give} is set:
+		set {_give::*} to give or return {_item} to {_p}
+		if {_give::*} is set:
 			if "dataAdmin-%{_p}%" is not loaded:
 				load yaml "plugins/Skript/playerdata/admin/%uuid of {_p}%-Admin.yml" as "dataAdmin-%{_p}%"
 			add {_item} to yaml list "Player.Item Claim" in "dataAdmin-%{_p}%"
@@ -51,18 +79,18 @@ function giveItem(p: player, item: item):
 import:
 	org.bukkit.map.MinecraftFont
 	
-function getWidth(text: string) :: number:
-	set {_s::*} to {_text} split at "&l"
-	loop {_s::*}:
-		add (MinecraftFont.Font.getWidth(unformatted loop-value) + (size of (loop-value split at "")) - (size of loop-value split at " ")) to {_result} if mod(loop-index parsed as integer, 2) = 0
-		add MinecraftFont.Font.getWidth(unformatted loop-value) to {_result} if mod(loop-index parsed as integer, 2) = 1
+#function getWidth(text: string) :: number:
+#	set {_s::*} to {_text} split at "&l"
+#	loop {_s::*}:
+#		add (MinecraftFont.Font.getWidth(unformatted loop-value) + (size of (loop-value split at "")) - (size of loop-value split at " ")) to {_result} if mod(loop-index parsed as integer, 2) = 0
+	#	add MinecraftFont.Font.getWidth(unformatted loop-value) to {_result} if mod(loop-index parsed as integer, 2) = 1
 		# 154 for chat, 127 for motd
 		
-function centeredText(text: string, length: integer) :: string:
-	while {_compensated} ? 0 < ({_length} - (getWidth({_text}) / 2)):
-		set {_return} to "%{_return} ? ""%&r "
-		add (getWidth(" ") + 1) to {_compensated}
-	return "%{_return}%%{_text}%"
+#function centeredText(text: string, length: integer) :: string:
+	#while {_compensated} ? 0 < ({_length} - (getWidth({_text}) / 2)):
+	#	set {_return} to "%{_return} ? ""%&r "
+	#	add (getWidth(" ") + 1) to {_compensated}
+	#return "%{_return}%%{_text}%"
 
 function addPlayerXP(p: player, xp: number, modifier: number = 1, source: string = "general") :: number:
 	if {doubleXPFriday} is true:
@@ -107,8 +135,8 @@ function DamageHologram(p: entity, t: text):
 	spawn 1 armor stand at {_loc}
 	add nbt compound from "{Invulnerable:1b}" to nbt of last spawned armor stand
 	add nbt compound from "{Small:1b}" to nbt of last spawned armor stand
-	add nbt compound from "{Invisible:1}" to nbt of last spawned armor stand
-	add nbt compound from "{NoGravity:1}" to nbt of last spawned armor stand
+	add nbt compound from "{Invisible:1b}" to nbt of last spawned armor stand
+	add nbt compound from "{NoGravity:1b}" to nbt of last spawned armor stand
 	add nbt compound from "{NoBasePlate:1b,ShowArms:1b,Pose:{LeftLeg:[0f,0f,338f],RightLeg:[0f,0f,24f]}}" to nbt of last spawned armor stand
 	set the display name of last spawned armor stand to "%{_t}%"
 	set {_f} to last spawned armor stand
@@ -158,25 +186,22 @@ function SixStar(p: player):
 		play sound "block.note_block.chime" with volume 5 and pitch 2 at {_p}
 		add 1 to {_pitch}
 
-function DamageProperties(p: entity, attacker: entity, dmgcause: text, dmgcauseEN: text, lore: text, loreEN: text, damage: number, element: string = (tag "custom;ECElement" of nbt of {_attacker})):
+function DamageProperties(p: entity, attacker: entity, dmgcause: text, dmgcauseEN: text, lore: text, loreEN: text, damage: number, element: string = (string tag "ECElement" of custom nbt of {_attacker})):
 	set {_p}'s last damage cause to sweep attack
 	if {_element} is set:
-		set tag "custom;ECElement" of nbt of {_attacker} to {_element}
-	set metadata value "LastDamageCauseEN" of {_p} to {_dmgcauseEN}
-	set metadata value "LastDamageCause" of {_p} to {_dmgcause}
-	set metadata value "LastDamageCauseLore" of {_p} to {_lore}
-	set metadata value "LastDamageCauseLoreEN" of {_p} to {_loreEN}
-	set {_custom} to tag "custom" of nbt of {_attacker}
-	set {_damageIncrease} to tag "DamageModifier" of {_custom}
+		set string tag "ECElement" of custom nbt of {_attacker} to {_element}
+	set metadata value "LastDamageCause" of {_p} to {_dmgcauseEN}
+	set metadata value "LastDamageCauseLore" of {_p} to {_loreEN}
+	set {_damageIncrease} to long tag "DamageModifier" of custom nbt of {_attacker}
 	set {_damage} to {_damage}*{_damageIncrease}
-	if tag "custom;FortifiedModifier" of nbt of {_attacker} is set:
-		set {_fortifiedModifier} to tag "custom;FortifiedModifier" of nbt of {_attacker}
+	if long tag "FortifiedModifier" of custom nbt of {_attacker} is set:
+		set {_fortifiedModifier} to long tag "FortifiedModifier" of custom nbt of {_attacker}
 		set {_damage} to {_damage}*{_fortifiedModifier}
-	else if tag "custom;TyrannicalModifier" of nbt of {_attacker} is set:
-		set {_tyrannicalModifier} to tag "custom;TyrannicalModifier" of nbt of {_attacker}
+	else if long tag "TyrannicalModifier" of custom nbt of {_attacker} is set:
+		set {_tyrannicalModifier} to long tag "TyrannicalModifier" of custom nbt of {_attacker}
 		set {_damage} to {_damage}*{_tyrannicalModifier}
-	if tag "custom;BolsteringStacks" of nbt of {_attacker} is set:
-		set {_bolsteringStacks} to tag "custom;BolsteringStacks" of nbt of {_attacker}
+	if int tag "BolsteringStacks" of custom nbt of {_attacker} is set:
+		set {_bolsteringStacks} to int tag "BolsteringStacks" of custom nbt of {_attacker}
 		set {_damage} to {_damage}*{_bolsteringStacks}
 	if metadata value "Raging" of {_attacker} is set:
 		set {_damage} to {_damage}*2
@@ -233,7 +258,7 @@ function ReturnAmountTalentPoints(id: string) :: number:
 	return {_availableTalentPoints}
 
 function CP(p: player, slotname: string, spec: string, tooltip: boolean) :: number:
-	set {_talents} to tag "Talents;%{_spec}%;%{_slotname}%" of nbt compound of {_p}'s tool
+	set {_talents} to string tag "Talents;%{_spec}%;%{_slotname}%" of custom nbt of {_p}'s tool
 	if {_talents} is not set:
 		if {_tooltip} is true:
 			set {_talents} to 1
@@ -292,7 +317,7 @@ function cardLevelup(p: player, xp: number, e: entity):
 		set {_cardLevel} to 1
 	set {_requiredExp} to 2 ^ (2.5*({_cardLevel}/{_maxLevel})+(round({_cardLevel}/({_maxLevel}/10), 0))+sqrt({_cardLevel}/(5)))+{_maxLevel}*{_cardLevel}*3
 	#broadcast {_requiredExp}
-	set {_mobLevel} to (tag "custom;ECLvl" of nbt of {_e})
+	set {_mobLevel} to (int tag "ECLvl" of custom nbt of {_e})
 	if {_mobLevel} is not a number:
 		set {_mobLevel} to rounded ({_mobLevel} parsed as number)
 	if {_mobLevel} is set:
@@ -311,7 +336,7 @@ function cardLevelup(p: player, xp: number, e: entity):
 			set {_exp} to {_exp}*(1-(0.05*{_dif}))
 		else if {_dif} >= 20:
 			set {_exp} to 0
-	if {_cardLevel} < tag "MaxLevel" of nbt of {_card}:
+	if {_cardLevel} < int tag "MaxLevel" of custom nbt of {_card}:
 		if {_exp} > 0:
 			add {_exp} to {_cardXp}
 	else:
@@ -363,16 +388,16 @@ function cardLevelup(p: player, xp: number, e: entity):
 	loop all items in the inventory of {_p}:
 		if line 19 of lore of loop-item = line 19 of lore of {karta::%{_p}%}:
 			if {language::%{_p}%} = "English":
-				if {_cardLevel} = tag "MaxLevel" of nbt of {_card}:
+				if {_cardLevel} = int tag "MaxLevel" of custom nbt of {_card}:
 					set line 2 of lore of loop-item to "&7Level: %{kartacolor::%{_p}%}%%{_cardLevel}% &7| &7Exp: %{kartacolor::%{_p}%}%MAX"
 				else:
 					set line 2 of lore of loop-item to "&7Level: %{kartacolor::%{_p}%}%%{_cardLevel}% &7| &7Exp: %{kartacolor::%{_p}%}%%{_cardXp}%"
 			else:
-				if {_cardLevel} = tag "MaxLevel" of nbt of {_card}:
+				if {_cardLevel} = int tag "MaxLevel" of custom nbt of {_card}:
 					set line 2 of lore of loop-item to "&7Poziom: %{kartacolor::%{_p}%}%%{_cardLevel}% &7| &7Exp: %{kartacolor::%{_p}%}%MAX"
 				else:
 					set line 2 of lore of loop-item to "&7Poziom: %{kartacolor::%{_p}%}%%{_cardLevel}% &7| &7Exp: %{kartacolor::%{_p}%}%%{_cardXp}%"
-			set tag "Level" of nbt of loop-item to {_cardLevel}
+			set int tag "Level" of custom nbt of loop-item to {_cardLevel}
 			set {karta::%{_p}%} to loop-item
 			stop loop
 		
@@ -418,28 +443,29 @@ function newCard(lang: string, name: string, description: string, rarity: string
 		set {_desc} to "%{_description}%%nl%&7Statistics:%nl%&7Health: %{_stat1}%%nl%&7Damage: %{_stat2}%%nl%&7Resistance: %{_stat3}%%nl%&7Mobility: %{_stat4}%%nl%&7Utility: %{_stat5}%%nl%&7Crowd Control: %{_stat6}%%nl%&7Versatility: %{_stat7}%%nl%&7Mastery: %{_stat8}%%nl%&7Critical Hit: %{_stat9}%%nl%&7Element: %{_stat10}%%nl%&7Haste: %{_stat11}%%nl%&7Avoidance: %{_stat12}%%nl%&7Element: %{_element}%%nl%&7Source: &f%{_booster}%%nl%&7Rarity: %{_rarity}%"
 	else:
 		set {_desc} to "%{_description}%%nl%&7Statystyki:%nl%&7Zdrowie: %{_stat1}%%nl%&7Obrażenia: %{_stat2}%%nl%&7Wytrzymałość: %{_stat3}%%nl%&7Mobilność: %{_stat4}%%nl%&7Użyteczność: %{_stat5}%%nl%&7Kontrola Tłumu: %{_stat6}%%nl%&7Uniwersalność: %{_stat7}%%nl%&7Mistrzostwo: %{_stat8}%%nl%&7Cios Krytyczny: %{_stat9}%%nl%&7Żywioł: %{_stat10}%%nl%&7Pośpiech: %{_stat11}%%nl%&7Unik: %{_stat12}%%nl%&7Żywioł: %{_element}%%nl%&7Źródło: &f%{_booster}%%nl%&7Rzadkość: %{_rarity}%"
-	set {_card} to {_item} named {_name} with lore {_desc} with nbt from "{CustomModelData:%{_cmd}%}"
+	set {_card} to {_item} named {_name} with lore {_desc} with nbt from "{""minecraft:custom_model_data"":{floats:[%{_cmd}%f]}"
 
 	return {_card}
 
 function SetCardIcon(p: player):
-	set {ikonkakarta::%{_p}%} to tag "CardIcon" of nbt of {_p}'s tool
+	set {ikonkakarta::%{_p}%} to string tag "CardIcon" of custom nbt of {_p}'s tool
 
 function SetPlayerStats(p: player):
-	set {_primaryStatType} to tag "PrimaryStat" of nbt of {karta::%{_p}%}
-	set {_primarystat} to tag "Stats;%{_primaryStatType}%" of nbt of {karta::%{_p}%}
-	set {_health} to tag "Stats;Health" of nbt of {karta::%{_p}%}
-	set {_damage} to tag "Stats;Damage" of nbt of {karta::%{_p}%}
-	set {_resistance} to tag "Stats;Resistance" of nbt of {karta::%{_p}%}
-	set {_mobility} to tag "Stats;Mobility" of nbt of {karta::%{_p}%}
-	set {_utility} to tag "Stats;Utility" of nbt of {karta::%{_p}%}
-	set {_crowdcontrol} to tag "Stats;Crowd Control" of nbt of {karta::%{_p}%}
-	set {_versatility} to tag "Stats;Versatility" of nbt of {karta::%{_p}%}
-	set {_mastery} to tag "Stats;Mastery" of nbt of {karta::%{_p}%}
-	set {_criticalhit} to tag "Stats;Critical Hit" of nbt of {karta::%{_p}%}
-	set {_element} to tag "Stats;Element" of nbt of {karta::%{_p}%}
-	set {_haste} to tag "Stats;Haste" of nbt of {karta::%{_p}%}
-	set {_avoidance} to tag "Stats;Avoidance" of nbt of {karta::%{_p}%}
+	set {_primaryStatType} to string tag "PrimaryStat" of custom nbt of {karta::%{_p}%}
+	set {_primarystat} to int tag "Stats;%{_primaryStatType}%" of custom nbt of {karta::%{_p}%}
+	set {_health} to int tag "Stats;Health" of custom nbt of {karta::%{_p}%}
+	set {_damage} to int tag "Stats;Damage" of custom nbt of {karta::%{_p}%}
+	set {_resistance} to int tag "Stats;Resistance" of custom nbt of {karta::%{_p}%}
+	set {_mobility} to int tag "Stats;Mobility" of custom nbt of {karta::%{_p}%}
+	set {_utility} to int tag "Stats;Utility" of custom nbt of {karta::%{_p}%}
+	set {_crowdcontrol} to int tag "Stats;Crowd Control" of custom nbt of {karta::%{_p}%}
+	set {_versatility} to int tag "Stats;Versatility" of custom nbt of {karta::%{_p}%}
+	set {_mastery} to int tag "Stats;Mastery" of custom nbt of {karta::%{_p}%}
+	set {_criticalhit} to int tag "Stats;Critical Hit" of custom nbt of {karta::%{_p}%}
+	set {_element} to int tag "Stats;Element" of custom nbt of {karta::%{_p}%}
+	set {_haste} to int tag "Stats;Haste" of custom nbt of {karta::%{_p}%}
+	set {_avoidance} to int tag "Stats;Avoidance" of custom nbt of {karta::%{_p}%}
+
 
 	set {primarystat::%{_p}%} to {_primarystat}
 	set {health::%{_p}%} to {_health}
@@ -455,8 +481,10 @@ function SetPlayerStats(p: player):
 	set {haste::%{_p}%} to {_haste}
 	set {avoidance::%{_p}%} to {_avoidance}
 
+	clear {bonusHaste::%{_p}%}
+
 	set max health of {_p} to 25 + ({health::%{_p}%}/5)
-	set scaled health of {_p} to 10
+	set scaled health of {_p} to 20
 
 	playerMoveSpeedUpdate({_p})
 
@@ -492,17 +520,70 @@ function BlockFlowerPath(e: entity):
 function playerMoveSpeedUpdate(p: player):
 	set {_p}'s walking speed to 0.2 + {mobility::%{_p}%}/1250
 	set {_p}'s flying speed to 0.1 + {mobility::%{_p}%}/2500
-	set tag "custom;ECMovementSpeed" of nbt of {_p} to {_p}'s walking speed
+	set long tag "ECMovementSpeed" of custom nbt of {_p} to {_p}'s walking speed
+
+function returnStats() :: strings:
+	set {_stats::*} to "Health", "Damage", "Resistance", "Mobility", "Utility", "Crowd Control", "Versatility", "Mastery", "Critical Hit", "Element", "Haste", "Avoidance"
+	return {_stats::*}
+
+function retrieveTopStats(p: player, type: string) :: strings:
+	loop returnStats():
+		set {_stat} to loop-value in lowercase
+		replace all " " in {_stat} with ""
+		set {_stats::%loop-value%} to {%{_stat}%::%{_p}%}
+		set {_bonus} to  bonusStat({_p}, loop-value)
+		add {_bonus} to {_stats::%loop-value%}
+	if {kartaname::%{_p}%} = "Brother Therold":
+		add {hasteVoidform::%{_p}%} to {_stats::Haste}
+		add {lingeringInsanityHaste::%{_p}%} to {_stats::Haste}
+	
+	set {_indices::*} to sorted indices of {_stats::*} in descending order
+	
+	if {_type} = "values":
+		set {_num} to 0
+		loop {_indices::*}:
+			set {_statsReturn::%{_num}%} to "%{_stats::%loop-value%}%"
+			add 1 to {_num}
+			
+		return {_statsReturn::*}
+	else if {_type} = "indices":
+		return {_indices::*}
+
+function returnStatIcon(stat: text) :: string:
+	if {_stat} = "Health":
+		set {_statText} to "<##c0ff02> &fHealth"
+	else if {_stat} = "Damage":
+		set {_statText} to "<##f74428> &fDamage"
+	else if {_stat} = "Resistance":
+		set {_statText} to "<##ffef45> &fResist"
+	else if {_stat} = "Mobility":
+		set {_statText} to "&f Mobility"
+	else if {_stat} = "Utility":
+		set {_statText} to "<##ae78d0> &fUtility"
+	else if {_stat} = "Crowd Control":
+		set {_statText} to "<##58c3f5> &fCrowd"
+	else if {_stat} = "Versatility":
+		set {_statText} to "<##e3ebff> &fVersa"
+	else if {_stat} = "Mastery":
+		set {_statText} to "<##f53b98> &fMastery"
+	else if {_stat} = "Critical Hit":
+		set {_statText} to "<##fca417> &fCrit"
+	else if {_stat} = "Element":
+		set {_statText} to "<##d5ff57> &fElement"
+	else if {_stat} = "Haste":
+		set {_statText} to "<##19943e> &fHaste"
+	else if {_stat} = "Avoidance":
+		set {_statText} to "<##2154ad> &fAvoid"
+
+	return {_statText}
 
 function Zywiol(a: entity, v: entity) :: text:
 	if {_a} is not a player:
-		set {_customA} to tag "custom" of nbt of {_a}
-		set {_ElementA} to tag "ECElement" of {_customA}
+		set {_ElementA} to string tag "ECElement" of custom nbt of {_a}
 	else:
 		set {_ElementA} to metadata value "Element" of {_a}
 		clear metadata value "Element" of {_a}
-	set {_customV} to tag "custom" of nbt of {_v}
-	set {_ElementV} to tag "ECElement" of {_customV}
+	set {_ElementV} to string tag "ECElement" of custom nbt of {_v}
 	if {_ElementA} = "Ogień" or "Fire":
 		if {_ElementV} = "Ogień" or "Fire":
 			set {_damage} to "resist"
@@ -837,34 +918,34 @@ command /recover [<text>]:
 on load:
 	# sets up the tick amounts for each denomination
 	# also sets up the names, feel free to change them, just be careful not to overlap
-	clear {-timespans::*}
-	set {-timespans::1} to ticks of 1 year
-	set {-timespans::1::name} to "y" 
+	clear {timespans::*}
+	set {timespans::1} to ticks of 1 year
+	set {timespans::1::name} to "y" 
 
-	set {-timespans::2} to ticks of 1 month
-	set {-timespans::2::name} to "o"
+	set {timespans::2} to ticks of 1 month
+	set {timespans::2::name} to "o"
 
-	set {-timespans::3} to ticks of 1 week
-	set {-timespans::3::name} to "w"
+	set {timespans::3} to ticks of 1 week
+	set {timespans::3::name} to "w"
 
-	set {-timespans::4} to ticks of 1 day
-	set {-timespans::4::name} to "d"
+	set {timespans::4} to ticks of 1 day
+	set {timespans::4::name} to "d"
 
-	set {-timespans::5} to ticks of 1 hour
-	set {-timespans::5::name} to "h"
+	set {timespans::5} to ticks of 1 hour
+	set {timespans::5::name} to "h"
 
-	set {-timespans::6} to ticks of 1 minute
-	set {-timespans::6::name} to "m"
+	set {timespans::6} to ticks of 1 minute
+	set {timespans::6::name} to "m"
 
-	set {-timespans::7} to ticks of 1 second
-	set {-timespans::7::name} to "s"
+	set {timespans::7} to ticks of 1 second
+	set {timespans::7::name} to "s"
 
-	set {-timespans::8} to 1
-	set {-timespans::8::name} to "t"
+	set {timespans::8} to 1
+	set {timespans::8::name} to "t"
 
 	# sets the default format string, feel free to change it
 	# it's used if you don't specify a format string in the formatTimespan function
-	set {-timespan-default-format} to "hh:mm:ss"
+	set {timespan-default-format} to "hh:mm:ss"
 
 
 # Accepts a timespan, a format string, and a boolean to trim leading zeroes
@@ -874,7 +955,7 @@ on load:
 #   timespan: the timespan to format
 #   format: the format string to use. Defaults to the default format string, which is "hh:mm:ss"
 #   trim-zeroes: whether or not to trim leading zeroes. Defaults to false 
-function formatTimespan(timespan: timespan, format: string = {-timespan-default-format}, trim-zeroes: boolean = false) :: string:
+function formatTimespan(timespan: timespan, format: string = {timespan-default-format}, trim-zeroes: boolean = false) :: string:
 	# handle non-placeholder characters:
 	set {_escaped::*} to timespanGetEscapedCharacters({_format})
 	set {_format} to join (regex split {_format} at "\$.*?\$") with "$"
@@ -884,11 +965,11 @@ function formatTimespan(timespan: timespan, format: string = {-timespan-default-
 
 	# for each denomination, replace the placeholder with the correct amount of ticks
 	# then remove the amount of ticks from the total
-	loop {-timespans::*}:
-		if {_format} contains {-timespans::%loop-index%::name}:
-			set {_timespan} to floor({_ticks} / {-timespans::%loop-index%})
-			set {_ticks} to mod({_ticks}, {-timespans::%loop-index%})
-			set {_format} to timespanReplaceFormat({_format}, {-timespans::%loop-index%::name}, {_timespan})
+	loop {timespans::*}:
+		if {_format} contains {timespans::%loop-index%::name}:
+			set {_timespan} to floor({_ticks} / {timespans::%loop-index%})
+			set {_ticks} to mod({_ticks}, {timespans::%loop-index%})
+			set {_format} to timespanReplaceFormat({_format}, {timespans::%loop-index%::name}, {_timespan})
 	
 	# handle non-placeholder characters:
 	loop {_escaped::*}:

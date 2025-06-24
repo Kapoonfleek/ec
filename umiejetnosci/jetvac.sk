@@ -1,61 +1,131 @@
 on rightclick:
 	if cooldown "vacblasterRMB%player%" is finished:
-		if player's tool is stick named "Vac-Blaster":
+		if name of player's tool = "Vac-Blaster":
 			if cooldown "vacblasterRMB%player%" is finished:
-				create cooldown "vacblasterRMB%player%" for 0.5 seconds
+				if player's offhand item is stick named "Vac-Blaster":
+					create cooldown "vacblasterRMB%player%" for 0.15 seconds
+				else:
+					create cooldown "vacblasterRMB%player%" for 0.3 seconds
 				set the cooldown of player's held item for player to cooldown "vacblasterRMB%player%"
 				set {_loc} to location of player
 				set {_loc} to block 1 block in front of {_loc}
 				set {_loc} to block 1 block above {_loc}
 				set {_loc} to block 0.3 blocks right of {_loc}
-				spawn 1 snowball at {_loc}
-				make player swing their hand
-				push last spawned snowball in the direction of player with speed 1.8
-				play sound "block.lava.pop" with volume 1 and pitch 2 at player
-				set metadata value "VacBlast" of last spawned snowball to player
+				shoot a wind charge from player with speed 2.75	
+				set gravity of last shot projectile to false
+				set vector length of last shot projectile's velocity to 1.2
+				set {_air} to white dye with nbt from "{""minecraft:custom_model_data"":{floats:[9.0f]}}"
+				set item of last shot wind charge to {_air}
+				VacBlasterTrail(last shot wind charge)
+
+				set {_hand} to metadata value "Vac-Blaster" of player
+				if {_hand} is not set:
+					set {_hand} to 0
+				if {_hand} = 0:
+					make player swing their main hand
+					add 1 to {_hand}
+				else:
+					make player swing their off hand
+					set {_hand} to 0
+				set metadata value "Vac-Blaster" of player to {_hand}
+
+				play sound "block.lava.pop" with volume 1 and pitch 0 at player
+				play sound "skill.jetvac.vacblaster_shoot" with volume 3 and pitch 0.8 at player
+				set metadata value "VacBlast" of last shot wind charge to player
+				push player backwards with speed 0.05
 			else:
 				cancel event
 				if {tekstcd::%player%} = true:
 					set {_cdd} to cooldown "vacblasterRMB%player%"
-					if {language::%player%} = "English":
-						send "<##a4caeb>You must wait &f%{_cdd}%<##a4caeb> to use this ability." to player
-					else:
-						send "<##a4caeb>Musisz odczekać &f%{_cdd}%<##a4caeb>, aby użyć tej umiejętności." to player
+					send "<##a4caeb>You must wait &f%{_cdd}%<##a4caeb> to use this ability." to player
 				stop
-	else:
-		if player has stick named "Vac-Blaster" in offhand:
-			if cooldown "vacblasterLMB%player%" is finished:
-				create cooldown "vacblasterLMB%player%" for 0.5 seconds
-				set the cooldown of player's held item for player to cooldown "vacblasterLMB%player%"
-				set {_loc} to location of player
-				set {_loc} to block 1 block in front of {_loc}
-				set {_loc} to block 1 block above {_loc}
-				set {_loc} to block 0.3 blocks left of {_loc}
-				spawn 1 snowball at {_loc}
-				VacBlasterTrail(last spawned snowball)
-				make player swing their offhand
-				push last spawned snowball in the direction of player with speed 1.8
-				play sound "block.lava.pop" with volume 1 and pitch 2 at player
-				set metadata value "VacBlast" of last spawned snowball to player
-			else:
+				#ZROBIC ZEBY DALO SIE TEZ LEWA STRZEAC PODCZAS AKTYWNEGO ULTA
+	if player's tool is rotten flesh:
+		play sound "skill.jetvac.doublebarrel_voice" with volume 5 and pitch 1 at player
+on sneak toggle:
+	if player is not sneaking:
+		if name of player = "Pehrek":
+			#musi byc toggle
+			if player's tool is rotten flesh:
+				set velocity of player to vector(0,0.3,0)
+				push player horizontally forward with speed 0.3
 				cancel event
-				if {tekstcd::%player%} = true:
-					set {_cdd} to cooldown "vacblasterLMB%player%"
-					if {language::%player%} = "English":
-						send "<##a4caeb>You must wait &f%{_cdd}%<##a4caeb> to use this ability." to player
-					else:
-						send "<##a4caeb>Musisz odczekać &f%{_cdd}%<##a4caeb>, aby użyć tej umiejętności." to player
-				stop
+
+on rightclick:
+	if player's name = "Pehrek":
+		if player's tool is arrow:
+			set {_g::*} to getEntitiesWithinCone(player, 30, 8, 1.5)
+			broadcast {_g::*}
+function getEntitiesWithinCone(loc: object, angle: number=10, radius: number=10, height: number=1.5) :: entities:
+	{_angle} != 0
+	{_angle} < 90
+	{_radius} > 0
+
+	set {_l} to location of {_loc}
+	increase y-coordinate of {_l} by 1
+
+	set {_yaw+} and {_yaw-} to yaw of {_l}
+	add {_angle} to {_yaw+}
+	remove {_angle} from {_yaw-}
+
+	if {_yaw+} > 360:
+		remove 360 from {_yaw+}
+	if {_yaw+} < 0:
+		add 360 to {_yaw+}
+	if {_yaw-} > 360:
+		remove 360 from {_yaw-}
+	if {_yaw-} < 0:
+		add 360 to {_yaw-}
+
+	set {_} to 360 if {_yaw+} < {_yaw-} else 0
+	
+	create a new custom cloud particle with:
+		count: 1
+		velocity: outwards
+		extra: 0.03
+		force: false
+	set {_particle} to last created particle
+
+	loop all entities in radius {_radius} around {_loc}:
+		set {_yaw} to (yaw of (vector from {_loc} to loop-entity))
+		if {_yaw} < {_yaw+}:
+			add {_} to {_yaw}
+		if {_yaw} is between {_yaw-} and ({_yaw+} + {_}):
+			distance between (location of {_loc}) and loop-entity <= {_radius}
+			(y-loc of loop-entity) is between ((y-loc of {_loc}) + {_height}) and ((y-loc of {_loc}) - {_height})
+			add loop-entity to {_return::*}
+
+	loop all blocks in radius {_radius} around {_l}:
+		set {_yaw} to (yaw of (vector from {_l} to loop-block))
+		if {_yaw} < {_yaw+}:
+			add {_} to {_yaw}
+		if {_yaw} is between {_yaw-} and ({_yaw+} + {_}):
+			distance between (location of {_l}) and loop-block <= {_radius}
+			(y-loc of loop-block) is between ((y-loc of {_l})) and ((y-loc of {_l}) - 1)
+			set {_shape} to a line from {_l} to loop-value
+			set particle of {_shape} to {_particle}
+			draw shape {_shape} at {_l}
+		
+	return {_return::*}
+
+#BLINK ABILITY
+#on sneak toggle:
+	#if boolean tag "OnGround" of nbt of player is true:
+		#set velocity of player to vector(0,0.2,0)
+		#push player horizontally forward with speed 5
+
+#DASH ABILITY:
+#on sneak toggle:
+	#push player horizontally forward with speed 1
+
 
 function VacBlasterTrail(e: entity):
-	while block at {_e} is air:
-		if {_e} is alive:
-			set {_sphere} to a sphere of radius 0.2
-			synchronously draw {_sphere} at {_e}'s location:
-				set event-shape's particle to cloud particle
-			wait 1 tick
-		else:
-			stop loop
+	KillArrow({_e})
+	while {_e} is alive:
+		draw 1 small_gust at location 0.01 above {_e} with offset vector(0.125, 0.125, 0.125) with extra 2
+		draw 1 effect at location 0.01 above {_e} with offset vector(0.125, 0.125, 0.125) with extra 9
+		wait 1 tick
+	show 1 gust at location 0.01 above {_e}
 			
 on rightclick:
 	if player's tool's name contains "claymore":
@@ -66,21 +136,29 @@ on rightclick:
 			if {_x} > 1:
 				play sound "skill.fury_warrior.slash" with volume 5 and pitch 1 at player
 			make player damage target entity by 5
-			set {lastdamagecause::%target entity%} to "<##754830>ROAAAAAAAAAAAAAAAAAAAAAAR"
-			if {-fury::%player%} is 2:
+			# "<##754830>ROAAAAAAAAAAAAAAAAAAAAAAR"
+			if {fury::%player%} is 2:
 				make player swing their main hand
-				set {-fury::%player%} to 1
+				set {fury::%player%} to 1
 				stop
-			if {-fury::%player%} is 1:
+			if {fury::%player%} is 1:
 				make player swing their off hand
-				set {-fury::%player%} to 2
+				set {fury::%player%} to 2
+#For an archer card, turns off arrow particles (can do custom) and enables pierce wowee				
+#on shoot:
+	#set boolean tag "crit" of nbt of event-projectile to false
+	#set boolean tag "PierceLevel" of nbt of event-projectile to true
 on projectile collide:
 	if metadata value "VacBlast" of event-projectile is set:
-		set {_attacker} to metadata value "VacBlast" of event-projectile
-		make {_attacker} damage event-entity by 1
-		set event-entity's last damage cause to attack
+		set {_shooter} to uuid tag "Owner" of nbt of event-projectile
+		set {_shooter} to {_shooter} parsed as player
+		set event-entity's last damage cause to sweep attack
+		make {_shooter} damage event-entity by 1
+		cancel event
+		kill event-projectile
+		clear metadata value "VacBlast" of event-projectile
 
-		
+
 #on damage:
 #	projectile exists:
 #		if metadata value "VacBlast" of event-projectile is set:
@@ -95,8 +173,17 @@ on projectile collide:
 		#make shooter damage event-entity by 1
 		#cancel event
 on projectile hit:
-	if event-projectile is arrow:
-		set projectile bounce mode of event-projectile to true
+	#if event-projectile is arrow:
+		#set projectile bounce mode of event-projectile to true
+	if metadata value "VacBlast" of event-projectile is set:
+		cancel event
+		kill event-projectile
+
+on explode:
+	if event-entity = wind charge:
+		if metadata value "VacBlast" of event-entity is set:
+			cancel event
+			kill event-entity
 #on projectile hit:
 	#if metadata value "VacBlast" of event-projectile is set:
 		#if entity at event-projectile exists:

@@ -16,21 +16,24 @@ function CanUseAbility(p: player) :: boolean:
 
 function PermanentBuff(p: player):
     #Glaceon
-    if tag "Talents;Row 1" of nbt of {karta::%{_p}%} = "Winter's Blessing":
+    if string tag "Talents;Row 1" of nbt of {karta::%{_p}%} = "Winter's Blessing":
         set {haste::%{_p}%} to {haste::%{_p}%} + 12
         set {haste::%{_p}%} to {haste::%{_p}%} * 1.1
-    if tag "Constellation;Frigid Winds" of nbt of {karta::%{_p}%} is set:
+    if boolean tag "Constellation;Frigid Winds" of nbt of {karta::%{_p}%} is set:
         set {damage::%{_p}%} to {damage::%{_p}%} + (0.7*{crowdcontrol::%{_p}%})
 
-function LoreUpdate(p: player, lore: text, loreEN: text, textPL: text, textEN: text):
-    if {language::%{_p}%} = "English":
-        if name of {_p}'s tool does not contain {_textEN}:
-            replace all {_textPL} in {_p}'s tool's name with {_textEN}
-        set lore of {_p}'s tool to {_loreEN}
-    else:
-        if name of {_p}'s tool does not contain {_textPL}:
-            replace all {_textEN} in {_p}'s tool's name with {_textPL}
-        set lore of {_p}'s tool to {_lore}
+function LoreUpdate(p: player, nbt: text, lore: text):
+    loop all items in the inventory of {_p}:
+        if string tag {_nbt} of custom nbt of loop-item is set:
+            set lore of loop-item to {_lore}
+
+function Haste(p: player, scaling: number = 4) :: number:
+    set {_haste} to 1 + (({haste::%{_p}%}/{_scaling}))/100
+
+    if {bonusHaste::%{_p}%} is set:
+        add (({bonusHaste::%{_p}%}/4))/100 to {_haste}
+    
+    return {_haste}
 
 function GlobalCooldownSpells(p: player, abilities: texts, abilitiesItems: items, cd: timespan):
     loop {_abilities::*}:
@@ -68,10 +71,9 @@ function Target(p: player, length: number, passThrough: boolean) :: entity:
                         if loop-entity is a living entity:
                             if loop-entity is not an arrow:
                                 if loop-entity is alive:
-                                    if tag "custom;ECMob" of nbt of loop-entity is set:
+                                    if boolean tag "ECMob" of custom nbt of loop-entity is set:
                                         set {_entity} to loop-entity
                                         return {_entity}
-                                        stop
         if {_passThrough} is not true:
             loop blocks in radius 0.5 around {_rg%{_x}%}:
                 if loop-block is solid:
@@ -85,7 +87,7 @@ function LoopEntitiesAroundTarget(target: entity, radius: number, includeTarget:
                 if loop-entity is a living entity:
                     if loop-entity is not an arrow:
                         if loop-entity is alive:
-                            if tag "custom;ECMob" of nbt of loop-entity is set:
+                            if boolean tag "ECMob" of custom nbt of loop-entity is set:
                                 if loop-entity is not {_target}:
                                     add loop-entity to {_entities::*}
                                 else:
@@ -99,7 +101,7 @@ function loopAlliesAroundTarget(target: entity, radius: number, includeTarget: b
             if loop-entity is a living entity:
                 if loop-entity is not an arrow:
                     if loop-entity is alive:
-                        if tag "custom;ECMob" of nbt of loop-entity is not set:
+                        if boolean tag "ECMob" of custom nbt of loop-entity is not set:
                             if loop-entity is not {_target}:
                                 add loop-entity to {_entities::*}
                             else:
@@ -120,46 +122,78 @@ function sort(indices: strings, values: numbers, descending: boolean = true) :: 
         set {_sort::%{_values::%loop-index%}%.%loop-index%} to loop-value in proper case
     return (reversed {_sort::*}) if {_descending} is true, else {_sort::*}
 
+function bonusStat(p: player, stat: string) :: number:
+    
+    set {_bonus} to 0
+
+    if {bonus%{_stat}%::%{_p}%} is set:
+        set {_bonus} to {_bonus} + {bonus%{_stat}%::%{_p}%}
+    if metadata value "EspeonBonus%{_stat}%" of {_p} is set:
+        set {_bonus} to {_bonus} + metadata value "EspeonBonus%{_stat}%" of {_p} 
+
+    return {_bonus}
+
 function buffRegister(p: player, buff: text, prio: integer, icon: text, type: text, value: text, duration: text):
-    if tag "custom;BuffList;%{_buff}%" of nbt of {_p} is not set:
-        set tag "custom;BuffList;%{_buff}%;Priority" of nbt of {_p} to {_prio}
-        set tag "custom;BuffList;%{_buff}%;Start" of nbt of {_p} to unix timestamp of now
-        set tag "custom;BuffList;%{_buff}%;Icon" of nbt of {_p} to {_icon}
-        set tag "custom;BuffList;%{_buff}%;Value" of nbt of {_p} to {_value}
-        set tag "custom;BuffList;%{_buff}%;Type" of nbt of {_p} to {_type}
-        set tag "custom;BuffList;%{_buff}%;Duration" of nbt of {_p} to {_duration}
+    if yaml "Buffs%uuid of {_p}%" is not loaded:
+        load yaml "plugins/Skript/combat/Buffs/%uuid of {_p}%" as "Buffs%uuid of {_p}%"
+
+    if yaml value "Buffs.%{_buff}%.Priority" in "Buffs%uuid of {_p}%" is not set:
+        set yaml value "Buffs.%{_buff}%.Priority" in "Buffs%uuid of {_p}%" to {_prio}
+        set yaml value "Buffs.%{_buff}%.Start" in "Buffs%uuid of {_p}%" to unix timestamp of now
+        set yaml value "Buffs.%{_buff}%.Icon" in "Buffs%uuid of {_p}%" to {_icon}
+        set yaml value "Buffs.%{_buff}%.Value" in "Buffs%uuid of {_p}%" to {_value}
+        set yaml value "Buffs.%{_buff}%.Type" in "Buffs%uuid of {_p}%" to {_type}
+        set yaml value "Buffs.%{_buff}%.Duration" in "Buffs%uuid of {_p}%" to {_duration}
     else:
-        set tag "custom;BuffList;%{_buff}%;Value" of nbt of {_p} to {_value}
+        set yaml value "Buffs.%{_buff}%.Value" in "Buffs%uuid of {_p}%" to {_value}
         if {_duration} != "-":
-            set tag "custom;BuffList;%{_buff}%;Duration" of nbt of {_p} to {_duration}
+            set yaml value "Buffs.%{_buff}%.Duration" in "Buffs%uuid of {_p}%" to {_duration}
+    save yaml "Buffs%uuid of {_p}%"
         
 
 function buffClear(p: player, buff: text):
-    clear tag "custom;BuffList;%{_buff}%" of nbt of {_p}
+    if yaml "Buffs%uuid of {_p}%" is not loaded:
+        load yaml "plugins/Skript/combat/Buffs/%uuid of {_p}%" as "Buffs%uuid of {_p}%"
+
+    clear yaml value "Buffs.%{_buff}%" in "Buffs%uuid of {_p}%"
+    save yaml "Buffs%uuid of {_p}%"
 
 function durationShort(duration: text) :: text:
-    replace all " seconds" and " second" in {_duration} with " sec"
-    return {_duration}
+    if {_duration} contains " minutes" or "minute":
+        set {_dur::*} to {_duration} split at " "
+        set {_min} to ({_dur::1} parsed as number)
+        set {_sec} to ({_dur::4} parsed as number)
+        set {_min} to {_min}*60
+        set {_sec} to {_sec}+{_min}
+        replace all "minutes" and "minute" and " and " in {_duration} with ""
+        set {_durationNew} to "%{_sec}% sec"
+    else:
+        replace all " seconds" and " second" in {_duration} with " sec"
+        set {_durationNew} to {_duration}
+    return {_durationNew}
     
 function buffsReturn(p: player) :: strings:
-    if tag "custom;BuffList" of nbt of {_p} is set:
+    if yaml "Buffs%uuid of {_p}%" is not loaded:
+        load yaml "plugins/Skript/combat/Buffs/%uuid of {_p}%" as "Buffs%uuid of {_p}%"
+    if yaml value "Buffs" in "Buffs%uuid of {_p}%" is set:
         set {_highestPriority} to 0
-        loop nbt tags of tag "custom;BuffList" of nbt of {_p}:
-            set {_priority} to (tag "custom;BuffList;%loop-value%;Priority" of nbt of {_p})
+        loop yaml node keys "Buffs" from "Buffs%uuid of {_p}%":
+            set {_priority} to (yaml value "Buffs.%loop-value%.Priority" in "Buffs%uuid of {_p}%")
             if {_priority} > {_highestPriority}:
                 set {_highestPriority} to {_priority}
-            set {_buff::%{_priority}%::%loop-value%} to tag "custom;BuffList;%loop-value%;Start" of nbt of {_p}
+            set {_buff::%{_priority}%::%loop-value%} to yaml value "Buffs.%loop-value%.Start" in "Buffs%uuid of {_p}%"
         
         loop {_highestPriority} times:
             add (sort((indices of {_buff::%loop-value%::*}), {_buff::%loop-value%::*})) to {_buffs::*}
             stop loop if size of {_buffs::*} = 5
-
         return {_buffs::*}
     else:
         return ""
 
 function clearBuffs(p: entity):
-    clear tag "custom;BuffList" of nbt of {_p}
+    if yaml "Buffs%uuid of {_p}%" is loaded:
+        clear yaml value "Buffs" in "Buffs%uuid of {_p}%"
+        save "Buffs%uuid of {_p}%"
 
 function amountOfDots(p: player, e: entity) :: number:
     if metadata value "AmountOfDots%{_p}%" of {_e} is not set:
@@ -183,41 +217,13 @@ function amountOfDotsSubtract(p: player, e: entity):
     if metadata value "AmountOfDots%{_p}%" of {_e} <= 0:
         clear metadata value "AmountOfDots%{_p}%" of {_e}
 
-function updateLore(p: player, nbt: string, lore: string, loreEN: string):
-    if {language::%{_p}%} = "English":
-        set {_l} to {_loreEN}
-    else:
-        set {_l} to {_lore}
 
-    loop all items in the inventory of {_p}:
-        if tag {_nbt} of nbt of loop-item is set:
-            set lore of loop-item to {_l}
 #function StatCalc(p: player, id: string):
 #    load yaml "plugins/Skript/playerdata/karty/%uncolored name of {karta::%{_p}%}%/%{_i}%.yml" as "karty-%player%"
  #   set {_haste} to yaml value "Card.Stats.Haste" in "karty-%player%"
- #   if tag "Talents;Row 1" of nbt of {karta::%player%} = "Winter's Blessing":
+ #   if string tag "Talents;Row 1" of custom nbt of {karta::%player%} = "Winter's Blessing":
  #       set {_haste} to 
  #   unload yaml "karty-%player%"
-
-function translateAbility(p: player, nbt: text, namePL: text, nameEN: text, lorePL: text, loreEN: text):
-    if {language::%{_p}%} = "English":
-        set {_l} to {_loreEN}
-        set {_n} to {_nameEN}
-
-        set {_l2} to {_lore}
-        set {_n2} to {_name}
-    else:
-        set {_l} to {_lore}
-        set {_n} to {_name}
-
-        set {_l2} to {_loreEN}
-        set {_n2} to {_nameEN}
-
-    loop all items in the inventory of {_p}:
-        if tag {_nbt} of nbt of loop-item is set:
-            if name of loop-item does not contain {_n}:
-                replace all {_n2} in name of loop-item with {_n}
-            set lore of loop-item to {_l}
 
 on inventory click:
     if inventory action is shift move:
@@ -260,7 +266,7 @@ on inventory click:
             # <---------- Check if player has constellation 2 and add CC scaling if yes
             if {_name} = "<##4bbfe2>Glacial Spike":
                 if uncolored name of {karta::%player%} = "Glaceon":
-                    set {_id} to tag "Id" of nbt of {karta::%player%}
+                    set {_id} to string tag "Id" of custom nbt of {karta::%player%}
                     load yaml "plugins/Skript/playerdata/karty/%uncolored name of {karta::%player%}%/%{_id}%.yml" as "karta-%player%"
                     set {_constellation} to yaml value "Card.Constellation" in "karta-%player%"
                     unload yaml "karta-%player%"

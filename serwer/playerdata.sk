@@ -1,10 +1,20 @@
+options:
+	maxEcs: 6
 on join:
 	load yaml "plugins/Skript/playerdata/%uuid of player%.yml" as "data-%player%"
 	load yaml "plugins/Skript/playerdata/admin/%uuid of player%-Admin.yml" as "dataAdmin-%player%"
 	load yaml "plugins/Skript/playerdata/enderchesty/Enderchest-%uuid of player%.yml" as "Enderchest%player%"
+	loop {@maxEcs} times:
+		load yaml "plugins/Skript/playerdata/enderchesty/contents/%uuid of player%/%loop-number%.yml" as "Enderchest%loop-number%%player%"
 	
 	if metadata value "ECEngaged" of player is not set:
 		SetPlayerStats(player) #Sets player stats to current selected card's stats (funkcje.sk)
+		
+	if {karta::%player%} is set:
+		set {_primaryStatType} to string tag "PrimaryStat" of {karta::%player%}
+		set metadata value "PrimaryStatType" of player to {_primaryStatType}
+		set {_id} to string tag "Id" of custom nbt of {karta::%player%}
+		load yaml "plugins/Skript/playerdata/karty/%{kartaname::%player%}%/%{_id}%.yml" as "kartyPh-%player%"
 
 	set {_color} to raw {kolorek::%player%}
 	replace all "<" and ">" in {_color} with ""
@@ -35,8 +45,7 @@ on join:
 		loop {_partymembers::*}:
 			add (name of loop-value parsed as player) to {_party::*}
 		set {_name} to name of party of player
-	#loop {_party::*}:
-		#set loop-value's tab list name to "&b[%{_name}%] &8[<##7c7cff>&l%{poziom::%loop-value%}%<##9494ff>&l⭐&8] &r%loop-value's name%"
+
 	
 on quit:
 	set yaml value "Player.Last Login" in "data-%player%" to now
@@ -44,6 +53,11 @@ on quit:
 	save yaml "dataAdmin-%player%"
 	unload yaml "data-%player%"
 	unload yaml "dataAdmin-%player%"
+	save yaml "Enderchest%player%"
+	unload yaml "Enderchest%player%"
+	loop {@maxEcs} times:
+		save yaml "Enderchest%loop-number%%player%"
+		unload yaml "Enderchest%loop-number%%player%"
 	
 every 1 minute:
 	loop all loaded yaml:
@@ -53,4 +67,4 @@ every 1 minute:
 on skript stop:
 	loop all loaded yaml:
 		save loop-value
-		wait 2 ticks
+		wait 1 tick

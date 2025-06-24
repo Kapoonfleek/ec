@@ -33,54 +33,44 @@ function createTop(name: string, size: integer, format: string="[P] - [V]") :: s
 		add {_var} to {_return::*}
 		delete {_indexes::%{_index}%}, {_values::%{_index}%}, {_max} and {_index}
 	return {_return::*}
+
+function createTopLocal(names: numbers, indices: strings, size: integer, format: string="[P] - [V]") :: strings:
+	set {_index} to 1
+	if {_size} = 0:
+		return ""
+	if {_size} < 0:
+		set {_reversed} to true
+		set {_size} to ({_size} * (-1))
+	loop {_indices::*}:
+		set {_indexes::%{_index}%} to "%loop-value%"
+		add 1 to {_index}
+	if {_size} > (size of {_indexes::*}):
+		set {_size} to (size of {_indexes::*})
+	loop {_size} times:
+		loop {_names::*}:
+			if {_max} is not set:
+				set {_max} to loop-value-2
+				set {_index} to loop-index
+			else:
+				if {_reversed} is not true:
+					if loop-value-2 > {_max}:
+						set {_max} to loop-value-2
+						set {_index} to loop-index
+				else:
+					if loop-value-2 < {_max}:
+						set {_max} to loop-value-2
+						set {_index} to loop-index
+		set {_var} to {_format}
+		replace "[VALUE]" and "[V]" with "%{_max}%" in {_var}
+		replace "[INDEX]" and "[I]" with "%loop-number%" in {_var}
+		replace "[PLAYER]" and "[P]" with ({_indexes::%{_index}%} in strict proper case) in {_var}
+		replace all " Of " in {_var} with " of "
+		add {_var} to {_return::*}
+		delete {_indexes::%{_index}%}, {_names::%{_index}%}, {_max} and {_index}
+	return {_return::*}
 	
 import:
 	it.unimi.dsi.fastutil.ints.IntArrayList
-
-every 5 minutes:
-	set {_top::*} to createTop("poziom", 3, "[P]")
-	set {_loc} to location(-1173, 64, -1829.5, world "world")
-	loop all entities in radius 5 around {_loc}:
-		if {topnpc::%loop-entity%} is set:
-			if name of loop-entity contains "1.":
-				set name of loop-entity to {_top::1}
-				set {_x} to loop-entity
-			if name of loop-entity contains "2.":
-				set name of loop-entity to {_top::2}
-				set {_y} to loop-entity
-			if name of loop-entity contains "3.":
-				set name of loop-entity to {_top::3}
-				set {_z} to loop-entity
-	set {_npc} to citizen from id 6630
-	set citizen name of {_npc} to "1. %{_top::1}%"
-	execute console command "npc select 6630"
-	execute console command "npc skin %{_top::1}%"
-	
-	set the display name of ({topDetails::1} parsed as entity) to "&e★ &f%{poziom::%{_top::1}%}%"
-	set the display name of ({topDetailsStone::1} parsed as entity) to "&8&l &f%{stone::%{_top::1}%} + {deepslate::%{_top::1}%}%"
-	set the display name of ({topDetailsKills::1} parsed as entity) to "&4&l &f%{mobskilled::%{_top::1}%}%"
-	set the display name of ({topDetailsBlocks::1} parsed as entity) to "&9&l🎲 &f%{blocksplaced::%{_top::1}%}%"
-	
-
-	set {_npc} to citizen from id 6632
-	set citizen name of {_npc} to "2. %{_top::2}%"
-	execute console command "npc select 6632"
-	execute console command "npc skin %{_top::2}%"
-	set the display name of ({topDetails::2} parsed as entity) to "&e★ &f%{poziom::%{_top::2}%}%"
-	set the display name of ({topDetailsStone::2} parsed as entity) to "&8&l &f%{stone::%{_top::2}%}%"
-	set the display name of ({topDetailsKills::2} parsed as entity) to "&4&l &f%{mobskilled::%{_top::2}%}%"
-	set the display name of ({topDetailsBlocks::2} parsed as entity) to "&9&l🎲 &f%{blocksplaced::%{_top::2}%}%"
-
-	set {_npc} to citizen from id 6633
-	set citizen name of {_npc} to "3. %{_top::3}%"
-	execute console command "npc select 6633"
-	execute console command "npc skin %{_top::3}%"
-	set the display name of ({topDetails::3} parsed as entity) to "&e★ &f%{poziom::%{_top::3}%}%"
-	set the display name of ({topDetailsStone::3} parsed as entity) to "&8&l &f%{stone::%{_top::3}%}%"
-	set the display name of ({topDetailsKills::3} parsed as entity) to "&4&l &f%{mobskilled::%{_top::3}%}%"
-	set the display name of ({topDetailsBlocks::3} parsed as entity) to "&9&l🎲 &f%{blocksplaced::%{_top::3}%}%"
-	
-	#-1182 69 -1807
 
 function HideEntity(e: entities, p: player):
 	loop {_e::*}:
@@ -100,22 +90,22 @@ function Leaderboard(m: number, v: text):
 #&e ##13 &7> &fnick &7(&aliczba&7)
 function hologramCreate(loc: location, n: text):
 	spawn 1 armor stand at {_loc}
-	add nbt compound from "{Invisible:1}" to nbt of last spawned armor stand
-	add nbt compound from "{NoGravity:1}" to nbt of last spawned armor stand
+	add nbt compound from "{Invisible:1b}" to nbt of last spawned armor stand
+	add nbt compound from "{NoGravity:1b}" to nbt of last spawned armor stand
 	add nbt compound from "{NoBasePlate:1b,ShowArms:1b,Pose:{LeftLeg:[0f,0f,338f],RightLeg:[0f,0f,24f]}}" to nbt of last spawned armor stand
 	set the display name of last spawned armor stand to "%{_n}%"
 	add last spawned armor stand to {leaderboard::*}
 	
 function hologramStandard(loc: location, n:text):
 	spawn 1 armor stand at {_loc}
-	add nbt compound from "{Invisible:1}" to nbt of last spawned armor stand
-	add nbt compound from "{NoGravity:1}" to nbt of last spawned armor stand
+	add nbt compound from "{Invisible:1b}" to nbt of last spawned armor stand
+	add nbt compound from "{NoGravity:1b}" to nbt of last spawned armor stand
 	add nbt compound from "{NoBasePlate:1b,ShowArms:1b,Pose:{LeftLeg:[0f,0f,338f],RightLeg:[0f,0f,24f]}}" to nbt of last spawned armor stand
 	set the display name of last spawned armor stand to "%{_n}%"
 	add last spawned armor stand to {standard::*}
 
 on skript load:
-	clear {-onetime}
+	clear {onetime}
 	#set {_loc} to location(-1207.5, 60, -1824.5, world "world")
 	#hologramStandard({_loc}, "<##78aae3>Team Aqua")
 	#set {_loc} to location(-1207.5, 60, -1805.5, world "world")
@@ -144,4 +134,4 @@ command /topka [<text>]:
 				send "&7	&8&l*	&6TOP POZIOMY	&8&l*	&7" to player
 				send createTop("poziom", 5, "&7[I] &6[P] &7- [V]") to player
 on tab complete of "topka":
-	set tab completions for position 1 to "smierci", "deaths", "zabojstwa", "kills", "poziom", "level", "lvl"
+	set tab completions for position 1 to "deaths", "kills", "level", "lvl"
