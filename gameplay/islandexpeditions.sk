@@ -8,28 +8,168 @@ on place of gold block:
     set {_w} to a random element of {_azeriteOreType::*}
     set string tag "AzeriteVeinType" of custom nbt of event-block to {_w}
 
+import:
+    java.io.File
+    com.sk89q.worldedit.math.BlockVector3
+    com.sk89q.worldedit.extent.clipboard.io.ClipboardFormats
+    com.sk89q.worldedit.bukkit.BukkitWorld
+    org.mvplugins.multiverse.core.world.WorldManager
+    org.mvplugins.multiverse.core.MultiverseCore
+    org.mvplugins.multiverse.core.MultiverseCoreApi
+    org.mvplugins.multiverse.core.world.options.CloneWorldOptions
+    org.mvplugins.multiverse.core.world.LoadedMultiverseWorld
+    org.bukkit.event.world.TimeSkipEvent
+    org.mvplugins.multiverse.core.world.MultiverseWorld
+    org.bukkit.Bukkit
+    org.bukkit.World
+
+
+effect paste schematic %string% at %location% [(1¦(with|including) air)]:
+    trigger:
+        set {_file} to new File(expr-1)
+
+        set {_air} to true if parse mark = 1, else false
+        set {_world} to new BukkitWorld(expr-2.getWorld())
+        
+        #For paste undo in the future
+        #set {editSession} to WorldEdit.getInstance().newEditSession({_world})
+
+        set {_loc} to BlockVector3.at(expr-2.getBlockX(), expr-2.getBlockY(), expr-2.getBlockZ())
+
+        ClipboardFormats.findByFile({_file}).load({_file}).paste({_world}, {_loc}, false, {_air}, false, null)
+
+effect prepare world %string% as %string%:
+    trigger:
+        set {_api} to MultiverseCoreApi.get()
+        set {_manager} to {_api}.getWorldManager()
+        
+        set {_world} to {_manager}.getLoadedWorld(expr-1).getOrNull()
+        set {_options} to CloneWorldOptions.fromTo({_world}, expr-2)
+
+        {_manager}.cloneWorld({_options})
+
+effect deleteworld %string%:
+    trigger:
+        set {_manager} to {_plugin}.getCore().getWorldManager()
+        {_manager}.deleteWorld(expr-1)
+
+function doesWorldExist(w: string) :: boolean:
+    set {_api} to MultiverseCoreApi.get()
+    set {_manager} to {_api}.getWorldManager()
+    return {_manager}.isWorld({_w})
+
+function getNewInstance(w: string) :: integer:
+    set {_bool} to true
+    set {_index} to 0
+    while {_bool} is true:
+        add 1 to {_index}
+        set {_bool} to false if doesWorldExist("%{_w}%%{_index}%") = false
+    return {_index}
+
+function createNewInstance(w: string):
+    set {_instance} to getNewInstance({_w})
+    set {_newInstance} to "%{_w}%%{_instance}%"
+    prepare world {_w} as {_newInstance}
+
+on rightclick:
+    if player's tool is bamboo:
+        if player's name = "Pehrek":
+            #createNewInstance("PlunderCove")
+
+           # set worldborder of world "PlunderCove3" to a worldborder:
+            #    set worldborder radius of event-worldborder to 200
+            #    set worldborder center of event-worldborder to location(0, 100, 0)
+            #    set worldborder warning distance of event-worldborder to 10
+            createNewInstance("PlunderCove")
+            stop
+            prepare world "PlunderCove" as "PlunderCove4"
+            #paste schematic "plugins/FastAsyncWorldEdit/schematics/IslandExpeditionsShip.schem" at location 101 above player
+            stop
+            set metadata value "IslandExpeditionInstance" of player to 3
+
 on rightclick on a player:
     if name of clicked player = "Flynn Fairwind":
         if cooldown "Flynn Fairwind-Talk%player%" is finished:
-            send "                   |~" to player
-            send "             |/    w" to player
-            send "            / (   (|   \" to player
-            send "          /( (/   |)  |\" to player
-            send "  ____  ( (/    (|   | )  ," to player
-            send " |----\ (/ |    /|   |'\ /^;" to player
-            send "\---*---Y--+-----+---+--/(" to player
-            send " \------*---*--*---*--/" to player
-            send "  '~~ ~~~~~~~~~~~~~~~" to player
-            create cooldown "Flynn Fairwind-Talk%player%" for 3 seconds
-            play sound "npc.flynnfairwind.greeting" with volume 3 and pitch 1 to player
+            create cooldown "Flynn Fairwind-Talk%player%" for 2 seconds
+            set {_greeting} to a random integer between 1 and 7
+            if {_greeting} = 1:
+                set {_sound} to "npc.flynnfairwind.greeting_ahoy"
+            else if {_greeting} = 2:
+                set {_sound} to "npc.flynnfairwind.greeting_ajobs"
+            else if {_greeting} = 3:
+                set {_sound} to "npc.flynnfairwind.greeting_areyou"
+            else if {_greeting} = 4:
+                set {_sound} to "npc.flynnfairwind.greeting_blood"
+            else if {_greeting} = 5:
+                set {_sound} to "npc.flynnfairwind.greeting_imall"
+            else if {_greeting} = 6:
+                set {_sound} to "npc.flynnfairwind.greeting_whatsthe"
+            else if {_greeting} = 7:
+                set {_sound} to "npc.flynnfairwind.greeting_whatsyour"
+            play sound {_sound} with volume 3 and pitch 1 to player
+
             play sound "entity.experience_orb.pickup" with volume 3 and pitch 1 to player
-            send "&lSet Sail for Island Expeditions!" to player
-            send "" to player
-            send "&nSelect difficulty:" to player
-            send "" to player
-            set {_tooltipLevel} to "Required Card Level:"
-            set {_tooltip} to "Recommended Item Level:"
-            send formatted "<tooltip:%{_tooltip}% 40%nl%%{_tooltipLevel}% 20>&a[Normal]  <tooltip:%{_tooltip}% 70%nl%%{_tooltipLevel}% 40>&6[Heroic]  <tooltip:%{_tooltip}% 100%nl%%{_tooltipLevel}% 60>&4[Mythic]  <tooltip:Coming soon!>&b[PVP]" to player
+            
+
+        set metadata tag "islandExpeditions" of player to chest inventory with 3 rows named "Set sail for an Island Expedition!"
+        set {_gui} to metadata tag "islandExpeditions" of player
+        set {_azeriteCollect} to 36000
+
+        set {_azerite} to 300000
+        set {_barFill} to round(({_azerite}/{_azeriteCollect})*10, 0)*10
+        
+        if {_azerite} > {_azeriteCollect}:
+            set {_azeriteTooltip} to {_azeriteCollect}
+        else:
+            set {_azeriteTooltip} to {_azerite}
+
+        if {_azerite} >= 0.1*{_azeriteCollect}:
+            if {_azerite} >= {_azeriteCollect}:
+                set {_tooltip} to "azeriteweekly_full"
+            else:
+                set {_tooltip} to "azeriteweekly_%{_barFill}%"
+        else:
+            set {_tooltip} to "azeriteweekly"
+        set slot 4 of {_gui} to book named " " with lore "%nl%%nl%%nl%     &fWeekly Quest%nl%     &7Collect Azerite on Island Expeditions.%nl% %nl% %nl%     <##fdd002>Azerite Gathered:     &f%{_azeriteTooltip}%/%{_azeriteCollect}%%nl% %nl% %nl% %nl%     <##fdd002>Reward:%nl%     &f <##a335ee>[Humming Azerite Heart]%nl%        &f(3500 Azerite)"
+        set slot 12 of {_gui} to diamond named "<##23fa02>Normal Difficulty" with lore "&7Click here to set sail for a <##00ff00>Normal%nl%&7difficulty Island Expedition.%nl% %nl%&7Enemies on this difficulty will have%nl%&fnormal &7amounts of health.%nl% %nl%&7Recommended Item Level: &f50%nl% %nl%&7Rewards:%nl%&8- &f600 Player EXP%nl%&8- &f <##00ff00>[Small Azerite Cluster]%nl%      &f(150 Azerite)" with nbt from "{""minecraft:custom_model_data"":{floats:[47.0f]}}"
+        set slot 13 of {_gui} to diamond named "<##0382ff>Heroic Difficulty" with lore "&7Click here to set sail for a <##0070dd>Heroic%nl%&7difficulty Island Expedition.%nl% %nl%&7Enemies on this difficulty will have%nl%&fhigh &7amounts of health.%nl% %nl%&7Recommended Item Level: &f70%nl% %nl%&7Rewards:%nl%&8- &f1300 Player EXP%nl%&8- &f <##0070dd>[Glowing Azerite Crystal]%nl%      &f(300 Azerite)" with nbt from "{""minecraft:custom_model_data"":{floats:[48.0f]}}"
+        set slot 14 of {_gui} to diamond named "<##ae38ff>Mythic Difficulty" with lore "&7Click here to set sail for a <##a335ee>Mythic%nl%&7difficulty Island Expedition.%nl% %nl%&7Choose this difficulty to face a%nl%&fchallenging &7Island Expedition.%nl% %nl%&7Recommended Item Level: &f100%nl% %nl%&7Rewards:%nl%&8- &f2000 Player EXP%nl%&8- &f <##0070dd>[Glowing Azerite Geode]%nl%      &f(450 Azerite)" with nbt from "{""minecraft:custom_model_data"":{floats:[49.0f]}}"
+        set slot 16 of {_gui} to light blue stained glass pane named "&bPVP" with lore "&7Click here to set sail for a &fPVP%nl%&7Island Expedition and race against%nl%&7other players for Azerite.%nl% %nl%&7You can queue &fsolo &7or with a party%nl%&7of up to &ftwo &7players.%nl% %nl%&7Rewards:%nl%&8- &f1300 Player EXP%nl%&8- &f <##0070dd>[Glowing Azerite Crystal]%nl%      &f(300 Azerite)%nl% %nl%&7COMING IN 8.4.0:%nl%&7Tournament of Elements%nl% %nl%&c❌ Not Available"
+        #&f0/36000%nl% %nl% %nl% %nl%     <##fdd002>Rewards:%nl%     &f <##a335ee>[Humming Azerite Heart]%nl%        &f(3500 Azerite)"
+        add "                                                        " to lore of slot 4 of {_gui}
+        loop 6 times:
+            add " " to lore of slot 4 of {_gui}
+        set tooltip style of slot 4 of {_gui} to {_tooltip}
+        set string tag "Difficulty" of custom nbt of slot 4 of {_gui} to "Normal"
+        set string tag "Difficulty" of custom nbt of slot 5 of {_gui} to "Heroic"
+        set string tag "Difficulty" of custom nbt of slot 6 of {_gui} to "Mythic"
+        open {_gui} to player
+
+on inventory close:
+    if player's current inventory = metadata tag "islandExpeditions" of player:
+        if cooldown "Flynn Fairwind-Farewell%player%" is finished:
+            create cooldown "Flynn Fairwind-Farewell%player%" for 2 seconds
+            set {_farewell} to a random integer between 1 and 7
+            if {_farewell} = 1:
+                set {_sound} to "npc.flynnfairwind.farewell_dontlookback"
+            else if {_farewell} = 2:
+                set {_sound} to "npc.flynnfairwind.farewell_eyesonthehorizon"
+            else if {_farewell} = 3:
+                set {_sound} to "npc.flynnfairwind.farewell_letsgetpaid"
+            else if {_farewell} = 4:
+                set {_sound} to "npc.flynnfairwind.farewell_nextround"
+            else if {_farewell} = 5:
+                set {_sound} to "npc.flynnfairwind.farewell_powderdry"
+            else if {_farewell} = 6:
+                set {_sound} to "npc.flynnfairwind.farewell_seeyouaround"
+            else if {_farewell} = 7:
+                set {_sound} to "npc.flynnfairwind.farewell_watchyourback"
+            play sound {_sound} with volume 3 and pitch 1 to player
+        clear metadata tag "islandExpeditions" of player
+
+on inventory click:
+    if player's current inventory = metadata tag "islandExpeditions" of player:
+        cancel event
 #To do:
 
 #When difficulty is selected, play ship sail sound
@@ -183,3 +323,35 @@ function killTrident(e: entity):
     wait 12 seconds
     kill {_e}
 
+on TimeSkipEvent:
+    set {_world} to event.getWorld()
+    if isWorldIsland({_world}) = true:
+        broadcast "ta"
+        #cancel event
+
+#on block break:
+    #if isWorldIsland(player's world) = true:
+        #cancel event
+
+on block place:
+    if isWorldIsland(player's world) = true:
+        cancel event
+
+on rightclick:
+    if isWorldIsland(player's world) = true:
+        cancel event
+    if "%regions at player%" contains "IslandShipMap":
+        cancel event
+
+on leftclick:
+    if "%regions at player%" contains "IslandShipMap":
+        cancel event
+
+
+function isWorldIsland(w: world) :: boolean:
+    set {_worldList::*} to "PlunderCove"
+    set {_world} to "%{_w}%"
+    replace all "0", "1", "2", "3", "4", "5", "6", "7", "8" and "9" in {_world} with ""
+    if {_worldList::*} contains {_world}:
+        set {_return} to true
+    return {_return}
