@@ -1,13 +1,4 @@
 
-on rightclick on gold block:
-    if player's name = "Pehrek":
-        AzeriteOreMine(player, event-block)
-
-on place of gold block:
-    set {_azeriteOreType::*} to "Shard", "Crystal" and "Chunk"
-    set {_w} to a random element of {_azeriteOreType::*}
-    set string tag "AzeriteVeinType" of custom nbt of event-block to {_w}
-
 import:
     java.io.File
     com.sk89q.worldedit.math.BlockVector3
@@ -17,6 +8,7 @@ import:
     org.mvplugins.multiverse.core.MultiverseCore
     org.mvplugins.multiverse.core.MultiverseCoreApi
     org.mvplugins.multiverse.core.world.options.CloneWorldOptions
+    org.mvplugins.multiverse.core.world.options.DeleteWorldOptions
     org.mvplugins.multiverse.core.world.LoadedMultiverseWorld
     org.bukkit.event.world.TimeSkipEvent
     org.mvplugins.multiverse.core.world.MultiverseWorld
@@ -30,9 +22,6 @@ effect paste schematic %string% at %location% [(1¦(with|including) air)]:
 
         set {_air} to true if parse mark = 1, else false
         set {_world} to new BukkitWorld(expr-2.getWorld())
-        
-        #For paste undo in the future
-        #set {editSession} to WorldEdit.getInstance().newEditSession({_world})
 
         set {_loc} to BlockVector3.at(expr-2.getBlockX(), expr-2.getBlockY(), expr-2.getBlockZ())
 
@@ -50,8 +39,13 @@ effect prepare world %string% as %string%:
 
 effect deleteworld %string%:
     trigger:
-        set {_manager} to {_plugin}.getCore().getWorldManager()
-        {_manager}.deleteWorld(expr-1)
+        set {_api} to MultiverseCoreApi.get()
+        set {_manager} to {_api}.getWorldManager()
+
+        set {_world} to {_manager}.getWorld(expr-1).getOrNull()
+        set {_options} to DeleteWorldOptions.world({_world})
+
+        {_manager}.deleteWorld({_options})
 
 function doesWorldExist(w: string) :: boolean:
     set {_api} to MultiverseCoreApi.get()
@@ -71,21 +65,94 @@ function createNewInstance(w: string):
     set {_newInstance} to "%{_w}%%{_instance}%"
     prepare world {_w} as {_newInstance}
 
+function isWorldIsland(w: world) :: boolean:
+    set {_worldList::*} to "PlunderCove"
+    set {_world} to "%{_w}%"
+    replace all "0", "1", "2", "3", "4", "5", "6", "7", "8" and "9" in {_world} with ""
+    if {_worldList::*} contains {_world}:
+        set {_return} to true
+    return {_return}
+
 on rightclick:
     if player's tool is bamboo:
         if player's name = "Pehrek":
-            #createNewInstance("PlunderCove")
+            set {_island} to "PlunderCove"
+            set {_direction} to a random element of "Longitude" and "Latitude"
 
-           # set worldborder of world "PlunderCove3" to a worldborder:
-            #    set worldborder radius of event-worldborder to 200
-            #    set worldborder center of event-worldborder to location(0, 100, 0)
-            #    set worldborder warning distance of event-worldborder to 10
-            createNewInstance("PlunderCove")
-            stop
-            prepare world "PlunderCove" as "PlunderCove4"
-            #paste schematic "plugins/FastAsyncWorldEdit/schematics/IslandExpeditionsShip.schem" at location 101 above player
-            stop
-            set metadata value "IslandExpeditionInstance" of player to 3
+            createNewInstance({_island})
+            set {_instance} to getNewInstance({_island})-1
+            set {_newInstance} to "%{_island}%%{_instance}%"
+
+            if player is in a party:
+                set {_partyMembers::*} to party members of party of player
+            else:
+                add player to {_partyMembers::*}
+
+            set metadata value "IslandExpeditionInstance" of {_partyMembers::*} to {_instance}
+
+            load yaml "plugins/Skript/islandexpeditions/%{_island}%/Locations.yml" as "%{_island}%Locations"
+            set {_total} to yaml value "TotalLocations.ShipAlly.%{_direction}%" in "%{_island}%Locations"
+
+            set {_borderRadius} to yaml value "WorldBorderRadius" in "%{_island}%Locations"
+            set {_borderMin} to {_borderRadius}-200
+            set {_borderMax} to ({_borderRadius}*-1) + 200
+
+            set {_chunkBorder1} to location({_borderMin}, 0, {_borderMin}, world {_newInstance})
+            set {_chunkBorder2} to location({_borderMax}, 0, {_borderMax}, world {_newInstance})
+            loop all chunks within {_chunkBorder1} and {_chunkBorder2}:
+                #async load chunk at loop-value with ticket
+                broadcast loop-value
+
+            set worldborder of world {_newInstance} to a worldborder:
+                set worldborder radius of event-worldborder to {_borderRadius}
+                set worldborder center of event-worldborder to location(0, 500, 0)
+                set worldborder warning distance of event-worldborder to 10
+
+            set {_shipStart} to a random integer between 1 and {_total}
+
+            set {_x} to yaml value "Locations.ShipAlly.%{_direction}%.%{_shipStart}%.x" in "%{_island}%Locations"
+            set {_y} to yaml value "Locations.ShipAlly.%{_direction}%.%{_shipStart}%.y" in "%{_island}%Locations"
+            set {_z} to yaml value "Locations.ShipAlly.%{_direction}%.%{_shipStart}%.z" in "%{_island}%Locations"
+
+            unload yaml "%{_island}%Locations"
+            
+            set {_locShip} to location({_x}, {_y}, {_z}, world {_newInstance})
+            
+            if {_direction} = "Longitude":
+                set {_rotation} to a random element of "North" and "South"
+                
+            else:
+                set {_rotation} to a random element of "East" and "West"
+            
+            paste schematic "plugins/FastAsyncWorldEdit/schematics/IslandExpeditionsShip%{_rotation}%.schem" at {_locShip}
+
+            if {_rotation} = "North" or "South":
+                if {_rotation} = "South":
+                    set {_z} to z-coordinate of {_locShip} + 5.75
+                    set {_x} to x-coordinate of {_locShip}
+                    set {_yaw} to 0
+                else:
+                    set {_z} to z-coordinate of {_locShip} - 5.75
+                    set {_x} to x-coordinate of {_locShip}
+                    set {_yaw} to 180
+            else:
+                if {_rotation} = "West":
+                    set {_x} to x-coordinate of {_locShip} - 5.75
+                    set {_z} to z-coordinate of {_locShip}
+                    set {_yaw} to 90
+                else:
+                    set {_x} to x-coordinate of {_locShip} + 5.75
+                    set {_z} to z-coordinate of {_locShip}
+                    set {_yaw} to -90
+
+            set {_locFlynn} to location({_x}, y-coordinate of {_locShip} + 13.5, {_z}, world {_newInstance}, {_yaw}, -5)
+            spawn armor stand at {_locFlynn}
+            set {_flynnFairwind} to last spawned armor stand
+            set display name of {_flynnFairwind} to "Flynn Fairwind"
+            entityTitle({_flynnFairwind}, "Captain")
+
+            teleport {_partyMembers::*} to {_locFlynn}
+        
 
 on rightclick on a player:
     if name of clicked player = "Flynn Fairwind":
@@ -135,7 +202,6 @@ on rightclick on a player:
         set slot 13 of {_gui} to diamond named "<##0382ff>Heroic Difficulty" with lore "&7Click here to set sail for a <##0070dd>Heroic%nl%&7difficulty Island Expedition.%nl% %nl%&7Enemies on this difficulty will have%nl%&fhigh &7amounts of health.%nl% %nl%&7Recommended Item Level: &f70%nl% %nl%&7Rewards:%nl%&8- &f1300 Player EXP%nl%&8- &f <##0070dd>[Glowing Azerite Crystal]%nl%      &f(300 Azerite)" with nbt from "{""minecraft:custom_model_data"":{floats:[48.0f]}}"
         set slot 14 of {_gui} to diamond named "<##ae38ff>Mythic Difficulty" with lore "&7Click here to set sail for a <##a335ee>Mythic%nl%&7difficulty Island Expedition.%nl% %nl%&7Choose this difficulty to face a%nl%&fchallenging &7Island Expedition.%nl% %nl%&7Recommended Item Level: &f100%nl% %nl%&7Rewards:%nl%&8- &f2000 Player EXP%nl%&8- &f <##0070dd>[Glowing Azerite Geode]%nl%      &f(450 Azerite)" with nbt from "{""minecraft:custom_model_data"":{floats:[49.0f]}}"
         set slot 16 of {_gui} to light blue stained glass pane named "&bPVP" with lore "&7Click here to set sail for a &fPVP%nl%&7Island Expedition and race against%nl%&7other players for Azerite.%nl% %nl%&7You can queue &fsolo &7or with a party%nl%&7of up to &ftwo &7players.%nl% %nl%&7Rewards:%nl%&8- &f1300 Player EXP%nl%&8- &f <##0070dd>[Glowing Azerite Crystal]%nl%      &f(300 Azerite)%nl% %nl%&7COMING IN 8.4.0:%nl%&7Tournament of Elements%nl% %nl%&c❌ Not Available"
-        #&f0/36000%nl% %nl% %nl% %nl%     <##fdd002>Rewards:%nl%     &f <##a335ee>[Humming Azerite Heart]%nl%        &f(3500 Azerite)"
         add "                                                        " to lore of slot 4 of {_gui}
         loop 6 times:
             add " " to lore of slot 4 of {_gui}
@@ -174,6 +240,15 @@ on inventory click:
 
 #When difficulty is selected, play ship sail sound
 #Send message: You are now queued for Island Expedition with (players from party)
+
+on rightclick on gold block:
+    if player's name = "Pehrek":
+        AzeriteOreMine(player, event-block)
+
+on place of gold block:
+    set {_azeriteOreType::*} to "Shard", "Crystal" and "Chunk"
+    set {_w} to a random element of {_azeriteOreType::*}
+    set string tag "AzeriteVeinType" of custom nbt of event-block to {_w}
 
 function AzeriteOreMine(p: player, ore: block):
     set {_typeOfOre} to string tag "AzeriteVeinType" of custom nbt of {_ore}
@@ -240,98 +315,15 @@ on damage:
 
 #convert azerite variable to oldazerite
 
-command /dajmito:
-    trigger:
-        set {_count} to 0
-        loop (mobs in radius 20 around player) sorted by distance from player:
-            if loop-entity is a zombie:
-                add 1 to {_count}
-                #play sound "skill.jolteon.volt_control" with volume 3 and pitch 1.2 at loop-entity
-                if {_count} = 1:
-                    set {_shape} to a line from player to loop-entity
-                    set particle of {_shape} to smoke particle
-                    draw {_shape} at location 0.85 above player
-                    set {_shape} to a line from player to loop-entity
-                    set particle of {_shape} to item particle using gold block
-                    draw {_shape} at location 1 above player
-                    set {_lastEntity} to loop-entity
-                    set {_shape} to a line from player to loop-entity
-                else:
-                    wait 2 ticks
-                    set {_shape} to a line from {_lastEntity} to loop-entity
-                    set particle of {_shape} to smoke particle
-                    draw {_shape} at location 0.85 above {_lastEntity}
-                    set {_shape} to a line from {_lastEntity} to loop-entity
-                    set particle of {_shape} to item particle using gold block
-                    draw {_shape} at location 1 above {_lastEntity}
-                    set {_lastEntity} to loop-entity
-
-                set last damage cause of loop-entity to sweep attack
-                make player damage loop-entity by 1
-                play sound "skill.graves.gunshot" with volume 3 and pitch 1.45 at loop-entity
-
-    
-                
-command /dajmito2:
-    trigger:
-        set {_count} to 0
-        loop (mobs in radius 12 around player) sorted by distance from player:
-            if loop-entity is a zombie:
-                add 1 to {_count}
-                play sound "entity.witch.throw" with volume 3 and pitch 1 at loop-entity
-                if {_count} = 1:
-                    spawn 1 trident above player
-                    set {_f} to last spawned trident
-                    push {_f} (direction from player to loop-entity) with speed 0.05
-                    killTrident({_f})
-                    set gravity of last spawned trident to false
-                    set vector length of last spawned trident's velocity to 0.7
-                    set boolean tag uuid of loop-entity of custom nbt of {_f} to true
-                stop loop
-
-command /dajmito3:
-    trigger:
-        set {_y} to data()
-        if {language::%player%} = "English":
-            set {_karta} to {espeonkartaswEN}
-            set {_id} to random 8 char string from charset `0-9` `a-z`
-            add "&8Id: %{_id}%" to lore of {_karta}
-            add "&8Dropped: %{_y}%" to lore of {_karta}
-        if player can hold {_karta}:
-            give {_karta} to player
-        else:
-            drop {_karta} at player
-                
-on projectile collide:
-    if event-projectile is trident:
-        loop (mobs in radius 12 around event-projectile) sorted by distance from event-projectile:
-            if loop-entity is a zombie:
-                if boolean tag uuid of loop-entity of custom nbt of event-projectile is not set:
-                    set boolean tag uuid of loop-entity of custom nbt of event-projectile to true
-                    wait 2 ticks
-                    play sound "entity.witch.throw" with volume 3 and pitch 1 at loop-entity
-                    push event-projectile upwards with velocity 0.02
-                    push event-projectile (direction from event-projectile to loop-entity) with speed 0.1
-                    set gravity of event-projectile to false
-                    set vector length of event-projectile's velocity to 0.7
-                    set boolean tag "DealtDamage" of custom nbt of event-projectile to false
-                    set long tag "damage" of custom nbt of event-projectile to 0.0
-
-                    stop loop
-
-function killTrident(e: entity):
-    wait 12 seconds
-    kill {_e}
-
 on TimeSkipEvent:
     set {_world} to event.getWorld()
     if isWorldIsland({_world}) = true:
         broadcast "ta"
-        #cancel event
+        cancel event
 
-#on block break:
-    #if isWorldIsland(player's world) = true:
-        #cancel event
+on block break:
+    if isWorldIsland(player's world) = true:
+        cancel event
 
 on block place:
     if isWorldIsland(player's world) = true:
@@ -346,12 +338,73 @@ on rightclick:
 on leftclick:
     if "%regions at player%" contains "IslandShipMap":
         cancel event
+on combust:
+    if isWorldIsland(event-world) = true:
+        cancel event
 
+on skript stop:
+    load yaml "plugins/Skript/islandexpeditions/IslandList" as "IslandsClear"
+    set {_islandList::*} to yaml list "Islands" in "IslandsClear"
+    unload yaml "IslandsClear"
 
-function isWorldIsland(w: world) :: boolean:
-    set {_worldList::*} to "PlunderCove"
-    set {_world} to "%{_w}%"
-    replace all "0", "1", "2", "3", "4", "5", "6", "7", "8" and "9" in {_world} with ""
-    if {_worldList::*} contains {_world}:
-        set {_return} to true
-    return {_return}
+    loop {_islandList::*}:
+        set {_instance} to loop-value
+        set {_totalInstances} to getNewInstance(loop-value)
+
+        if {_totalInstances} is set:
+            loop {_totalInstances} times:
+                deleteworld "%{_instance}%%loop-number%"
+
+command /ieconfig [<string>] [<string>] [<string>] [<string>] [<integer>]:
+    trigger:
+        if player's name = "Pehrek":
+            if arg-1 is set:
+                if arg-2 is set:
+                    if arg-3 is set:
+                        if arg-4 is set:
+
+                            set {_type} to arg-3
+                            set {_island} to arg-1
+                            set {_direction} to arg-4
+                            load yaml "plugins/Skript/islandexpeditions/%arg-1%/Locations.yml" as "%arg-1%Locations-%player%"
+
+                            if arg-2 = "addlocation":
+                                set {_loc} to player's location
+                                set yaml value "Locations.%{_type}%.%{_direction}%.%arg-5%.x" in "%arg-1%Locations-%player%" to x-coordinate of {_loc}
+                                set yaml value "Locations.%{_type}%.%{_direction}%.%arg-5%.y" in "%arg-1%Locations-%player%" to y-coordinate of {_loc}
+                                set yaml value "Locations.%{_type}%.%{_direction}%.%arg-5%.z" in "%arg-1%Locations-%player%" to z-coordinate of {_loc}
+                                send "&aSet the location for &f%{_type}% &ain &f%{_direction}% &aIsland &f%arg-1% &ato &f%{_loc}%&a." to player
+                            else if arg-2 = "addtotal":
+                                set yaml value "TotalLocations.%{_type}%.%{_direction}%" in "%arg-1%Locations-%player%" to arg-5
+                                send "&aSet the total locations for &f%{_type}% &ain &f%{_direction}% &aIsland &f%arg-1% &ato &f%arg-5%&a." to player
+                            else if arg-2 = "border":
+                                set yaml value "WorldBorderRadius" in "%arg-1%Locations-%player%" to arg-5
+                                send "&aSet the border radius for Island &f%arg-1% &ato &f%arg-5%&a." to player
+                            
+                            save yaml "%arg-1%Locations-%player%"
+                            unload yaml "%arg-1%Locations-%player%"
+
+                        else:
+                            send "&cArg-4 must be provided. (Longitude/Latitude)" to player
+                    else:
+                        send "&cArg-3 must be provided. (ShipAlly/ShipEnemy)" to player
+                else:
+                    send "&cArg-2 must be provided. (addlocation/addtotal/border)"
+            else:
+                send "&cArg-1 must be an Island Expedition map." to player
+        else:
+            send "&cYou cannot use this command." to player
+
+command /addisland [<string>]:
+    trigger:
+        if player's name = "Pehrek":
+            if arg-1 is set:
+                load yaml "plugins/Skript/islandexpeditions/IslandList" as "IslandList"
+                add arg-1 to yaml list "Islands" in "IslandList"
+                save yaml "IslandList"
+                unload yaml "IslandList"
+                send "&aSuccessfully added &f%arg-1% &aas a new Island Expedition map."
+            else:
+                send "&cArg-1 must be an Island Expedition map." to player
+        else:
+            send "&cYou cannot use this command." to player
