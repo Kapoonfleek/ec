@@ -143,7 +143,7 @@ on rightclick:
 										create cooldown "lavaburst%player%" for {_cd}
 
 									AbilityUse(player, "Lava Burst")
-									LavaBurst(player, {_target}, 1)
+									LavaBurst(player, {_target}, 1, "Lava Burst")
 									if metadata value "Lava Wave" of player is set:
 										clear metadata value "Lava Wave" of player
 										LavaWave(player, {_target})
@@ -177,9 +177,9 @@ on rightclick:
 							AbilityUse(player, "Lava Burst")
 
 							if boolean tag "Constellation;Deeptremor" of custom nbt of {karta::%player%} is set:
-								LavaBurst(player, {_target}, 1.18)
+								LavaBurst(player, {_target}, 1.18, "Lava Burst")
 							else:
-								LavaBurst(player, {_target}, 1)
+								LavaBurst(player, {_target}, 1, "Lava Burst")
 
 							send title " " with subtitle " " for 1 second with fade in 0 second and fade out 0 second
 							if metadata value "Lava Wave" of player is set:
@@ -227,7 +227,7 @@ on rightclick:
 							set {_tick} to 0.25 seconds
 						else:
 							set {_tick} to 0.5 seconds
-						push the player upwards with speed 2
+						#push the player upwards with speed 2
 
 						if boolean tag "Constellation;Unstoppable Heat" of custom nbt of {karta::%player%} is set:
 							set {_shield} to UnstoppableHeatShield(player)
@@ -267,7 +267,7 @@ on rightclick:
 									set {_target} to a random element of {_enemyPulled::*}
 								else:
 									set {_target} to {_enemyNotInCombat::1}
-							LavaBurst(player, {_target}, 1)
+							LavaBurst(player, {_target}, 1, "Rain of Lava")
 							if {_shield} is set:
 								draw 8 falling lava particle at location above player with offset vector(1.25, 0.5, 1.25) with extra 0.015
 								send action bar "<##b03228> SHIELD: &f%{tarcza::%uuid of player%}%" to player
@@ -310,10 +310,6 @@ on rightclick:
 			if {kartaname::%player%} = "Ghazan":
 				if CanUseAbility(player) != false:
 					if cooldown "moltenlava%player%" is finished:
-						if player's chestplate is golden nugget:
-							if name of player's chestplate contains "Serce Earthcrafta" or "Heart of Earthcraft":
-								if line 30 of lore of player's chestplate contains player's name:
-									set {_loreheart::*} to lore of player's chestplate
 						set {_id} to line 19 of lore of {karta::%player%}
 						set {_pospiech} to Haste(player)
 						#IGNEOUS POTENTIAL
@@ -418,10 +414,6 @@ on rightclick:
 								if boolean tag "Constellation;Master Heritage" of custom nbt of {karta::%player%} is set:
 									set metadata value "Master Heritage Lava Spread" of player to 2
 								set {_pospiech} to 1 + (({haste::%player%}/4))/100
-								if player's chestplate is golden nugget:
-									if name of player's chestplate contains "Serce Earthcrafta" or "Heart of Earthcraft":
-										if line 30 of lore of player's chestplate contains player's name:
-											set {_loreheart::*} to lore of player's chestplate
 								if {_loreheart::*} is set:
 									loop {_loreheart::*}:
 										loop-value contains "Igneous Potential":
@@ -557,7 +549,7 @@ function LavaWave(p: player, target: entity):
 	loop all entities in radius 100 around {_p}:
 		if boolean tag "ECMob" of custom nbt of loop-entity is set:
 			if metadata value "MoltenLava%{_p}%" of block under loop-entity is set:
-				LavaBurst({_p}, loop-entity, 0.8)
+				LavaBurst({_p}, loop-entity, 0.8, "Lava Burst")
 #AREA RELOADER PLUGIN OGARNĄĆ
 on skript stop:
 	loop all players:
@@ -569,10 +561,6 @@ on damage:
 		cancel event
 
 function MoltenLava(p: player, radius: number, cdd: number, pospiech: number, wave: boolean, target: entity):
-	if {_p}'s chestplate is golden nugget:
-		if name of {_p}'s chestplate contains "Serce Earthcrafta" or "Heart of Earthcraft":
-			if line 30 of lore of {_p}'s chestplate contains {_p}'s name:
-				set {_loreheart::*} to lore of {_p}'s chestplate
 	set {_damage} to (0.5 + ({damage::%{_p}%}/160) + ({versatility::%{_p}%}/480) + ({primarystat::%{_p}%}/80) + {_bonusdmg})
 	#(KOLEJNE 5 LINIJEK TYLKO DLA LORE)
 	#MOLTEN UPHEAVAL
@@ -622,24 +610,22 @@ function MoltenLava(p: player, radius: number, cdd: number, pospiech: number, wa
 				set {_num} to {_radius}
 			else:
 				set {_num} to loop-number
-			loop all blocks in radius {_num} around {_Eventblock}:
+			loop all blocks in radius {_num} around {_Eventblock} where [input is solid]:
 				if (y-coordinate of loop-block) >= (y-coordinate of {_Eventblock}):
 					if "%regions at loop-block%" does not contain "spawn":
-						if loop-block is solid:
-							if loop-block is not bedrock:
-								if loop-block is not a chest:
-									if loop-block is not a trapped chest:
-										if metadata value "MoltenLava%{_p}%" of loop-block is not set:
-											set {_blocks::*} to {_blocks::*} and (type of loop-block)
-											set {_loc::*} to {_loc::*} and (location of loop-block)
-											set block at loop-block to basalt
-											set metadata value "MoltenLava%{_p}%" of loop-block to true
-											add 1 to {_index}
-											if {_index} is divisible by 3:
-												wait 1 tick
-		loop {_loc::*}:
-			if block at loop-value is basalt:
-				make all players see block at loop-value as magma block
+						if loop-block is not bedrock:
+							if loop-block is not a chest:
+								if loop-block is not a trapped chest:
+									if metadata value "MoltenLava%{_p}%" of loop-block is not set:
+										set {_blocks::*} to {_blocks::*} and (type of loop-block)
+										set {_loc::*} to {_loc::*} and (location of loop-block)
+										set block at loop-block to basalt fast
+										set metadata value "MoltenLava%{_p}%" of loop-block to true
+										add 1 to {_index}
+										if {_index} is divisible by 3:
+											wait 1 tick
+
+		moltenLavaSee({_p}, {_loc::*})
 		#MagmaCheck({_p})
 		set {_remainingDuration} to {_duration}
 		set {_count} to {magmaareacount::%{_p}%}
@@ -654,6 +640,12 @@ function MoltenLava(p: player, radius: number, cdd: number, pospiech: number, wa
 			set block at loop-value to {_blocks::%loop-index%}
 			clear metadata value "MoltenLava%{_p}%" of block at loop-value
 		play sound "block.lava.extinguish" with volume 4 and pitch 2 at {_loc::1}
+
+function moltenLavaSee(p: player, locs: locations):
+	wait 1 tick
+	loop {_locs::*} where [metadata value "MoltenLava%{_p}%" of block at input is set]:
+		broadcast "A"
+		make all players see block at loop-value as magma block
 
 function BonusLavaBurst(p: player, x: entity):
 	if {lavaburstbonus::%{_p}%::%{_x}%} is true:
@@ -671,10 +663,6 @@ function BonusLavaBurst(p: player, x: entity):
 				clear {lavaburststacks::%{_p}%::%{_x}%}
 				stop loop
 function Magma(p: player):
-	if {_p}'s chestplate is golden nugget:
-		if name of {_p}'s chestplate contains "Serce Earthcrafta" or "Heart of Earthcraft":
-			if line 30 of lore of {_p}'s chestplate contains {_p}'s name:
-				set {_loreheart::*} to lore of {_p}'s chestplate
 	#IGNEOUS POTENTIAL
 	loop {_loreheart::*}:
 		loop-value contains "Igneous Potential":
@@ -704,8 +692,7 @@ function Magma(p: player):
 	set {_lore} to "&8Umiejętność%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdd}% sekund%nl%&7Użycie: &fPPM%nl%<##b03228>Zamienia teren w stopioną lawę. Przeciwnicy%nl%<##b03228>znajdujący się w Stopionej Lawie otrzymują%nl%&f%{_damage}% <##b03228>obrażeń <##ff4d00>Lawy <##b03228>co &f%{_wait}%<##b03228>."
 	set {_loreEN} to "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdd}% seconds%nl%&7Use: &fRMB%nl%<##b03228>Turns target terrain into molten lava.%nl%<##b03228>Enemies standing in Molten Lava receive &f%{_damage}%%nl%<##ff4d00>Lava <##b03228>damage every &f%{_wait}%<##b03228>."
 	loop all entities in radius 100 around {_p} where [metadata value "MoltenLava%{_p}%" of (block under input) is set]:
-		set {_custom} to tag "custom" of nbt of loop-entity
-		if tag "ECMob" of {_custom} is set:
+		if boolean tag "ECMob" of custom nbt of loop-entity is set:
 			set metadata value "Element" of {_p} to "Lava"
 			set loop-entity's last damage cause to sweep attack
 			set metadata value "LastDamageCauseEN" of loop-entity to "<##b03228>Molten Lava"
@@ -755,12 +742,12 @@ function Ascendance(p: player, duration: timespan):
 		add {_duration} to {ascendanceDuration::%{_p}%}
 		loop all entities in radius 100 around {_p} where [metadata value "MoltenLava%{_p}%" of (block under input) is set]:
 			if boolean tag "ECMob" of custom nbt of loop-entity is set:
-				LavaBurst({_p}, loop-entity, 1)
+				LavaBurst({_p}, loop-entity, 1, "Lava Burst")
 		stop
 
 	loop all entities in radius 100 around {_p} where [metadata value "MoltenLava%{_p}%" of (block under input) is set]:
 		if boolean tag "ECMob" of custom nbt of loop-entity is set:
-			LavaBurst({_p}, loop-entity, 1)
+			LavaBurst({_p}, loop-entity, 1, "Lava Burst")
 
 	while metadata value "Ascendance" of {_p} is set:
 		#broadcast {ascendanceDuration::%{_p}%}
@@ -789,10 +776,6 @@ on disconnect:
 
 function MagmaCheck(p: player):
 	set {_id} to line 19 of lore of {karta::%{_p}%}
-	if {_p}'s chestplate is golden nugget:
-		if name of {_p}'s chestplate contains "Serce Earthcrafta" or "Heart of Earthcraft":
-			if line 30 of lore of {_p}'s chestplate contains {_p}'s name:
-				set {_loreheart::*} to lore of {_p}'s chestplate
 	#MOLTEN UPHEAVAL
 	set {_faster} to 0
 	loop {_loreheart::*}:
@@ -814,10 +797,6 @@ function WildfireDuration(p: player):
 	set {_wait} to 10 seconds
 	if string tag "Talents;Row 1" of nbt of {karta::%{_p}%} = "Unrivaled Finesse":
 		add 1.5 seconds to {_wait}
-	if {_p}'s chestplate is golden nugget:
-		if name of {_p}'s chestplate contains "Serce Earthcrafta" or "Heart of Earthcraft":
-			if line 30 of lore of {_p}'s chestplate contains {_p}'s name:
-				set {_loreheart::*} to lore of {_p}'s chestplate
 	#ERUPTING LAVA
 	loop {_loreheart::*}:
 		loop-value contains "Erupting Lava":
@@ -826,7 +805,7 @@ function WildfireDuration(p: player):
 	wait {_wait}
 	clear {wildfire::%{_p}%}
 	
-function LavaBurst(p: player, x: entity, multiplier: number, replicated: boolean = false):
+function LavaBurst(p: player, x: entity, multiplier: number, ability: string, replicated: boolean = false):
 	set {_id} to line 19 of lore of {karta::%{_p}%}
 	set {_crit} to 0 + ({criticalhit::%{_p}%}/10)
 	set {_damage} to 2 + ({damage::%{_p}%}/37) + ({versatility::%{_p}%}/111) + ({primarystat::%{_p}%}/18.5)
@@ -834,10 +813,6 @@ function LavaBurst(p: player, x: entity, multiplier: number, replicated: boolean
 	set {_pospiech} to Haste({_p})
 	set {_casttime} to round((2/{_pospiech}), 1)
 	set {_cdd} to (8/{_pospiech})
-	if {_p}'s chestplate is golden nugget:
-		if name of {_p}'s chestplate contains "Serce Earthcrafta" or "Heart of Earthcraft":
-			if line 30 of lore of {_p}'s chestplate contains {_p}'s name:
-				set {_loreheart::*} to lore of {_p}'s chestplate
 
 	set {_damage} to {_damage}*{_multiplier}
 
@@ -858,8 +833,7 @@ function LavaBurst(p: player, x: entity, multiplier: number, replicated: boolean
 	loop {_loreheart::*}:
 		loop-value-2 contains "Lava Imbued":
 			add (0.5*{trait::Ghazan::Lava Imbued::%{_p}%}) to {_chance}
-	set {_lore2} to "&8Umiejętność%nl%&fInstant cast%nl%&7Cooldown: &fbrak%nl%&7Użycie: &fPasywnie%nl%<##b03228>Obrażenia Stopionej Lawy mają &f%{_chance}%%%%nl%<##b03228>szans na przyznanie ci Wybuchu Lawy.%nl%<##b03228>Twój następny Wybuch Lawy będzie instant castem."
-	set {_lore2EN} to "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &fnone%nl%&7Use: &fPassive%nl%<##b03228>Your Molten Lava damage has a &f%{_chance}%%%%nl%<##b03228>chance to grant you Lava Burst and cause%nl%<##b03228>your next Lava Burst to be instant."
+	set {_lore2} to "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &fnone%nl%&7Use: &fPassive%nl%<##b03228>Your Molten Lava damage has a &f%{_chance}%%%%nl%<##b03228>chance to grant you Lava Burst and cause%nl%<##b03228>your next Lava Burst to be instant."
 	
 	if {lavaimbued::%{_p}%} is true:
 		clear {lavaimbued::%{_p}%}
@@ -895,8 +869,7 @@ function LavaBurst(p: player, x: entity, multiplier: number, replicated: boolean
 		loop-value contains "Rolling Lava":
 			add {lavaburststacks::%{_p}%::%{_x}%}*(0.2*{trait::Ghazan::Rolling Lava::%{_p}%}) to {_damage}
 		
-	set {_lore} to "&8Umiejętność%nl%&f%{_casttime}% sekundowy cast%nl%&7Cooldown: &f%{_cdd}% sekund%nl%&7Użycie: &fPPM%nl%<##b03228>Ciska stopioną lawą w cel,%nl%<##b03228>zadając &f%{_damage}% <##b03228>obrażeń <##ff4d00>Lawy<##b03228>.%nl%<##b03228>Wybuch Lawy zawsze trafi krytycznie, gdy%nl%<##b03228>cel znajduje się w Stopionej Lawie."
-	set {_loreEN} to "&8Ability%nl%&f%{_casttime}% second cast%nl%&7Cooldown: &f%{_cdd}% seconds%nl%&7Use: &fRMB%nl%<##b03228>Hurls molten lava at the target, dealing%nl%&f%{_damage}% <##ff4d00>Lava <##b03228>damage.%nl%<##b03228>Lava Burst will always critically strike%nl%<##b03228>if the target is in Molten Lava."
+	set {_lore} to "&8Ability%nl%&f%{_casttime}% second cast%nl%&7Cooldown: &f%{_cdd}% seconds%nl%&7Use: &fRMB%nl%<##b03228>Hurls molten lava at the target, dealing%nl%&f%{_damage}% <##ff4d00>Lava <##b03228>damage.%nl%<##b03228>Lava Burst will always critically strike%nl%<##b03228>if the target is in Molten Lava."
 	
 	set {_loc} to {_p}'s location
 	set {_hand} to a random integer between 1 and 2
@@ -911,32 +884,22 @@ function LavaBurst(p: player, x: entity, multiplier: number, replicated: boolean
 	#drawArc particle "redstone", RGB 194, 77, 45, center {_loc}, target location of {_x}, id "%{_pid}%", rainbowMode false, density 50, height 2, pitchMultiplier 1, visibleRange 30
 	#drawArc particle "redstone", RGB 74, 56, 51, center {_loc}, target location of {_x}, id "%{_pid2}%", rainbowMode false, density 35, height 2, pitchMultiplier 1, visibleRange 30
 	if distance between {_p} and {_x} < 300:
-		set {_shape} to a line from {_p} to {_x}
+		if {_ability} = "Rain of Lava":
+			set {_locEffect} to location 5 above {_p}
+		else:
+			set {_locEffect} to location at {_p}
+		set {_shape} to a line from {_locEffect} to {_x}
 		set particle of {_shape} to lava particle
-		draw {_shape} at {_p}
+		draw shape {_shape} at {_locEffect} ~ {_x}
 	#drawArc particle "blockcrack", material lava, center {_loc}, target location of {_x}, id "%{_pid}%", rainbowMode false, density 50, height 2, pitchMultiplier 1, visibleRange 30
 	#drawArc particle "blockcrack", material lava, center {_loc}, target location of {_x}, id "%{_pid2}%", rainbowMode false, density 35, height 2, pitchMultiplier 1, visibleRange 30
 	set {_r} to a random integer between 1 and 6
 	play sound "skill.ghazan.lava_burst_cast" with volume 4 and pitch 1 at {_p}
 	loop all items in the inventory of {_p}:
-		if name of loop-item = "<##b03228>Lava Burst" or "<##b03228>Wybuch Lawy":
-			if {language::%{_p}%} = "English":
-				if name of loop-item does not contain "Lava Burst":
-					replace all "Wybuch Lawy" in loop-item's name with "Lava Burst"
-				set lore of loop-item to {_loreEN}
-			else:
-				if name of loop-item does not contain "Wybuch Lawy":
-					replace all "Lava Burst" in loop-item's name with "Wybuch Lawy"
-				set lore of loop-item to {_lore}
-		if name of loop-item = "<##b03228>Lava Surge" or "<##b03228>Przepływ Lawy":
-			if {language::%{_p}%} = "English":
-				if name of loop-item does not contain "Lava Surge":
-					replace all "Przepływ Lawy" in loop-item's name with "Lava Surge"
-				set lore of loop-item to {_lore2EN}
-			else:
-				if name of loop-item does not contain "Przepływ Lawy":
-					replace all "Lava Surge" in loop-item's name with "Przepływ Lawy"
-				set lore of loop-item to {_lore2}
+		if boolean tag "Lava Burst" of custom nbt of loop-item = true:
+			set lore of loop-item to {_lore}
+		else if boolean tag "Lava Surge" of custom nbt of loop-item = true:
+			set lore of loop-item to {_lore2}
 	wait 0.4 seconds
 	set {_d} to distance between {_p} and {_x}
 	if {_d} > 3:
@@ -946,28 +909,20 @@ function LavaBurst(p: player, x: entity, multiplier: number, replicated: boolean
 		wait 0.5 seconds
 	set {_r} to a random integer between 1 and 5
 	play sound "skill.ghazan.lava_burst_impact" with volume 4 and pitch 1 at {_x}
-	if {wildfire::%{_p}%} is true:
-		set {_x}'s last damage cause to sweep attack
+	set {_x}'s last damage cause to sweep attack
+	if {_ability} = "Rain of Lava":
 		if {_replicated} is not true:
-			set metadata value "LastDamageCauseEN" of {_x} to "<##b03228>Rain of Lava"
-			set metadata value "LastDamageCause" of {_x} to "<##b03228>Deszcz Lawy"
+			set metadata value "LastDamageCause" of {_x} to "<##b03228>Rain of Lava"
 		else:
-			set metadata value "LastDamageCauseEN" of {_x} to "<##b03228>Rain of Lava (Echo)"
-			set metadata value "LastDamageCause" of {_x} to "<##b03228>Deszcz Lawy (Echo)"
-		set {_lore} to "&8Umiejętność%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdd}%%nl%&7Użycie: &fPPM%nl%<##b03228>Ghazan tworzy pokaz swoich umiejętności,%nl%<##b03228>wyrzucając się w powietrze i nieprzerwanie%nl%<##b03228>ciskając <##b03228>Wybuchem Lawy w pobliskich wrogów%nl%<##b03228>przez &f%{_wait}% sekund<##b03228>."
-		set {_loreEN} to "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdd}%%nl%&7Use: &fRMB%nl%<##b03228>Ghazan creates a display of his skill,%nl%<##b03228>throwing himself in the air and continously%nl%<##b03228>firing Lava Burst at nearby enemies for &f%{_wait}% seconds<##b03228>."
-		set metadata value "LastDamageCauseLoreEN" of {_x} to {_loreEN}
+			set metadata value "LastDamageCause" of {_x} to "<##b03228>Rain of Lava (Echo)"
+		set {_lore} to "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdd}%%nl%&7Use: &fRMB%nl%<##b03228>Ghazan creates a display of his skill,%nl%<##b03228>throwing himself in the air and continously%nl%<##b03228>firing Lava Burst at nearby enemies for &f%{_wait}% seconds<##b03228>."
 		set metadata value "LastDamageCauseLore" of {_x} to {_lore}
-	else:
-		set {_x}'s last damage cause to sweep attack
+	else if {_ability} = "Lava Burst":
 		if {_replicated} is not true:
-			set metadata value "LastDamageCauseEN" of {_x} to "<##b03228>Lava Burst"
-			set metadata value "LastDamageCause" of {_x} to "<##b03228>Wybuch Lawy"
+			set metadata value "LastDamageCause" of {_x} to "<##b03228>Lava Burst"
 		else:
 			set metadata value "LastDamageCauseEN" of {_x} to "<##b03228>Lava Burst (Echo)"
-			set metadata value "LastDamageCause" of {_x} to "<##b03228>Wybuch Lawy (Echo)"
-		set metadata value "LastDamageCauseLoreEN" of {_x} to {_loreEN}
-		set metadata value "LastDamageCauseLore" of {_x} to {_lore}
+	set metadata value "LastDamageCauseLore" of {_x} to {_lore}
 
 	set metadata value "Element" of {_p} to "Lava"
 	if metadata value "MoltenLava%{_p}%" of block under {_x} is set:
@@ -996,7 +951,7 @@ function LavaBurst(p: player, x: entity, multiplier: number, replicated: boolean
 	if boolean tag "Constellation;Incineration" of nbt of {karta::%{_p}%} is set:
 		if {_replicated} is not true:
 			chance of 40%:
-				ReplicatedLavaBurst({_p}, {_x}, 0.2)
+				ReplicatedLavaBurst({_p}, {_x}, 0.2, {_ability})
 
 	#VOLCANIC INFERNO
 	wait 1 tick
@@ -1020,8 +975,7 @@ function LavaBurst(p: player, x: entity, multiplier: number, replicated: boolean
 					set {_y} to location of loop-block
 					draw 3 of dust using dustOption(orange, 1) at {_y}
 			loop all living entities in radius 2.5 around {_x}:
-				set {_custom} to tag "custom" of nbt of loop-entity
-				if tag "ECMob" of {_custom} is set:
+				if boolean tag "ECMob" of custom nbt of loop-entity is set:
 					set metadata value "Element" of {_p} to "Lava"
 					set loop-entity's last damage cause to sweep attack
 					set metadata value "LastDamageCauseEN" of loop-entity to "<##b03228>Volcanic Fissure"
@@ -1031,36 +985,51 @@ function LavaBurst(p: player, x: entity, multiplier: number, replicated: boolean
 					chance of {_crit}%:
 						set {_dmgfissure} to {_dmgfissure}*GhazanCritDamage({_p})
 					make {_p} damage loop-entity by {_dmgfissure}*2
-	DamageDisplay({_x}, "&l<##b03228>%{_damage}% DMG", {_p})
 
-function ReplicatedLavaBurst(p: player, target: entity, multiplier: number):
+function ReplicatedLavaBurst(p: player, target: entity, multiplier: number, ability: string):
 	set {_haste} to 1 + ({haste::%{_p}%}/4)
 	set {_wait} to "%1/{_haste}% seconds" parsed as timespan
 	wait {_wait}
 	wait 1 tick
-	LavaBurst({_p}, {_target}, {_multiplier}, true)
+	LavaBurst({_p}, {_target}, {_multiplier}, {_ability}, true)
 
 function WildfireSpin(p: player):
-	if {_p}'s horizontal facing is north:
-		set {_num} to 180/-1
-	if {_p}'s horizontal facing is east:
-		set {_num} to 90/-1
-	if {_p}'s horizontal facing is south:
-		set {_num} to 0
-	if {_p}'s horizontal facing is west:
-		set {_num} to 90
+	make {_p} invisible
+	set {_id} to random integer between 0 and 999999999999
+	set {_uuid} to a random uuid
+
+	set {_properties} to "%{_p}.getPlayerProfile().getProperty("textures")%"
+	replace all "Property[name=textures" and "value=" and "," and "]" in {_properties} with ""
+	set {_properties::*} to {_properties} split at "signature="
+
+	set {_texture} to {_properties::1}
+	set {_signature} to {_properties::2}
+
+	spawn fake player named ({_p}'s name) with skin named "%{_texture}%,%{_signature}%" at {_p} for all players with id {_id} and uuid {_uuid}
+	set {_yaw} to 0
+	set camera of {_p} to entity with id {_id}
+	WildfirePush({_id})
+
 	while {wildfire::%{_p}%} is set:
-		set {_loc} to location of {_p}
-		set yaw of {_loc} to {_num}
-		set pitch of {_loc} to {_pitch}
-		teleport {_p} to {_loc}
-		if {_num} >= 0:
-			add 8 to {_num}
-		else if {_num} < 0:
-			add 8 to {_num}
-		else:
-			remove 8 from {_num}
 		wait 1 tick
+		rotate entity with id {_id} with yaw {_yaw} and pitch {_p}'s pitch for all players
+		add 10 to {_yaw}
+	
+	WildfireFall({_p}, {_id})
+	
+
+function WildfirePush(id: integer):
+	loop 5 times:
+		move entity with id {_id} by 0 4096 0 for all players
+		wait 1 tick
+
+function WildfireFall(p: player, id: integer):
+	loop 5 times:
+		move entity with id {_id} by 0 -4096 0 for all players
+		wait 1 tick
+	remove fake entity with id {_id} for all players
+	set camera of {_p} to entity with id (entity id of {_p})
+	make {_p} visible
 
 function MasterHeritage(p: player, target: entity, damageLava: number):
 	set {_pospiech} to Haste({_p})/1.5
@@ -1111,7 +1080,7 @@ function MasterHeritageLavaSpread(p: player, target: entity):
 		set {_entities::*} to LoopEntitiesAroundTarget({_target}, 100, false)
 		loop {_entities::*}:
 			if metadata value "MoltenLava%{_p}%" of block under loop-value is set:
-				LavaBurst({_p}, loop-value, 0.65)
+				LavaBurst({_p}, loop-value, 0.65, "Lava Burst")
 				add 1 to {_count}
 			stop loop if {_count} = 3
 
