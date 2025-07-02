@@ -1,7 +1,85 @@
 function dialogue(t: text, loc: location, wait: timespan, waitDelete: timespan):
     wait {_wait}
-    spawn 1 armor stand at {_loc} with nbt from "{Marker:1b,Invisible:1b}"
-    set {_ar} to last spawned armor stand
-    set the display name of {_ar} to {_t}
+    set {_id} to random integer between 0 and 999999999999
+    
+    spawn fake armor stand at {_loc} for all players with id {_id}
+    
+
+    set {_meta} to metadata packet with id {_id}
+    set {_name} to mini message from {_t}
+    add data from "name %{_name}%" to {_meta}
+    add data from "name visible true" to {_meta}
+    add data from "invisible true" to {_meta}
+
+
+    send packet {_meta} to all players
+    dialogueAnimate({_id})
     wait {_waitDelete}
-    kill {_ar}
+    remove fake entity with id {_id} for all players
+
+function chatBubble(p: player, t: text):
+    set {_maxLength} to 30
+
+    set {_bubbles} to rounded up (length of {_t}/{_maxLength})
+    set {_waitNum} to 2 + (length of {_t})/10
+    set {_wait} to "%{_waitNum}% seconds" parsed as timespan
+
+    loop {_bubbles} times:
+        set {_id} to random integer between 0 and 999999999999
+        add {_id} to {_ids::*}
+
+    if {chatbubbles::%{_p}%::*} is set:
+        if {chatbubbles::%{_p}%::*} != {_ids::*}:
+            loop {chatbubbles::%{_p}%::*}:
+                remove fake entity with id loop-value for all players
+
+    set {chatbubbles::%{_p}%::*} to {_ids::*}
+    set {_loops} to 5
+    if {_bubbles} > 5:
+        set {_loops} to {_loops} + {_bubbles}-5
+        set {_extra} to 0.25*({_bubbles}-5)
+    else:
+        set {_extra} to -0.5 + (0.175*{_bubbles})
+
+    set {_index} to 1
+    set {_height} to -0.125*{_loops}
+    loop {_ids::*}:
+        set {_loc} to location ({_height} + 0.25 * {_index}) under {_p}
+        set {_loc} to location {_extra} above {_loc}
+        spawn fake armor stand at {_loc} for all players with id loop-value
+        
+
+        set {_meta} to metadata packet with id loop-value
+
+        set {_text} to subtext of {_t} from characters ({_maxLength}*{_index})-{_maxLength} to ({_maxLength}*{_index})-1
+        set {_text} to unformatted "%{_text}%"
+        
+
+        add data from "name %{_text}%" to {_meta}
+        add data from "name visible true" to {_meta}
+        add data from "invisible true" to {_meta}
+
+        send packet {_meta} to all players
+
+        dialogueAnimate(loop-value, {_loops})
+        chatBubbleRemove({_wait}, loop-value)
+        remove 1 from {_loops} if {_loops} > 1
+        add 1 to {_index}
+
+    
+    
+
+function chatBubbleRemove(wait: timespan, id: integer):
+    wait {_wait}
+    remove fake entity with id {_id} for all players
+
+import:
+    com.destroystokyo.paper.profile.ProfileProperty
+
+function dialogueAnimate(id: integer, loops: integer = 5):
+    loop {_loops} times:
+        move entity with id {_id} by 0 256 0 for all players
+        wait 1 tick
+
+
+            

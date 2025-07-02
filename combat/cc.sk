@@ -1,3 +1,30 @@
+on player move:
+	if {stun::%player%} is true:
+		cancel event
+	if {zolnierze::%player%::*} is set:
+		set {_yaw} to player's yaw
+		set {_pitch} to player's pitch
+		loop {zolnierze::%player%::*}:
+			set {_loc} to location of loop-value
+			set y-coordinate of {_loc} to (y-coordinate of {_loc} - 0.4)
+			teleport {zolnierz::owner::%uuid of loop-value%} to {_loc}
+			wait 1 tick
+			if {conqueringsands::%uuid of loop-value%} is not true:
+				if loop-value is on ground:
+					set {_loc} to location of loop-value
+					set yaw of {_loc} to {_yaw}
+					set pitch of {_loc} to {_pitch}
+					teleport loop-value to {_loc}
+	if {chatbubbles::%player%::*} is set:
+		set {_locThen} to location of player
+		wait 1 tick
+		set {_locNow} to location of player
+		loop {chatbubbles::%player%::*}:
+			set {_x} to (x-coordinate of {_locNow}) - (x-coordinate of {_locThen})
+			set {_y} to (y-coordinate of {_locNow}) - (y-coordinate of {_locThen})
+			set {_z} to (z-coordinate of {_locNow}) - (z-coordinate of {_locThen})
+			move entity with id loop-value by {_x}*4096 {_y}*4096 {_z}*4096 for all players
+		
 on entity move:
 	if {stun::%event-entity%} is true:
 		cancel event
@@ -78,31 +105,7 @@ on entity move:
 			set {_cd} to "%{_cd}% seconds" parsed as timespan
 			create cooldown "WaterTentacleSound%event-entity%" for {_cd}
 			play sound "block.water.ambient" with volume 1.75 and pitch {_pitch} at event-entity
-	if event-entity is a player:
-		if {zolnierze::%event-entity%::*} is set:
-			set {_yaw} to event-entity's yaw
-			set {_pitch} to event-entity's pitch
-			loop {zolnierze::%event-entity%::*}:
-				set {_loc} to location of loop-value
-				set y-coordinate of {_loc} to (y-coordinate of {_loc} - 0.4)
-				teleport {zolnierz::owner::%uuid of loop-value%} to {_loc}
-				wait 1 tick
-				if {conqueringsands::%uuid of loop-value%} is not true:
-					if loop-value is on ground:
-						set {_loc} to location of loop-value
-						set yaw of {_loc} to {_yaw}
-						set pitch of {_loc} to {_pitch}
-						teleport loop-value to {_loc}
-			if metadata value "ChatBubbleID" of event-entity is set:
-				set {_locThen} to location of event-entity
-				wait 1 tick
-				set {_locNow} to location of event-entity
-				set {_id} to metadata value "ChatBubbleID" of event-entity
-				set {_x} to (x-coordinate of {_locNow}) - (x-coordinate of {_locThen})
-				set {_y} to (y-coordinate of {_locNow}) - (y-coordinate of {_locThen})
-				set {_z} to (z-coordinate of {_locNow}) - (z-coordinate of {_locThen})
-				move entity with id {_id} by {_x}*4096 {_y}*4096 {_z}*4096 for all players
-	else if event-entity is a sheep:
+	if event-entity is a sheep:
 		if "%region at block under event-entity%" contains "DreamcatcherPlatforms":
 			loop all blocks in radius 6 around the event-entity where [input = blue glazed terracotta]:
 				if ("%regions at loop-block%") = ("%regions at block under event-entity%"):
