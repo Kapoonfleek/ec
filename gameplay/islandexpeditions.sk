@@ -14,6 +14,8 @@ import:
     org.mvplugins.multiverse.core.world.MultiverseWorld
     org.bukkit.Bukkit
     org.bukkit.World
+    org.bukkit.Chunk
+    org.bukkit.plugin.Plugin
 
 
 effect paste schematic %string% at %location% [(1¦(with|including) air)]:
@@ -66,18 +68,39 @@ function createNewInstance(w: string):
     prepare world {_w} as {_newInstance}
 
 function isWorldIsland(w: world) :: boolean:
-    set {_worldList::*} to "PlunderCove"
+    set {_worldList::*} to getIslandWorlds()
     set {_world} to "%{_w}%"
     replace all "0", "1", "2", "3", "4", "5", "6", "7", "8" and "9" in {_world} with ""
     if {_worldList::*} contains {_world}:
         set {_return} to true
     return {_return}
 
+function getIslandWorlds() :: strings:
+    load yaml "plugins/Skript/islandexpeditions/IslandList" as "IslandList"
+    set {_islandList::*} to yaml list "Islands" in "IslandList"
+    unload yaml "IslandList"
+
+    return {_islandList::*}
+
 on rightclick:
     if player's tool is bamboo:
         if player's name = "Pehrek":
-            set {_island} to "PlunderCove"
+            set {_islandList::*} to getIslandWorlds()
+            set {_island} to a random element of {_islandList::*}
+
             set {_direction} to a random element of "Longitude" and "Latitude"
+            
+            if {_direction} = "Longitude":
+                set {_rotation} to a random element of "North" and "South"
+                
+            else:
+                set {_rotation} to a random element of "East" and "West"
+
+            if {_enemyDirection} = "Longitude":
+                set {_enemyRotation} to a random element of "North" and "South"
+                
+            else:
+                set {_enemyRotation} to a random element of "East" and "West"
 
             createNewInstance({_island})
             set {_instance} to getNewInstance({_island})-1
@@ -99,9 +122,11 @@ on rightclick:
 
             set {_chunkBorder1} to location({_borderMin}, 0, {_borderMin}, world {_newInstance})
             set {_chunkBorder2} to location({_borderMax}, 0, {_borderMax}, world {_newInstance})
+            set {_plugin} to instance of plugin "Skript"
+            
             loop all chunks within {_chunkBorder1} and {_chunkBorder2}:
-                #async load chunk at loop-value with ticket
-                broadcast loop-value
+                loop-value.addPluginChunkTicket({_plugin})
+                loop-value.load()
 
             set worldborder of world {_newInstance} to a worldborder:
                 set worldborder radius of event-worldborder to {_borderRadius}
@@ -109,53 +134,204 @@ on rightclick:
                 set worldborder warning distance of event-worldborder to 10
 
             set {_shipStart} to a random integer between 1 and {_total}
+            set {_enemyShipStart} to enemyShipStart({_shipStart}, {_total})
 
             set {_x} to yaml value "Locations.ShipAlly.%{_direction}%.%{_shipStart}%.x" in "%{_island}%Locations"
             set {_y} to yaml value "Locations.ShipAlly.%{_direction}%.%{_shipStart}%.y" in "%{_island}%Locations"
             set {_z} to yaml value "Locations.ShipAlly.%{_direction}%.%{_shipStart}%.z" in "%{_island}%Locations"
 
+            set {_xEnemy} to yaml value "Locations.ShipAlly.%{_enemyDirection}%.%{_enemyShipStart}%.x" in "%{_island}%Locations"
+            set {_yEnemy} to yaml value "Locations.ShipAlly.%{_enemyDirection}%.%{_enemyShipStart}%.y" in "%{_island}%Locations"
+            set {_zEnemy} to yaml value "Locations.ShipAlly.%{_enemyDirection}%.%{_enemyShipStart}%.z" in "%{_island}%Locations"
+
             unload yaml "%{_island}%Locations"
             
             set {_locShip} to location({_x}, {_y}, {_z}, world {_newInstance})
+            set {_locEnemyShip} to location({_xEnemy}, {_yEnemy}, {_zEnemy}, world {_newInstance})
             
-            if {_direction} = "Longitude":
-                set {_rotation} to a random element of "North" and "South"
-                
-            else:
-                set {_rotation} to a random element of "East" and "West"
             
             paste schematic "plugins/FastAsyncWorldEdit/schematics/IslandExpeditionsShip%{_rotation}%.schem" at {_locShip}
+            paste schematic "plugins/FastAsyncWorldEdit/schematics/IslandExpeditionsEnemyShip%{_enemyRotation}%.schem" at {_locEnemyShip}
 
             if {_rotation} = "North" or "South":
                 if {_rotation} = "South":
-                    set {_z} to z-coordinate of {_locShip} + 5.75
+                    set {_z} to z-coordinate of {_locShip} + 5.85
                     set {_x} to x-coordinate of {_locShip}
                     set {_yaw} to 0
                 else:
-                    set {_z} to z-coordinate of {_locShip} - 5.75
+                    set {_z} to z-coordinate of {_locShip} - 5.85
                     set {_x} to x-coordinate of {_locShip}
                     set {_yaw} to 180
             else:
                 if {_rotation} = "West":
-                    set {_x} to x-coordinate of {_locShip} - 5.75
+                    set {_x} to x-coordinate of {_locShip} - 5.85
                     set {_z} to z-coordinate of {_locShip}
                     set {_yaw} to 90
                 else:
-                    set {_x} to x-coordinate of {_locShip} + 5.75
+                    set {_x} to x-coordinate of {_locShip} + 5.85
                     set {_z} to z-coordinate of {_locShip}
                     set {_yaw} to -90
 
             set {_locFlynn} to location({_x}, y-coordinate of {_locShip} + 13.5, {_z}, world {_newInstance}, {_yaw}, -5)
-            spawn armor stand at {_locFlynn}
-            set {_flynnFairwind} to last spawned armor stand
+            spawn an adult zombie at {_locFlynn} with nbt from "{Silent:1b,NoAI:1b}"
+            set {_flynnFairwind} to last spawned zombie
             set display name of {_flynnFairwind} to "Flynn Fairwind"
+            set scale attribute of {_flynnFairwind} to 0.9
+            set {_flynnFairwind}'s tool to air
+
             entityTitle({_flynnFairwind}, "Captain")
+            flynnFairwindIdleSounds({_flynnFairwind})
 
             teleport {_partyMembers::*} to {_locFlynn}
-        
 
-on rightclick on a player:
-    if name of clicked player = "Flynn Fairwind":
+            load yaml "plugins/Skript/islandexpeditions/DialoguesIslands.yml" as "IslandsDialogues"
+            set {_totalDialogues} to size of (yaml node keys "Dialogues.Arrive" in "IslandsDialogues")
+            set {_arriveDialogue} to a random integer between 1 and {_totalDialogues}
+
+            if {_arriveDialogue} = 4:
+                while {_arriveDialogue} = 4:
+                    set {_arriveDialogue} to a random integer between 1 and {_totalDialogues}
+            else if {_arriveDialogue} = 3:
+                set {_arriveSoundFollowup} to yaml value "Dialogues.Arrive.4.Sound" in "IslandsDialogues"
+                set {_arriveQuoteFollowup} to yaml value "Dialogues.Arrive.4.Quote" in "IslandsDialogues"
+                flynnFairwindFollowupDialogue({_flynnFairwind}, {_locFlynn}, 10 seconds, {_arriveSoundFollowup}, {_arriveQuoteFollowup}, {_partymembers::*})
+
+            set {_arriveSound} to yaml value "Dialogues.Arrive.%{_arriveDialogue}%.Sound" in "IslandsDialogues"
+            set {_arriveQuote} to yaml value "Dialogues.Arrive.%{_arriveDialogue}%.Quote" in "IslandsDialogues"
+
+
+            unload yaml "IslandsDialogues"
+
+            play sound {_arriveSound} with volume 2 and pitch 1 at {_locFlynn}
+            send "&eFlynn Fairwind says: %{_arriveQuote}%" to {_partymembers::*}
+            dialogue({_arriveQuote}, {_locFlynn}, 3 seconds, 0 seconds, {_partymembers::*})
+
+            #Enemies
+            #       Undead:
+            #           fdsf
+            #       Fire Elementals
+
+            #Azerite
+function flynnFairwindIdleSounds(e: entity):
+    while {_e} is alive:
+        if metadata value "Speaking" of {_e} != true:
+            play sound "npc.flynnfairwind.idle" with volume 0.9 and pitch 1 at location of {_e}
+        set {_randomWait} to a random number between 10 and 20
+        set {_wait} to "%{_randomWait}% seconds" parsed as timespan
+        wait {_wait}
+
+function flynnFairwindFollowupDialogue(e: entity, loc: location, wait: timespan, sound: string, quote: string, partymembers: players):
+    set metadata value "Speaking" of {_e} to true
+    wait {_wait}
+    play sound {_sound} with volume 2 and pitch 1 at {_loc}
+    send "&eFlynn Fairwind says: %{_quote}%" to {_partymembers::*}
+    clear metadata value "Speaking" of {_e}
+
+function enemyShipStart(allyShipStart: integer, total: integer) :: integer:
+    set {_enemyShipStart} to a random integer between 1 and {_total}
+    while {_allyShipStart} = {_enemyShipStart}:
+        set {_enemyShipStart} to a random integer between 1 and {_total}
+    return {_enemyShipStart}
+
+on region enter:
+    if "%event-region%" contains "beachdocksship":
+        if metadata value "AtDocks" of player is not set:
+            set metadata value "AtDocks" of player to true
+            seagullsAmbientSounds(player)
+            #shoreAmbientSounds(player)
+            #windAmbientSounds(player)
+
+function seagullsAmbientSounds(p: player):
+    while "%regions at {_p}%" contains "SpawnArea":
+        set {_random} to a random integer between 1 and 14
+        set {_sound} to yaml value "Sounds.Ambient.Seagulls.%{_random}%.Sound" in "IslandsSounds"
+        set {_duration} to yaml value "Sounds.Ambient.Seagulls.%{_random}%.Duration" in "IslandsSounds"
+        play sound {_sound} with volume 1 and pitch 1 to {_p}
+        set {_w} to a random number between 1 and 6
+        set {_wait} to "%{_w}% seconds" parsed as timespan
+        wait {_duration} + {_wait}
+        stop loop if metadata value "AtDocks" of {_p} is not set
+    stop sound {_sound} for {_p}
+
+function shoreAmbientSounds(p: player):
+    while "%regions at {_p}%" contains "SpawnArea":
+        set {_random} to a random integer between 1 and 4
+        set {_sound} to yaml value "Sounds.Ambient.Shore.%{_random}%.Sound" in "IslandsSounds"
+        set {_duration} to yaml value "Sounds.Ambient.Shore.%{_random}%.Duration" in "IslandsSounds"
+        play sound {_sound} with volume 1 and pitch 1 to {_p}
+        set {_w} to a random number between 1 and 6
+        set {_wait} to "%{_w}% seconds" parsed as timespan
+        wait {_duration} + {_wait}
+        stop loop if metadata value "AtDocks" of {_p} is not set
+    stop sound {_sound} for {_p}
+
+function windAmbientSounds(p: player):
+    set {wind} to "Heavy"
+    if {wind} is set:
+        while "%regions at {_p}%" contains "SpawnArea":
+            set {_random} to a random integer between 1 and 4
+            set {_sound} to yaml value "Sounds.Ambient.Wind.%{wind}%.%{_random}%.Sound" in "IslandsSounds"
+            set {_duration} to yaml value "Sounds.Ambient.Wind.%{wind}%.%{_random}%.Duration" in "IslandsSounds"
+            play sound {_sound} with volume 1 and pitch 1 to {_p}
+            set {_w} to a random number between 1 and 6
+            set {_wait} to "%{_w}% seconds" parsed as timespan
+            wait {_duration} + {_wait}
+            stop loop if metadata value "AtDocks" of {_p} is not set
+        stop sound {_sound} for {_p}
+
+on region exit:
+    wait 1 tick
+    if "%regions at player%" does not contain "beachdocksship":
+        clear metadata value "AtDocks" of player
+
+
+    
+    
+command /diatest:
+    trigger:
+        set {_island} to "PlunderCove"
+        load yaml "plugins/Skript/islandexpeditions/%{_island}%/Locations.yml" as "%{_island}%Locations"
+        set {_c} to 0
+        loop yaml node keys "Locations.ShipAlly.Longitude" in "%{_island}%Locations":
+            loop yaml node keys "Locations.ShipAlly.Longitude.%loop-value%" in "%{_island}%Locations":
+                set {_f} to yaml value "Locations.ShipAlly.Longitude.%loop-value-1%.%loop-value-2%" in "%{_island}%Locations"
+                if {_c} < 3:
+                    set {_orien} to "North"
+                else:
+                    set {_orien} to "South"
+                broadcast "Locations.ShipAlly.Longitude.%loop-value-1%.%loop-value-2%.%{_f}%"
+            add 1 to {_c}
+        broadcast {_c}
+        unload yaml "%{_island}%Locations"
+        stop
+        set {_islandList::*} to getIslandWorlds()
+        set {_island} to a random element of {_islandList::*}
+
+        load yaml "plugins/Skript/islandexpeditions/DialoguesIslands.yml" as "IslandsDialogues"
+        set yaml value "Dialogues.Arrive.1.Sound" in "IslandsDialogues" to "npc.flynnfairwind.island_start_arrive_anchorsaway"
+        set yaml value "Dialogues.Arrive.1.Quote" in "IslandsDialogues" to "Anchor's away and planks are down! We'll get the Azerite detector online, you handle the bad guys."
+
+        set yaml value "Dialogues.Arrive.2.Sound" in "IslandsDialogues" to "npc.flynnfairwind.island_start_arrive_lookslike"
+        set yaml value "Dialogues.Arrive.2.Quote" in "IslandsDialogues" to "Looks like we've arrived! We'll get the detector up and running while you get acquainted with the island."
+
+        set yaml value "Dialogues.Arrive.3.Sound" in "IslandsDialogues" to "npc.flynnfairwind.island_start_arrive_opensea"
+        set yaml value "Dialogues.Arrive.3.Quote" in "IslandsDialogues" to "Ahh, the open sea. A shanty on your lips, the wind in your chest hair. Now that's freedom!"
+
+        set yaml value "Dialogues.Arrive.4.Sound" in "IslandsDialogues" to "npc.flynnfairwind.island_start_arrive_opensea_wellunless"
+        set yaml value "Dialogues.Arrive.4.Quote" in "IslandsDialogues" to "Well... unless you've been pressed into service with the Navy. Or captured by pirates. And then... captured by the Navy."
+
+        set yaml value "Dialogues.Arrive.5.Sound" in "IslandsDialogues" to "npc.flynnfairwind.island_start_arrive_shipsdocked"
+        set yaml value "Dialogues.Arrive.5.Quote" in "IslandsDialogues" to "Ship's docked! Enjoy your adventure while we spin up the ol' Azerite detector."
+        
+        save yaml "IslandsDialogues"
+        unload yaml "IslandsDialogues"
+        stop
+        #Pet island dialogues
+        load yaml "plugins/Skript/islandexpeditions/%{_island}%/Dialogues.yml" as "%{_island}%Dialogues"
+        unload yaml "%{_island}%Dialogues"
+
+on rightclick on an entity:
+    if name of clicked entity = "Flynn Fairwind":
         if cooldown "Flynn Fairwind-Talk%player%" is finished:
             create cooldown "Flynn Fairwind-Talk%player%" for 2 seconds
             set {_greeting} to a random integer between 1 and 7
@@ -174,42 +350,41 @@ on rightclick on a player:
             else if {_greeting} = 7:
                 set {_sound} to "npc.flynnfairwind.greeting_whatsyour"
             play sound {_sound} with volume 3 and pitch 1 to player
-
+  
+        if clicked entity is a player:
             play sound "entity.experience_orb.pickup" with volume 3 and pitch 1 to player
+            set metadata tag "islandExpeditions" of player to chest inventory with 3 rows named "Set sail for an Island Expedition!"
+            set {_gui} to metadata tag "islandExpeditions" of player
+            set {_azeriteCollect} to 36000
+
+            set {_azerite} to 300000
+            set {_barFill} to round(({_azerite}/{_azeriteCollect})*10, 0)*10
             
-
-        set metadata tag "islandExpeditions" of player to chest inventory with 3 rows named "Set sail for an Island Expedition!"
-        set {_gui} to metadata tag "islandExpeditions" of player
-        set {_azeriteCollect} to 36000
-
-        set {_azerite} to 300000
-        set {_barFill} to round(({_azerite}/{_azeriteCollect})*10, 0)*10
-        
-        if {_azerite} > {_azeriteCollect}:
-            set {_azeriteTooltip} to {_azeriteCollect}
-        else:
-            set {_azeriteTooltip} to {_azerite}
-
-        if {_azerite} >= 0.1*{_azeriteCollect}:
-            if {_azerite} >= {_azeriteCollect}:
-                set {_tooltip} to "azeriteweekly_full"
+            if {_azerite} > {_azeriteCollect}:
+                set {_azeriteTooltip} to {_azeriteCollect}
             else:
-                set {_tooltip} to "azeriteweekly_%{_barFill}%"
-        else:
-            set {_tooltip} to "azeriteweekly"
-        set slot 4 of {_gui} to book named " " with lore "%nl%%nl%%nl%     &fWeekly Quest%nl%     &7Collect Azerite on Island Expeditions.%nl% %nl% %nl%     <##fdd002>Azerite Gathered:     &f%{_azeriteTooltip}%/%{_azeriteCollect}%%nl% %nl% %nl% %nl%     <##fdd002>Reward:%nl%     &f <##a335ee>[Humming Azerite Heart]%nl%        &f(3500 Azerite)"
-        set slot 12 of {_gui} to diamond named "<##23fa02>Normal Difficulty" with lore "&7Click here to set sail for a <##00ff00>Normal%nl%&7difficulty Island Expedition.%nl% %nl%&7Enemies on this difficulty will have%nl%&fnormal &7amounts of health.%nl% %nl%&7Recommended Item Level: &f50%nl% %nl%&7Rewards:%nl%&8- &f600 Player EXP%nl%&8- &f <##00ff00>[Small Azerite Cluster]%nl%      &f(150 Azerite)" with nbt from "{""minecraft:custom_model_data"":{floats:[47.0f]}}"
-        set slot 13 of {_gui} to diamond named "<##0382ff>Heroic Difficulty" with lore "&7Click here to set sail for a <##0070dd>Heroic%nl%&7difficulty Island Expedition.%nl% %nl%&7Enemies on this difficulty will have%nl%&fhigh &7amounts of health.%nl% %nl%&7Recommended Item Level: &f70%nl% %nl%&7Rewards:%nl%&8- &f1300 Player EXP%nl%&8- &f <##0070dd>[Glowing Azerite Crystal]%nl%      &f(300 Azerite)" with nbt from "{""minecraft:custom_model_data"":{floats:[48.0f]}}"
-        set slot 14 of {_gui} to diamond named "<##ae38ff>Mythic Difficulty" with lore "&7Click here to set sail for a <##a335ee>Mythic%nl%&7difficulty Island Expedition.%nl% %nl%&7Choose this difficulty to face a%nl%&fchallenging &7Island Expedition.%nl% %nl%&7Recommended Item Level: &f100%nl% %nl%&7Rewards:%nl%&8- &f2000 Player EXP%nl%&8- &f <##0070dd>[Glowing Azerite Geode]%nl%      &f(450 Azerite)" with nbt from "{""minecraft:custom_model_data"":{floats:[49.0f]}}"
-        set slot 16 of {_gui} to light blue stained glass pane named "&bPVP" with lore "&7Click here to set sail for a &fPVP%nl%&7Island Expedition and race against%nl%&7other players for Azerite.%nl% %nl%&7You can queue &fsolo &7or with a party%nl%&7of up to &ftwo &7players.%nl% %nl%&7Rewards:%nl%&8- &f1300 Player EXP%nl%&8- &f <##0070dd>[Glowing Azerite Crystal]%nl%      &f(300 Azerite)%nl% %nl%&7COMING IN 8.4.0:%nl%&7Tournament of Elements%nl% %nl%&c❌ Not Available"
-        add "                                                        " to lore of slot 4 of {_gui}
-        loop 6 times:
-            add " " to lore of slot 4 of {_gui}
-        set tooltip style of slot 4 of {_gui} to {_tooltip}
-        set string tag "Difficulty" of custom nbt of slot 4 of {_gui} to "Normal"
-        set string tag "Difficulty" of custom nbt of slot 5 of {_gui} to "Heroic"
-        set string tag "Difficulty" of custom nbt of slot 6 of {_gui} to "Mythic"
-        open {_gui} to player
+                set {_azeriteTooltip} to {_azerite}
+
+            if {_azerite} >= 0.1*{_azeriteCollect}:
+                if {_azerite} >= {_azeriteCollect}:
+                    set {_tooltip} to "azeriteweekly_full"
+                else:
+                    set {_tooltip} to "azeriteweekly_%{_barFill}%"
+            else:
+                set {_tooltip} to "azeriteweekly"
+            set slot 4 of {_gui} to book named " " with lore "%nl%%nl%%nl%     &fWeekly Quest%nl%     &7Collect Azerite on Island Expeditions.%nl% %nl% %nl%     <##fdd002>Azerite Gathered:     &f%{_azeriteTooltip}%/%{_azeriteCollect}%%nl% %nl% %nl% %nl%     <##fdd002>Reward:%nl%     &f <##a335ee>[Humming Azerite Heart]%nl%        &f(3500 Azerite)"
+            set slot 12 of {_gui} to diamond named "<##23fa02>Normal Difficulty" with lore "&7Click here to set sail for a <##00ff00>Normal%nl%&7difficulty Island Expedition.%nl% %nl%&7Enemies on this difficulty will have%nl%&fnormal &7amounts of health.%nl% %nl%&7Recommended Item Level: &f50%nl% %nl%&7Rewards:%nl%&8- &f600 Player EXP%nl%&8- &f <##00ff00>[Small Azerite Cluster]%nl%      &f(150 Azerite)" with nbt from "{""minecraft:custom_model_data"":{floats:[47.0f]}}"
+            set slot 13 of {_gui} to diamond named "<##0382ff>Heroic Difficulty" with lore "&7Click here to set sail for a <##0070dd>Heroic%nl%&7difficulty Island Expedition.%nl% %nl%&7Enemies on this difficulty will have%nl%&fhigh &7amounts of health.%nl% %nl%&7Recommended Item Level: &f70%nl% %nl%&7Rewards:%nl%&8- &f1300 Player EXP%nl%&8- &f <##0070dd>[Glowing Azerite Crystal]%nl%      &f(300 Azerite)" with nbt from "{""minecraft:custom_model_data"":{floats:[48.0f]}}"
+            set slot 14 of {_gui} to diamond named "<##ae38ff>Mythic Difficulty" with lore "&7Click here to set sail for a <##a335ee>Mythic%nl%&7difficulty Island Expedition.%nl% %nl%&7Choose this difficulty to face a%nl%&fchallenging &7Island Expedition.%nl% %nl%&7Recommended Item Level: &f100%nl% %nl%&7Rewards:%nl%&8- &f2000 Player EXP%nl%&8- &f <##0070dd>[Glowing Azerite Geode]%nl%      &f(450 Azerite)" with nbt from "{""minecraft:custom_model_data"":{floats:[49.0f]}}"
+            set slot 16 of {_gui} to light blue stained glass pane named "&bPVP" with lore "&7Click here to set sail for a &fPVP%nl%&7Island Expedition and race against%nl%&7other players for Azerite.%nl% %nl%&7You can queue &fsolo &7or with a party%nl%&7of up to &ftwo &7players.%nl% %nl%&7Rewards:%nl%&8- &f1300 Player EXP%nl%&8- &f <##0070dd>[Glowing Azerite Crystal]%nl%      &f(300 Azerite)%nl% %nl%&7COMING IN 8.4.0:%nl%&7Tournament of Elements%nl% %nl%&c❌ Not Available"
+            add "                                                        " to lore of slot 4 of {_gui}
+            loop 6 times:
+                add " " to lore of slot 4 of {_gui}
+            set tooltip style of slot 4 of {_gui} to {_tooltip}
+            set string tag "Difficulty" of custom nbt of slot 4 of {_gui} to "Normal"
+            set string tag "Difficulty" of custom nbt of slot 5 of {_gui} to "Heroic"
+            set string tag "Difficulty" of custom nbt of slot 6 of {_gui} to "Mythic"
+            open {_gui} to player
 
 on inventory close:
     if player's current inventory = metadata tag "islandExpeditions" of player:
@@ -408,3 +583,4 @@ command /addisland [<string>]:
                 send "&cArg-1 must be an Island Expedition map." to player
         else:
             send "&cYou cannot use this command." to player
+
