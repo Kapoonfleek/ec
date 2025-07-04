@@ -88,19 +88,27 @@ on rightclick:
             set {_islandList::*} to getIslandWorlds()
             set {_island} to a random element of {_islandList::*}
 
+            set {_difficulty} to "<##ae38ff>Mythic"
+
             set {_direction} to a random element of "Longitude" and "Latitude"
+            set {_enemyDirection} to a random element of "Longitude" and "Latitude"
+            set {_directionsLongitude::*} to "North" and "South"
+            set {_directionsLatitude::*} to "East" and "West"
             
             if {_direction} = "Longitude":
                 set {_rotation} to a random element of "North" and "South"
+                remove {_rotation} from {_directionsLongitude::*}
                 
             else:
                 set {_rotation} to a random element of "East" and "West"
+                remove {_rotation} from {_directionsLatitude::*}
 
             if {_enemyDirection} = "Longitude":
-                set {_enemyRotation} to a random element of "North" and "South"
-                
+                set {_enemyRotation} to a random element of {_directionsLongitude::*}
             else:
-                set {_enemyRotation} to a random element of "East" and "West"
+                set {_enemyRotation} to a random element of {_directionsLatitude::*}
+
+            broadcast "%{_enemyRotation}% DIRECTION IN WHICH SHIP IS SPAWNED"
 
             createNewInstance({_island})
             set {_instance} to getNewInstance({_island})-1
@@ -111,10 +119,22 @@ on rightclick:
             else:
                 add player to {_partyMembers::*}
 
-            set metadata value "IslandExpeditionInstance" of {_partyMembers::*} to {_instance}
-
             load yaml "plugins/Skript/islandexpeditions/%{_island}%/Locations.yml" as "%{_island}%Locations"
             set {_total} to yaml value "TotalLocations.ShipAlly.%{_direction}%" in "%{_island}%Locations"
+
+            loop yaml node keys "Locations.ShipAlly.%{_direction}%.%{_rotation}%" in "%{_island}%Locations":
+                set {_integer} to (loop-value parsed as integer)
+                set {_allyLocations::*} to {_allyLocations::*} and {_integer}
+
+            loop yaml node keys "Locations.ShipAlly.%{_enemyDirection}%.%{_enemyRotation}%" in "%{_island}%Locations":
+                set {_integer} to (loop-value parsed as integer)
+                set {_enemyLocations::*} to {_enemyLocations::*} and {_integer}
+
+            set {_lowestAlly} to min({_allyLocations::*})
+            set {_highestAlly} to max({_allyLocations::*})
+
+            set {_lowestEnemy} to min({_enemyLocations::*})
+            set {_highestEnemy} to max({_enemyLocations::*})
 
             set {_borderRadius} to yaml value "WorldBorderRadius" in "%{_island}%Locations"
             set {_borderMin} to {_borderRadius}-200
@@ -133,28 +153,42 @@ on rightclick:
                 set worldborder center of event-worldborder to location(0, 500, 0)
                 set worldborder warning distance of event-worldborder to 10
 
-            set {_shipStart} to a random integer between 1 and {_total}
-            set {_enemyShipStart} to enemyShipStart({_shipStart}, {_total})
+            set {_shipStart} to a random integer between {_lowestAlly} and {_highestAlly}
+            set {_enemyShipStart} to a random integer between {_lowestEnemy} and {_highestEnemy}
 
-            set {_x} to yaml value "Locations.ShipAlly.%{_direction}%.%{_shipStart}%.x" in "%{_island}%Locations"
-            set {_y} to yaml value "Locations.ShipAlly.%{_direction}%.%{_shipStart}%.y" in "%{_island}%Locations"
-            set {_z} to yaml value "Locations.ShipAlly.%{_direction}%.%{_shipStart}%.z" in "%{_island}%Locations"
+    
+            set {_x} to yaml value "Locations.ShipAlly.%{_direction}%.%{_rotation}%.%{_shipStart}%.x" in "%{_island}%Locations"
+            set {_y} to yaml value "Locations.ShipAlly.%{_direction}%.%{_rotation}%.%{_shipStart}%.y" in "%{_island}%Locations"
+            set {_z} to yaml value "Locations.ShipAlly.%{_direction}%.%{_rotation}%.%{_shipStart}%.z" in "%{_island}%Locations"
 
-            set {_xEnemy} to yaml value "Locations.ShipAlly.%{_enemyDirection}%.%{_enemyShipStart}%.x" in "%{_island}%Locations"
-            set {_yEnemy} to yaml value "Locations.ShipAlly.%{_enemyDirection}%.%{_enemyShipStart}%.y" in "%{_island}%Locations"
-            set {_zEnemy} to yaml value "Locations.ShipAlly.%{_enemyDirection}%.%{_enemyShipStart}%.z" in "%{_island}%Locations"
+            set {_xEnemy} to yaml value "Locations.ShipAlly.%{_enemyDirection}%.%{_enemyRotation}%.%{_enemyShipStart}%.x" in "%{_island}%Locations"
+            set {_yEnemy} to yaml value "Locations.ShipAlly.%{_enemyDirection}%.%{_enemyRotation}%.%{_enemyShipStart}%.y" in "%{_island}%Locations"
+            set {_zEnemy} to yaml value "Locations.ShipAlly.%{_enemyDirection}%.%{_enemyRotation}%.%{_enemyShipStart}%.z" in "%{_island}%Locations"
 
             unload yaml "%{_island}%Locations"
             
             set {_locShip} to location({_x}, {_y}, {_z}, world {_newInstance})
             set {_locEnemyShip} to location({_xEnemy}, {_yEnemy}, {_zEnemy}, world {_newInstance})
             
-            
-            paste schematic "plugins/FastAsyncWorldEdit/schematics/IslandExpeditionsShip%{_rotation}%.schem" at {_locShip}
-            paste schematic "plugins/FastAsyncWorldEdit/schematics/IslandExpeditionsEnemyShip%{_enemyRotation}%.schem" at {_locEnemyShip}
+            if {_direction} = "Longitude":
+                set {_rotationShip} to a random element of "North" and "South"
+                
+            else:
+                set {_rotationShip} to a random element of "East" and "West"
 
-            if {_rotation} = "North" or "South":
-                if {_rotation} = "South":
+            if {_enemyDirection} = "Longitude":
+                set {_rotationShipEnemy} to a random element of "North" and "South"
+                
+            else:
+                set {_rotationShipEnemy} to a random element of "East" and "West"
+
+            broadcast "%{_rotationShip}% SHIP ORIENTATION + %{_shipStart}% SHIP START NUMBER  HIGHEST:%{_total}%"
+                
+            paste schematic "plugins/FastAsyncWorldEdit/schematics/IslandExpeditionsShip%{_rotationShip}%.schem" at {_locShip}
+            paste schematic "plugins/FastAsyncWorldEdit/schematics/IslandExpeditionsEnemyShip%{_rotationShipEnemy}%.schem" at {_locEnemyShip}
+
+            if {_rotationShip} = "North" or "South":
+                if {_rotationShip} = "South":
                     set {_z} to z-coordinate of {_locShip} + 5.85
                     set {_x} to x-coordinate of {_locShip}
                     set {_yaw} to 0
@@ -163,7 +197,7 @@ on rightclick:
                     set {_x} to x-coordinate of {_locShip}
                     set {_yaw} to 180
             else:
-                if {_rotation} = "West":
+                if {_rotationShip} = "West":
                     set {_x} to x-coordinate of {_locShip} - 5.85
                     set {_z} to z-coordinate of {_locShip}
                     set {_yaw} to 90
@@ -183,6 +217,7 @@ on rightclick:
             flynnFairwindIdleSounds({_flynnFairwind})
 
             teleport {_partyMembers::*} to {_locFlynn}
+            islandExpeditionInit({_instance}, {_locFlynn}, {_island}, {_difficulty}, {_partyMembers::*})
 
             load yaml "plugins/Skript/islandexpeditions/DialoguesIslands.yml" as "IslandsDialogues"
             set {_totalDialogues} to size of (yaml node keys "Dialogues.Arrive" in "IslandsDialogues")
@@ -198,7 +233,6 @@ on rightclick:
 
             set {_arriveSound} to yaml value "Dialogues.Arrive.%{_arriveDialogue}%.Sound" in "IslandsDialogues"
             set {_arriveQuote} to yaml value "Dialogues.Arrive.%{_arriveDialogue}%.Quote" in "IslandsDialogues"
-
 
             unload yaml "IslandsDialogues"
 
@@ -227,19 +261,69 @@ function flynnFairwindFollowupDialogue(e: entity, loc: location, wait: timespan,
     send "&eFlynn Fairwind says: %{_quote}%" to {_partymembers::*}
     clear metadata value "Speaking" of {_e}
 
-function enemyShipStart(allyShipStart: integer, total: integer) :: integer:
-    set {_enemyShipStart} to a random integer between 1 and {_total}
-    while {_allyShipStart} = {_enemyShipStart}:
-        set {_enemyShipStart} to a random integer between 1 and {_total}
-    return {_enemyShipStart}
+function islandExpeditionInit(instance: integer, spawnLoc: location, islandName: string, difficulty: string, partymembers: players):
+    loop {_partymembers::*}:
+        if metadata value "InsideInstance" of loop-value is not set:
+            set metadata value "InsideInstance" of loop-value to true
+            set metadata value "IslandExpeditionInstance" of loop-value to {_instance}
+            set metadata value "SpawnpointIslandExpedition" of loop-value to {_spawnLoc}
+            set metadata value "IslandName" of loop-value to {_islandName}
+            set metadata value "IslandExpeditionTime" of loop-value to 0 seconds
 
-on region enter:
-    if "%event-region%" contains "beachdocksship":
-        if metadata value "AtDocks" of player is not set:
-            set metadata value "AtDocks" of player to true
-            seagullsAmbientSounds(player)
-            #shoreAmbientSounds(player)
-            #windAmbientSounds(player)
+            clear loop-value's fastboard
+            set title of loop-value's fastboard to "    &b&lIsland Expedition   "
+            set line 1 of loop-value's fastboard to " "
+            set line 2 of loop-value's fastboard to "&fIsland: &bPlunder Cove"
+            set line 3 of loop-value's fastboard to "&fTime on Island: &e00:00"
+            set line 4 of loop-value's fastboard to "&fDifficulty: %{_difficulty}%"
+            set line 5 of loop-value's fastboard to " "
+            set line 6 of loop-value's fastboard to "&f Azerite collected:"
+            set line 7 of loop-value's fastboard to "<##3aff17>Ally: &f0/12000"
+            set line 8 of loop-value's fastboard to "<##ff1742>Enemy: &f0/12000"
+            set line 9 of loop-value's fastboard to " "
+            set line 10 of loop-value's fastboard to "&fWorth &b0 &f Azerite."
+
+            set {_player} to Bukkit.getPluginManager().getPlugin("Essentials").getUser(loop-value)
+            if {_player}.isGodModeEnabled() = true:
+                {_player}.setGodModeEnabled(false)
+
+            if loop-value can fly:
+                disable flight for loop-value
+
+            heal loop-value
+        else:
+            set {_players::*} to {_partymembers::*} where [input != loop-value]
+            send "&c&o%loop-value% is already in an instance. The Island Expedition will start without the player." to {_players::*}
+        
+command /islandleave:
+    trigger:
+        islandExpeditionLeave(player)
+
+command /islandinit:
+    trigger:
+        islandExpeditionInit(3, player's location, "PlunderCove", "<##ae38ff>Mythic", player)
+
+function islandExpeditionStart():
+    broadcast "This is when the start timer ends. Initialize timer here."
+
+function islandExpeditionLeave(p: player):
+    clear metadata value "InsideInstance" of {_p}
+    clear metadata value "IslandExpeditionInstance" of {_p}
+    clear metadata value "SpawnpointIslandExpedition" of {_p}
+    clear metadata value "IslandName" of {_p}
+    clear metadata value "IslandExpeditionTime" of {_p}
+    clear {_p}'s fastboard
+    if metadata value "ECEngaged" of {_p} is not set:
+        if metadata value "DungeonInstance" of {_p} is not set:
+            UpdateScoreboard({_p})
+
+function islandExpeditionTimer(p: player):
+    while metadata value "IslandExpeditionInstance" of {_p} is set:
+        wait 1 second
+        add 1 second to metadata value "IslandExpeditionTime" of {_p}
+
+function enemyShipSpawnIsland():
+    broadcast "Spawn"
 
 function seagullsAmbientSounds(p: player):
     while "%regions at {_p}%" contains "SpawnArea":
@@ -266,7 +350,6 @@ function shoreAmbientSounds(p: player):
     stop sound {_sound} for {_p}
 
 function windAmbientSounds(p: player):
-    set {wind} to "Heavy"
     if {wind} is set:
         while "%regions at {_p}%" contains "SpawnArea":
             set {_random} to a random integer between 1 and 4
@@ -278,32 +361,10 @@ function windAmbientSounds(p: player):
             wait {_duration} + {_wait}
             stop loop if metadata value "AtDocks" of {_p} is not set
         stop sound {_sound} for {_p}
-
-on region exit:
-    wait 1 tick
-    if "%regions at player%" does not contain "beachdocksship":
-        clear metadata value "AtDocks" of player
-
-
     
     
 command /diatest:
     trigger:
-        set {_island} to "PlunderCove"
-        load yaml "plugins/Skript/islandexpeditions/%{_island}%/Locations.yml" as "%{_island}%Locations"
-        set {_c} to 0
-        loop yaml node keys "Locations.ShipAlly.Longitude" in "%{_island}%Locations":
-            loop yaml node keys "Locations.ShipAlly.Longitude.%loop-value%" in "%{_island}%Locations":
-                set {_f} to yaml value "Locations.ShipAlly.Longitude.%loop-value-1%.%loop-value-2%" in "%{_island}%Locations"
-                if {_c} < 3:
-                    set {_orien} to "North"
-                else:
-                    set {_orien} to "South"
-                broadcast "Locations.ShipAlly.Longitude.%loop-value-1%.%loop-value-2%.%{_f}%"
-            add 1 to {_c}
-        broadcast {_c}
-        unload yaml "%{_island}%Locations"
-        stop
         set {_islandList::*} to getIslandWorlds()
         set {_island} to a random element of {_islandList::*}
 
@@ -516,6 +577,17 @@ on leftclick:
 on combust:
     if isWorldIsland(event-world) = true:
         cancel event
+
+on region enter:
+    if "%event-region%" contains "beachdocksship":
+        if metadata value "AtDocks" of player is not set:
+            set metadata value "AtDocks" of player to true
+            seagullsAmbientSounds(player)
+
+on region exit:
+    wait 1 tick
+    if "%regions at player%" does not contain "beachdocksship":
+        clear metadata value "AtDocks" of player
 
 on skript stop:
     load yaml "plugins/Skript/islandexpeditions/IslandList" as "IslandsClear"
