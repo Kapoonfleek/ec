@@ -17,6 +17,8 @@ import:
     org.bukkit.Chunk
     org.bukkit.plugin.Plugin
 
+options:
+    safeworld: location(9270.5, 73.5, 1562.5, world "world")
 
 effect paste schematic %string% at %location% [(1¦(with|including) air)]:
     trigger:
@@ -54,23 +56,27 @@ function doesWorldExist(w: string) :: boolean:
     set {_manager} to {_api}.getWorldManager()
     return {_manager}.isWorld({_w})
 
-function getNewInstance(w: string) :: integer:
+function getNewInstance(w: string) :: string:
     set {_bool} to true
-    set {_index} to 0
     while {_bool} is true:
-        add 1 to {_index}
-        set {_bool} to false if doesWorldExist("%{_w}%%{_index}%") = false
+        set {_index} to random 6 char string from charset `0-9` `a-z`
+        set {_bool} to false if doesWorldExist("%{_w}%-%{_index}%") = false
     return {_index}
 
-function createNewInstance(w: string):
+function createNewInstance(w: string) :: string:
     set {_instance} to getNewInstance({_w})
-    set {_newInstance} to "%{_w}%%{_instance}%"
+    set {_newInstance} to "%{_w}%-%{_instance}%"
     prepare world {_w} as {_newInstance}
+    return {_instance}
 
 function isWorldIsland(w: world) :: boolean:
     set {_worldList::*} to getIslandWorlds()
-    set {_world} to "%{_w}%"
-    replace all "0", "1", "2", "3", "4", "5", "6", "7", "8" and "9" in {_world} with ""
+    if "%{_w}%" contains "-":
+        set {_world::*} to "%{_w}%" split at "-"
+        set {_world} to {_world::1}
+    else:
+        set {_world} to "%{_w}%"
+        replace all "0", "1", "2", "3", "4", "5", "6", "7", "8" and "9" in {_world} with ""
     if {_worldList::*} contains {_world}:
         set {_return} to true
     return {_return}
@@ -81,6 +87,11 @@ function getIslandWorlds() :: strings:
     unload yaml "IslandList"
 
     return {_islandList::*}
+
+function getIslandName(island: string) :: string:
+    if {_island} = "PlunderCove":
+        set {_island} to "Plunder Cove"
+    return {_island}
 
 on rightclick:
     if player's tool is bamboo:
@@ -108,11 +119,8 @@ on rightclick:
             else:
                 set {_enemyRotation} to a random element of {_directionsLatitude::*}
 
-            broadcast "%{_enemyRotation}% DIRECTION IN WHICH SHIP IS SPAWNED"
-
-            createNewInstance({_island})
-            set {_instance} to getNewInstance({_island})-1
-            set {_newInstance} to "%{_island}%%{_instance}%"
+            set {_instance} to createNewInstance({_island})
+            set {_newInstance} to "%{_island}%-%{_instance}%"
 
             if player is in a party:
                 set {_partyMembers::*} to party members of party of player
@@ -145,13 +153,21 @@ on rightclick:
             set {_plugin} to instance of plugin "Skript"
             
             loop all chunks within {_chunkBorder1} and {_chunkBorder2}:
-                loop-value.addPluginChunkTicket({_plugin})
-                loop-value.load()
+                set {_chunkLoc} to block at 0,0,0 in loop-value
+                set {_chunk} to loop-value.getWorld().getChunkAtAsync({_chunkLoc})
 
             set worldborder of world {_newInstance} to a worldborder:
                 set worldborder radius of event-worldborder to {_borderRadius}
                 set worldborder center of event-worldborder to location(0, 500, 0)
                 set worldborder warning distance of event-worldborder to 10
+
+            set {_randomTime} to a random integer between 0 and 24000
+            world {_newInstance}.setTime({_randomTime})
+
+            set {_weather::*} to "sun", "rain" and "storm"
+            set {_randomWeather} to (a random element of {_weather::*}) parsed as weather type
+            set weather in world {_newInstance} to {_randomWeather}
+            broadcast {_randomWeather}
 
             set {_shipStart} to a random integer between {_lowestAlly} and {_highestAlly}
             set {_enemyShipStart} to a random integer between {_lowestEnemy} and {_highestEnemy}
@@ -182,10 +198,41 @@ on rightclick:
             else:
                 set {_rotationShipEnemy} to a random element of "East" and "West"
 
-            broadcast "%{_rotationShip}% SHIP ORIENTATION + %{_shipStart}% SHIP START NUMBER  HIGHEST:%{_total}%"
+            broadcast "DEBUG: &aALLY: Start: [%{_shipStart}%]   Rotation: (%{_rotationShip}%)  &cStart: [%{_enemyShipStart}%]   Rotation: (%{_rotationShipEnemy}%)"
+            wait 3 seconds
                 
             paste schematic "plugins/FastAsyncWorldEdit/schematics/IslandExpeditionsShip%{_rotationShip}%.schem" at {_locShip}
             paste schematic "plugins/FastAsyncWorldEdit/schematics/IslandExpeditionsEnemyShip%{_rotationShipEnemy}%.schem" at {_locEnemyShip}
+
+            load yaml "plugins/Skript/islandexpeditions/%{_island}%/Azerite" as "%{_island}%Azerite"
+                    
+            loop yaml node keys "Azerite" in "%{_island}%Azerite":
+                set {_model} to yaml value "Models.%loop-value%" in "AzeriteModels"
+                loop yaml node keys "Azerite.%loop-value%" in "%{_island}%Azerite":
+                    set {_azeriteIndex} to loop-value-2 parsed as integer
+                    set {_azeriteType} to loop-value-1
+                    set {_azeriteLocX} to yaml value "Azerite.%{_azeriteType}%.%loop-value-2%.Location.X" in "%{_island}%Azerite"
+                    set {_azeriteLocY} to yaml value "Azerite.%{_azeriteType}%.%loop-value-2%.Location.Y" in "%{_island}%Azerite"
+                    set {_azeriteLocZ} to yaml value "Azerite.%{_azeriteType}%.%loop-value-2%.Location.Z" in "%{_island}%Azerite"
+                    set {_azeriteLocYaw} to yaml value "Azerite.%{_azeriteType}%.%loop-value-2%.Location.Yaw" in "%{_island}%Azerite"
+                    set {_azeriteLocPitch} to yaml value "Azerite.%{_azeriteType}%.%loop-value-2%.Location.Pitch" in "%{_island}%Azerite"
+
+                    set {_azeriteLocation} to location({_azeriteLocX}, {_azeriteLocY}, {_azeriteLocZ}, world {_newInstance}, {_azeriteLocYaw}, {_azeriteLocPitch})
+                    set {_yShift} to yaml value "Attributes.%{_azeriteType}%.YShift" in "AzeriteAttributes"
+                    increase {_azeriteLocation}'s y-coordinate by {_yShift}
+
+                    spawn armor stand at {_azeriteLocation} with nbt from "{Invisible:1b,NoGravity:1b,Invulnerable:1b}"
+                    set {_scaleAttribute} to yaml value "Attributes.%{_azeriteType}%.Scale" in "AzeriteAttributes"
+                    set helmet of last spawned armor stand to {_model}
+                    set scale attribute of last spawned armor stand to {_scaleAttribute}
+                    set pitch of last spawned armor stand to {_pitch}
+                    set yaw of last spawned armor stand to {_yaw}
+                    set int tag "AzeriteIndex" of custom nbt of last spawned armor stand to {_azeriteIndex}
+                    set int tag "AzeriteId" of custom nbt of last spawned armor stand to {_azeriteId}
+                    set string tag "AzeriteInstance" of custom nbt of last spawned armor stand to {_instance}
+                    set string tag "AzeriteVeinType" of custom nbt of last spawned armor stand to {_azeriteType}
+
+            unload yaml "%{_island}%Azerite"
 
             if {_rotationShip} = "North" or "South":
                 if {_rotationShip} = "South":
@@ -236,9 +283,16 @@ on rightclick:
 
             unload yaml "IslandsDialogues"
 
+            islandExpeditionCountdown({_locFlynn}, {_partyMembers::*}, {_instance})
+            
+            wait 1 second
+
+            while {_partyMembers::*} are not in world {_newInstance}:
+                wait 1 tick
+
             play sound {_arriveSound} with volume 2 and pitch 1 at {_locFlynn}
-            send "&eFlynn Fairwind says: %{_arriveQuote}%" to {_partymembers::*}
-            dialogue({_arriveQuote}, {_locFlynn}, 3 seconds, 0 seconds, {_partymembers::*})
+            send "&eFlynn Fairwind says: %{_arriveQuote}%" to {_partyMembers::*}
+            dialogue({_arriveQuote}, (location 0.25 above {_locFlynn}), 0 seconds, 0 seconds, {_partyMembers::*})
 
             #Enemies
             #       Undead:
@@ -246,6 +300,13 @@ on rightclick:
             #       Fire Elementals
 
             #Azerite
+            #   Crystal
+            #   Chunk
+            #   Shard
+
+            #set metadata value "Azerite%yaml value..%"
+            #make all players see block at azerite as air
+            #packet id and spawn id (in file id)
 function flynnFairwindIdleSounds(e: entity):
     while {_e} is alive:
         if metadata value "Speaking" of {_e} != true:
@@ -261,7 +322,18 @@ function flynnFairwindFollowupDialogue(e: entity, loc: location, wait: timespan,
     send "&eFlynn Fairwind says: %{_quote}%" to {_partymembers::*}
     clear metadata value "Speaking" of {_e}
 
-function islandExpeditionInit(instance: integer, spawnLoc: location, islandName: string, difficulty: string, partymembers: players):
+function islandExpeditionInit(instance: string, spawnLoc: location, islandName: string, difficulty: string, partymembers: players):
+    set {_dif} to uncolored {_difficulty}
+    if {_dif} = "Normal":
+        set {_azeriteRequired} to 6000
+    else if {_dif} = "Heroic":
+        set {_azeriteRequired} to 9000
+    else if {_dif} = "Mythic":
+        set {_azeriteRequired} to 12000
+    set {azeriteRequired::%{_instance}%} to {_azeriteRequired}
+    set {azeriteCollectedAlly::%{_instance}%} to 0
+    set {azeriteCollectedEnemy::%{_instance}%} to 0
+
     loop {_partymembers::*}:
         if metadata value "InsideInstance" of loop-value is not set:
             set metadata value "InsideInstance" of loop-value to true
@@ -269,19 +341,10 @@ function islandExpeditionInit(instance: integer, spawnLoc: location, islandName:
             set metadata value "SpawnpointIslandExpedition" of loop-value to {_spawnLoc}
             set metadata value "IslandName" of loop-value to {_islandName}
             set metadata value "IslandExpeditionTime" of loop-value to 0 seconds
+            set metadata value "IslandDifficulty" of loop-value to {_difficulty}
 
             clear loop-value's fastboard
-            set title of loop-value's fastboard to "    &b&lIsland Expedition   "
-            set line 1 of loop-value's fastboard to " "
-            set line 2 of loop-value's fastboard to "&fIsland: &bPlunder Cove"
-            set line 3 of loop-value's fastboard to "&fTime on Island: &e00:00"
-            set line 4 of loop-value's fastboard to "&fDifficulty: %{_difficulty}%"
-            set line 5 of loop-value's fastboard to " "
-            set line 6 of loop-value's fastboard to "&f Azerite collected:"
-            set line 7 of loop-value's fastboard to "<##3aff17>Ally: &f0/12000"
-            set line 8 of loop-value's fastboard to "<##ff1742>Enemy: &f0/12000"
-            set line 9 of loop-value's fastboard to " "
-            set line 10 of loop-value's fastboard to "&fWorth &b0 &f Azerite."
+            islandExpeditionFastboard(loop-value)
 
             set {_player} to Bukkit.getPluginManager().getPlugin("Essentials").getUser(loop-value)
             if {_player}.isGodModeEnabled() = true:
@@ -299,31 +362,113 @@ command /islandleave:
     trigger:
         islandExpeditionLeave(player)
 
-command /islandinit:
+command /islanddelete:
     trigger:
-        islandExpeditionInit(3, player's location, "PlunderCove", "<##ae38ff>Mythic", player)
+        load yaml "plugins/Skript/islandexpeditions/IslandList" as "IslandsClear"
+        set {_islandList::*} to yaml list "Islands" in "IslandsClear"
+        unload yaml "IslandsClear"
+        loop {_islandList::*}:  
+            loop all worlds where ["%input%" contains "%loop-value%"]:
+                if "%loop-value-2%" != "%loop-value-1%":
+                    teleport all players in world "%loop-value-2%" to {@safeworld}
+                    deleteworld "%loop-value-2%"
 
-function islandExpeditionStart():
+function islandExpeditionCountdown(loc: location, players: players, instance: string):
+    set {_radius} to 9
+    loop all blocks in radius ({_radius} + 1) around {_loc} where [distance between {_loc} and input > {_radius}]:
+        if (y-coordinate of loop-block) >= (y-coordinate of {_loc}):
+            set {_blocks::*} to {_blocks::*} and type of loop-block
+            set block at loop-block to (blue stained glass) fast
+            set boolean tag "CountdownBlock" of custom nbt of loop-block to true
+            wait 1 tick if loop-counter is divisible by 72
+    set {_am} to 10
+    set metadata value "CannotUseAbilities" of {_players::*} to true
+
+    send title " " with subtitle "&e20 sec" to {_players::*} for 4 seconds with fade in 0.5 second and fade out 0.5 second
+    play sound "block.note_block.pling" with volume 3 and pitch 0.2 to {_players::*}
+    wait 10 seconds
+    loop 10 times:
+        loop {_players::*}:
+            set {_player} to loop-value-2
+            if metadata value "IslandExpeditionInstance" of {_player} is set:
+                send title "&e&l%{_am}%" with subtitle " " to {_player} for 1 second with fade in 0.5 second and fade out 0.5 second
+                remove 1 from {_am}
+                play sound "block.note_block.pling" with volume 3 and pitch 0.2 to {_player}
+            else:
+                loop 2 times:
+                    execute {_player} command "Spawn"
+                    remove {_player} from {_players::*}
+            stop loop
+        wait 1 second
+    clear metadata value "CannotUseAbilities" of {_players::*}
+    set {_num} to 0
+    loop all blocks in radius ({_radius} + 1) around {_loc} where [boolean tag "CountdownBlock" of custom nbt of input is set]:
+        add 1 to {_num}
+        clear boolean tag "CountdownBlock" of custom nbt of loop-block
+        set block at loop-block to {_blocks::%{_num}%}
+
+    if size of {_players::*} > 0:
+        loop {_players::*}:
+            islandExpeditionStart(loop-value)
+
+function islandExpeditionFastboard(p: player):
+    set {_islandName} to metadata value "IslandName" of {_p}
+    set {_difficulty} to metadata value "IslandDifficulty" of {_p}
+    set {_instance} to metadata value "IslandExpeditionInstance" of {_p}
+    set {_azeriteRequired} to {azeriteRequired::%{_instance}%}
+
+    set title of {_p}'s fastboard to "    &b&lIsland Expedition   "
+    set line 1 of {_p}'s fastboard to " "
+    set line 2 of {_p}'s fastboard to "&fIsland: &b%getIslandName({_islandName})%"
+    set line 4 of {_p}'s fastboard to "&fDifficulty: %{_difficulty}%"
+    set line 5 of {_p}'s fastboard to " "
+    set line 6 of {_p}'s fastboard to "&fCollect  %{_azeriteRequired}% Azerite."
+    set line 7 of {_p}'s fastboard to "<##3aff17>Ally: &f%{azeriteCollectedAlly::%{_instance}%}% | <##ff1742>Enemy: &f%{azeriteCollectedEnemy::%{_instance}%}%"
+    set line 8 of {_p}'s fastboard to " "
+    set line 10 of {_p}'s fastboard to "&fWorth  &b0 &fAzerite."
+
+function islandExpeditionStart(p: player):
     broadcast "This is when the start timer ends. Initialize timer here."
+    islandExpeditionTimer({_p})
 
 function islandExpeditionLeave(p: player):
+    set {_instance} to metadata value "IslandExpeditionInstance" of {_p}
+    set {_islandName} to metadata value "IslandName" of {_p}
+
     clear metadata value "InsideInstance" of {_p}
     clear metadata value "IslandExpeditionInstance" of {_p}
     clear metadata value "SpawnpointIslandExpedition" of {_p}
     clear metadata value "IslandName" of {_p}
     clear metadata value "IslandExpeditionTime" of {_p}
+    clear metadata value "IslandDifficulty" of {_p}
+    clear metadata value "cast" of {_p}
+    clear metadata value "mining" of {_p}
+    clear metadata value "casting" of {_p}
     clear {_p}'s fastboard
     if metadata value "ECEngaged" of {_p} is not set:
         if metadata value "DungeonInstance" of {_p} is not set:
             UpdateScoreboard({_p})
+    loop 2 times:
+        execute {_p} command "Spawn"
+    set {_players::*} to all players where ["%world of input%" contains {_instance}]
+    if {_players::*} is not set:
+        teleport all players in world "%{_islandName}%-%{_instance}%" to {@safeworld}
+        deleteworld "%{_islandName}%-%{_instance}%"
+        clear {azeriteRequired::%{_instance}%}
+        clear {azeriteCollectedAlly::%{_instance}%}
+        clear {azeriteCollectedEnemy::%{_instance}%}
 
 function islandExpeditionTimer(p: player):
+    set {_time} to metadata value "IslandExpeditionTime" of {_p}
     while metadata value "IslandExpeditionInstance" of {_p} is set:
+        if {_time} > 1 hour:
+            set {_timeText} to ({_time} from (unix date of 0)) formatted as "hh:mm:ss"
+        else:
+            set {_timeText} to ({_time} from (unix date of 0)) formatted as "mm:ss"
+        set line 3 of {_p}'s fastboard to "&fTime on Island: &e%{_timeText}%"
         wait 1 second
-        add 1 second to metadata value "IslandExpeditionTime" of {_p}
-
-function enemyShipSpawnIsland():
-    broadcast "Spawn"
+        add 1 second to {_time}
+        set metadata value "IslandExpeditionTime" of {_p} to {_time}
 
 function seagullsAmbientSounds(p: player):
     while "%regions at {_p}%" contains "SpawnArea":
@@ -447,6 +592,25 @@ on rightclick on an entity:
             set string tag "Difficulty" of custom nbt of slot 6 of {_gui} to "Mythic"
             open {_gui} to player
 
+on inventory click:
+    if player's current inventory = metadata tag "islandExpeditions" of player:
+        cancel event
+        if (index of event-slot) is between 12 and 14:
+            set {_partymembers::*} to party members of party of player
+            set {_partymembers::*} to player if {_partymembers::*} is not set
+            set {_size} to size of {_partymembers::*}
+            loop {_partymembers::*}:
+                send " " to loop-value
+                send " &bQueue for Island Expedition with current party?" to loop-value
+                send " <##40eb34>[YES] &e(0/%{_size}%)" to loop-value
+                send " " to loop-value
+            stop
+            set {_difficulty} to name of event-slot
+            replace all " Difficulty" in {_difficulty} with ""
+            set {_partymembers::*} to party members of party of player
+            set {_partymembers::*} to player if {_partymembers::*} is not set
+            send "&bYou are now queued for an Island Expedition." to {_partymembers::*}
+
 on inventory close:
     if player's current inventory = metadata tag "islandExpeditions" of player:
         if cooldown "Flynn Fairwind-Farewell%player%" is finished:
@@ -469,81 +633,93 @@ on inventory close:
             play sound {_sound} with volume 3 and pitch 1 to player
         clear metadata tag "islandExpeditions" of player
 
-on inventory click:
-    if player's current inventory = metadata tag "islandExpeditions" of player:
-        cancel event
 #To do:
 
 #When difficulty is selected, play ship sail sound
 #Send message: You are now queued for Island Expedition with (players from party)
 
-on rightclick on gold block:
-    if player's name = "Pehrek":
-        AzeriteOreMine(player, event-block)
+on rightclick on an armor stand:
+    if string tag "AzeriteInstance" of custom nbt of clicked entity is set:
+        #clear metadata value "cast" of player
+        AzeriteOreMine(player, event-entity)
 
-on place of gold block:
-    set {_azeriteOreType::*} to "Shard", "Crystal" and "Chunk"
-    set {_w} to a random element of {_azeriteOreType::*}
-    set string tag "AzeriteVeinType" of custom nbt of event-block to {_w}
+function AzeriteOreMine(p: entity, e: entity, team: string = "Ally"):
+    if metadata value "IslandExpeditionInstance" of {_p} = string tag "AzeriteInstance" of custom nbt of {_e}:
+        set {_instance} to metadata value "IslandExpeditionInstance" of {_p}
+        set {_typeOfOre} to string tag "AzeriteVeinType" of custom nbt of {_e}
+        set {_azeriteItem} to yaml value "Models.%{_typeOfOre}%" in "AzeriteModels"
 
-function AzeriteOreMine(p: player, ore: block):
-    set {_typeOfOre} to string tag "AzeriteVeinType" of custom nbt of {_ore}
+        if {_typeOfOre} = "Crystal":
+            set {_azerite} to 270
+            set {_casttime} to 4 seconds
+            set {_above} to 5
+        else if {_typeOfOre} = "Chunk":
+            set {_azerite} to 190
+            set {_casttime} to 3 seconds
+            set {_above} to 2
+        else if {_typeOfOre} = "Shard":
+            set {_azerite} to 110
+            set {_casttime} to 2 seconds
+            set {_above} to 1
 
-    if {_typeOfOre} = "crystal":
-        set {_azerite} to 270
-        set {_casttime} to 6 seconds
-    else if {_typeOfOre} = "chunk":
-        set {_azerite} to 190
-        set {_casttime} to 4 seconds
-    else if {_typeOfOre} = "shard":
-        set {_azerite} to 110
-        set {_casttime} to 2 seconds
+        set {_distance} to 6
+        set {_castTimeValue} to "%{_casttime}%"
+        replace all " seconds" and " second" in {_castTimeValue} with ""
+        set {_castTimeValue} to {_castTimeValue} parsed as number
+        set {_originalCastTimeValue} to {_castTimeValue}
+        
+        if metadata value "cast" of {_p} is not set:
+            set metadata value "casttimemax" of {_p} to {_casttime}
+            set metadata value "mining" of {_p} to true
+            set metadata value "cast" of {_p} to {_casttime}
+            set {_break} to 0
 
-    set {_distance} to 5
-    set {_castTimeValue} to "%{_casttime}%"
-    replace all " seconds" and " second" in {_castTimeValue} with ""
-    set {_castTimeValue} to {_castTimeValue} parsed as number
-    set {_originalCastTimeValue} to {_castTimeValue}
-    
-    if metadata value "cast" of {_p} is not set:
-        set metadata value "casttimemax" of {_p} to {_casttime}
-        set metadata value "mining" of {_p} to true
-        set metadata value "cast" of {_p} to {_casttime}
-        set {_break} to 0
+            while metadata value "mining" of {_p} = true:
+                if metadata value "channeling" of {_p} is set:
+                    clear metadata value "channeling" of {_p}
+                if metadata value "cast" of {_p} is not set:
+                    clear metadata value "mining" of {_p}
+                    stop
+                stop loop if distance between {_p} and {_e} > {_distance}
+                if {_casttime} > 0 seconds:
+                    set metadata value "casttimeleft" of {_p} to {_casttime}
+                    send action bar "Mining... %{_casttime}% " to {_p}
+                    if {_castTimeValue} is divisible by 1:
+                        play sound "misc.mine_ore" with volume 2 and pitch 1 at {_p}
+                        make {_p} swing their hand
+                        add 1/{_originalCastTimeValue} to {_break}
+                        draw 20 item particle using diamond block at location {_above} above {_e} with offset vector(0.8, 2, 0.8) with extra 0.01
+                        draw 20 item particle using gold block at location {_above} above {_e} with offset vector(0.8, 2, 0.8) with extra 0.01 
+                    wait 0.1 seconds
+                    remove 0.1 seconds from {_casttime}
+                    remove 0.1 from {_castTimeValue}
+                else:
+                    clear metadata value "mining" of {_p}
+                    send action bar "" to {_p}
+        else:
+            stop
 
-        while metadata value "mining" of {_p} = true:
-            if metadata value "channeling" of {_p} is set:
-                clear metadata value "channeling" of {_p}
-            if metadata value "cast" of {_p} is not set:
-                clear metadata value "mining" of {_p}
-                stop
-            stop loop if distance between {_p} and {_ore} > {_distance}
-            if {_casttime} > 0 seconds:
-                set metadata value "casttimeleft" of {_p} to {_casttime}
-                send action bar "Mining... %{_casttime}% " to {_p}
-                if {_castTimeValue} is divisible by 1:
-                    play sound "misc.mine_ore" with volume 2 and pitch 1 at {_p}
-                    make {_p} swing their hand
-                    add 1/{_originalCastTimeValue} to {_break}
-                    make all players see damage of {_ore} as {_break}
-                wait 0.1 seconds
-                remove 0.1 seconds from {_casttime}
-                remove 0.1 from {_castTimeValue}
-            else:
-                clear metadata value "mining" of {_p}
-                send action bar "" to {_p}
+        clear metadata value "mining" of {_p}
+        clear metadata value "cast" of {_p}
+        clear metadata value "casttime" of {_p}
+        clear metadata value "casttimemax" of {_p}
+        
+        if {_casttime} > 0 seconds:
+            send action bar "&cCancelled" to {_p}
+            stop
+        play sound "azerite.collect" with volume 2 and pitch 1 at {_p}
+        send "<##fff200>+%{_azerite}% Azerite Collected <##e8ce81>from Azerite %{_typeOfOre}%" to {_p}
+        add {_azerite} to {azeriteCollected%{_team}%::%{_instance}%}
+        set {_e}'s helmet to air
+        clear string tag "AzeriteInstance" of custom nbt of {_e}
+        set line 7 of {_p}'s fastboard to "<##3aff17>Ally: &f%{azeriteCollectedAlly::%{_instance}%}% | <##ff1742>Enemy: &f%{azeriteCollectedEnemy::%{_instance}%}%"
+        set line 10 of {_p}'s fastboard to "&fWorth  &b0 &fAzerite."
+
+        #Spawn text display or armor stand here and animate (Text will get bigger and OPACITY (FADE) slowly turns to 0)
+        #On azerite collect, do not remove the entity, remove the tags. When aezrite detector is online, show all azerite on dynmap
     else:
-        stop
-    clear metadata value "mining" of {_p}
-    clear metadata value "cast" of {_p}
-    clear metadata value "casttime" of {_p}
-    clear metadata value "casttimemax" of {_p}
-    if {_casttime} > 0 seconds:
-        send action bar "&cCancelled" to {_p}
-        stop
-    play sound "azerite.collect" with volume 2 and pitch 1 at {_p}
-    send "<##fff200>+%{_azerite}% Azerite Collected <##e8ce81>from Azerite %{_typeOfOre}%" to {_p}
-    set block at {_ore} to air
+        send "&cYou are not in this Island Expedition instance to take this action." to {_p}
+        play sound "block.glass.break" with volume 3 and pitch 1 to {_p}
 
 on damage:
     if metadata value "mining" of victim is set:
@@ -554,8 +730,9 @@ on damage:
 on TimeSkipEvent:
     set {_world} to event.getWorld()
     if isWorldIsland({_world}) = true:
-        broadcast "ta"
-        cancel event
+        if "%event.getSkipReason()%" != "CUSTOM":
+            broadcast "AAAA"
+            cancel event
 
 on block break:
     if isWorldIsland(player's world) = true:
@@ -593,14 +770,13 @@ on skript stop:
     load yaml "plugins/Skript/islandexpeditions/IslandList" as "IslandsClear"
     set {_islandList::*} to yaml list "Islands" in "IslandsClear"
     unload yaml "IslandsClear"
+    loop {_islandList::*}:  
+        loop all worlds where ["%input%" contains "%loop-value%"]:
+            if "%loop-value-2%" != "%loop-value-1%":
+                teleport all players in world "%loop-value-2%" to {@safeworld}
+                deleteworld "%loop-value-2%"
 
-    loop {_islandList::*}:
-        set {_instance} to loop-value
-        set {_totalInstances} to getNewInstance(loop-value)
 
-        if {_totalInstances} is set:
-            loop {_totalInstances} times:
-                deleteworld "%{_instance}%%loop-number%"
 
 command /ieconfig [<string>] [<string>] [<string>] [<string>] [<integer>]:
     trigger:
@@ -656,3 +832,106 @@ command /addisland [<string>]:
         else:
             send "&cYou cannot use this command." to player
 
+command /addazerite [<string>] [<string>]:
+    trigger:
+        if player's name = "Pehrek":
+            if arg-1 is set:
+                if arg-2 is set:
+                    set {_island} to arg-1
+                    load yaml "plugins/Skript/islandexpeditions/%{_island}%/Azerite" as "%{_island}%Azerite"
+                    set {_size} to size of yaml node keys "Azerite.%arg-2%" in "%{_island}%Azerite" + 1
+                    set {_loc} to player's location
+                    set yaml value "Azerite.%arg-2%.%{_size}%.Location.X" in "%{_island}%Azerite" to x-coordinate of {_loc}
+                    set yaml value "Azerite.%arg-2%.%{_size}%.Location.Y" in "%{_island}%Azerite" to y-coordinate of {_loc}
+                    set yaml value "Azerite.%arg-2%.%{_size}%.Location.Z" in "%{_island}%Azerite" to z-coordinate of {_loc}
+                    set yaml value "Azerite.%arg-2%.%{_size}%.Location.Pitch" in "%{_island}%Azerite" to pitch of {_loc}
+                    set yaml value "Azerite.%arg-2%.%{_size}%.Location.Yaw" in "%{_island}%Azerite" to yaw of {_loc}
+                    save yaml "%{_island}%Azerite"             
+                    unload yaml "%{_island}%Azerite"
+                else:
+                    send "&cArg-2 must be set." to player
+            else:
+                send "&cArg-1 must be an Island Expedition map." to player
+        else:
+            send "&cYou cannot use this command." to player
+
+command /azeriteset [<string>] [<string>] [<integer>]:
+    trigger:
+        if player's name = "Pehrek":
+            set {_island} to arg-1
+            load yaml "plugins/Skript/islandexpeditions/%{_island}%/Azerite" as "%{_island}%Azerite"
+            set {_size} to arg-3
+            set {_loc} to player's location
+            set yaml value "Azerite.%arg-2%.%{_size}%.Location.X" in "%{_island}%Azerite" to x-coordinate of {_loc}
+            set yaml value "Azerite.%arg-2%.%{_size}%.Location.Y" in "%{_island}%Azerite" to y-coordinate of {_loc}
+            set yaml value "Azerite.%arg-2%.%{_size}%.Location.Z" in "%{_island}%Azerite" to z-coordinate of {_loc}
+            set yaml value "Azerite.%arg-2%.%{_size}%.Location.Pitch" in "%{_island}%Azerite" to pitch of {_loc}
+            set yaml value "Azerite.%arg-2%.%{_size}%.Location.Yaw" in "%{_island}%Azerite" to yaw of {_loc}
+            save yaml "%{_island}%Azerite"             
+            unload yaml "%{_island}%Azerite"
+        else:
+            send "&cYou cannot use this command." to player
+
+command /showazerite [<string>]:
+    trigger:
+        if player's name = "Pehrek":
+            set {_island} to arg-1
+            load yaml "plugins/Skript/islandexpeditions/%{_island}%/Azerite" as "%{_island}%Azerite"
+            loop yaml node keys "Azerite" in "%{_island}%Azerite":
+                set {_model} to yaml value "Models.%loop-value%" in "AzeriteModels"
+                loop yaml node keys "Azerite.%loop-value%" in "%{_island}%Azerite":
+                    set {_azeriteIndex} to loop-value-2 parsed as integer
+                    set {_azeriteType} to loop-value-1
+                    set {_azeriteLocX} to yaml value "Azerite.%{_azeriteType}%.%loop-value-2%.Location.X" in "%{_island}%Azerite"
+                    set {_azeriteLocY} to yaml value "Azerite.%{_azeriteType}%.%loop-value-2%.Location.Y" in "%{_island}%Azerite"
+                    set {_azeriteLocZ} to yaml value "Azerite.%{_azeriteType}%.%loop-value-2%.Location.Z" in "%{_island}%Azerite"
+                    set {_azeriteLocYaw} to yaml value "Azerite.%{_azeriteType}%.%loop-value-2%.Location.Yaw" in "%{_island}%Azerite"
+                    set {_azeriteLocPitch} to yaml value "Azerite.%{_azeriteType}%.%loop-value-2%.Location.Pitch" in "%{_island}%Azerite"
+
+                    set {_azeriteLocation} to location({_azeriteLocX}, {_azeriteLocY}, {_azeriteLocZ}, world "%player's world%", {_azeriteLocYaw}, {_azeriteLocPitch})
+                    set {_yShift} to yaml value "Attributes.%{_azeriteType}%.YShift" in "AzeriteAttributes"
+                    increase {_azeriteLocation}'s y-coordinate by {_yShift}
+
+                    spawn armor stand at {_azeriteLocation} with nbt from "{Invisible:1b,NoGravity:1b,Invulnerable:1b}"
+                    set {_scaleAttribute} to yaml value "Attributes.%{_azeriteType}%.Scale" in "AzeriteAttributes"
+                    set helmet of last spawned armor stand to {_model}
+                    set scale attribute of last spawned armor stand to {_scaleAttribute}
+                    set pitch of last spawned armor stand to {_pitch}
+                    set yaw of last spawned armor stand to {_yaw}
+                    set int tag "AzeriteIndex" of custom nbt of last spawned armor stand to {_azeriteIndex}
+                    set int tag "AzeriteId" of custom nbt of last spawned armor stand to {_azeriteId}
+                    set string tag "AzeriteVeinType" of custom nbt of last spawned armor stand to {_azeriteType}
+
+            unload yaml "%{_island}%Azerite"
+        else:
+            send "&cYou cannot use this command." to player
+
+command /addazeritemodel [<string>]:
+    trigger:
+        if player's name = "Pehrek":
+            if arg-1 is set:
+                load yaml "plugins/Skript/islandexpeditions/AzeriteModels" as "AzeriteModels"
+                set yaml value "Models.%arg-1%" in "AzeriteModels" to player's tool
+                save yaml "AzeriteModels"
+            else:
+                send "&cArg-1 must be an Island Expedition map." to player
+        else:
+            send "&cYou cannot use this command." to player
+
+command /addazeriteattributes [<string>] [<string>] [<number>]:
+    trigger:
+        if player's name = "Pehrek":
+            if arg-1 is set:
+                if arg-2 is set:
+                    if arg-3 is set:
+                        load yaml "plugins/Skript/islandexpeditions/AzeriteAttributes" as "AzeriteAttributes"
+                        set yaml value "Attributes.%arg-1%.%arg-2%" in "AzeriteAttributes" to arg-3
+                        save yaml "AzeriteAttributes"
+                    else:
+                        send "&cArg-3 must be a number." to player
+                else:
+                    send "&cArg-2 must be an attribute. (YShift/Scale)" to player
+            else:
+                send "&cArg-1 must be an Azerite type." to player
+        else:
+            send "&cYou cannot use this command." to player
