@@ -2,6 +2,9 @@ import:
     java.lang.Double
 
 on rightclick:
+    if metadata value "Hypercognition" of player is set:
+        hypercognitionClick(player, "right")
+        stop
     if boolean tag "Future Sight" of custom nbt of player's tool is set:
         if {kartaname::%player%} = "Espeon":
             if CanUseAbility(player) != false:
@@ -12,9 +15,9 @@ on rightclick:
                             set {_bonusHaste} to metadata value "EspeonBonusHaste" of player
                             set {_bonusInt} to metadata value "EspeonBonusIntellect" of player
                             set {_haste} to Haste(player) + (({_bonusHaste}/4)/100)
-                            set {_cd} to "%1/{_haste}% seconds" parsed as timespan
+                            set {_cd} to "%10/{_haste}% seconds" parsed as timespan
                             set {_addStacks} to 1
-                            set {_futureSight} to "%4/{_haste}% seconds" parsed as timespan
+                            set {_futureSight} to "%20/{_haste}% seconds" parsed as timespan
 
                             create cooldown "Future Sight%player%" for {_cd}
                             AbilityUse(player, "Future Sight")
@@ -36,7 +39,6 @@ on rightclick:
                             combatInitiate(player, {_target})
 
                             if metadata value "Mind Transfer" of player is true:
-                                broadcast "slut"
                                 clear metadata value "Mind Transfer" of player
 
                                 set {_stacks} to metadata value "Future Sight%player%" of player
@@ -48,7 +50,6 @@ on rightclick:
                                 futureSightEffect(player, {_target}, {_futureSight})
 
                             else:
-                                broadcast "A"
                                 futureSightSkill(player, {_target}, {_futureSight}, {_addStacks})
                                 set {_duration} to metadata value "Future Sight-Duration%player%" of {_target}
 
@@ -248,7 +249,21 @@ on rightclick:
             #add passive + visual
             #add ult
             #add time warp vfx while active
+            #add mind transfer sound
+            #add hypercognition effect + sound
+    else if player's tool is a poisonous potato:
+        if player's name = "Pehrek":
+            play sound "block.portal.trigger" with volume 4 and pitch 0.25 at player
+            play sound "block.end_portal.spawn" with volume 4 and pitch 2 at player
+            play sound "block.end_portal_frame.fill" with volume 4 and pitch 2 at player
+            play sound "entity.ender_eye.death" with volume 4 and pitch 2 at player
+            play sound "entity.vex.ambient" with volume 4 and pitch 2 at player
+            hypercognitionExpire(player)
 
+on leftclick:
+    if metadata value "Hypercognition" of player is set:
+        hypercognitionClick(player, "left")
+        stop
 
 function timeWarpDuration(p: player, target: player, timeWarpDuration: timespan):
     if metadata value "Time Warp%{_p}%" of {_target} is not set:
@@ -275,7 +290,6 @@ function futureSightEffect(p: player, target: entity, dur: timespan):
     set {_targetLoc} to location 10 above {_target}
     play sound "skill.espeon.futuresight" with volume 3 and pitch 1.5 at (location at {_target})
     spawn an armor stand at {_targetLoc} with nbt from "{Invisible:1b,Invulnerable:1b,Silent:1b,NoGravity:1b,Pose:{Head:[180.0f,0.0f,0.0f]}}"
-    broadcast "distance between: %distance between {_targetLoc} and {_target}%"
 
     set {_fallDuration} to {_dur}
 
@@ -337,9 +351,7 @@ function futureSightEffect(p: player, target: entity, dur: timespan):
             add 0.05 to {_pitch}
             combatInitiate({_p}, {_target})
 
-    broadcast {_count}
     kill {_e}
-    broadcast difference between now and {_time}
     play sound "entity.illusioner.prepare_mirror" with volume 3 and pitch 2 at (location at {_e})
     play sound "block.note_block.bass" with volume 3 and pitch 2 at (location at {_e})
     play sound "entity.ender_eye.death" with volume 3 and pitch 2 at (location at {_e})
@@ -359,7 +371,6 @@ function futureSightSkill(p: player, target: entity, dur: timespan, addAmount: n
 
         set {_max} to metadata value "Future Sight-Duration-Max%{_p}%" of {_target}
         set metadata value "Future Sight-Duration%{_p}%" of {_target} to {_max}
-        broadcast metadata value "Future Sight-Duration%{_p}%" of {_target}
     else:
         set metadata value "Future Sight-Duration%{_p}%" of {_target} to {_dur}
     
@@ -377,6 +388,10 @@ function futureSightSkill(p: player, target: entity, dur: timespan, addAmount: n
 
         set metadata value "EspeonBonusIntellect" of {_p} to (0.5 + {mastery::%{_p}%}/40)*{_totalStacks}
         set metadata value "EspeonBonusHaste" of {_p} to (1.5 + {mastery::%{_p}%}/16)*{_totalStacks}
+        set {_espInt} to metadata value "EspeonBonusIntellect" of {_p}
+        set {_espHas} to metadata value "EspeonBonusHaste" of {_p}
+        
+        buffRegister({_p}, "Mental", 1, "", "Value", "<##59c1e3> &f%{_espInt}% | <##19943e> &f%{_espHas}%", "-")
         
         clear {_targets}
         clear {_totalStacks}
@@ -407,7 +422,6 @@ function futureSightSkill(p: player, target: entity, dur: timespan, addAmount: n
             set metadata value "LastDamageCauseLore" of {_target} to {_lore}
             set metadata value "Element" of {_p} to "Psychic"
             
-            broadcast "%{_futureSightStacks}% stacks"
             clear metadata value "Future Sight%{_p}%" of {_target}
             clear metadata value "Future Sight-Duration%{_p}%" of {_target}
             clear metadata value "Future Sight-Duration-Max%{_p}%" of {_target}
@@ -415,14 +429,12 @@ function futureSightSkill(p: player, target: entity, dur: timespan, addAmount: n
 
             set {_damage} to {_damage}*{_futureSightStacks}
 
-            chance of {_crit}%:
-                set {_damage} to {_damage}*2
+            set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage})
 
             make {_p} damage {_target} by {_damage}*2
 
         if {_target} = {_p}:
             clear metadata value "Mind Transfer" of {_p}
-            broadcast "Ye"
     else:
         if {_addStack} = true:
             add {_addAmount} to metadata value "Future Sight%{_p}%" of {_target}
@@ -434,9 +446,15 @@ function futureSightSkill(p: player, target: entity, dur: timespan, addAmount: n
     if {_targets} is not set:
         clear metadata value "EspeonBonusIntellect" of {_p}
         clear metadata value "EspeonBonusHaste" of {_p}
+        buffClear({_p}, "Mental")
     else:
         set metadata value "EspeonBonusIntellect" of {_p} to (0.5 + {mastery::%{_p}%}/40)*{_totalStacks}
         set metadata value "EspeonBonusHaste" of {_p} to (1.5 + {mastery::%{_p}%}/16)*{_totalStacks}
+
+        set {_espInt} to metadata value "EspeonBonusIntellect" of {_p}
+        set {_espHas} to metadata value "EspeonBonusHaste" of {_p}
+        
+        buffRegister({_p}, "Mental", 1, "", "Value", "<##59c1e3> &f%{_espInt}% | <##19943e> &f%{_espHas}%", "-")
 
     if {_totalStacks} is not set:
         set {_totalStacks} to 0
@@ -601,7 +619,6 @@ function mindTransferEffect(p: player, target: entity, dur: timespan):
     play sound "skill.espeon.futuresight" with volume 3 and pitch 1.5 at (location at {_target})
     
     spawn an armor stand at {_targetLoc} with nbt from "{Invisible:1b,Invulnerable:1b,Silent:1b,NoGravity:1b,Pose:{Head:[180.0f,0.0f,0.0f]}}"
-    broadcast "distance between: %distance between {_targetLoc} and {_target}%"
 
     set {_fallDuration} to {_dur}
 
@@ -690,8 +707,88 @@ function mindTransferEffect(p: player, target: entity, dur: timespan):
                 set particle of {_shape} to falling_obsidian_tear
                 draw shape {_shape} at {_locStar} ~ {_vec}
             stop
-    
 
+function hypercognitionCompletedAction(p: player):
+    play sound "block.note_block.harp" with volume 3 and pitch 2 to {_p}
+    add 1 to metadata value "HypercognitionCompletedActions" of {_p}
+    
+    if metadata value "HypercognitionCompletedActions" of {_p} = 4:
+        play sound "entity.item.pickup" with volume 1 and pitch 1 to {_p}
+        broadcast "&2Cudnie! HypercognitionCompletedActions = 4!"
+        add 1 to metadata value "HypercognitionCompletedSets" of {_p}
+        set {_minDuration} to 3 seconds
+        set {_completedSets} to metadata value "HypercognitionCompletedSets" of {_p}
+        set {_duration} to "%10-({_completedSets}*0.5)% seconds" parsed as timespan
+        set {_duration} to {_minDuration} if {_duration} < {_minDuration}
+        set metadata value "HypercognitionDuration" of {_p} to {_duration}
+
+        set metadata value "Hypercognition" of {_p} to {_duration}
+        set metadata value "HypercognitionCompletedActions" of {_p} to 0
+        hypercognitionNextTask({_p})
+
+function hypercognitionEnd(p: player, reason: string = "expire"):
+    set {_completedSets} to metadata value "HypercognitionCompletedSets" of {_p}
+    send title "" with subtitle "" to {_p} for 0 seconds
+    clear metadata value "HypercognitionCompletedActions" of {_p}
+    clear metadata value "Hypercognition" of {_p}
+    clear metadata value "HypercognitionCompletedSets" of {_p}
+    loop 4 times:
+        clear metadata value "HypercognitionKey%loop-number%" of {_p}
+        clear metadata value "HypercognitionText" of {_p}
+    if {_reason} = "fail":
+        damage {_p} by 1
+        set {_pi} to 1.7
+        broadcast "&c&lMasakrycznie! Wynocha! &f%{_completedSets}% completedSets&c!!!!"
+        loop 4 times:
+            play sound "block.glass.break" with volume 3 and pitch {_pi} to {_p}
+            wait 1 tick
+    else:
+        play sound "entity.generic.explode" with volume 3 and pitch 2 at {_p}
+        if {_completedSets} is set:
+            broadcast "&2Cudnie! Slicznie! &f%{_completedSets}% &2completed sets!"
+        
+function hypercognitionNextTask(p: player):
+    set {_possibleKeys::*} to "left movement key", "forward movement key", "right movement key", "sprint key", "jump key", "sneak key", "backward movement key", "left click", "right click"
+    set {_keys::*} to "Left", "Forward", "Right", "Sprint", "Jump", "Sneak", "Down", "LMB", "RMB"
+    loop 4 times:
+        set {_random} to a random integer between 1 and 9
+        add {_possibleKeys::%{_random}%} to {_randomKeys::*}
+        add {_keys::%{_random}%} to {_keysText::*}
+        set metadata value "HypercognitionKey%loop-number%" of {_p} to {_possibleKeys::%{_random}%}
+    set {_keys} to join {_keysText::*} by " | "
+    set metadata value "HypercognitionText" of {_p} to {_keys}
+    send title "" with subtitle {_keys} to {_p} for 10 seconds
+
+function hypercognitionExpire(p: player):
+    set metadata value "Hypercognition" of {_p} to 10 seconds
+    hypercognitionNextTask({_p})
+    while metadata value "Hypercognition" of {_p} > 0 seconds:
+        stop loop if {_p} is not alive
+        set {_correct} to metadata value "HypercognitionCompletedActions" of {_p}
+        set {_actions::*} to (uncolored metadata value "HypercognitionText" of {_p}) split at " | "
+        loop {_correct} times:
+            set {_actions::%loop-number%} to "&a%{_actions::%loop-number%}%"
+        set metadata value "HypercognitionText" of {_p} to join {_actions::*} by " &f| "
+        set {_text} to metadata value "HypercognitionText" of {_p}
+        set {_dur} to "%metadata value "Hypercognition" of {_p}%"
+        replace all "onds" and "ond" in {_dur} with ""
+        send title "" with subtitle {_text} to {_p} for metadata value "Hypercognition" of {_p} with fade in 0 second and fade out 0 second
+        send action bar "Hypercognition: %{_dur}%" to {_p}
+        remove 0.1 seconds from metadata value "Hypercognition" of {_p}
+        wait 0.1 seconds
+    hypercognitionEnd({_p})
+    send action bar "" to {_p}
+
+function hypercognitionClick(p: player, type: string):
+    set {_actionIndex} to metadata value "HypercognitionCompletedActions" of {_p} + 1
+    set {_action} to metadata value "HypercognitionKey%{_actionIndex}%" of {_p}
+    if {_action} = "%{_type}% click":
+        broadcast "Yup"
+        hypercognitionCompletedAction({_p})
+    else:
+        broadcast "&cOkropnie! %{_type}% click!"
+        play sound "block.note_block.didgeridoo" with volume 3 and pitch 1 to {_p}
+        hypercognitionEnd({_p}, "fail")
 
 function FutureSightEspeon(p: player, target: entity):
     play sound "skill.cresselia.fullmoon_cast" with volume 3 and pitch 1.67 at {_target}
