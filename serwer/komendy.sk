@@ -392,6 +392,40 @@ command /dailyrewardreminder [<text>]:
 			set metadata value "DailyRewardReminderHidden" of player to true
 			play sound "entity.generic.explode" with volume 3 and pitch 1 at player
 			play sound "entity.generic.explode" with volume 3 and pitch 2 at player
+import:
+	java.util.Base64
+	java.lang.String
+
+expression base[(-| )]64 (0¦en|1¦de)coded %string%:
+	return type: string
+	parse:
+		set {_encoder} to Base64.getEncoder()
+		set {_decoder} to Base64.getDecoder()
+		continue
+	get:
+		return new String({_encoder}.encode(expr-1.getBytes()) if parser mark is 0, else {_decoder}.decode(expr-1.getBytes()))
+
+command /npcskin [<integer>]:
+	trigger:
+		if arg-1 is set:
+			load yaml "plugins/Citizens/saves.yml" as "citizens%player%"
+			if yaml value "npc.%arg-1%.traits.skintrait.textureRaw" in "citizens%player%" is set:
+				set {_name} to yaml value "npc.%arg-1%.name" in "citizens%player%"
+				set {_skin} to yaml value "npc.%arg-1%.traits.skintrait.textureRaw" in "citizens%player%"
+				set {_x} to Base64.getDecoder().decode({_skin}.getBytes())
+				set {_y::*} to new String({_x}) split at nl
+				loop {_y::*}:
+					if loop-value contains "url":
+						set {_link} to loop-value
+						replace all """url"" :" in {_link} with ""
+						replace all """" and " " and "," and nl in {_link} with ""
+						stop loop
+				send formatted "&aLink to skin of NPC &f%{_name}% &awith ID &f%arg-1%&a: <url:%{_link}%><tooltip:&n%{_link}%>&f&n[LINK]" to player
+			else:
+				send "&cThis NPC does not exist or does not have their skin set." to player
+			unload yaml "citizens%player%"
+		else:
+			send "&cNPC ID must be provided as the first argument." to player
 
 command /changecardcourse [<text>]:
 	trigger:
