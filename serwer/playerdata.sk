@@ -2,7 +2,7 @@ options:
 	maxEcs: 6
 on join:
 	load yaml "plugins/Skript/playerdata/%uuid of player%.yml" as "data-%player%"
-	load yaml "plugins/Skript/playerdata/admin/%uuid of player%-Admin.yml" as "dataAdmin-%player%"
+	load yaml "plugins/Skript/playerdata/admin/player/%uuid of player%Admin" as "dataAdmin-%player%"
 	load yaml "plugins/Skript/playerdata/enderchesty/Enderchest-%uuid of player%.yml" as "Enderchest%player%"
 	loop {@maxEcs} times:
 		load yaml "plugins/Skript/playerdata/enderchesty/contents/%uuid of player%/%loop-number%.yml" as "Enderchest%loop-number%%player%"
@@ -11,13 +11,16 @@ on join:
 		SetPlayerStats(player) #Sets player stats to current selected card's stats (funkcje.sk)
 		
 	if {karta::%player%} is set:
-		set {_primaryStatType} to string tag "PrimaryStat" of {karta::%player%}
+		set {_primaryStatType} to string tag "PrimaryStat" of custom nbt of {karta::%player%}
 		set metadata value "PrimaryStatType" of player to {_primaryStatType}
 		set {_id} to string tag "Id" of custom nbt of {karta::%player%}
 		load yaml "plugins/Skript/playerdata/karty/%{kartaname::%player%}%/%{_id}%.yml" as "kartyPh-%player%"
-
-	set {_color} to raw {kolorek::%player%}
-	replace all "<" and ">" in {_color} with ""
+	
+	if {kolorek1::%player%} is set:
+		set {_color} to raw {kolorek1::%player%}
+		replace all "<" and ">" in {_color} with ""
+	else:
+		set {_color} to "ffffff"
 	set yaml value "Player.Name" in "data-%player%" to name of player
 	set yaml value "Player.Last Login" in "data-%player%" to data()
 	set yaml value "Player.Colour" in "data-%player%" to {_color}
@@ -25,7 +28,7 @@ on join:
 	set yaml value "Player.Exp" in "data-%player%" to round({exp::%player%}, 2)
 	
 	set yaml value "Player.Name" in "dataAdmin-%player%" to name of player
-	set yaml value "Player.UUID" in "dataAdmin-%player%" to uuid of player
+	set yaml value "Player.UUID" in "dataAdmin-%player%" to "%uuid of player%"
 	set yaml value "Player.Location" in "dataAdmin-%player%" to location of player
 	if yaml list "Player.Name History" in "dataAdmin-%player%" does not contain player's name:
 		add player's name to yaml list "Player.Name History" in "dataAdmin-%player%" 
@@ -55,6 +58,7 @@ on quit:
 	unload yaml "dataAdmin-%player%"
 	save yaml "Enderchest%player%"
 	unload yaml "Enderchest%player%"
+	unload yaml "kartyPh-%player%"
 	loop {@maxEcs} times:
 		save yaml "Enderchest%loop-number%%player%"
 		unload yaml "Enderchest%loop-number%%player%"
