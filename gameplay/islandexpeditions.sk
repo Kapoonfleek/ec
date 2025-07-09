@@ -11,11 +11,16 @@ import:
     org.mvplugins.multiverse.core.world.options.DeleteWorldOptions
     org.mvplugins.multiverse.core.world.LoadedMultiverseWorld
     org.bukkit.event.world.TimeSkipEvent
+    org.bukkit.event.weather.WeatherChangeEvent
     org.mvplugins.multiverse.core.world.MultiverseWorld
     org.bukkit.Bukkit
     org.bukkit.World
     org.bukkit.Chunk
     org.bukkit.plugin.Plugin
+    kr.toxicity.model.api.BetterModel
+    java.util.Optional
+    kr.toxicity.model.api.tracker.EntityTrackerRegistry
+    kr.toxicity.model.api.tracker.Tracker
 
 options:
     safeworld: location(9270.5, 73.5, 1562.5, world "world")
@@ -50,6 +55,11 @@ effect deleteworld %string%:
         set {_options} to DeleteWorldOptions.world({_world})
 
         {_manager}.deleteWorld({_options})
+
+#function mythicMobSpawn(e: string, loc: location) :: entity:
+    #set {_api} to MythicBukkit.inst().getAPIHelper()
+    #set {_mob} to {_api}.spawnMythicMob({_e}, {_loc})
+    #return {_mob}
 
 function doesWorldExist(w: string) :: boolean:
     set {_api} to MultiverseCoreApi.get()
@@ -129,6 +139,7 @@ on rightclick:
 
             load yaml "plugins/Skript/islandexpeditions/%{_island}%/Locations.yml" as "%{_island}%Locations"
             set {_total} to yaml value "TotalLocations.ShipAlly.%{_direction}%" in "%{_island}%Locations"
+            
 
             loop yaml node keys "Locations.ShipAlly.%{_direction}%.%{_rotation}%" in "%{_island}%Locations":
                 set {_integer} to (loop-value parsed as integer)
@@ -161,11 +172,23 @@ on rightclick:
                 set worldborder center of event-worldborder to location(0, 500, 0)
                 set worldborder warning distance of event-worldborder to 10
 
+            load yaml "plugins/Skript/islandexpeditions/%{_island}%/Properties" as "%{_island}%Properties"
+            set {_sunChance} to yaml value "Properties.Weather.Sun" in "%{_island}%Properties"
+            set {_rainChance} to yaml value "Properties.Weather.Rain" in "%{_island}%Properties"
+            set {_thunderChance} to yaml value "Properties.Weather.Thunder" in "%{_island}%Properties"
+            unload yaml "%{_island}%Properties"
+
+            set {allowChangeConditions::%{_newInstance}%} to true
             set {_randomTime} to a random integer between 0 and 24000
             world {_newInstance}.setTime({_randomTime})
 
-            set {_weather::*} to "sun", "rain" and "storm"
-            set {_randomWeather} to (a random element of {_weather::*}) parsed as weather type
+            set {_weather} to a random integer between 1 and 100
+            if {_weather} is between 1 and {_sunChance}:
+                set {_randomWeather} to "sun" parsed as weather type
+            else if {_weather} is between {_sunChance} + 1 and {_sunChance} + {_rainChance}:
+                set {_randomWeather} to "rain" parsed as weather type
+            else if {_weather} is between ({_sunChance} + {_rainChance} + 1) and 100:
+                set {_randomWeather} to "thunder" parsed as weather type
             set weather in world {_newInstance} to {_randomWeather}
             broadcast {_randomWeather}
 
@@ -298,6 +321,11 @@ on rightclick:
             #       Undead:
             #           fdsf
             #       Fire Elementals
+
+
+            #Entity (config)
+            #IsModeledEntity
+            #Stroll (true/false) etc.
 
             #Azerite
             #   Crystal
@@ -661,6 +689,10 @@ function AzeriteOreMine(p: entity, e: entity, team: string = "Ally"):
             set {_azerite} to 110
             set {_casttime} to 2 seconds
             set {_above} to 1
+        else if {_typeOfOre} = "Chest":
+            set {_azerite} to 200
+            set {_casttime} to 3 seconds
+            set {_above} to 1
 
         set {_distance} to 6
         set {_castTimeValue} to "%{_casttime}%"
@@ -669,27 +701,34 @@ function AzeriteOreMine(p: entity, e: entity, team: string = "Ally"):
         set {_originalCastTimeValue} to {_castTimeValue}
         
         if metadata value "cast" of {_p} is not set:
-            set metadata value "casttimemax" of {_p} to {_casttime}
             set metadata value "mining" of {_p} to true
             set metadata value "cast" of {_p} to {_casttime}
             set {_break} to 0
-
+            if {_typeOfOre} = "Chest":
+                play sound "azerite.chest_loop" with volume 2 and pitch 1 to {_p}
             while metadata value "mining" of {_p} = true:
                 if metadata value "channeling" of {_p} is set:
                     clear metadata value "channeling" of {_p}
                 if metadata value "cast" of {_p} is not set:
                     clear metadata value "mining" of {_p}
+                    stop sound "azerite.chest_loop" for {_p}
                     stop
-                stop loop if distance between {_p} and {_e} > {_distance}
+                if distance between {_p} and {_e} > {_distance}:
+                    stop sound "azerite.chest_loop" for {_p}
+                    stop loop
                 if {_casttime} > 0 seconds:
                     set metadata value "casttimeleft" of {_p} to {_casttime}
                     send action bar "Mining... %{_casttime}% " to {_p}
                     if {_castTimeValue} is divisible by 1:
-                        play sound "misc.mine_ore" with volume 2 and pitch 1 at {_p}
                         make {_p} swing their hand
                         add 1/{_originalCastTimeValue} to {_break}
-                        draw 20 item particle using diamond block at location {_above} above {_e} with offset vector(0.8, 2, 0.8) with extra 0.01
-                        draw 20 item particle using gold block at location {_above} above {_e} with offset vector(0.8, 2, 0.8) with extra 0.01 
+                        if {_typeOfOre} != "Chest":
+                            play sound "misc.mine_ore" with volume 2 and pitch 1 on {_e}
+                            draw 20 block particle using diamond block at location {_above} above {_e} with offset vector({_above}/5, {_above}/2, {_above}/5) with extra 0.04
+                            draw 20 block particle using gold block at location {_above} above {_e} with offset vector({_above}/5, {_above}/2, {_above}/5) with extra 0.04
+                        else:
+                            play sound "entity.zombie.attack_wooden_door" with volume 2 and pitch 2 on {_e}
+                            draw 10 block particle using jungle wood at location {_above} above {_e} with offset vector({_above}/5, {_above}/2, {_above}/5) with extra 0.04
                     wait 0.1 seconds
                     remove 0.1 seconds from {_casttime}
                     remove 0.1 from {_castTimeValue}
@@ -698,23 +737,29 @@ function AzeriteOreMine(p: entity, e: entity, team: string = "Ally"):
                     send action bar "" to {_p}
         else:
             stop
-
+            
         clear metadata value "mining" of {_p}
         clear metadata value "cast" of {_p}
         clear metadata value "casttime" of {_p}
-        clear metadata value "casttimemax" of {_p}
         
         if {_casttime} > 0 seconds:
             send action bar "&cCancelled" to {_p}
+            stop sound "azerite.chest_loop" for {_p}
             stop
-        play sound "azerite.collect" with volume 2 and pitch 1 at {_p}
-        send "<##fff200>+%{_azerite}% Azerite Collected <##e8ce81>from Azerite %{_typeOfOre}%" to {_p}
-        add {_azerite} to {azeriteCollected%{_team}%::%{_instance}%}
+
+        azeriteAddIslands({_p}, {_instance}, {_typeOfOre}, {_azerite}, "Ally")
         set {_e}'s helmet to air
         clear string tag "AzeriteInstance" of custom nbt of {_e}
-        set line 7 of {_p}'s fastboard to "<##3aff17>Ally: &f%{azeriteCollectedAlly::%{_instance}%}% | <##ff1742>Enemy: &f%{azeriteCollectedEnemy::%{_instance}%}%"
-        set line 10 of {_p}'s fastboard to "&fWorth  &b0 &fAzerite."
-
+        if {_typeOfOre} = "Chest":
+            set {_tracker} to EntityTrackerRegistry.registry({_e}).tracker("azeritechest")
+            if {_tracker} is set:
+                {_tracker}.animate("chestopen")
+                play sound "block.chest.open" with volume 2 and pitch 2 on {_e}
+                stop sound "azerite.chest_loop" for {_p}
+                wait 3 seconds
+                add nbt from "{Invisible:1b,Marker:1b}" to nbt of {_e}
+                {_tracker}.despawn()
+                play sound "entity.zombie.break_wooden_door" with volume 2 and pitch 2 on {_e}
         #Spawn text display or armor stand here and animate (Text will get bigger and OPACITY (FADE) slowly turns to 0)
         #On azerite collect, do not remove the entity, remove the tags. When aezrite detector is online, show all azerite on dynmap
     else:
@@ -725,14 +770,53 @@ on damage:
     if metadata value "mining" of victim is set:
         clear metadata value "mining" of victim
 
-#convert azerite variable to oldazerite
+function azeriteCollectedTextTransform(id: integer, partyMembers: players):
+    loop 10 times:
+        move entity with id {_id} by 0 700 0 for {_partyMembers::*}
+        set {_packet} to raw metadata packet with id {_id}
+        send packet {_packet} to {_partyMembers::*}
+        wait 1 tick
+    remove fake entity with id {_id} for {_partyMembers::*}
+        
+function azeriteAddIslands(p: player, instance: string, azeriteType: string, azerite: integer, team: string):
+    play sound "azerite.collect" with volume 2 and pitch 1 at {_p}
+    send "<##fff200>+%{_azerite}% Azerite Collected <##e8ce81>from Azerite %{_azeriteType}%" to {_p}
+    add {_azerite} to {azeriteCollected%{_team}%::%{_instance}%}
+    set {_worthAzerite} to 0
+    set line 7 of {_p}'s fastboard to "<##3aff17>Ally: &f%{azeriteCollectedAlly::%{_instance}%}% | <##ff1742>Enemy: &f%{azeriteCollectedEnemy::%{_instance}%}%"
+    set line 10 of {_p}'s fastboard to "&fWorth  &b%{_worthAzerite}% &fAzerite."
+
+    
+    set {_partyMembers::*} to all players in world of {_p}
+    loop {_partyMembers::*}:
+        set {_id} to random integer between 0 and 999999
+        spawn fake text display entity at location above loop-value for {_partyMembers::*} with id {_id}
+        set {_packet} to raw metadata packet with id {_id}
+        set {_text} to mini message from "<##e8ce81>+%{_azerite}% Azerite Collected"
+        add data from "display text %{_text}%" to packet {_packet}
+        add data from "display billboard center" to packet {_packet}
+        add data from "display brightness 15 15" to packet {_packet}
+        send packet {_packet} to {_partyMembers::*}
+        azeriteCollectedTextTransform({_id}, {_partyMembers::*})
+
+    #add to yaml here: azerite collected by player, type of azerite interacted with, enemies kileld etc
 
 on TimeSkipEvent:
     set {_world} to event.getWorld()
     if isWorldIsland({_world}) = true:
-        if "%event.getSkipReason()%" != "CUSTOM":
+        if {allowChangeConditions::%{_world}%} != true:
             broadcast "AAAA"
             cancel event
+
+on WeatherChangeEvent:
+    set {_world} to event.getWorld()
+    if isWorldIsland({_world}) = true:
+        if {allowChangeConditions::%{_world}%} != true:
+            broadcast "BBBB"
+            cancel event
+        else:
+            clear {allowChangeConditions::%{_world}%}
+            broadcast "allowed"
 
 on block break:
     if isWorldIsland(player's world) = true:
@@ -918,7 +1002,7 @@ command /addazeritemodel [<string>]:
         else:
             send "&cYou cannot use this command." to player
 
-command /addazeriteattributes [<string>] [<string>] [<number>]:
+command /addazeriteattributes [<string>] [<string>] [<string>]:
     trigger:
         if player's name = "Pehrek":
             if arg-1 is set:
@@ -935,3 +1019,15 @@ command /addazeriteattributes [<string>] [<string>] [<number>]:
                 send "&cArg-1 must be an Azerite type." to player
         else:
             send "&cYou cannot use this command." to player
+
+command /addislandproperties [<string>] [<string>] [<string>] [<number>]:
+    trigger:
+        if player's name = "Pehrek":
+            set {_island} to arg-1
+            set {_property} to arg-2
+            set {_type} to arg-3
+            set {_value} to arg-4
+            load yaml "plugins/Skript/islandexpeditions/%{_island}%/Properties" as "%{_island}%Properties"
+            set yaml value "Properties.%{_property}%.%{_type}%" in "%{_island}%Properties" to {_value}
+            save yaml "%{_island}%Properties"
+            unload yaml "%{_island}%Properties"
