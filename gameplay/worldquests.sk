@@ -1,0 +1,124 @@
+import:
+    org.dynmap.markers.MarkerAPI
+    org.dynmap.markers.MarkerDescription
+    org.dynmap.markers.MarkerIcon
+    org.dynmap.markers.MarkerSet
+    org.dynmap.DynmapCommonAPI
+    org.dynmap.DynmapCommonAPIListener
+    org.bukkit.Bukkit
+    org.dynmap.bukkit.DynmapPlugin
+
+variables:
+    {worldQuestCount} = 0
+
+command /testdialogue:
+    trigger:
+        set {worldQuestCount} to 0
+        portraitDialogue(player, "", "Magni Bronzebeard", "Someone's drawin' power from Azerite in this area. Ye need tae stop 'em!")
+        spawn 1 pig at player with nbt from "{Silent:1b,Invulnerable:1b}"
+        set {_magni} to last spawned pig
+        disguise {_magni} as saved disguise "Magni"
+        entityTitle({_magni}, "the Speaker", -0.35)
+        magniPathfind(player, {_magni})
+        set generic movement speed attribute of {_magni} to 0.4
+        set boolean tag "RemoveOnReset" of custom nbt of {_magni} to true
+
+function magniPathfind(p: player, magni: entity):
+    while "%regions at {_p}%" contains "SpawnArea":
+        if "%regions at {_p}%" contains "ChamberofHeart":
+            stop loop
+        stop loop if {_magni} is not alive
+        stop loop if {_p} is not alive
+        if distance between {_magni} and {_p} > 30:
+            teleport {_magni} to {_p}
+        make {_magni} pathfind to {_p}       
+        wait 1 second
+    kill {_magni} 
+
+function portraitDialogue(p: player, icon: string, name: string, text: string):
+    if length of {_text} > 32:
+        set {_length} to (length of {_text})/32
+        set {_length} to rounded down {_length}
+        set {_counter} to 1
+        loop {_length} times:
+            set {_min} to 1 + (({_counter}-1)*32)
+            if loop-counter = {_length}:
+                set {_max} to length of {_text}
+            else:
+                set {_max} to {_counter}*32
+            if {_counter} < 3:
+                set {_textAligned::*} to {_textAligned::*} and (subtext of {_text} from character {_min} to character {_max})
+            else:
+                set {_text::*} to {_text::*} and (subtext of {_text} from character {_min} to character {_max})
+            add 1 to {_counter}
+    send " " to {_p}
+    send "          <##fdd002>%{_name}%" to {_p}
+    loop {_textAligned::*}:
+        send "          %loop-value%" to {_p}
+    if {_text::*} is set:
+        loop {_text::*}:
+            if loop-counter = (size of {_text::*}):
+                send "%{_icon}% %loop-value%" to {_p}
+            else:
+                send "          %loop-value%" to {_p}
+    else:
+        send "%{_icon}%" to {_p}
+    send " " to {_p}
+command /wqtest:
+    trigger:
+        loop all loaded chunks in player's world:
+            if loop-value.getPluginChunkTickets() is set:
+                unload loop-value
+        if player's name = "Pehrek":
+            set {_x} to a random number between -5000 and 5000
+            set {_z} to a random number between -5000 and 5000
+            set {_loc} to location({_x}, 0, {_z}, world "world")
+            set {_WQLocation} to highest solid block at {_loc}
+
+            while block at {_WQLocation} = water:
+                set {_x} to a random number between -5000 and 5000
+                set {_z} to a random number between -5000 and 5000
+                set {_loc} to location({_x}, 0, {_z}, world "world")
+                set {_WQLocation} to highest solid block at {_loc}
+
+            set {_plugin} to instance of plugin "Skript"
+
+            set {_chunk} to chunk at {_WQLocation}
+            set {_chunkLoc} to block at 0,0,0 in {_chunk}
+            {_chunk}.addPluginChunkTicket({_plugin})
+            {_chunk}.getWorld().getChunkAtAsync({_chunkLoc})
+
+            teleport player to location 0.5 above {_WQLocation}
+
+            set {_worldQuestName} to "Doom's Howl"
+            set {_worldQuestRarity} to "#ae38ff"
+            set {_faction} to "Champions of Earthcraft"
+
+            set {_htmlWQName} to "<p style=color:%{_worldQuestRarity}%;>%{_worldQuestName}%</p>"
+            set {_worldQuestFaction} to "<p style=color:#fdd002;>%{_faction}%</p>"
+            set {_rewards} to "<p style=color:#fdd002;>Rewards</p>"
+            set {_objectives} to "- 0/1 Doom's Howl Slain"
+            set {_reward} to "<div style=display:flex; width:200px><p><img src=radiantazeritefragment.jpg alt=Radiant Azerite Fragment  style=background:transparent;float:left;width:32px;height:32px/>"
+            set {_reward} to "%{_reward}%<div style=background:transparent;><p style=color:%{_worldQuestRarity}%;>Radiant Azerite Fragment</p>"
+            set {_reward} to "%{_reward}%<p style=color:#fdd002;>Grants 650 Artifact Power to your<br>Heart of Earthcraft.</p></div></div>"
+
+            set {_description} to "%{_worldQuestFaction}%%{_objectives}%"
+            set {_worldQuestText} to "%{_htmlWQName}%%{_description}%%{_rewards}%%{_reward}%%{_test}%"
+            
+            set {_y} to y-coordinate of {_WQLocation}
+            
+            add 1 to {worldQuestCount}
+
+            execute console command "dmarker add set:WorldQuests x:%{_x}% y:%{_y}% z:%{_z}% world:world icon:questmarker label:""%{_worldQuestText}%"" markup:true id:%{worldQuestCount}%"
+
+            #Magni
+
+            #Replace band aid execute command with API hook later
+            #Functional code below - fix .createMarker() later down the line
+            #set {_api} to Bukkit.getPluginManager().getPlugin("dynmap")
+            #set {_icon} to {_api}.getMarkerAPI().getMarkerIcon("questmarker")
+
+            #set {_markerSet} to {_api}.getMarkerAPI().createMarkerSet("WorldQuests", "World Quests", null, true)
+            #set {_randomId} to random 8 char string from charset `0-9` `a-z`
+
+            #{_markerSet}.createMarker({_randomId}, {_randomQuest}, {_x}, {_y}, {_z}, {_icon}, true)
