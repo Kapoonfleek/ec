@@ -217,9 +217,9 @@ function hex(string: string) :: string:
 	return "%{_string}%".replaceAll("&##([a-fA-F0-9]{6})", "<##$1>")
 
 function entityTitle(e: entity, title: string, offset: number = 0):
-	set {_y} to (y-coordinate of {_e} - 0.4) + {_offset}
+	set {_y} to (y-coordinate of {_e} + 1.55) + {_offset}
 	set {_loc} to location((x-coordinate of {_e}), {_y}, (z-coordinate of {_e}), world "%{_e}'s world%")
-	set {_nbt} to "{Invisible:1b,NoGravity:1b,NoBasePlate:1b,ShowArms:1b,Pose:{LeftLeg:[0f,0f,338f],RightLeg:[0f,0f,24f]}}"
+	set {_nbt} to "{Invisible:1b,Marker:1b,Pose:{LeftLeg:[0f,0f,338f],RightLeg:[0f,0f,24f]}}"
 	spawn 1 armor stand at {_loc} with nbt from {_nbt}
 	set the display name of last spawned armor stand to "&e<%{_title}%>"
 	set uuid tag "ECEntityTitle" of custom nbt of {_e} to last spawned armor stand
@@ -277,7 +277,7 @@ function CP(p: player, slotname: string, spec: string, tooltip: boolean) :: numb
 
 function spawnQuestMarker(p: players, e: entity, offset: number = 0) :: integer:
 	set {_id} to random integer between 0 and 999999999999
-	spawn fake armor stand at location 2 + {_offset} above {_e} for {_p::*} with id {_id}
+	spawn fake armor stand at location 1.85 + {_offset} above {_e} for {_p::*} with id {_id}
 	
 	set {_meta} to metadata packet with id {_id}
 
@@ -493,6 +493,12 @@ function SetPlayerStats(p: player):
 	set {_haste} to int tag "Stats;Haste" of custom nbt of {karta::%{_p}%}
 	set {_avoidance} to int tag "Stats;Avoidance" of custom nbt of {karta::%{_p}%}
 
+	if boolean tag "HeartOfEarthcraft" of custom nbt of {_p}'s chestplate is set:
+		set {_heartOfEarthcraft} to {_p}'s chestplate
+		add (double tag "Stats;Health" of custom nbt of {_heartOfEarthcraft}) to {_health}
+		add (double tag "Stats;Critical Hit" of custom nbt of {_heartOfEarthcraft}) to {_criticalhit}
+		add (double tag "Stats;Haste" of custom nbt of {_heartOfEarthcraft}) to {_haste}
+		add (double tag "Stats;Mastery" of custom nbt of {_heartOfEarthcraft}) to {_mastery}
 
 	set {primarystat::%{_p}%} to {_primarystat}
 	set {health::%{_p}%} to {_health}
@@ -510,7 +516,9 @@ function SetPlayerStats(p: player):
 
 	clear {bonusHaste::%{_p}%}
 
+	set {_currentMaxHealth} to {_p}'s max health
 	set max health of {_p} to 25 + ({health::%{_p}%}/5)
+	heal {_p} by (max health of {_p}) - {_currentMaxHealth}
 	set scaled health of {_p} to 20
 
 	playerMoveSpeedUpdate({_p})
