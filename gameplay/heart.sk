@@ -186,10 +186,23 @@ on chestplate change:
 	if boolean tag "HeartOfEarthcraft" of custom nbt of future event-item stack is set:
 		if metadata value "ECEngaged" of player is not set:
 			set {_soulbound} to uuid tag "Soulbound" of custom nbt of event-item
-			send "&cThis item is soulbound to &f%{_soulbound}%&c." to player
+			set {_soulbound} to {_soulbound} parsed as player
+			if {_soulbound} != player:
+				send "&cThis item is soulbound to &f%{_soulbound}%&c." to player
+				play sound "block.glass.break" with volume 1 and pitch 2 to player
+			else:
+				SetPlayerStats(player)
+				play sound "azerite.trait_select" with volume 5 and pitch 1 to player
 		else:
 			play sound "block.glass.break" with volume 1 and pitch 2 to player
 			send "&c&oYou cannot equip the Heart of Earthcraft in combat." to player
+	else if boolean tag "HeartOfEarthcraft" of custom nbt of past event-item stack is set:
+		if metadata value "ECEngaged" of player is not set:
+			SetPlayerStats(player)
+			play sound "azerite.trait_select" with volume 5 and pitch 0.8 to player
+		else:
+			send "&cYou can not take off the Heart of Earthcraft while in cmbat." to player
+			play sound "block.glass.break" with volume 1 and pitch 2 to player
 	
 on region exit:
 	if "%region%" contains "ChamberofHeart":
@@ -304,3 +317,56 @@ on press of sprint key:
 		magniDialogueVoiced(player, "theplanet", 2.5 seconds)
 		magniDialogueVoiced(player, "thevery", 15 seconds)
 		magniDialogueVoiced(player, "infuse", 20 seconds)
+		
+
+function grantPlayerHeartOfEC(p: player):
+	set {_nbt} to "{""minecraft:custom_model_data"":{floats:[10.0f]}}"
+	set {_itemLevel} to 60
+	set {_stat} to round(accessoryGearFormula({_itemLevel})/3, 0)
+	set {_multiplier} to statMultiplierGear("accessory")
+	set {_health} to round(healthFormula({_itemLevel})*{_multiplier}, 0)
+	set {_heart} to gold nugget named "<##e8ce81>Heart of Earthcraft" with lore "<##fdd002>Item Level %{_itemLevel}%%nl%&fSoulbound to %{_p}%%nl%&f+%{_health}% Health%nl%<##00ff00>+%{_stat}% Critical Hit%nl%<##00ff00>+%{_stat}% Haste%nl%<##00ff00>+%{_stat}% Mastery%nl% %nl%<##00ff00>Equip: Harnesses the energy of raw%nl%<##00ff00>Azerite, awakening exceptional pieces%nl%<##00ff00>of armor that possess latent powers.%nl% %nl%<##fdd002>''A living symbol of hope, borne by the%nl%<##fdd002>champions of a dying planet. The fate%nl%<##fdd002>of Earthcraft will be shared by all its%nl%<##fdd002>children.''"
+	set {_heart} to {_heart} with nbt from {_nbt}
+	set tooltip style of {_heart} to "azerite"
+	set boolean tag "HeartOfEarthcraft" of custom nbt of {_heart} to true
+	set uuid tag "Soulbound" of custom nbt of {_heart} to {_p}'s uuid
+	set double tag "Stats;Health" of custom nbt of {_heart} to {_health}
+	set double tag "Stats;Critical Hit" of custom nbt of {_heart} to {_stat}
+	set double tag "Stats;Haste" of custom nbt of {_heart} to {_stat}
+	set double tag "Stats;Mastery" of custom nbt of {_heart} to {_stat}
+	set int tag "ItemLevel" of custom nbt of {_heart} to {_itemLevel}
+	set int tag "HeartLevel" of custom nbt of {_heart} to 1
+	set int tag "Azerite" of custom nbt of {_heart} to 0
+	set int tag "AzeriteTotal" of custom nbt of {_heart} to 0
+
+	apply equippable component to {_heart}:
+		slot: chestplate slot
+		equip_sound: "item.armor.equip_gold"
+		asset_id: "heartofearthcraft"
+		dispensable: true
+		swappable: true
+		damage_on_hurt: false
+
+	give {_p} {_heart}
+	heartBackup({_p}, {_heart})
+	heartContentUnlocked({_p})
+	send formatted "<##fdd002>You receive: <tooltip:%name of {_heart}%%nl%%join lore of {_heart} by nl%>&f <##e8ce81>[Heart of Earthcraft]" to {_p}
+	set {_yamlValue} to "Achievement.Have a Heart"
+	achievementYaml({_p}, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Have a Heart", "Obtain the Heart of Earthcraft.")
+	#play sound "azerite.cast" with volume 5 and pitch 1 to {_p}
+	#play sound "azerite.collect" with volume 5 and pitch 1 to {_p}
+
+function addAzerite(p: player, azerite: integer):
+	add {_azerite} to {azerite::%{_p}%}
+	add {_azerite} to {azeriteTotal::%{_p}%}
+	if boolean tag "HeartOfEarthcraft" of custom nbt of {_p}'s chestplate is set:
+		set int tag "Azerite" of custom nbt of {_p}'s chestplate to {azerite::%{_p}%}
+		set int tag "AzeriteTotal" of custom nbt of {_p}'s chestplate to {azeriteTotal::%{_p}%}
+
+function heartBackup(p: player, heart: item):
+	load yaml "plugins/Skript/backups/heart/%uuid of {_p}%.yml" as "heartBackup-%{_p}%"
+	set yaml value "Heart" in "heartBackup-%{_p}%" to {_heart}
+	save yaml "heartBackup-%{_p}%"
+	unload yaml "heartBackup-%{_p}%"
+	#Add magni option - I seem to have misplaced my Heart of Earthcraft.
+	#No problem - found it for ye
