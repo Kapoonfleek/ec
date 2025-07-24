@@ -90,6 +90,7 @@ on skript start:
 	load yaml "plugins/Skript/islandexpeditions/SoundList.yml" as "IslandsSounds"
 	load yaml "plugins/Skript/islandexpeditions/AzeriteModels" as "AzeriteModels"
 	load yaml "plugins/Skript/islandexpeditions/AzeriteAttributes" as "AzeriteAttributes"
+	load yaml "plugins/Skript/islandexpeditions/EnemyList" as "EnemyList"
 	if {dziennyreset} is true:
 		set {dziennyreset} to false
 		send "Dzienny reset nastąpił!" to console
@@ -186,6 +187,7 @@ on skript stop:
 	clear {expAreaMayan}
 	set {expAreaIceMobs} to 0
 	clear {expAreaIce}
+	clear {allowChangeConditions::*}
 	loop all offline players where [metadata value "dungeon" of input is set]:
 		DungeonLeave(loop-offline player)
 	loop all players where [metadata value "dungeon" of input is set]:
@@ -207,6 +209,8 @@ on skript stop:
 	loop all entities where [input's world = "arcticbattlefield"]:
 		if loop-entity is not a player:
 			kill loop-entity
+	loop all entities where [boolean tag "RemoveOnReset" of custom nbt of input is true]:
+		kill loop-entity
 	clear {lingeringInsanityHaste::*}
 	clear {hasteVoidform::*}
 	delete all yaml from directory "plugins/Skript/scripts/combat/Shields"
@@ -231,21 +235,25 @@ on join:
 	if player is not whitelisted:
 		set {_data} to data()
 		log "%{_data}% | %player% joined the server." to "logi/login-nonwhitelisted.log"
-	set {_winter::*} to 12, 1, 2
-	if {_winter::*} contains {_month}:
-		if amount of online players = 1:
-			SnowfallOnSpawn()
-		if {_month} = 12:
-			AkasakaArthurSnowFight()
-			playerGiftYaml(player)
-			WinterDelightDisguiseUpdate()
-			newGiftSpawn()
+	if {event} = "Winter Delight":
+		set {_winter::*} to 12, 1, 2
+		if {_winter::*} contains {_month}:
+			if amount of online players = 1:
+				SnowfallOnSpawn()
+			if {_month} = 12:
+				AkasakaArthurSnowFight()
+				playerGiftYaml(player)
+				WinterDelightDisguiseUpdate()
+				newGiftSpawn()
 	clear {chatbubbles::%player%::*}
+	if online player count = 1:
+		chamberOfHeartAmbience()
 	wait 2 seconds
 	execute console command "noinvincibility on"
 	notifyPlayerDailyReward(player)
 	if {dresetwiad::%player%} = true:
-		winterDelightRandomizeMissions(player)
+		if {event} = "Winter Delight":
+			winterDelightRandomizeMissions(player)
 		set {dresetwiad::%player%} to false
 		wait 1.5 seconds
 		send "&a=== Daily reset ===" to player
