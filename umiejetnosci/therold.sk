@@ -83,6 +83,7 @@ function VoidEruptionAbilityCast(p: player):
                                             set {_dmgVoidbolt} to (3 + (({damage::%{_p}%}/15) + ({versatility::%{_p}%}/45)))
                                             set loop-item to black dye named "<##613e82>Void Bolt" with lore "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdVoidbolt}%%nl%&7Use: &fRMB%nl%<##613e82>Sends a bolt of pure void energy at the%nl%<##613e82>enemy, causing &f%{_dmgVoidbolt}% <##431d53>Ghost <##613e82>damage and%nl%<##613e82>extending the duration of <##8165a6>Shadow Word: Pain%nl%<##613e82>and <##8165a6>Vampiric Touch <##613e82>to their original duration.%nl%<##613e82>Requires <##8165a6>Voidform<##613e82>.%nl% %nl%&fGenerates 16 Insanity." with nbt from "{""minecraft:custom_model_data"":{floats:[3.0f]},""minecraft:custom_data"":{""Void Bolt"":1b}}"
                                     set {_lore} to join lore of {_p}'s tool by nl
+                                    push {_p} upwards with speed 0.1
                                     set gravity attribute of {_p} to 0
                                     loop all entities in radius 8 around {_target}:
                                         if loop-entity is a living entity:
@@ -1407,6 +1408,8 @@ function ShadowyApparitionFloat(p: player, apparition: entity, target: entity):
         stop loop if {_target} is not alive
     if {_target} is alive:
         set {_damage} to (0.8 + (({damage::%{_p}%}/76) + ({versatility::%{_p}%}/228) + {primarystat::%{_p}%}/38))
+        if metadata value "Vampiric Touch-%{_p}%" of {_target} is set:
+            add spitefulApparitions({_p}, {_target}) to {_damage}
         if string tag "Talents;Row 4" of custom nbt of {karta::%{_p}%} = "Auspicious Spirits":
             set {_damage} to {_damage}*2
             GrantInsanity({_p}, 3)
@@ -1419,10 +1422,8 @@ function ShadowyApparitionFloat(p: player, apparition: entity, target: entity):
         set {_target}'s last damage cause to sweep attack
         set {_lore} to "&8Passive Ability%nl%&fNo cast%nl%&7Cooldown: &fnone%nl%&7Use: &fPassive%nl%<##613e82>When your <##8165a6>Shadow Word: Pain <##613e82>damage%nl%<##613e82>over time critically strikes, you also create%nl%<##613e82>a shadowy version of yourself that floats%nl%<##613e82>towards the target and deals &f%{_damage}% <##431d53>Ghost%nl%<##613e82>damage."
         set metadata value "Element" of {_p} to "Ghost"
-        set metadata value "LastDamageCauseEN" of {_target} to "<##462566>Shadowy Apparitions"
-        set metadata value "LastDamageCause" of {_target} to "<##462566>Cieniste Aparycje"
+        set metadata value "LastDamageCause" of {_target} to "<##462566>Shadowy Apparitions"
         set metadata value "LastDamageCauseLore" of {_target} to {_lore}
-        set metadata value "LastDamageCauseLoreEN" of {_target} to {_lore}
         if {_crit} is set:
             chance of {_crit}%:
                 set {_damage} to {_damage}*2
@@ -1609,10 +1610,11 @@ function chorusOfInsanity(p: player, voidformStacks: integer):
     set {_itemLevels::*} to getTrait({_p}, "Chorus of Insanity")
     if {_itemLevels::*} is set:
         if metadata value "ChorusOfInsanity" of {_p} is not set:
-            set {_crit} to chorusOfInsanityCrit({_p}, {_voidformStacks})
+            set {_crit} to chorusOfInsanityCrit({_p}, {_itemLevels::*}, {_voidformStacks})
             while metadata value "ChorusOfInsanity" of {_p} > 0 seconds:
                 set {_duration} to "%metadata value "ChorusOfInsanity" of {_p}%"
-                buffRegister({_p}, "Chorus", 1, "", "Stacks", "%metadata value "ChorusOfInsanityCrit" of {_p}% <##fca417>", durationShort({_duration}))
+                set {_roundedCrit} to round(metadata value "ChorusOfInsanityCrit" of {_p}, 0)
+                buffRegister({_p}, "Chorus", 1, "", "Stacks", "%{_roundedCrit}% ", durationShort({_duration}))
                 wait 1 second
                 remove {_crit}/20 from metadata value "ChorusOfInsanityCrit" of {_p}
                 remove 1 second from metadata value "ChorusOfInsanity" of {_p}
@@ -1620,17 +1622,31 @@ function chorusOfInsanity(p: player, voidformStacks: integer):
             clear metadata value "ChorusOfInsanityCrit" of {_p}
             buffClear({_p}, "Chorus")
         else:
-            chorusOfInsanityCrit({_p}, {_voidformStacks})
+            chorusOfInsanityCrit({_p}, {_itemLevels::*}, {_voidformStacks})
 
-function chorusOfInsanityCrit(p: player, voidformStacks: integer) :: integer:
+function chorusOfInsanityCrit(p: player, itemLevels: integers, voidformStacks: integer) :: integer:
     set {_critPerStack} to yaml value "Brother Therold.Offensive.Chorus of Insanity.Stat" in "TraitList"
     set {_scaling} to yaml value "Brother Therold.Offensive.Chorus of Insanity.Stat Scaling" in "TraitList"
+    set {_lowestIlvl} to yaml value "Azerite Armor.Minimum Values.Item Level" in "AzeriteArmorSources"
     loop {_itemLevels::*}:
-        add (loop-value*{_scaling}) to {_critPerStack}
+        if loop-value > {_lowestIlvl}:
+            add ((loop-value-{_lowestIlvl})*{_scaling}) to {_critPerStack}
     set {_crit} to round(({_critPerStack}*{_voidformStacks}), 0)
     set metadata value "ChorusOfInsanity" of {_p} to 20 seconds
     set metadata value "ChorusOfInsanityCrit" of {_p} to {_crit}
     return {_crit}
+
+function spitefulApparitions(p: player, target: entity) :: number:
+    set {_itemLevels::*} to getTrait({_p}, "Spiteful Apparitions")
+    if {_itemLevels::*} is set:
+        set {_lowestIlvl} to yaml value "Azerite Armor.Minimum Values.Item Level" in "AzeriteArmorSources"
+        set {_damage} to yaml value "Brother Therold.Offensive.Spiteful Apparitions.Damage" in "TraitList"
+        set {_scaling} to yaml value "Brother Therold.Offensive.Spiteful Apparitions.Damage Scaling" in "TraitList"
+        loop {_itemLevels::*}:
+            if loop-value > {_lowestIlvl}:
+                add ((loop-value-{_lowestIlvl})*{_scaling}) to {_damage}
+    set {_damage} to 0 if {_damage} is not set
+    return {_damage}
 
 function dotsText(t: text, p: player, loc: location, wait: timespan, waitDelete: timespan):
     wait {_wait}
