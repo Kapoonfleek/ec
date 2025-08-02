@@ -35,6 +35,27 @@ function Haste(p: player, scaling: number = 4) :: number:
     
     return {_haste}
 
+function CriticalHit(p: player, scaling: number = 10) :: number:
+    set {_crit} to 0
+
+    if {bonusCriticalHit::%{_p}%} is set:
+        add {bonusCriticalHit::%{_p}%} to {_crit}
+
+    if metadata value "ChorusOfInsanityCrit" of {_p} is set:
+        add metadata value "ChorusOfInsanityCrit" of {_p} to {_crit}
+
+    set {_crit} to {_crit}/{_scaling}
+    
+    return {_crit}
+
+function CrowdControl(p: player) :: number:
+    set {_crowdcontrol} to {crowdcontrol::%{_p}%}
+
+    if {bonusCrowdControl::%{_p}%} is set:
+        add {bonusCrowdControl::%{_p}%} to {_crowdcontrol}
+    
+    return {_crowdcontrol}
+
 function GlobalCooldownSpells(p: player, abilities: texts, abilitiesItems: items, cd: timespan):
     loop {_abilities::*}:
         GlobalCooldown({_p}, loop-value, {_abilitiesItems::%loop-index%}, {_cd})
@@ -115,7 +136,14 @@ function pathfind(e: entity, e2: entity):
         wait 5 ticks
 
 function CritVisual(e: entity):
-    draw 20 crit at location above {_e} with offset vector(0.3, 0.4, 0.3) with extra 0.06
+    draw 20 crit at location above {_e} with offset vector(0.5, 0.4, 0.5) with extra 0.06
+
+function Crit(attacker: entity, victim: entity, chance: number, damage: number, modifier: number = 2) :: number:
+    chance of {_chance}%:
+        set {_damage} to {_damage}*{_modifier}
+        CritVisual({_victim})
+        set metadata value "Crit%{_attacker}%" of {_victim} to true
+    return {_damage}
 
 function sort(indices: strings, values: numbers, descending: boolean = true) :: strings:
     loop {_indices::*}: 
@@ -125,12 +153,17 @@ function sort(indices: strings, values: numbers, descending: boolean = true) :: 
 function bonusStat(p: player, stat: string) :: number:
     
     set {_bonus} to 0
-
+    replace all " " in {_stat} with ""
     if {bonus%{_stat}%::%{_p}%} is set:
         set {_bonus} to {_bonus} + {bonus%{_stat}%::%{_p}%}
     if metadata value "EspeonBonus%{_stat}%" of {_p} is set:
-        set {_bonus} to {_bonus} + metadata value "EspeonBonus%{_stat}%" of {_p} 
+        set {_bonus} to {_bonus} + metadata value "EspeonBonus%{_stat}%" of {_p}
+        
+    if {_stat} = "CriticalHit":
+        if metadata value "ChorusOfInsanityCrit" of {_p} is set:
+            add metadata value "ChorusOfInsanityCrit" of {_p} to {_bonus}
 
+    set {_bonus} to round({_bonus}, 0)
     return {_bonus}
 
 function buffRegister(p: player, buff: text, prio: integer, icon: text, type: text, value: text, duration: text):
@@ -202,6 +235,13 @@ function amountOfDots(p: player, e: entity) :: number:
         set {_x} to metadata value "AmountOfDots%{_p}%" of {_e}
     set {_return} to 0.25 + {_x}*0.25
     return {_return}
+
+function amountOfDotsGet(p: player, e: entity) :: integer:
+    if metadata value "AmountOfDots%{_p}%" of {_e} is not set:
+        set {_x} to 0
+    else:
+        set {_x} to metadata value "AmountOfDots%{_p}%" of {_e}
+    return {_x}
 
 function amountOfDotsSet(p: player, e: entity):
     set {_dotsAmount} to metadata value "AmountOfDots%{_p}%" of {_e}

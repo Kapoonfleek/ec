@@ -55,6 +55,7 @@ on inventory click:
                     play sound "block.glass.break" with volume 1 and pitch 2 to player
                 else:
                     set {_rings} to int tag "Rings" of custom nbt of event-slot
+                    set {_itemLevel} to int tag "ItemLevel" of custom nbt of event-slot
                     set metadata tag "AzeriteArmor" of player to chest inventory with {_rings} rows named unformatted name of event-slot
                     set {_azeriteGUI} to metadata tag "AzeriteArmor" of player 
                     if {_rings} = 4:
@@ -71,6 +72,9 @@ on inventory click:
                         set {_traitsCardRing2} to 3
                     set {_id} to random 8 char string from charset `0-9` `a-z`
                     load yaml "plugins/Skript/azeritearmor/TraitList" as "TraitList%{_id}%"
+                    load yaml "plugins/Skript/azeritearmor/Sources" as "AzeriteArmorSources%{_id}%"
+                    set {_lowestIlvl} to yaml value "Azerite Armor.Minimum Values.Item Level" in "AzeriteArmorSources%{_id}%"
+                    unload yaml "AzeriteArmorSources%{_id}%"
                     if boolean tag "AzeriteTraitsDefined" of custom nbt of event-slot is not set:
                         play sound "azerite.rotate" with volume 5 and pitch 1 to player
                         play sound "azerite.rotate_stop" with volume 1 and pitch 1 to player
@@ -105,7 +109,7 @@ on inventory click:
                                     loop {_cards::*}:
                                         add 1 to {_index}
                                         set {_traits::*} to yaml node keys "%loop-value-2%.Offensive" in "TraitList%{_id}%"
-                                        remove (string list tag "AvailableTraits;Row 1" of custom nbt of event-slot) from {_traits::*}
+                                        remove (string list tag "TraitList;Row 1" of custom nbt of event-slot) from {_traits::*}
                                         set {_randomTrait} to a random element of {_traits::*}
                                         add {_randomTrait} to string list tag "TraitList;Row 2" of custom nbt of event-slot
                                         set string tag "AvailableTraits;Row 2;%{_randomTrait}%;Type" of custom nbt of event-slot to "Offensive"
@@ -151,8 +155,7 @@ on inventory click:
                                         add {_randomTrait} to string list tag "TraitList;Row 4" of custom nbt of event-slot
                                         set string tag "AvailableTraits;Row 4;%{_randomTrait}%;Type" of custom nbt of event-slot to "Utility"
                                         set {_traitsLeft} to {_traitsLeft} - 1
-                    open {_azeriteGUI} to player
-                    if boolean tag "AzeriteTraitsDefined" of custom nbt of event-slot is not set:
+                        open {_azeriteGUI} to player
                         set {_index} to 0
                         loop {_rings} times:
                             if player's current inventory != metadata tag "AzeriteArmor" of player:
@@ -175,37 +178,103 @@ on inventory click:
                                     set name of slot {_baseSlot} + (loop-counter-2)-1 of {_azeriteGUI} to "&fAzerite Empowered"
                                     set lore of slot {_baseSlot} + (loop-counter-2)-1 of {_azeriteGUI} to "&8Row %loop-counter-1%%nl%&7Azerite Power%nl%<##fdd002>Increases Item Level by 5 and increases%nl%<##fdd002>the potency of all Azerite powers granted%nl%<##fdd002>by this item.%nl%<##fdd002>Calibrating..."
                             add 9 to {_baseSlot}
-                    play sound "azerite.rotate_stop" with volume 1 and pitch 1 to player
-                    clear {_unlockedAt}
-                    loop 2 times:
-                        set {_index} to 0
-                        if {_rings} = 4:
-                            set {_baseSlot} to 3 
-                        else:
-                            set {_baseSlot} to 2
-                        
-                        loop {_rings} times:
-                            if loop-counter-2 = {_rings}:
-                                set {_item} to yellow stained glass pane named "&fAzerite Empowered"
-                                if boolean tag "Ring;%loop-counter-2%;Unlocked" of custom nbt of event-slot != true:
-                                    set {_reqLvl} to int tag "Ring;%loop-counter-2%;Level" of custom nbt of event-slot
-                                    set {_unlockedAtEmp} to "%nl%&cUnlocked at Heart Level %{_reqLvl}%."
+                        play sound "azerite.rotate_stop" with volume 1 and pitch 1 to player
+                        clear {_unlockedAt}
+                        loop 2 times:
+                            set {_index} to 0
+                            if {_rings} = 4:
+                                set {_baseSlot} to 3 
                             else:
-                                if boolean tag "Ring;%loop-counter-2%;Unlocked" of custom nbt of event-slot = true:
-                                    set {_item} to blue stained glass pane
+                                set {_baseSlot} to 2
+                            
+                            loop {_rings} times:
+                                if loop-counter-2 = {_rings}:
+                                    set {_item} to yellow stained glass pane named "&fAzerite Empowered"
+                                    if boolean tag "Ring;%loop-counter-2%;Unlocked" of custom nbt of event-slot != true:
+                                        set {_reqLvl} to int tag "Ring;%loop-counter-2%;Level" of custom nbt of event-slot
+                                        set {_unlockedAtEmp} to "%nl%&cUnlocked at Heart Level %{_reqLvl}%."
                                 else:
-                                    set {_item} to gray stained glass pane
-                                    set {_reqLvl} to int tag "Ring;%loop-counter-2%;Level" of custom nbt of event-slot
-                                    set {_unlockedAt} to "%nl%&cUnlocked at Heart Level %{_reqLvl}%."
+                                    if boolean tag "Ring;%loop-counter-2%;Unlocked" of custom nbt of event-slot = true:
+                                        set {_item} to blue stained glass pane
+                                    else:
+                                        set {_item} to gray stained glass pane
+                                        set {_reqLvl} to int tag "Ring;%loop-counter-2%;Level" of custom nbt of event-slot
+                                        set {_unlockedAt} to "%nl%&cUnlocked at Heart Level %{_reqLvl}%."
 
-                            if loop-counter-1 = 1:
-                                set boolean tag "AzeriteTraitsDefined" of custom nbt of event-slot to true
-                                if {_rings} > loop-counter-2:
+                                if loop-counter-1 = 1:
+                                    set boolean tag "AzeriteTraitsDefined" of custom nbt of event-slot to true
+                                    if {_rings} > loop-counter-2:
+                                        loop {_width} times:
+                                            add 1 to {_index}
+                                            set (slot {_baseSlot} + (loop-counter-3)-1 of {_azeriteGUI}) to white stained glass pane named "&fDiscovering Azerite Trait..." with lore "&8Row %loop-counter-2%%nl%&7Azerite Power%nl%<##fdd002>Calibrating..."
+                                        wait 3 ticks
+                                else:
+                                    if boolean tag "Ring;%loop-counter-2%;Unlocked" of custom nbt of event-slot = true:
+                                        set {_colourRing} to "<##fdd002>"
+                                    else:
+                                        set {_colourRing} to "&8"
                                     loop {_width} times:
                                         add 1 to {_index}
-                                        set (slot {_baseSlot} + (loop-counter-3)-1 of {_azeriteGUI}) to white stained glass pane named "&fDiscovering Azerite Trait..." with lore "&8Row %loop-counter-2%%nl%&7Azerite Power%nl%<##fdd002>Calibrating..."
-                                    wait 3 ticks
+                                        if loop-counter-2 = {_rings}:
+                                            set slot {_baseSlot} + (loop-counter-3)-1 of {_azeriteGUI} to {_item} with lore "&8Row %loop-counter-2%%nl%&7Azerite Power%nl%<##fdd002>Increases Item Level by 5 and increases%nl%<##fdd002>the potency of all Azerite powers granted%nl%<##fdd002>by this item."
+                                            add {_unlockedAtEmp} to lore of (slot {_baseSlot} + (loop-counter-3)-1 of {_azeriteGUI}) if {_unlockedAtEmp} is set
+                                            set boolean tag "AzeriteEmpoweredArmorUI" of custom nbt of (slot {_baseSlot} + (loop-counter-3)-1 of {_azeriteGUI}) to true
+                                            set int tag "Row" of custom nbt of (slot {_baseSlot} + (loop-counter-3)-1 of {_azeriteGUI}) to loop-counter-2
+                                        else:
+                                            set {_traitList::*} to string list tag "TraitList;Row %loop-counter-2%" of custom nbt of event-slot
+                                            set {_trait} to {_traitList::%loop-counter-3%}
+                                            set {_traitType} to string tag "AvailableTraits;Row %loop-counter-2%;%{_trait}%;Type" of custom nbt of event-slot
+                                            if string tag "AvailableTraits;Row %loop-value-2%;%{_trait}%;Card" of custom nbt of event-slot is set:
+                                                set {_traitCard} to string tag "AvailableTraits;Row %loop-counter-2%;%{_trait}%;Card" of custom nbt of event-slot
+                                                set {_yaml} to "%{_traitCard}%.%{_traitType}%.%{_trait}%"
+                                                set {_description} to yaml value "%{_traitCard}%.%{_traitType}%.%{_trait}%.Description" in "TraitList%{_id}%"
+                                                set {_icon} to yaml value "%{_traitCard}%.%{_traitType}%.%{_trait}%.Icon" in "TraitList%{_id}%"
+                                            else:
+                                                set {_yaml} to "Generic.%{_traitType}%.%{_trait}%"
+                                                set {_description} to yaml value "Generic.%{_traitType}%.%{_trait}%.Description" in "TraitList%{_id}%"
+                                                set {_icon} to yaml value "Generic.%{_traitType}%.%{_trait}%.Icon" in "TraitList%{_id}%"
+
+                                            set {_description} to updateDescriptionAzerite({_description}, {_yaml}, {_id}, {_itemLevel}, {_lowestILvl}, event-slot)
+
+                                            set {_description} to "%{_colourRing}%%{_description}%"
+                                            replace all "[N]" in {_description} with "%nl%%{_colourRing}%"
+                                            set (slot {_baseSlot} + (loop-counter-3)-1 of {_azeriteGUI}) to {_item} named "&f%{_icon}% %{_trait}%" with lore "&8Row %loop-counter-2%%nl%&7Azerite Power%nl%%{_description}%"
+                                            set string tag "Trait" of custom nbt of (slot {_baseSlot} + (loop-counter-3)-1 of {_azeriteGUI}) to {_trait}
+                                            set int tag "Row" of custom nbt of (slot {_baseSlot} + (loop-counter-3)-1 of {_azeriteGUI}) to loop-counter-2
+                                            set boolean tag "AzeriteTraitArmorUI" of custom nbt of (slot {_baseSlot} + (loop-counter-3)-1 of {_azeriteGUI}) to true
+                                            clear {_traitCard}
+                                        add {_unlockedAt} to lore of (slot {_baseSlot} + (loop-counter-3)-1 of {_azeriteGUI}) if {_unlockedAt} is set
+                                add 9 to {_baseSlot}
+                                clear {_unlockedAt}
+                        play sound "azerite.trait_lockin" with volume 5 and pitch 1 to player
+                        play sound "azerite.rotate_stop" with volume 1 and pitch 1 to player
+                        stop sound "azerite.rotate" for player
+                    else:
+                        open {_azeriteGUI} to player
+                        set {_index} to 0
+                        play sound "azerite.rotate_stop" with volume 1 and pitch 1 to player
+                        clear {_unlockedAt}
+                        set {_loops} to 1
+                        loop {_loops} times:
+                            set {_index} to 0
+                            if {_rings} = 4:
+                                set {_baseSlot} to 3 
                             else:
+                                set {_baseSlot} to 2
+                            
+                            loop {_rings} times:
+                                if loop-counter-2 = {_rings}:
+                                    set {_item} to yellow stained glass pane named "&fAzerite Empowered"
+                                    if boolean tag "Ring;%loop-counter-2%;Unlocked" of custom nbt of event-slot != true:
+                                        set {_reqLvl} to int tag "Ring;%loop-counter-2%;Level" of custom nbt of event-slot
+                                        set {_unlockedAtEmp} to "%nl%&cUnlocked at Heart Level %{_reqLvl}%."
+                                else:
+                                    if boolean tag "Ring;%loop-counter-2%;Unlocked" of custom nbt of event-slot = true:
+                                        set {_item} to blue stained glass pane
+                                    else:
+                                        set {_item} to gray stained glass pane
+                                        set {_reqLvl} to int tag "Ring;%loop-counter-2%;Level" of custom nbt of event-slot
+                                        set {_unlockedAt} to "%nl%&cUnlocked at Heart Level %{_reqLvl}%."
                                 if boolean tag "Ring;%loop-counter-2%;Unlocked" of custom nbt of event-slot = true:
                                     set {_colourRing} to "<##fdd002>"
                                 else:
@@ -214,36 +283,65 @@ on inventory click:
                                     add 1 to {_index}
                                     if loop-counter-2 = {_rings}:
                                         set slot {_baseSlot} + (loop-counter-3)-1 of {_azeriteGUI} to {_item} with lore "&8Row %loop-counter-2%%nl%&7Azerite Power%nl%<##fdd002>Increases Item Level by 5 and increases%nl%<##fdd002>the potency of all Azerite powers granted%nl%<##fdd002>by this item."
-                                        loop 5 times:
-                                            if string tag "SelectedTraits;%loop-counter-2%" of custom nbt of event-slot != "Not selected":
-                                                add "<##fdd002>Kitty" to lore of slot {_baseSlot} + (loop-counter-3)-1 of {_azeriteGUI}
+                                        loop {_rings} times:
+                                            if string tag "SelectedTraits;%loop-counter-4%" of custom nbt of event-slot != "Not selected":
+                                                set {_traitEmpowerment} to string tag "SelectedTraits;%loop-counter-4%" of custom nbt of event-slot
+                                                set {_traitTypeEmp} to string tag "AvailableTraits;Row %loop-counter-4%;%{_traitEmpowerment}%;Type" of custom nbt of event-slot
+                                                if string tag "AvailableTraits;Row %loop-counter-4%;%{_traitEmpowerment}%;Card" of custom nbt of event-slot is set:
+                                                    set {_traitCardEmp} to string tag "AvailableTraits;Row %loop-counter-4%;%{_traitEmpowerment}%;Card" of custom nbt of event-slot
+                                                    set {_yaml} to "%{_traitCardEmp}%.%{_traitTypeEmp}%.%{_traitEmpowerment}%"
+                                                    set {_descriptionEmp} to yaml value "%{_traitCardEmp}%.%{_traitTypeEmp}%.%{_traitEmpowerment}%.Description" in "TraitList%{_id}%"
+                                                    set {_iconEmp} to yaml value "%{_traitCardEmp}%.%{_traitTypeEmp}%.%{_traitEmpowerment}%.Icon" in "TraitList%{_id}%"
+                                                else:
+                                                    set {_yaml} to "Generic.%{_traitTypeEmp}%.%{_traitEmpowerment}%"
+                                                    set {_descriptionEmp} to yaml value "Generic.%{_traitTypeEmp}%.%{_traitEmpowerment}%.Description" in "TraitList%{_id}%"
+                                                    set {_iconEmp} to yaml value "Generic.%{_traitTypeEmp}%.%{_traitEmpowerment}%.Icon" in "TraitList%{_id}%"
+
+                                                set {_descriptionEmp} to updateDescriptionAzerite({_descriptionEmp}, {_yaml}, {_id}, {_itemLevel}+5, {_lowestILvl}, event-slot, "<##fdd002>")
+                                                set {_descriptionEmp} to "  <##fdd002>%{_descriptionEmp}%"
+                                                replace all "[N]" in {_descriptionEmp} with "%nl%  <##fdd002>"
+
+                                                add "%nl% &f- %{_iconEmp}% %{_traitEmpowerment}%" to lore of slot {_baseSlot} + (loop-counter-3)-1 of {_azeriteGUI}
+                                                add {_descriptionEmp} to lore of slot {_baseSlot} + (loop-counter-3)-1 of {_azeriteGUI}
+
                                         add {_unlockedAtEmp} to lore of (slot {_baseSlot} + (loop-counter-3)-1 of {_azeriteGUI}) if {_unlockedAtEmp} is set
+                                        set boolean tag "AzeriteEmpoweredArmorUI" of custom nbt of (slot {_baseSlot} + (loop-counter-3)-1 of {_azeriteGUI}) to true
+                                        set int tag "Row" of custom nbt of (slot {_baseSlot} + (loop-counter-3)-1 of {_azeriteGUI}) to loop-counter-2
                                     else:
                                         set {_traitList::*} to string list tag "TraitList;Row %loop-counter-2%" of custom nbt of event-slot
                                         set {_trait} to {_traitList::%loop-counter-3%}
                                         set {_traitType} to string tag "AvailableTraits;Row %loop-counter-2%;%{_trait}%;Type" of custom nbt of event-slot
                                         if string tag "AvailableTraits;Row %loop-value-2%;%{_trait}%;Card" of custom nbt of event-slot is set:
                                             set {_traitCard} to string tag "AvailableTraits;Row %loop-counter-2%;%{_trait}%;Card" of custom nbt of event-slot
+                                            set {_yaml} to "%{_traitCard}%.%{_traitType}%.%{_trait}%"
                                             set {_description} to yaml value "%{_traitCard}%.%{_traitType}%.%{_trait}%.Description" in "TraitList%{_id}%"
                                             set {_icon} to yaml value "%{_traitCard}%.%{_traitType}%.%{_trait}%.Icon" in "TraitList%{_id}%"
                                         else:
+                                            set {_yaml} to "Generic.%{_traitType}%.%{_trait}%"
                                             set {_description} to yaml value "Generic.%{_traitType}%.%{_trait}%.Description" in "TraitList%{_id}%"
                                             set {_icon} to yaml value "Generic.%{_traitType}%.%{_trait}%.Icon" in "TraitList%{_id}%"
+                                        if string tag "SelectedTraits;%loop-counter-2%" of custom nbt of event-slot != "Not selected":
+                                            if string tag "SelectedTraits;%loop-counter-2%" of custom nbt of event-slot != {_trait}:
+                                                set {_item} to light gray stained glass pane
+                                                set {_colourRing} to "&8"
+                                            else:
+                                                set {_item} to blue stained glass pane
+                                                set {_colourRing} to "<##fdd002>"
+
+                                        set {_description} to updateDescriptionAzerite({_description}, {_yaml}, {_id}, {_itemLevel}, {_lowestILvl}, event-slot)
+                                                
                                         set {_description} to "%{_colourRing}%%{_description}%"
                                         replace all "[N]" in {_description} with "%nl%%{_colourRing}%"
                                         set (slot {_baseSlot} + (loop-counter-3)-1 of {_azeriteGUI}) to {_item} named "&f%{_icon}% %{_trait}%" with lore "&8Row %loop-counter-2%%nl%&7Azerite Power%nl%%{_description}%"
                                         set string tag "Trait" of custom nbt of (slot {_baseSlot} + (loop-counter-3)-1 of {_azeriteGUI}) to {_trait}
                                         set int tag "Row" of custom nbt of (slot {_baseSlot} + (loop-counter-3)-1 of {_azeriteGUI}) to loop-counter-2
+                                        set boolean tag "AzeriteTraitArmorUI" of custom nbt of (slot {_baseSlot} + (loop-counter-3)-1 of {_azeriteGUI}) to true
                                         clear {_traitCard}
                                     add {_unlockedAt} to lore of (slot {_baseSlot} + (loop-counter-3)-1 of {_azeriteGUI}) if {_unlockedAt} is set
-                            add 9 to {_baseSlot}
-                            clear {_unlockedAt}
-                    play sound "azerite.trait_lockin" with volume 5 and pitch 1 to player
-                    play sound "azerite.rotate_stop" with volume 1 and pitch 1 to player
-                    stop sound "azerite.rotate" for player
-                    #else:
-                    #    broadcast "Set!"
+                                add 9 to {_baseSlot}
+                                clear {_unlockedAt}
                     unload yaml "TraitList%{_id}%"
+                    set metadata value "AzeriteGearMenuOpen" of player to event-item
     else if boolean tag "HeartOfEarthcraft" of custom nbt of {_slot} = true:
         if "%player's current inventory%" = "%(inventory of player)%":
             set {_Soulbound} to uuid tag "Soulbound" of custom nbt of event-item
@@ -254,12 +352,107 @@ on inventory click:
                 play sound "block.glass.break" with volume 1 and pitch 2 to player
                 stop
     if player's current inventory = metadata tag "AzeriteArmor" of player:
-        broadcast "Ein man "
         cancel event
+        set {_azeriteGUI} to metadata tag "AzeriteArmor" of player
+        if metadata value "AzeriteGearMenuOpen" of player is set:
+            set {_armorPiece} to (metadata value "AzeriteGearMenuOpen" of player)
+            set {_row} to int tag "Row" of custom nbt of event-slot
+            set {_rings} to int tag "Rings" of custom nbt of {_armorPiece}
+            set {_id} to random 8 char string from charset `0-9` `a-z`
+            if boolean tag "AzeriteTraitArmorUI" of custom nbt of event-slot = true:
+                if boolean tag "Ring;%{_row}%;Unlocked" of custom nbt of {_armorPiece} = true:
+                    if string tag "SelectedTraits;%{_row}%" of custom nbt of {_armorPiece} = "Not selected":
+                        set {_trait} to string tag "Trait" of custom nbt of event-slot
+                        loop all items in player's current inventory where [input != event-slot]:
+                            if int tag "Row" of custom nbt of loop-item = {_row}:
+                                set {_lore} to join lore of loop-item by nl
+                                set {_color} to last string color code of {_lore}
+                                replace all {_color} in {_lore} with "&8"
+                                set slot (index of loop-item) of {_azeriteGUI} to light gray stained glass pane named (name of loop-item) with lore {_lore}
+                        loop all items in player's inventory where [input = {_armorPiece}]:
+                            set string tag "SelectedTraits;%{_row}%" of custom nbt of loop-item to {_trait}
+                            set metadata value "AzeriteGearMenuOpen" of player to loop-item
+                            set {_armorPiece} to loop-item
+                        play sound "azerite.trait_select" with volume 5 and pitch 1 to player
+                        updateAzeriteArmorLore(player)
+
+                        set {_itemLevel} to int tag "ItemLevel" of custom nbt of {_armorPiece}
+                        load yaml "plugins/Skript/azeritearmor/TraitList" as "TraitList%{_id}%"
+                        load yaml "plugins/Skript/azeritearmor/Sources" as "AzeriteArmorSources%{_id}%"
+                        set {_lowestIlvl} to yaml value "Azerite Armor.Minimum Values.Item Level" in "AzeriteArmorSources%{_id}%"
+                        unload yaml "AzeriteArmorSources%{_id}%"
+
+                        loop {_rings} times:
+                            if string tag "SelectedTraits;%loop-counter%" of custom nbt of {_armorPiece} != "Not selected":
+                                set {_traitEmpowerment} to string tag "SelectedTraits;%loop-counter%" of custom nbt of {_armorpiece}
+                                set {_traitTypeEmp} to string tag "AvailableTraits;Row %loop-counter%;%{_traitEmpowerment}%;Type" of custom nbt of {_armorpiece}
+                                if string tag "AvailableTraits;Row %loop-counter%;%{_traitEmpowerment}%;Card" of custom nbt of {_armorpiece} is set:
+                                    set {_traitCardEmp} to string tag "AvailableTraits;Row %loop-counter%;%{_traitEmpowerment}%;Card" of custom nbt of {_armorpiece}
+                                    set {_yaml} to "%{_traitCardEmp}%.%{_traitTypeEmp}%.%{_traitEmpowerment}%"
+                                    set {_descriptionEmp} to yaml value "%{_traitCardEmp}%.%{_traitTypeEmp}%.%{_traitEmpowerment}%.Description" in "TraitList%{_id}%"
+                                    set {_iconEmp} to yaml value "%{_traitCardEmp}%.%{_traitTypeEmp}%.%{_traitEmpowerment}%.Icon" in "TraitList%{_id}%"
+                                else:
+                                    set {_yaml} to "Generic.%{_traitTypeEmp}%.%{_traitEmpowerment}%"
+                                    set {_descriptionEmp} to yaml value "Generic.%{_traitTypeEmp}%.%{_traitEmpowerment}%.Description" in "TraitList%{_id}%"
+                                    set {_iconEmp} to yaml value "Generic.%{_traitTypeEmp}%.%{_traitEmpowerment}%.Icon" in "TraitList%{_id}%"
+                            
+                                set {_descriptionEmp} to updateDescriptionAzerite({_descriptionEmp}, {_yaml}, {_id}, {_itemLevel}+5, {_lowestILvl}, {_armorpiece}, "<##fdd002>")
+                                set {_descriptionEmp} to "  <##fdd002>%{_descriptionEmp}%"
+                                replace all "[N]" in {_descriptionEmp} with "%nl%  <##fdd002>"
+                            add 1 to {_traitCount}
+
+                        loop all items in player's current inventory:
+                            if boolean tag "AzeriteEmpoweredArmorUI" of custom nbt of loop-item = true:
+                                add "%nl% &f- %{_iconEmp}% %{_traitEmpowerment}%" to lore of loop-item
+                                add {_descriptionEmp} to lore of loop-item
+                            if {_traitCount} = ({_rings}-1):
+                                add "&fClick here to Empower this Azerite Armor piece." to lore of loop-item
+                        unload yaml "TraitList%{_id}%"
+                else:
+                    play sound "block.glass.break" with volume 2 and pitch 2 to player
+            else:
+                if boolean tag "AzeriteEmpoweredArmorUI" of custom nbt of event-slot is set:
+                    if boolean tag "AzeriteEmpowered" of custom nbt of {_armorPiece} != true:
+                        loop {_rings} times:
+                            if string tag "SelectedTraits;%loop-counter%" of custom nbt of {_armorPiece} != "Not selected":
+                                add 1 to {_traitCount}
+                        if {_traitCount} = ({_rings}-1):
+                            loop all items in player's inventory where [input = {_armorPiece}]:
+                                set boolean tag "AzeriteEmpowered" of custom nbt of loop-item to true
+                                set {_itemLevel} to int tag "ItemLevel" of custom nbt of loop-item + 5
+                                set int tag "ItemLevel" of custom nbt of loop-item to {_itemLevel}
+                                set string tag "SelectedTraits;%{_rings}%" of custom nbt of loop-item to "Azerite Empowered"
+                                set {_health} to round(healthFormula({_itemLevel}), 0)
+                                set {_primaryStatAmount} to round(primaryStatFormula({_itemLevel}), 0)
+                                load yaml "plugins/Skript/lists/PrimaryStatList" as "PrimaryStatList%{_id}%"
+                                set {_primaryStat} to string tag "PrimaryStat" of custom nbt of loop-item
+                                set {_primaryStatIcon} to yaml value "Primary Stats.%{_primaryStat}%.Icon" in "PrimaryStatList%{_id}%"
+                                set {_primaryStatColour} to formatted yaml value "Primary Stats.%{_primaryStat}%.Colour" in "PrimaryStatList%{_id}%"
+                                unload yaml "PrimaryStatList%{_id}%"
+                                set string tag "PrimaryStatDescription" of custom nbt of loop-item to "%{_primaryStatColour}%%{_primaryStatIcon}% +%{_primaryStatAmount}% %{_primaryStat}%"
+                                set string tag "HealthDescription" of custom nbt of loop-item to "<##c0ff02> +%{_health}% Health"
+                                set {_primaryStatPrevious} to int tag "Stats;%{_primaryStat}%" of custom nbt of loop-item
+                                set {_healthPrevious} to int tag "Stats;Health" of custom nbt of loop-item
+                                set int tag "Stats;%{_primaryStat}%" of custom nbt of loop-item to {_primaryStatAmount}
+                                set int tag "Stats;Health" of custom nbt of loop-item to {_health}
+                                set metadata value "AzeriteGearMenuOpen" of player to loop-item
+                                set {_armorPiece} to loop-item
+                                send "%name of loop-item% &9has been Azerite Empowered:" to player
+                                send "<##fdd002>- Item Level increased by 5." to player
+                                send "&b- Active Azerite Traits have been empowered." to player
+                                send formatted "&f- %name of loop-item% &fgains %{_primaryStatColour}%%{_primaryStatIcon}% +%{_primaryStatAmount}-{_primaryStatPrevious}% %{_primaryStat}%" to player
+                                send "&f- %name of loop-item% &fgains <##c0ff02> +%{_health}-{_healthPrevious}% Health" to player
+                            play sound "azerite.trait_lockin" with volume 5 and pitch 1 to player
+                            play sound "azerite.trait_select" with volume 5 and pitch 1 to player
+                            updateAzeriteArmorLore(player)
+                    else:
+                        play sound "block.glass.break" with volume 2 and pitch 2 to player
+                        send "&cThis Azerite Armor piece has already been empowered." to player
 
 on inventory close:
     if event-inventory = metadata tag "AzeriteArmor" of player:
         clear metadata tag "AzeriteArmor" of player
+        clear metadata value "AzeriteGearMenuOpen" of player
 
 function azeriteArmor(p: player, source: string, slot: string, itemLevel: integer, primaryStat: string, cardList: strings = ""):
     set {_id} to random 8 char string from charset `0-9` `a-z`
@@ -334,7 +527,10 @@ function azeriteArmor(p: player, source: string, slot: string, itemLevel: intege
 
     loop {_traitRequirement::*}:
         if {_heartLevel} >= loop-value:
-            set {_azeritePowerDesc::%loop-counter%} to " %{_descColour}%- A new power is available."
+            if loop-counter != {_rings}:
+                set {_azeritePowerDesc::%loop-counter%} to " %{_descColour}%- A new power is available."
+            else:
+                set {_azeritePowerDesc::%loop-counter%} to " %{_descColour}%- Azerite Empowered is available."
             set {_unlocked::%loop-counter%} to true
         else:
             set {_azeritePowerDesc::%loop-counter%} to " %{_descColourNotUnlocked}%- Unlocks at Heart Level %loop-value%."
@@ -362,6 +558,9 @@ function azeriteArmor(p: player, source: string, slot: string, itemLevel: intege
     set int tag "Rings" of custom nbt of {_item} to {_rings}
     set int tag "TraitsActive" of custom nbt of {_item} to 0
     set string tag "Rarity" of custom nbt of {_item} to {_rarity}
+    set string tag "PrimaryStat" of custom nbt of {_item} to {_primaryStat}
+
+    set string tag "Id" of custom nbt of {_item} to {_id}
 
     loop {_rings} times:
         set boolean tag "Ring;%loop-counter%;Unlocked" of custom nbt of {_item} to {_unlocked::%loop-counter%}
@@ -402,9 +601,16 @@ function updateAzeriteArmorLore(p: player):
             set {_slot} to string tag "EquipmentSlot" of custom nbt of loop-item
             replace all " slot" in {_slot} with ""
             set {_traitsActive} to 0
+
+            set {_heart} to getHeartOfEarthcraft({_p})
+            set {_heartLevel} to int tag "HeartLevel" of custom nbt of {_heart}
+
             loop {_rings} times:
                 if string tag "SelectedTraits;%loop-counter-2%" of custom nbt of loop-item != "Not selected":
                     add 1 to {_traitsActive}
+                if {_heartLevel} >= int tag "Ring;%loop-counter-2%;Level" of custom nbt of loop-item:
+                    if boolean tag "Ring;%loop-counter-2%;Unlocked" of custom nbt of loop-item != true:
+                        set boolean tag "Ring;%loop-counter-2%;Unlocked" of custom nbt of loop-item to true
             set int tag "TraitsActive" of custom nbt of loop-item to {_traitsActive}
             if {_traitsActive} = {_rings}:
                 set {_activePowers} to "Fully upgraded"
@@ -412,9 +618,6 @@ function updateAzeriteArmorLore(p: player):
                 set {_activePowers} to "Active Azerite Powers (%{_traitsActive}%/%{_rings}%):"
             set lore of loop-item to "%{_rarityDesc}%%nl%<##fdd002>Item Level %{_itemLevel}%%nl%&fSoulbound to %{_soulbound}%%nl%%{_primaryStatDescription}%%nl%%{_healthDescription}%%nl%"
             
-            set {_heart} to getHeartOfEarthcraft({_p})
-            set {_heartLevel} to int tag "HeartLevel" of custom nbt of {_heart}
-
             if {_p}'s chestplate = {_heart}:
                 add " %nl%<##fdd002>%{_activePowers}%" to lore of loop-item
                 set {_colourAction} to "&7"
@@ -441,47 +644,52 @@ function updateAzeriteArmorLore(p: player):
             loop {_traitRequirement::*}:
                 if {_heartLevel} >= loop-value-2:
                     if {_selectedTraits::%loop-counter-2%} != "Not selected":
-                        set {_trait} to {_selectedTraits::%loop-counter-2%}
-                        if yaml value "%{kartaname::%{_p}%}%.%{_trait}%.Icon" in "TraitList%{_id}%" is set:
-                            if {_p}'s chestplate = {_heart}:
-                                set {_colourDesc} to "<##00ff00>"
-                                set {_colourSign} to "&f"
+                        if {_selectedTraits::%loop-counter-2%} != "Azerite Empowered":
+                            set {_trait} to {_selectedTraits::%loop-counter-2%}
+                            set {_type} to string tag "AvailableTraits;Row %loop-counter-2%;%{_trait}%;Type" of custom nbt of loop-item
+                            if string tag "AvailableTraits;Row %loop-counter-2%;%{_trait}%;Card" of custom nbt of loop-item is set:
+                                set {_cardTrait} to string tag "AvailableTraits;Row %loop-counter-2%;%{_trait}%;Card" of custom nbt of loop-item 
+                                set {_yaml} to "%{_cardTrait}%.%{_type}%.%{_trait}%"
                             else:
-                                set {_colourDesc} to "&8"
-                                set {_colourSign} to "&8"
-                        else if yaml value "Generic.%{_trait}%.Icon" in "TraitList%{_id}%" is set:
-                            if {_p}'s chestplate = {_heart}:
-                                set {_colourDesc} to "<##00ff00>"
-                                set {_colourSign} to "&f"
-                            else:
-                                set {_colourDesc} to "&8"
-                                set {_colourSign} to "&8"
-                        else:
-                            set {_colourDesc} to "&8"
-                            set {_colourSign} to "&8"
-                        
-                        if yaml value "Generic.%{_trait}%.Icon" in "TraitList%{_id}%" is set:
-                            set {_traitIcon} to yaml value "Generic.%{_trait}%.Icon" in "TraitList%{_id}%"
-                            set {_description} to yaml value "Generic.%{_trait}%.Description" in "TraitList%{_id}%"
-                            set {_description} to "%nl%  %{_description}%"
-                            replace all "[N]" in {_description} with "%nl%  "
-                            replace all nl in {_description} with "%nl%%{_colourDesc}%"
-                        else:
-                            loop string list tag "Cards" of custom nbt of loop-item:
-                                if yaml value "%loop-value-3%.%{_trait}%.Icon" in "TraitList%{_id}%" is set:
-                                    set {_traitIcon} to yaml value "%loop-value-3%.%{_trait}%.Icon" in "TraitList%{_id}%"
-                                    set {_description} to yaml value "%loop-value-3%.%{_trait}%.Description" in "TraitList%{_id}%"
-                                    set {_description} to "%nl%  %{_description}%"
-                                    replace all "[N]" in {_description} with "%nl%  "
-                                    replace all nl in {_description} with "%nl%%{_colourDesc}%"
+                                set {_yaml} to "Generic.%{_type}%.%{_trait}%"
+                            if yaml value "%{_yaml}%.Icon" in "TraitList%{_id}%" is set:
+                                if {_p}'s chestplate = {_heart}:
+                                    if {_cardTrait} is set:
+                                        if {kartaname::%{_p}%} = {_cardTrait}:
+                                            set {_colourDesc} to "<##00ff00>"
+                                            set {_colourSign} to "&f"
+                                        else:
+                                            set {_colourDesc} to "&8"
+                                            set {_colourSign} to "&f"
+                                    else:
+                                        set {_colourDesc} to "<##00ff00>"
+                                        set {_colourSign} to "&f"
+                                else:
+                                    set {_colourDesc} to "&8"
+                                    set {_colourSign} to "&f"
+                                set {_traitIcon} to yaml value "%{_yaml}%.Icon" in "TraitList%{_id}%"
+                                set {_description} to yaml value "%{_yaml}%.Description" in "TraitList%{_id}%"
 
-                        set {_azeritePowerDesc::%loop-counter-2%} to " %{_colourSign}%- %{_traitIcon}% %{_selectedTraits::%loop-counter-2%}%%{_description}%"
+                                set {_description} to updateDescriptionAzerite({_description}, {_yaml}, {_id}, {_itemLevel}, {_lowestILvl}, loop-item)
+
+                                set {_description} to "%nl%  %{_description}%"
+                                replace all "[N]" in {_description} with "%nl%  "
+                                replace all nl in {_description} with "%nl%%{_colourDesc}%"
+                            else:
+                                set {_colourDesc} to "&8"
+                                set {_colourSign} to "&f"
+                            
+                            set {_azeritePowerDesc::%loop-counter-2%} to " %{_colourSign}%- %{_traitIcon}% %{_selectedTraits::%loop-counter-2%}%%{_description}%"
+                            clear {_trait}
+                            clear {_cardTrait}
+                            clear {_type}
                     else:
-                        if loop-counter-2 = {_rings}:
-                            set {_availableDesc} to "Azerite Empowered is available."
-                        else:
-                            set {_availableDesc} to "A new power is available."
-                        set {_azeritePowerDesc::%loop-counter-2%} to " %{_colourAvailable}%- %{_availableDesc}%"
+                        if boolean tag "AzeriteEmpowered" of custom nbt of loop-item != true:
+                            if loop-counter-2 = {_rings}:
+                                set {_availableDesc} to "Azerite Empowered is available."
+                            else:
+                                set {_availableDesc} to "A new power is available."
+                            set {_azeritePowerDesc::%loop-counter-2%} to " %{_colourAvailable}%- %{_availableDesc}%"
                 else:
                     set {_azeritePowerDesc::%loop-counter-2%} to " %{_colourAction}%- Unlocks at Heart Level %loop-value-2%."
 
@@ -494,6 +702,80 @@ function updateAzeriteArmorLore(p: player):
             clear {_traitRequirement::*}
             clear {_azeritePowerDesc::*}
             clear {_selectedTraits::*}
+
+function updateDescriptionAzerite(description: string, yaml: string, id: string, itemLevel: int, lowestILvl: int, item: item, colourOG: string = "") :: string:
+    if {_colourOG} != "":
+        set {_colour} to "<##00ff00>"
+    else:
+        set {_colour} to ""
+
+    if yaml value "%{_yaml}%.Damage" in "TraitList%{_id}%" is set:
+        set {_damage} to (yaml value "%{_yaml}%.Damage" in "TraitList%{_id}%")
+        set {_scaling} to (yaml value "%{_yaml}%.Damage Scaling" in "TraitList%{_id}%")
+        set {_damage} to {_damage} + ({_itemLevel}-{_lowestIlvl})*{_scaling}
+        replace all "{DMG}" in {_description} with "%{_colour}%%{_damage}%%{_colourOG}%"
+
+    if yaml value "%{_yaml}%.Stat" in "TraitList%{_id}%" is set:
+        set {_stat} to (yaml value "%{_yaml}%.Stat" in "TraitList%{_id}%")
+        set {_scaling} to (yaml value "%{_yaml}%.Stat Scaling" in "TraitList%{_id}%")
+        set {_stat} to round(({_stat} + ({_itemLevel}-{_lowestIlvl})*{_scaling}), 0)
+        replace all "{STAT}" in {_description} with "%{_colour}%%{_stat}%%{_colourOG}%"
+
+    if yaml value "%{_yaml}%.Heal" in "TraitList%{_id}%" is set:
+        set {_heal} to (yaml value "%{_yaml}%.Heal" in "TraitList%{_id}%")
+        set {_scaling} to (yaml value "%{_yaml}%.Heal Scaling" in "TraitList%{_id}%")
+        set {_heal} to {_heal} + ({_itemLevel}-{_lowestIlvl})*{_scaling}
+        replace all "{HEAL}" in {_description} with "%{_colour}%%{_heal}%%{_colourOG}%"
+
+    if yaml value "%{_yaml}%.Duration" in "TraitList%{_id}%" is set:
+        set {_duration} to (yaml value "%{_yaml}%.Duration" in "TraitList%{_id}%")
+        set {_scaling} to (yaml value "%{_yaml}%.Duration Scaling" in "TraitList%{_id}%")
+        set {_duration} to {_duration} + ({_itemLevel}-{_lowestIlvl})*{_scaling}
+        replace all "{DURATION}" in {_description} with "%{_colour}%%{_duration}%%{_colourOG}%"
+
+    if yaml value "%{_yaml}%.StatMax" in "TraitList%{_id}%" is set:
+        set {_statmax} to (yaml value "%{_yaml}%.StatMax" in "TraitList%{_id}%")
+        set {_scaling} to (yaml value "%{_yaml}%.StatMax Scaling" in "TraitList%{_id}%")
+        set {_statmax} to round(({_statmax} + ({_itemLevel}-{_lowestIlvl})*{_scaling}), 0)
+        replace all "{STATMAX}" in {_description} with "%{_colour}%%{_statmax}%%{_colourOG}%"
+
+    if yaml value "%{_yaml}%.StatMin" in "TraitList%{_id}%" is set:
+        set {_statmin} to (yaml value "%{_yaml}%.StatMin" in "TraitList%{_id}%")
+        set {_scaling} to (yaml value "%{_yaml}%.StatMin Scaling" in "TraitList%{_id}%")
+        set {_statmin} to round(({_statmin} + ({_itemLevel}-{_lowestIlvl})*{_scaling}), 0)
+        replace all "{STATMIN}" in {_description} with "%{_colour}%%{_statmin}%%{_colourOG}%"
+
+    if yaml value "%{_yaml}%.StatAlly" in "TraitList%{_id}%" is set:
+        set {_statally} to (yaml value "%{_yaml}%.StatAlly" in "TraitList%{_id}%")
+        set {_scaling} to (yaml value "%{_yaml}%.StatAlly Scaling" in "TraitList%{_id}%")
+        set {_statally} to round(({_statally} + ({_itemLevel}-{_lowestIlvl})*{_scaling}), 0)
+        replace all "{STATALLY}" in {_description} with "%{_colour}%%{_statally}%%{_colourOG}%"
+
+    set {_statCount} to 1
+    while {_stop} is not set:
+        if yaml value "%{_yaml}%.Stat%{_statCount}%" in "TraitList%{_id}%" is set:
+            set {_stat} to (yaml value "%{_yaml}%.Stat%{_statCount}%" in "TraitList%{_id}%")
+            set {_scaling} to (yaml value "%{_yaml}%.Stat%{_statCount}% Scaling" in "TraitList%{_id}%")
+            set {_stat} to round(({_stat} + ({_itemLevel}-{_lowestIlvl})*{_scaling}), 0)
+            replace all "{STAT%{_statCount}%}" in {_description} with "%{_colour}%%{_stat}%%{_colourOG}%"
+            add 1 to {_statCount}
+        else:
+            set {_stop} to true
+
+    replace all "{PRIMARY}" in {_description} with (string tag "PrimaryStat" of custom nbt of {_item})
+
+    if yaml value "%{_yaml}%.Talent" in "TraitList%{_id}%" is set:
+        set {_talent::*} to (yaml value "%{_yaml}%.Talent" in "TraitList%{_id}%") split at "/"
+        set {_talentRows} to yaml value "Talent Config.Rows" in "TalentList"
+        loop {_talent::*}:
+            loop {_talentRows} times:
+                if string tag "Talents;Row %loop-counter-2%" of custom nbt of {karta::%{_p}%} = "%loop-value-1%":
+                    set {_talent} to loop-value-1
+                    stop loop
+        set {_talent} to {_talent::1} if {_talent} is not set
+        replace all "{TALENT}" in {_description} with "%{_talent}%"
+
+    return {_description}
           
 on armor change:
     if "%event-equipment slot%" = (string tag "EquipmentSlotArmor" of custom nbt of future event-item):
@@ -534,3 +816,12 @@ function getSlotIndex(index: integer) :: string:
     else if {_index} = 39:
         set {_return} to "Helmet slot"
     return {_return}
+
+function getTrait(p: player, trait: string) :: integers:
+    set {_slots::*} to ({_p}'s helmet), ({_p}'s leggings) and ({_p}'s boots)
+    loop {_slots::*}:
+        set {_rings} to int tag "Rings" of custom nbt of loop-value
+        loop {_rings} times:
+            if string tag "SelectedTraits;%loop-counter-2%" of custom nbt of loop-value-1 = {_trait}:
+                add (int tag "ItemLevel" of custom nbt of loop-value-1) to {_itemLevels::*}
+    return {_itemLevels::*}
