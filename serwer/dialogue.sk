@@ -97,6 +97,7 @@ function chatBubble(p: player, t: text, viewers: players):
         add 1 to {_index}
 
 function damageText(a: entity, e: entity, damage: number, crit: boolean, effective: string = "none"):
+    set {_source} to metadata value "LastDamageCause" of {_e}
     set {_id} to random integer between 0 and 999999999999
     set {_1} to a random integer between 1 and 2
     set {_2} to a random integer between 1 and 2
@@ -111,30 +112,37 @@ function damageText(a: entity, e: entity, damage: number, crit: boolean, effecti
     else:
         set {_z} to a random number between 1.0 and 0.5
 
-    set {_y} to a random number between -1.0 and 0.25
+    set {_y} to a random number between 0.5 and 2
     
     set {_x} to (x-coordinate of {_e}) + {_x}
     set {_z} to (z-coordinate of {_e}) + {_z}
     set {_y} to (y-coordinate of {_e}) + {_y}
 
     set {_loc} to location({_x}, {_y}, {_z}, world "%{_e}'s world%")
-    spawn fake armor stand at {_loc} for all players with id {_id}
-    set {_scale} to 0.75
+    spawn fake text display entity at {_loc} for all players with id {_id}
+
+    set {_damageFormatted} to formatNumberEc({_damage})
+    set {_name} to "&c%{_damageFormatted}%"
+
+    set {_scale} to 0.75 + ({_damage}*0.0025)
     if {_effective} = "weak":
-        set {_scale} to {_scale}-0.25
+        set {_scale} to {_scale}*0.67
+        set {_name} to "&o%{_name}%"
     else if {_effective} = "strong":
-        set {_scale} to {_scale}+0.25
-    fake scale of entity with id {_id} with value {_scale} for all players
+        set {_scale} to {_scale}*1.5
+        set {_name} to "&n%{_name}%"
 
     set {_meta} to metadata packet with id {_id}
-    set {_damageFormatted} to formatNumberEc({_damage})
-    set {_name} to "%{kartacolor::%{_a}%}%%{_damageFormatted}%"
+
     if {_crit} = true:
         set {_name} to "&l%{_name}%"
-    add data from "name %{_name}%" to {_meta}
-    add data from "name visible true" to {_meta}
-    add data from "invisible true" to {_meta}
+    add data from "display text %{_name}%" to {_meta}
+    add data from "display billboard center" to packet {_meta}
+    add data from "display brightness 15 15" to packet {_meta}
+    add data from "display scale %{_scale}% %{_scale}% %{_scale}%" to packet {_meta}
+    
     send packet {_meta} to all players
+
 
     set {_waitNum} to 2 + ({_damage}*0.02)
     set {_waitNum} to 5 if {_waitNum} > 5
