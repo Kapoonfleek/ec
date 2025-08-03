@@ -55,10 +55,7 @@ function VoidEruptionAbilityCast(p: player):
                                                 remove 0.1 seconds from {_casttime}
                                             else:
                                                 clear metadata value "casting" of {_p}
-                                                if {language::%{_p}%} = "English":
-                                                    send action bar "" to {_p}
-                                                else:
-                                                    send action bar "" to {_p}
+                                                send action bar "" to {_p}
                                     else:
                                         stop
                                     clear metadata value "casting" of {_p}
@@ -67,10 +64,7 @@ function VoidEruptionAbilityCast(p: player):
                                     clear metadata value "casttimemax" of {_p}
                                     stop sound "skill.therold.void_eruption_precast" for all players in radius 2 around {_p}
                                     if {_casttime} > 0 seconds:
-                                        if {language::%{_p}%} = "English":
-                                            send action bar "&cInterrupted" to {_p}
-                                        else:
-                                            send action bar "&cPrzerwano" to {_p}
+                                        send action bar "&cInterrupted" to {_p}
                                         stop
                                     set metadata value "Voidform" of {_p} to true
                                     AbilityUse({_p}, "Void Eruption")
@@ -81,7 +75,7 @@ function VoidEruptionAbilityCast(p: player):
                                         if loop-item is purple dye named "<##613e82>Void Eruption" with nbt from "{""minecraft:custom_model_data"":{floats:[9.0f]},""minecraft:custom_data"":{""Void Eruption"":1b}}":
                                             set {_cdVoidbolt} to "%4.5/{_pospiech}% seconds" parsed as timespan
                                             set {_dmgVoidbolt} to (3 + (({damage::%{_p}%}/15) + ({versatility::%{_p}%}/45)))
-                                            set loop-item to black dye named "<##613e82>Void Bolt" with lore "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdVoidbolt}%%nl%&7Use: &fRMB%nl%<##613e82>Sends a bolt of pure void energy at the%nl%<##613e82>enemy, causing &f%{_dmgVoidbolt}% <##431d53>Ghost <##613e82>damage and%nl%<##613e82>extending the duration of <##8165a6>Shadow Word: Pain%nl%<##613e82>and <##8165a6>Vampiric Touch <##613e82>to their original duration.%nl%<##613e82>Requires <##8165a6>Voidform<##613e82>.%nl% %nl%&fGenerates 16 Insanity." with nbt from "{""minecraft:custom_model_data"":{floats:[3.0f]},""minecraft:custom_data"":{""Void Bolt"":1b}}"
+                                            set loop-item to black dye named "<##613e82>Void Bolt" with lore "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdVoidbolt}%%nl%&7Use: &fRMB%nl%<##613e82>Sends a bolt of pure void energy at the%nl%<##613e82>enemy, causing &f%{_dmgVoidbolt}% <##431d53>Ghost <##613e82>damage and%nl%<##613e82>extending the duration of &f<##8165a6>Shadow Word: Pain%nl%<##613e82>and &f<##8165a6>Vampiric Touch <##613e82>to their original duration.%nl%<##613e82>Requires &f<##8165a6>Voidform<##613e82>.%nl% %nl%&fGenerates 16 Insanity." with nbt from "{""minecraft:custom_model_data"":{floats:[3.0f]},""minecraft:custom_data"":{""Void Bolt"":1b}}"
                                     set {_lore} to join lore of {_p}'s tool by nl
                                     push {_p} upwards with speed 0.1
                                     set gravity attribute of {_p} to 0
@@ -142,6 +136,60 @@ function VoidEruptionAbilityCast(p: player):
             send "&8[&6Earthcraft&8] &6Nie masz wybranej wymaganej karty, by móc użyć tej umiejętności." to {_p}
         play sound "block.glass.break" with volume 3 and pitch 0 to {_p}
 
+function VoidBoltCast(p: player, target: entity):
+    set {_id} to line 19 of lore of {karta::%{_p}%}
+    set {_pospiech} to Haste({_p}) + (({hasteVoidform::%{_p}%}/4)/100)
+    set {_cd} to "%4.5/{_pospiech}% seconds" parsed as timespan
+    set the cooldown of {_p}'s held item for {_p} to {_cd}
+    create cooldown "Void Bolt%{_p}%" for {_cd}
+    AbilityUse({_p}, "Void Bolt")
+    if metadata value "channeling" of {_p} is set:
+        clear metadata value "channeling" of {_p}
+        StopCastSoundTherold({_p})
+    if metadata value "casting" of {_p} is set:
+        clear metadata value "cast" of {_p}
+        StopCastSoundTherold({_p})
+        send action bar "&cInterrupted" to {_p}
+    set metadata value "lastspell" of {_p} to uncolored {_p}'s tool's name
+    set {_randomLocation} to a random number between -0.40 and 0.40
+    set {_l} to location 0.3 blocks below and {_randomLocation} left of {_p}'s head
+    set {_vec} to vector between {_p} and {_target}'s head
+    play sound "skill.therold.void_bolt_cast" with volume 3 and pitch 1 at {_p}
+    play sound "skill.therold.shadowcast" with volume 3 and pitch 1 at {_p}
+    loop round(distance between {_l} and {_target}) / 0.5 times:
+        set {_vec} to vector between {_l} and {_target}'s head
+        set vector length of {_vec} to loop-value * 0.5
+        draw 1 of dust using dustOption(rgb(65, 46, 115), 1) at {_l} ~ {_vec} with force
+    play sound "skill.therold.void_bolt_impact" with volume 3 and pitch 1 at {_p}
+    GrantInsanity({_p}, 16)
+    UpdateInsanity({_p})
+    set {_crit} to CriticalHit({_p})
+    set {_damage} to (4.5 + (({damage::%{_p}%}/14.5) + ({versatility::%{_p}%}/43.5) + {primarystat::%{_p}%}/7.25)) * (1.096 + (({mastery::%{_p}%}/6.25)/100))
+    if theroldOffensiveTrait({_p}, {_target}, "Sinister Thoughts") > 0:
+        add theroldOffensiveTrait({_p}, {_target}, "Sinister Thoughts") to {_damage}
+        chance of 3%:
+            if metadata value "Voidform" of {_p} is set:
+                clear cooldown "Void Bolt%{_p}%"
+                loop all items in {_p}'s inventory:
+                    if boolean tag "Void Bolt" of custom nbt of loop-item is set:
+                        clear cooldown of loop-item for {_p}
+    if metadata value "Voidform" of {_p} is set:
+        set {_damage} to {_damage}*1.2
+    set {_target}'s last damage cause to sweep attack
+    set {_lore} to "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cd}%%nl%&7Use: &fRMB%nl%<##613e82>Sends a bolt of pure void energy at the%nl%<##613e82>enemy, causing &f%{_damage}% <##431d53>Ghost <##613e82>damage and%nl%<##613e82>extending the duration of &f<##8165a6>Shadow Word: Pain%nl%<##613e82>and &f<##8165a6>Vampiric Touch <##613e82>to their original duration.%nl%<##613e82>Requires &f<##8165a6>Voidform<##613e82>.%nl% %nl%&fGenerates 16 Insanity."
+    set metadata value "LastDamageCause" of {_target} to "<##462566>Void Bolt"
+    set metadata value "LastDamageCauseLore" of {_target} to {_lore}
+    set metadata value "Element" of {_p} to "Ghost"
+    set lore of {_p}'s tool to {_lore}
+    chance of {_crit}%:
+        set {_damage} to {_damage}*2
+    make {_p} damage {_target} by {_damage}*2
+    loop all entities in radius 4 around {_target}:
+        if metadata value "Shadow Word: Pain-%{_p}%" of loop-entity is set:
+            ShadowWordPainRefresh({_p}, loop-entity)
+        if metadata value "Vampiric Touch-%{_p}%" of loop-entity is set:
+            VampiricTouchRefresh({_p}, loop-entity)
+
 function VoidBoltAbilityCast(p: player):
     if {kartaname::%{_p}%} = "Brother Therold":
         if CanUseAbility({_p}) != false:
@@ -152,88 +200,46 @@ function VoidBoltAbilityCast(p: player):
                         if cooldown "Shadow Word: Death%{_p}%" is finished:
                             if cooldown "Global Cooldown Interrupted Cast%{_p}%" is finished:
                                 if metadata value "Voidform" of {_p} is set:
-                                    set {_id} to line 19 of lore of {karta::%{_p}%}
-                                    set {_pospiech} to Haste({_p}) + (({hasteVoidform::%{_p}%}/4)/100)
-                                    set {_cd} to "%4.5/{_pospiech}% seconds" parsed as timespan
-                                    set the cooldown of {_p}'s held item for {_p} to {_cd}
-                                    create cooldown "Void Bolt%{_p}%" for {_cd}
-                                    AbilityUse({_p}, "Void Bolt")
-                                    if metadata value "channeling" of {_p} is set:
-                                        clear metadata value "channeling" of {_p}
-                                        StopCastSoundTherold({_p})
-                                    if metadata value "casting" of {_p} is set:
-                                        clear metadata value "cast" of {_p}
-                                        StopCastSoundTherold({_p})
-                                        if {language::%{_p}%} = "English":
-                                            send action bar "&cInterrupted" to {_p}
-                                        else:
-                                            send action bar "&cPrzerwano" to {_p}
-                                    set metadata value "lastspell" of {_p} to uncolored {_p}'s tool's name
-                                    set {_randomLocation} to a random number between -0.40 and 0.40
-                                    set {_l} to location 0.3 blocks below and {_randomLocation} left of {_p}'s head
-                                    set {_vec} to vector between {_p} and {_target}'s head
-                                    play sound "skill.therold.void_bolt_cast" with volume 3 and pitch 1 at {_p}
-                                    play sound "skill.therold.shadowcast" with volume 3 and pitch 1 at {_p}
-                                    loop round(distance between {_l} and {_target}) / 0.5 times:
-                                        set {_vec} to vector between {_l} and {_target}'s head
-                                        set vector length of {_vec} to loop-value * 0.5
-                                        draw 1 of dust using dustOption(rgb(65, 46, 115), 1) at {_l} ~ {_vec} with force
-                                    play sound "skill.therold.void_bolt_impact" with volume 3 and pitch 1 at {_p}
-                                    GrantInsanity({_p}, 16)
-                                    UpdateInsanity({_p})
-                                    set {_crit} to CriticalHit({_p})
-                                    set {_damage} to (4.5 + (({damage::%{_p}%}/14.5) + ({versatility::%{_p}%}/43.5) + {primarystat::%{_p}%}/7.25)) * (1.096 + (({mastery::%{_p}%}/6.25)/100))
-                                    if metadata value "Voidform" of {_p} is set:
-                                        set {_damage} to {_damage}*1.2
-                                    set {_target}'s last damage cause to sweep attack
-                                    set {_lore} to "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cd}%%nl%&7Use: &fRMB%nl%<##613e82>Sends a bolt of pure void energy at the%nl%<##613e82>enemy, causing &f%{_damage}% <##431d53>Ghost <##613e82>damage and%nl%<##613e82>extending the duration of <##8165a6>Shadow Word: Pain%nl%<##613e82>and <##8165a6>Vampiric Touch <##613e82>to their original duration.%nl%<##613e82>Requires <##8165a6>Voidform<##613e82>.%nl% %nl%&fGenerates 16 Insanity."
-                                    set metadata value "LastDamageCause" of {_target} to "<##462566>Void Bolt"
-                                    set metadata value "LastDamageCauseLore" of {_target} to {_lore}
-                                    set metadata value "Element" of {_p} to "Ghost"
-                                    set lore of {_p}'s tool to {_lore}
-                                    chance of {_crit}%:
-                                        set {_damage} to {_damage}*2
-                                    make {_p} damage {_target} by {_damage}*2
-                                    loop all entities in radius 4 around {_target}:
-                                        if metadata value "Shadow Word: Pain-%{_p}%" of loop-entity is set:
-                                            ShadowWordPainRefresh({_p}, loop-entity)
-                                        if metadata value "Vampiric Touch-%{_p}%" of loop-entity is set:
-                                            VampiricTouchRefresh({_p}, loop-entity)
+                                    VoidBoltCast({_p}, {_target})
                                 else:
-                                    if {language::%{_p}%} = "English":
-                                        send "<##462566>You must be in Voidform to use this ability." to {_p}
+                                    if metadata value "SinisterThoughts" of {_p} is set:
+                                        VoidBoltCast({_p}, {_target})
+                                        clear metadata value "SinisterThoughts" of {_p}
+                                        loop all items in the inventory of {_p}:
+                                            if loop-item is black dye named "<##613e82>Void Bolt" with nbt from "{""minecraft:custom_model_data"":{floats:[3.0f]},""minecraft:custom_data"":{""Void Bolt"":1b}}":
+                                                if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Legacy of the Void":
+                                                    set {_requiredInsanity} to 60
+                                                else:
+                                                    set {_requiredInsanity} to 90
+                                                set {_damage} to (4 + (({damage::%{_p}%}/9) + ({versatility::%{_p}%}/27) + {primarystat::%{_p}%}/4.5)) * (1.096 + (({mastery::%{_p}%}/6.25)/100))
+                                                set {_pospiech} to Haste({_p})
+                                                set {_baseCasttime} to 2
+                                                if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Legacy of the Void":
+                                                    set {_baseCasttime} to {_baseCasttime}*0.6 
+                                                set {_casttime} to "%round(({_baseCasttime}/{_pospiech}), 1)% seconds" parsed as timespan
+                                                set {_voidEruption} to purple dye named "<##613e82>Void Eruption" with lore "&8Ultimate Ability%nl%&f%{_casttime}% cast%nl%&7No cooldown%nl%&7Use: &fRMB%nl%<##613e82>Releases an explosive blast of pure void%nl%<##613e82>energy, activating &f<##8165a6>Voidform <##613e82>and causing%nl%&f%{_damage}% <##431d53>Ghost <##613e82>damage to all enemies afflicted by%nl%<##613e82>your &f<##8165a6>Shadow Word: Pain <##613e82>or &f<##8165a6>Vampiric Touch.%nl% %nl%<##613e82>During &f<##8165a6>Voidform<##613e82>, this ability is replaced%nl%<##613e82>by &f<##8165a6>Void Bolt<##613e82>.%nl% %nl%&fRequires %{_requiredInsanity}% Insanity to activate."
+                                                add nbt from "{""minecraft:custom_model_data"":{floats:[9.0f]},""minecraft:custom_data"":{""Void Eruption"":1b}}" to nbt of {_voidEruption}
+                                                set loop-item to {_voidEruption}
                                     else:
-                                        send "<##462566>Musisz być w Formie Pustki, by użyć tej umiejętności." to {_p}
+                                        send "<##462566>You must be in Voidform to use this ability." to {_p}
                                     stop
                         else: 
                             if {tekstcd::%{_p}%} = true:
                                 set {_cdd} to cooldown "Shadow Word: Death%{_p}%"
-                                if {language::%{_p}%} = "English":
-                                    send "<##462566>You must wait &f%{_cdd}%<##462566> to use this ability." to {_p}
-                                else:
-                                    send "<##462566>Musisz odczekać &f%{_cdd}%<##462566>, aby użyć tej umiejętności." to {_p}
+                                send "<##462566>You must wait &f%{_cdd}%<##462566> to use this ability." to {_p}
                             stop
                     else: 
                         if {tekstcd::%{_p}%} = true:
                             set {_cdd} to cooldown "Shadow Word: Pain%{_p}%"
-                            if {language::%{_p}%} = "English":
-                                send "<##462566>You must wait &f%{_cdd}%<##462566> to use this ability." to {_p}
-                            else:
-                                send "<##462566>Musisz odczekać &f%{_cdd}%<##462566>, aby użyć tej umiejętności." to {_p}
+                            send "<##462566>You must wait &f%{_cdd}%<##462566> to use this ability." to {_p}
                         stop
                 else: 
                     if {tekstcd::%{_p}%} = true:
                         set {_cdd} to cooldown "Void Bolt%{_p}%"
-                        if {language::%{_p}%} = "English":
-                            send "<##462566>You must wait &f%{_cdd}%<##462566> to use this ability." to {_p}
-                        else:
-                            send "<##462566>Musisz odczekać &f%{_cdd}%<##462566>, aby użyć tej umiejętności." to {_p}
+                        send "<##462566>You must wait &f%{_cdd}%<##462566> to use this ability." to {_p}
                     stop
     else:
-        if {language::%{_p}%} = "English":
-            send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to {_p}
-        else:
-            send "&8[&6Earthcraft&8] &6Nie masz wybranej wymaganej karty, by móc użyć tej umiejętności." to {_p}
+        send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to {_p}
         play sound "block.glass.break" with volume 3 and pitch 0 to {_p}
 
 function MindBlastAbilityCast(p: player):
@@ -330,6 +336,7 @@ function MindBlastAbilityCast(p: player):
                                         if {_target} is alive:
                                             set {_crit} to CriticalHit({_p})
                                             set {_damage} to (4.5 + (({damage::%{_p}%}/24) + ({versatility::%{_p}%}/72) + {primarystat::%{_p}%}/12)) * (1.096 + (({mastery::%{_p}%}/6.25)/100))
+                                            add theroldOffensiveTrait({_p}, {_target}, "Whispers of the Damned") to {_damage}
                                             if metadata value "Voidform" of {_p} is set:
                                                 set {_damage} to {_damage}*1.2
                                             if string tag "Talents;Row 1" of custom nbt of {karta::%{_p}%} = "Fortress of the Mind":
@@ -356,6 +363,9 @@ function MindBlastAbilityCast(p: player):
                                             set metadata value "LastDamageCauseLore" of {_target} to {_lore}
                                             chance of {_crit}%:
                                                 set {_damage} to {_damage}*2
+                                                if theroldOffensiveTrait({_p}, {_target}, "Whispers of the Damned") > 0:
+                                                    GrantInsanity({_p}, 20)
+                                                    UpdateInsanity({_p})
                                             make {_p} damage {_target} by {_damage}*2
                                 else: 
                                     if {tekstcd::%{_p}%} = true:
@@ -429,11 +439,15 @@ function ShadowWordPainAbilityCast(p: player):
                             set {_damage} to (0.6 + (({damage::%{_p}%}/45) + ({versatility::%{_p}%}/135) + {primarystat::%{_p}%}/22.5)) * (1.096 + (({mastery::%{_p}%}/6.25)/100))
                             set {_SWPDuration} to 14
                             set {_damageSWPTicks} to (1 + (({damage::%{_p}%}/68) + ({versatility::%{_p}%}/204) + {primarystat::%{_p}%}/34)) * (1.096 + (({mastery::%{_p}%}/6.25)/100))
+                            set {_totalTicks} to (round({_SWPDuration}/(2/{_pospiech}), 0))
+                            if theroldOffensiveTrait({_p}, {_target}, "Death Throes") > 0:
+                                set {_deathThroes} to theroldOffensiveTrait({_p}, {_target}, "Death Throes")
+                                add {_deathThroes}/{_totalTicks} to {_damageSWPTicks}
                             if metadata value "Voidform" of {_p} is set:
                                 set {_damage} to {_damage}*1.2
                                 set {_damageSWPTicks} to {_damageSWPTicks}*1.2
                             set {_target}'s last damage cause to sweep attack
-                            set {_lore} to "&8Ability%nl%&fInstant cast%nl%&7Global Cooldown: &f%{_cd}%%nl%&7Use: &fRMB%nl%<##613e82>A word of darkness that causes%nl%&f%{_damage}% <##431d53>Ghost <##613e82>damage instantly, and%nl%<##613e82>an additional &f%(round({_SWPDuration}/(2/{_pospiech}), 0))*{_damageSWPTicks}% <##431d53>Ghost <##613e82>damage%nl%<##613e82>over &f%{_SWPDuration}% sec<##613e82>.%nl% %nl%&fGenerates 3 Insanity."
+                            set {_lore} to "&8Ability%nl%&fInstant cast%nl%&7Global Cooldown: &f%{_cd}%%nl%&7Use: &fRMB%nl%<##613e82>A word of darkness that causes%nl%&f%{_damage}% <##431d53>Ghost <##613e82>damage instantly, and%nl%<##613e82>an additional &f%{_totalTicks}*{_damageSWPTicks}% <##431d53>Ghost <##613e82>damage%nl%<##613e82>over &f%{_SWPDuration}% sec<##613e82>.%nl% %nl%&fGenerates 3 Insanity."
                             set metadata value "LastDamageCause" of {_target} to "<##462566>Shadow Word: Pain"
                             set metadata value "LastDamageCauseLore" of {_target} to {_lore}
                             set metadata value "Element" of {_p} to "Ghost"
@@ -616,10 +630,7 @@ function VampiricTouchAbilityCast(p: player):
                                     clear metadata value "casttimemax" of {_p}
                                     stop sound "skill.therold.mindflay_channel_whisper" for all players in radius 2 around {_p}
                                     if {_casttime} > 0 seconds:
-                                        if {language::%{_p}%} = "English":
-                                            send action bar "&cInterrupted" to {_p}
-                                        else:
-                                            send action bar "&cPrzerwano" to {_p}
+                                        send action bar "&cInterrupted" to {_p}
                                         stop
                                     GrantInsanity({_p}, 6)
                                     UpdateInsanity({_p})
@@ -636,37 +647,23 @@ function VampiricTouchAbilityCast(p: player):
                                         VampiricTouchExpire({_p}, {_target})
                                     else:
                                         VampiricTouchRefresh({_p}, {_target})
-
-                                    #If talent = misery, wait 1 tick and only then swp.
                             else: 
                                 if {tekstcd::%{_p}%} = true:
                                     set {_cdd} to cooldown "Shadow Word: Death%{_p}%"
-                                    if {language::%{_p}%} = "English":
-                                        send "<##462566>You must wait &f%{_cdd}%<##462566> to use this ability." to {_p}
-                                    else:
-                                        send "<##462566>Musisz odczekać &f%{_cdd}%<##462566>, aby użyć tej umiejętności." to {_p}
+                                    send "<##462566>You must wait &f%{_cdd}%<##462566> to use this ability." to {_p}
                                 stop
                         else: 
                             if {tekstcd::%{_p}%} = true:
                                 set {_cdd} to cooldown "Shadow Word: Pain%{_p}%"
-                                if {language::%{_p}%} = "English":
-                                    send "<##462566>You must wait &f%{_cdd}%<##462566> to use this ability." to {_p}
-                                else:
-                                    send "<##462566>Musisz odczekać &f%{_cdd}%<##462566>, aby użyć tej umiejętności." to {_p}
+                                send "<##462566>You must wait &f%{_cdd}%<##462566> to use this ability." to {_p}
                             stop
                     else:
                         if {tekstcd::%{_p}%} = true:
                             set {_cdd} to cooldown "Vampiric Touch%{_p}%"
-                            if {language::%{_p}%} = "English":
-                                send "<##462566>You must wait &f%{_cdd}%<##462566> to use this ability." to {_p}
-                            else:
-                                send "<##462566>Musisz odczekać &f%{_cdd}%<##462566>, aby użyć tej umiejętności." to {_p}
+                            send "<##462566>You must wait &f%{_cdd}%<##462566> to use this ability." to {_p}
                         stop
     else:
-        if {language::%{_p}%} = "English":
-            send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to {_p}
-        else:
-            send "&8[&6Earthcraft&8] &6Nie masz wybranej wymaganej karty, by móc użyć tej umiejętności." to {_p}
+        send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to {_p}
         play sound "block.glass.break" with volume 3 and pitch 0 to {_p}
 
 function ShadowWordVoidAbilityCast(p: player):
@@ -733,7 +730,7 @@ function ShadowWordVoidAbilityCast(p: player):
                                             clear metadata value "cast" of {_p}
                                             clear metadata value "casttimeleft" of {_p}
                                             clear metadata value "casttimemax" of {_p}
-                                            stop sound "skill.therold.mindblast_precast" for all players in radius 2 around {_p}
+                                            stop sound "skill.therold.shadow_word_void_precast" for all players in radius 2 around {_p}
                                             if {_casttime} > 0 seconds:
                                                 if {language::%{_p}%} = "English":
                                                     send action bar "&cInterrupted" to {_p}
@@ -762,6 +759,7 @@ function ShadowWordVoidAbilityCast(p: player):
                                         if {_target} is alive:
                                             set {_crit} to CriticalHit({_p})
                                             set {_damage} to (5 + (({damage::%{_p}%}/22) + ({versatility::%{_p}%}/66)) + ({primarystat::%{_p}%}/11)) * (1.096 + (({mastery::%{_p}%}/6.25)/100))
+                                            add theroldOffensiveTrait({_p}, {_target}, "Whispers of the Damned") to {_damage}
                                             if metadata value "Voidform" of {_p} is set:
                                                 set {_damage} to {_damage}*1.2
                                             if string tag "Talents;Row 1" of custom nbt of {karta::%{_p}%} = "Fortress of the Mind":
@@ -786,6 +784,9 @@ function ShadowWordVoidAbilityCast(p: player):
                                             set metadata value "LastDamageCauseLore" of {_target} to {_lore}
                                             chance of {_crit}%:
                                                 set {_damage} to {_damage}*2
+                                                if theroldOffensiveTrait({_p}, {_target}, "Whispers of the Damned") > 0:
+                                                    GrantInsanity({_p}, 20)
+                                                    UpdateInsanity({_p})
                                             make {_p} damage {_target} by {_damage}*2
                                 else: 
                                     if {tekstcd::%{_p}%} = true:
@@ -1050,9 +1051,13 @@ function ExitVoidform(p: player):
         set {_baseCasttime} to {_baseCasttime}*0.6 
     set {_casttime} to "%round(({_baseCasttime}/{_pospiech}), 1)% seconds" parsed as timespan
     set {_damage} to (4 + (({damage::%{_p}%}/10) + ({versatility::%{_p}%}/30) + {primarystat::%{_p}%}/5)) * (1.096 + (({mastery::%{_p}%}/6.25)/100))
+    if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Legacy of the Void":
+        set {_requiredInsanity} to 60
+    else:
+        set {_requiredInsanity} to 90
     loop all items in the inventory of {_p}:
         if loop-item is black dye named "<##613e82>Void Bolt" with nbt from "{""minecraft:custom_model_data"":{floats:[3.0f]},""minecraft:custom_data"":{""Void Bolt"":1b}}":
-            set loop-item to purple dye named "<##613e82>Void Eruption" with lore "&8Ultimate Ability%nl%&f%{_casttime}% cast%nl%&7No cooldown%nl%&7Use: &fRMB%nl%<##613e82>Releases an explosive blast of pure void%nl%<##613e82>energy, activating <##8165a6>Voidform <##613e82>and causing &f%{_damage}%%nl%<##431d53>Ghost <##613e82>damage to all enemies afflicted by%nl%<##613e82>your <##8165a6>Shadow Word: Pain <##613e82>or <##8165a6>Vampiric Touch.%nl% %nl%<##613e82>During <##8165a6>Voidform<##613e82>, this ability is replaced%nl%<##613e82>by Void Bolt.%nl% %nl%&fRequires 90 Insanity to activate." with nbt from "{""minecraft:custom_model_data"":{floats:[9.0f]},""minecraft:custom_data"":{""Void Eruption"":1b}}"
+            set loop-item to purple dye named "<##613e82>Void Eruption" with lore "&8Ultimate Ability%nl%&f%{_casttime}% cast%nl%&7No cooldown%nl%&7Use: &fRMB%nl%<##613e82>Releases an explosive blast of pure void%nl%<##613e82>energy, activating &f<##8165a6>Voidform <##613e82>and causing%nl%&f%{_damage}% <##431d53>Ghost <##613e82>damage to all enemies afflicted by%nl%<##613e82>your &f<##8165a6>Shadow Word: Pain <##613e82>or &f<##8165a6>Vampiric Touch.%nl% %nl%<##613e82>During &f<##8165a6>Voidform<##613e82>, this ability is replaced%nl%<##613e82>by &f<##8165a6>Void Bolt<##613e82>.%nl% %nl%&fRequires %{_requiredInsanity}% Insanity to activate." with nbt from "{""minecraft:custom_model_data"":{floats:[9.0f]},""minecraft:custom_data"":{""Void Eruption"":1b}}"
     if metadata value "SurrenderToMadness" of {_p} = true:
         clear metadata value "SurrenderToMadness" of {_p}
         set {_lore} to "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &f10 minutes%nl%&7Use: &fRMB%nl%&7Talent Ability%nl%<##613e82>Surrender your soul to the Old Gods, sacrificing%nl%<##613e82>your soul for ultimate power.%nl% %nl%<##613e82>All your <##8165a6>Insanity<##613e82>-generating abilities generate%nl%&f200%% <##613e82>more <##8165a6>Insanity <##613e82>until you exit <##8165a6>Voidform<##613e82>.%nl% %nl%<##613e82>Then you die. Horribly."
@@ -1107,6 +1112,10 @@ function ShadowWordPain(p: player, target: entity):
             set {_crit} to CriticalHit({_p})
             set {_SWPDuration} to 14
             set {_damage} to (1 + (({damage::%{_p}%}/68) + ({versatility::%{_p}%}/204) + {primarystat::%{_p}%}/34)) * (1.096 + (({mastery::%{_p}%}/6.25)/100))
+            set {_totalTicks} to (round({_SWPDuration}/(2/{_pospiech}), 0))
+            if theroldOffensiveTrait({_p}, {_target}, "Death Throes") > 0:
+                set {_deathThroes} to theroldOffensiveTrait({_p}, {_target}, "Death Throes")
+                add {_deathThroes}/{_totalTicks} to {_damage}
             if metadata value "Voidform" of {_p} is set:
                 set {_damage} to {_damage}*1.2
             loop all items in the inventory of {_p}:
@@ -1158,6 +1167,9 @@ function ShadowWordPainExpire(p: player, target: entity):
                 set {_duration} to 14
                 clear metadata value "Shadow Word: Pain - Refresh-%{_p}%" of {_target}
         else:
+            if theroldOffensiveTrait({_p}, {_target}, "Death Throes") > 0:
+                GrantInsanity({_p}, 5)
+                UpdateInsanity({_p})
             stop loop
     clear metadata value "Shadow Word: Pain-%{_p}%" of {_target}
     amountOfDotsSubtract({_p}, {_target})
@@ -1226,6 +1238,14 @@ function MindFlay(p: player, target: entity, cast: number):
             if metadata value "VoidRayStacks" of {_p} is set:
                 set {_voidRayStacksDamageBonus} to 1 + (0.1*metadata value "VoidRayStacks" of {_p})
                 set {_damage} to {_damage}*{_voidRayStacksDamageBonus}
+            if metadata value "TouchOfDarkness" of {_p} is set:
+                set {_damage} to {_damage}*1.5
+                add 1 to metadata value "TouchOfDarknessTicks" of {_p}
+                set {_fullCast} to round(({_cast}/{_casttime}), 0)
+                if metadata value "TouchOfDarknessTicks" of {_p} = {_fullCast}:
+                    clear metadata value "TouchOfDarkness" of {_p}
+                    clear metadata value "TouchOfDarknessTicks" of {_p}
+                    buffClear({_p}, "Touch")
             set {_insanity} to 2
             if metadata value "Voidform" of {_p} is set:
                 set {_damage} to {_damage}*1.2
@@ -1233,6 +1253,9 @@ function MindFlay(p: player, target: entity, cast: number):
                 set {_damage} to {_damage}*1.1
                 set {_insanity} to {_insanity}*1.2
             GrantInsanity({_p}, {_insanity})
+            chance of 4.5%:
+                if theroldOffensiveTrait({_p}, {_target}, "Sinister Thoughts") > 0:
+                    sinisterThoughts({_p})
             set {_lore} to "&8Ability%nl%&fChanneled%nl%&7No cooldown%nl%&7Use: &fRMB%nl%<##613e82>Assaults the target's mind with Shadow%nl%<##613e82>energy, causing &f%{_damage}*(rounded up 3/(({_cast}/4)/{_pospiech}))% <##431d53>Ghost <##613e82>damage over%nl%&f%{_cast}% sec <##613e82>and slowing their movement speed%nl%<##613e82>by &f50%%<##613e82>.%nl% %nl%&fGenerates %2*(rounded up 3/(({_cast}/4)/{_pospiech}))% Insanity over the duration."
             loop all items in the inventory of {_p}:
                 if loop-item = cyan dye named "<##613e82>Mind Flay" with nbt from "{""minecraft:custom_model_data"":{floats:[3.0f]},""minecraft:custom_data"":{""Mind Flay"":1b}}":
@@ -1310,13 +1333,19 @@ function VampiricTouch(p: player, target: entity):
             set {_VPTDuration} to 18
             set {_crit} to CriticalHit({_p})
             set {_damage} to (1.5 + (({damage::%{_p}%}/62) + ({versatility::%{_p}%}/186) + {primarystat::%{_p}%}/31)) * (1.096 + (({mastery::%{_p}%}/6.25)/100))
+            set {_totalTicks} to (round({_VPTDuration}/(3/{_pospiech}), 0))
+            if theroldOffensiveTrait({_p}, {_target}, "Touch of Darkness") > 0:
+                set {_touchOfDarkness} to theroldOffensiveTrait({_p}, {_target}, "Touch of Darkness")
+                add {_touchOfDarkness}/{_totalTicks} to {_damage}
+                chance of 8%:
+                    touchOfDarkness({_p})
             if string tag "Talents;Row 4" of custom nbt of {karta::%{_p}%} = "San'Layn":
                 set {_damage} to {_damage}*1.2
             if metadata value "Voidform" of {_p} is set:
                 set {_damage} to {_damage}*1.2
             loop all items in the inventory of {_p}:
                 if loop-item = gray dye named "<##613e82>Vampiric Touch" with nbt from "{""minecraft:custom_model_data"":{floats:[2.0f]},""minecraft:custom_data"":{""Vampiric Touch"":1b}}":
-                    set {_lore} to "&8Ability%nl%&f1.5 second cast%nl%&7No cooldown%nl%&7Use: &fRMB%nl%<##613e82>A touch of darkness that causes &f%(round({_VPTDuration}/(3/{_pospiech}), 0))*{_damage}% <##431d53>Ghost%nl%<##613e82>damage over &f%{_VPTDuration}% sec<##613e82>, and heals the priest for%nl%&f10%% <##613e82>of damage dealt.%nl% %nl%&fGenerates 6 Insanity."
+                    set {_lore} to "&8Ability%nl%&f1.5 second cast%nl%&7No cooldown%nl%&7Use: &fRMB%nl%<##613e82>A touch of darkness that causes &f%{_totalTicks}*{_damage}% <##431d53>Ghost%nl%<##613e82>damage over &f%{_VPTDuration}% sec<##613e82>, and heals the priest for%nl%&f10%% <##613e82>of damage dealt.%nl% %nl%&fGenerates 6 Insanity."
                     set lore of loop-item to {_lore}
             set {_target}'s last damage cause to sweep attack
             set metadata value "Element" of {_p} to "Ghost"
@@ -1409,7 +1438,7 @@ function ShadowyApparitionFloat(p: player, apparition: entity, target: entity):
     if {_target} is alive:
         set {_damage} to (0.8 + (({damage::%{_p}%}/76) + ({versatility::%{_p}%}/228) + {primarystat::%{_p}%}/38))
         if metadata value "Vampiric Touch-%{_p}%" of {_target} is set:
-            add spitefulApparitions({_p}, {_target}) to {_damage}
+            add theroldOffensiveTrait({_p}, {_target}, "Spiteful Apparitions") to {_damage}
         if string tag "Talents;Row 4" of custom nbt of {karta::%{_p}%} = "Auspicious Spirits":
             set {_damage} to {_damage}*2
             GrantInsanity({_p}, 3)
@@ -1609,6 +1638,7 @@ function isCastableTherold(p: player) :: boolean:
 function chorusOfInsanity(p: player, voidformStacks: integer):
     set {_itemLevels::*} to getTrait({_p}, "Chorus of Insanity")
     if {_itemLevels::*} is set:
+        set {_voidformStacks} to 20 if {_voidformStacks} > 20
         if metadata value "ChorusOfInsanity" of {_p} is not set:
             set {_crit} to chorusOfInsanityCrit({_p}, {_itemLevels::*}, {_voidformStacks})
             while metadata value "ChorusOfInsanity" of {_p} > 0 seconds:
@@ -1636,17 +1666,41 @@ function chorusOfInsanityCrit(p: player, itemLevels: integers, voidformStacks: i
     set metadata value "ChorusOfInsanityCrit" of {_p} to {_crit}
     return {_crit}
 
-function spitefulApparitions(p: player, target: entity) :: number:
-    set {_itemLevels::*} to getTrait({_p}, "Spiteful Apparitions")
+function theroldOffensiveTrait(p: player, target: entity, trait: string) :: number:
+    set {_itemLevels::*} to getTrait({_p}, {_trait})
     if {_itemLevels::*} is set:
         set {_lowestIlvl} to yaml value "Azerite Armor.Minimum Values.Item Level" in "AzeriteArmorSources"
-        set {_damage} to yaml value "Brother Therold.Offensive.Spiteful Apparitions.Damage" in "TraitList"
-        set {_scaling} to yaml value "Brother Therold.Offensive.Spiteful Apparitions.Damage Scaling" in "TraitList"
+        set {_damage} to yaml value "Brother Therold.Offensive.%{_trait}%.Damage" in "TraitList"
+        set {_scaling} to yaml value "Brother Therold.Offensive.%{_trait}%.Damage Scaling" in "TraitList"
         loop {_itemLevels::*}:
             if loop-value > {_lowestIlvl}:
                 add ((loop-value-{_lowestIlvl})*{_scaling}) to {_damage}
     set {_damage} to 0 if {_damage} is not set
     return {_damage}
+
+function touchOfDarkness(p: player):
+    set metadata value "TouchOfDarknessTicks" of {_p} to 0
+    if metadata value "TouchOfDarkness" of {_p} is not set:
+        set metadata value "TouchOfDarkness" of {_p} to 20 seconds
+        while metadata value "TouchOfDarkness" of {_p} > 0 seconds:
+            set {_duration} to "%metadata value "TouchOfDarkness" of {_p}%"
+            buffRegister({_p}, "Touch", 2, "", "Value", "-", durationShort({_duration}))
+            wait 1 second
+            stop if metadata value "TouchOfDarkness" of {_p} is not set
+            remove 1 second from metadata value "TouchOfDarkness" of {_p}
+        clear metadata value "TouchOfDarknessTicks" of {_p}
+    else:
+        set metadata value "TouchOfDarkness" of {_p} to 20 seconds
+
+function sinisterThoughts(p: player):
+    if metadata value "Voidform" of {_p} is not set:
+        set metadata value "SinisterThoughts" of {_p} to true
+        set {_pospiech} to Haste({_p}) + (({hasteVoidform::%{_p}%}/4)/100)
+        loop all items in the inventory of {_p}:
+            if loop-item is purple dye named "<##613e82>Void Eruption" with nbt from "{""minecraft:custom_model_data"":{floats:[9.0f]},""minecraft:custom_data"":{""Void Eruption"":1b}}":
+                set {_cd} to "%4.5/{_pospiech}% seconds" parsed as timespan
+                set {_damage} to (3 + (({damage::%{_p}%}/15) + ({versatility::%{_p}%}/45)))
+                set loop-item to black dye named "<##613e82>Void Bolt" with lore "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cd}%%nl%&7Use: &fRMB%nl%<##613e82>Sends a bolt of pure void energy at the%nl%<##613e82>enemy, causing &f%{_damage}% <##431d53>Ghost <##613e82>damage and%nl%<##613e82>extending the duration of &f<##8165a6>Shadow Word: Pain%nl%<##613e82>and &f<##8165a6>Vampiric Touch <##613e82>to their original duration.%nl%<##613e82>Requires &f<##8165a6>Voidform<##613e82>.%nl% %nl%&fGenerates 16 Insanity." with nbt from "{""minecraft:custom_model_data"":{floats:[3.0f]},""minecraft:custom_data"":{""Void Bolt"":1b}}"
 
 function dotsText(t: text, p: player, loc: location, wait: timespan, waitDelete: timespan):
     wait {_wait}
