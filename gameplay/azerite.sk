@@ -8,6 +8,7 @@ command /azgear:
         
         set {_cards::*} to "Brother Therold", "Glaceon", "Ghazan"
         azeriteArmor(player, "Intro Quest", "Helmet", 60, "Intellect", {_cards::*})
+        azeriteArmor(player, "Intro Quest", "Leggings", 60, "Intellect", {_cards::*})
         azeriteArmor(player, "Dungeons.Siege of Spawn", "Boots", 90, "Intellect", {_cards::*})
         stop
         set {_health} to round(healthFormula({_itemLevel}), 0)
@@ -35,6 +36,11 @@ command /azgear:
 on inventory click:
     set {_slot} to event-item stack
     if boolean tag "AzeriteArmor" of custom nbt of {_slot} = true:
+        if metadata value "ECEngaged" of player is set:
+            cancel event
+            send "&cYou can not equip or take off Azerite Armor while in combat." to player
+            play sound "block.glass.break" with volume 1 and pitch 2 to player
+            stop
         if "%player's current inventory%" = "%(inventory of player)%":
             set {_Soulbound} to uuid tag "Soulbound" of custom nbt of event-item
             set {_Soulbound} to {_Soulbound} parsed as player
@@ -343,6 +349,11 @@ on inventory click:
                     unload yaml "TraitList%{_id}%"
                     set metadata value "AzeriteGearMenuOpen" of player to event-item
     else if boolean tag "HeartOfEarthcraft" of custom nbt of {_slot} = true:
+        if metadata value "ECEngaged" of player is set:
+            cancel event
+            send "&cYou can not equip or take off the Heart of Earthcraft while in combat." to player
+            play sound "block.glass.break" with volume 1 and pitch 2 to player
+            stop
         if "%player's current inventory%" = "%(inventory of player)%":
             set {_Soulbound} to uuid tag "Soulbound" of custom nbt of event-item
             set {_Soulbound} to {_Soulbound} parsed as player
@@ -789,9 +800,6 @@ on armor change:
                         updateAzeriteArmorLore(player)
                     if event-equipment slot = helmet slot:
                         play sound "item.armor.equip_gold" with volume 5 and pitch 1 to player
-                else:
-                    play sound "block.glass.break" with volume 1 and pitch 2 to player
-                    send "&c&oYou cannot equip Azerite Armor in combat." to player
             else:
                 send "&cEquipped Azerite Armor has no effect. (Ensure that you are in survival mode when equipping Azerite Armor due to an existing bug with Paper.)" to player
     
@@ -802,9 +810,6 @@ on armor change:
                     SetPlayerStats(player)
                     play sound "item.armor.equip_gold" with volume 5 and pitch 0.5 to player
                     updateAzeriteArmorLore(player)
-                else:
-                    send "&cYou can not take off Azerite Armor while in combat." to player
-                    play sound "block.glass.break" with volume 1 and pitch 2 to player
 
 function getSlotIndex(index: integer) :: string:
     if {_index} = 36:
@@ -825,3 +830,15 @@ function getTrait(p: player, trait: string) :: integers:
             if string tag "SelectedTraits;%loop-counter-2%" of custom nbt of loop-value-1 = {_trait}:
                 add (int tag "ItemLevel" of custom nbt of loop-value-1) to {_itemLevels::*}
     return {_itemLevels::*}
+
+function offensiveTrait(p: player, target: entity, card: string, trait: string) :: number:
+    set {_itemLevels::*} to getTrait({_p}, {_trait})
+    if {_itemLevels::*} is set:
+        set {_lowestIlvl} to yaml value "Azerite Armor.Minimum Values.Item Level" in "AzeriteArmorSources"
+        set {_damage} to yaml value "%{_card}%.Offensive.%{_trait}%.Damage" in "TraitList"
+        set {_scaling} to yaml value "%{_card}%.Offensive.%{_trait}%.Damage Scaling" in "TraitList"
+        loop {_itemLevels::*}:
+            if loop-value > {_lowestIlvl}:
+                add ((loop-value-{_lowestIlvl})*{_scaling}) to {_damage}
+    set {_damage} to 0 if {_damage} is not set
+    return {_damage}
