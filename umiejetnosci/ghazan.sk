@@ -97,20 +97,24 @@ on rightclick:
 					set {_wait} to 12
 					if string tag "Talents;Row 1" of custom nbt of {karta::%player%} = "Unrivaled Finesse":
 						add 1.5 seconds to {_wait}
-
-					set {_lore} to "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown:  &f%{_cdd}%%nl%&7Use: &fRMB%nl%<##b03228>Ghazan creates a display of his skill,%nl%<##b03228>throwing himself in the air for &f%{_wait}%<##b03228>.%nl%<##b03228>During this spell, Ghazan continously%nl%<##b03228>fires &f <##d14d43>Lava Burst <##b03228>at nearby enemies<##b03228>,%nl%<##b03228>prioritizing enemies inside &f <##d14d43>Molten Lava<##b03228>."
 					
-					LoreUpdate(player, "Rain of Lava", {_lore})
 					if cooldown "Rain of Lava%player%" is finished:
 						create cooldown "Rain of Lava%player%" for {_cd}
 						set the cooldown of player's held item for player to {_cd}
 						set metadata value "cast" of player to true
 						AbilityUse(player, "Rain of Lava")
 						if string tag "Talents;Row 5" of custom nbt of {karta::%player%} = "Skytear":
-							set {_tick} to 0.25 seconds
-						else:
 							set {_tick} to 0.5 seconds
+						else:
+							set {_tick} to 1 seconds
+						set {_rain} to "%{_tick}%"
+						replace all " seconds" and " second" in {_rain} with ""
 
+						set {_lore} to "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown:  &f%{_cdd}%%nl%&7Use: &fRMB%nl%<##b03228>Ghazan creates a display of his skill,%nl%<##b03228>throwing himself in the air for &f%{_RoLduration}% sec<##b03228>.%nl%<##b03228>During this spell, Ghazan continously%nl%<##b03228>fires &f <##d14d43>Lava Burst <##b03228>at nearby enemies%nl%<##b03228>every &f%{_rain}% sec<##b03228>, prioritizing enemies inside%nl%&f <##d14d43>Molten Lava<##b03228>."
+						loop all items in player's inventory:
+							if boolean tag "Rain of Lava" of custom nbt of loop-item = true:
+								set lore of loop-item to {_lore}
+								
 						if boolean tag "Constellation;Unstoppable Heat" of custom nbt of {karta::%player%} is set:
 							set {_crit} to CriticalHit(player)
 							set {_shield} to 10 + {primarystat::%player%}/8 + {utility::%player%}/16 + {versatility::%player%}/48
@@ -605,7 +609,7 @@ function MoltenLava(p: player, radius: number, cdd: number, pospiech: number, wa
 					if loop-counter is divisible by 3:
 						wait 1 tick
 				
-	loop all entities in radius {_radius} around {_Eventblock}:
+	loop all entities in radius {_radius}+0.5 around {_Eventblock}:
 		if (y-coordinate of loop-entity) >= (y-coordinate of {_Eventblock}):
 			combatInitiate({_p}, loop-entity)
 
@@ -936,7 +940,11 @@ function LavaBurst(p: player, x: entity, multiplier: number, ability: string, re
 		set {_RoLduration} to 12
 		if string tag "Talents;Row 1" of custom nbt of {karta::%{_p}%} = "Unrivaled Finesse":
 			add 1.5 to {_RoLduration} 
-		set {_lore} to "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown:  &f%{_cdd}%%nl%&7Use: &fRMB%nl%<##b03228>Ghazan creates a display of his skill,%nl%<##b03228>throwing himself in the air for &f%{_RoLduration}%<##b03228>.%nl%<##b03228>During this spell, Ghazan continously%nl%<##b03228>fires &f <##d14d43>Lava Burst <##b03228>at nearby enemies<##b03228>,%nl%<##b03228>prioritizing enemies inside &f <##d14d43>Molten Lava<##b03228>."
+		if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Skytear":
+			set {_rain} to 0.5
+		else:
+			set {_rain} to 1
+		set {_lore} to "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown:  &f%{_cdd}%%nl%&7Use: &fRMB%nl%<##b03228>Ghazan creates a display of his skill,%nl%<##b03228>throwing himself in the air for &f%{_RoLduration}% sec<##b03228>.%nl%<##b03228>During this spell, Ghazan continously%nl%<##b03228>fires &f <##d14d43>Lava Burst <##b03228>at nearby enemies%nl%<##b03228>every &f%{_rain}% sec<##b03228>, prioritizing enemies inside%nl%&f <##d14d43>Molten Lava<##b03228>."
 		set metadata value "LastDamageCauseLore" of {_x} to {_lore}
 	else if {_ability} = "Lava Burst":
 		if {_replicated} is not true:
