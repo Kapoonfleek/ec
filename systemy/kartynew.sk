@@ -78,7 +78,7 @@ on rightclick:
 			SetPlayerStats(player) #Sets player stats to current selected card's stats (funkcje.sk)
 		
 			set {kartaname::%player%} to uncolored name of player's tool
-			set {kartacolor::%player%} to last color of player's tool's name
+			set {kartacolor::%player%} to last string color code of player's tool's name
 			if line 19 of lore of {karta::%player%} contains "Id: ":
 				set {_id} to uncolored line 19 of lore of {karta::%player%}
 				replace all "Id: " in {_id} with ""
@@ -155,6 +155,7 @@ on rightclick:
 			set scaled health of player to 20
 			heal the player
 			playerMoveSpeedUpdate(player)
+			updateAzeriteArmorLore(player)
 
 			if {mobskilled::%{kartaname::%player%}%::%{_id}%} is not set:
 				set {mobskilled::%{kartaname::%player%}%::%{_id}%} to 0
@@ -384,6 +385,7 @@ on inventory click:
 					set {_gui} to metadata tag "abilitygui" of player
 					set {_id} to line 19 of lore of player's tool
 					set {_pospiech} to Haste(player)
+					set {_crowdcontrol} to CrowdControl(player)
 					set slot 0 of {_gui} to magenta stained glass pane named "<##f53b98>Mastery" with lore "&7All Mastery bonuses of this Card."
 					set slot 9 of {_gui} to lime stained glass pane named "&aPassive Abilities" with lore "&7All Passive abilities of this Card."
 					set slot 18 of {_gui} to blue stained glass pane named "&9Basic Abilities" with lore "&7All Basic Abilities of this Card."
@@ -418,8 +420,64 @@ on inventory click:
 						set slot 5 of {_gui} to purple dye named "<##866da4>Magic Portals" with lore "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdportals}% seconds%nl%&7Use: &fRMB%nl%<##866da4>Creates a Magic Portal at the target location%nl%<##866da4>for &f25 seconds<##866da4>. Arrows passing through a portal%nl%<##866da4>will vanish and fire from all other active portals.%nl%<##866da4>Direction in which the arrows will be shot depends%nl%<##866da4>on the facing of the portal.%nl%<##866da4>Pressing Shift will cause the portal to be created%nl%<##866da4>a block higher.%nl% %nl%<##866da4>Arrows can bounce between portals a maximum of 3 times.%nl%&8&m-----------------%nl%&7Ability Level: &e★&8★★★★%nl% %nl%&7&o--- Click here to read details and/or%nl%&7&oupgrade this ability." with nbt from "{""minecraft:custom_model_data"":{floats:[8.0f]}}"
 						set slot 6 of {_gui} to pink dye named "<##866da4>G.O.A.T" with lore "&8Ultimate Ability" and "&fInstant cast" and "&7Cooldown: &f%{_cdGoat}/60% minutes" and "&7Use: &fRMB%nl%<##866da4>Creates &f12 <##866da4>Magic Portals at random locations%nl%<##866da4>within &f15 <##866da4>blocks. Portals created with%nl%<##866da4>this ability act the same way as portals%nl%<##866da4>created with the Magic Portals ability.%nl%&8&m-----------------%nl%&7Ability Level: &e★&8★★★★%nl% %nl%&7&o--- Click here to read details and/or%nl%&7&oupgrade this ability." with nbt from "{""minecraft:custom_model_data"":{floats:[6.0f]}}"
 					else if uncolored name of player's tool = "Ghazan":
-						set {_damagebonus} to 3 + ({mastery::%player%}/33.5)
-						set slot 2 of {_gui} to red dye named "<##b03228>Mastery: Lava Technique" with lore "&8Mastery Bonus%nl%<##b03228>Lava Burst &7deals &f%{_damagebonus}%%% &7increased%nl%&7damage to the enemy each time it is%nl%&7used on the same target.%nl%&7Damage bonus last 12 seconds.%nl%&7Damaging the enemy with <##b03228>Lava Burst%nl%&7will refresh the duration of this bonus.%nl%&7Max 20 stacks of the buff.%nl%&8&m-----------------%nl%&7Ability Level: &8★★★★★%nl% %nl%&7&o--- Click here to read details and/or%nl%&7&oupgrade this ability." with nbt from "{""minecraft:custom_model_data"":{floats:[5.0f]}}"
+						set {_mastery} to 4 + ({mastery::%player%}/26)
+						set {_LTDuration} to 16
+						set {_RoLduration} to 12
+						if string tag "Talents;Row 1" of custom nbt of {karta::%player%} = "Advanced Technique":
+							set {_LTmaxStacks} to 30
+							add 0.1 to {_mastery}
+						else:
+							set {_LTmaxStacks} to 25
+							if string tag "Talents;Row 1" of custom nbt of {karta::%player%} = "Unrivaled Finesse":
+								add 1.5 to {_RoLduration} 
+					
+						set {_maxDamageInc} to (1 + ({_mastery}/100))^{_LTmaxStacks}
+						set {_LBDamage} to 2.5 + ({damage::%player%}/32.5) + ({versatility::%player%}/97.5) + ({primarystat::%player%}/16.25)
+						set {_LBCd} to (8/{_pospiech})
+						set {_LBCasttime} to round((2/{_pospiech}), 1)
+						set {_lavaSurge} to 12
+						
+						set {_RoLCd} to "%300/{_pospiech}% seconds" parsed as timespan
+						set {_MLCd} to 15/{_pospiech}
+						set {_MLRadius} to 2 + ({crowdcontrol::%player%}/40)
+						set {_MLDamage} to 0.5 + ({damage::%player%}/160) + ({versatility::%player%}/480) + ({primarystat::%player%}/80)
+						set {_faster} to 1
+						if string tag "Talents;Row 1" of custom nbt of {karta::%player%} = "Hot Hand":
+							add 0.08 to {_faster}
+						set {_MLTick} to (1/{_faster})/(((({_pospiech}-1)/1.3))+1)
+						set {_MLDur} to 30 seconds
+
+						set slot 1 of {_gui} to red dye named "<##b03228>Mastery: Lava Technique" with lore "&8Mastery Bonus%nl%&fNo cast%nl%&7Cooldown:  &fnone%nl%&7Use: &fPASSIVE%nl%&f <##d14d43>Lava Burst <##b03228>deals &f%{_mastery}%%% <##b03228>more damage%nl%<##b03228>to the enemy each time it is used on the%nl%<##b03228>the same target, up to &f%{_LTMaxStacks}% stacks<##b03228>.%nl%<##b03228>Maximum damage increase: &f%{_maxDamageInc}*100%%%<##b03228>.%nl% %nl%<##b03228>This damage increase has a duration%nl%<##b03228>of &f%{_LTDuration}% sec <##b03228>and is refreshed with each%nl%&f <##d14d43>Lava Burst <##b03228>cast on the target." with nbt from "{""minecraft:custom_model_data"":{floats:[5.0f]}}"
+						set slot 10 of {_gui} to magma cream named "<##b03228>Lava Surge" with lore "&8Passive Ability%nl%&fNo cast%nl%&7Cooldown:  &fnone%nl%&7Use: &fPASSIVE%nl%<##b03228>Your &f <##d14d43>Molten Lava <##b03228>damage has a &f%{_lavaSurge}%%%%nl%<##b03228>chance to cause your next &f <##d14d43>Lava Burst%nl%<##b03228>to be instant and not incur its cooldown." with nbt from "{""minecraft:custom_model_data"":{floats:[1.0f]}}"
+						set slot 19 of {_gui} to red dye named "<##b03228>Lava Burst" with lore "&8Basic Ability%nl%&f%{_LBCasttime}% second cast%nl%&7Cooldown:  &f%{_LBCd}% seconds%nl%&7Use: &fRMB%nl%<##b03228>Hurls molten lava at the target, dealing%nl%&f%{_LBDamage}% <##ff4d00>Lava <##b03228>damage. &f <##d14d43>Lava Burst <##b03228>will%nl%<##b03228>always <##d14d43> Critically Strike <##b03228>if the target%nl%<##b03228>is affected by &f <##d14d43>Molten Lava<##b03228>." with nbt from "{""minecraft:custom_model_data"":{floats:[5.0f]}}"
+						set slot 20 of {_gui} to orange dye named "<##b03228>Molten Lava" with lore "&8Basic Ability%nl%&fInstant cast%nl%&7Cooldown:  &f%{_MLCd}% seconds%nl%&7Use: &fRMB%nl%<##b03228>Turns all terrain in radius &f%{_MLRadius}% <##b03228>of the%nl%<##b03228>target block into &f <##d14d43>Molten Lava <##b03228>for &f%{_MLDur}%<##b03228>.%nl%<##b03228>Enemies standing in &f <##d14d43>Molten Lava%nl%<##b03228>receive &f%{_MLDamage}% <##ff4d00>Lava <##b03228>damage every &f%{_MLTick}% sec<##b03228>." with nbt from "{""minecraft:custom_model_data"":{floats:[8.0f]}}"
+						if string tag "Talents;Row 5" of custom nbt of {karta::%player%} = "Skytear":
+							set {_rain} to 0.5
+						else:
+							set {_rain} to 1
+						set slot 28 of {_gui} to blaze powder named "<##b03228>Rain of Lava" with lore "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown:  &f%{_RoLCd}%%nl%&7Use: &fRMB%nl%<##b03228>Ghazan creates a display of his skill,%nl%<##b03228>throwing himself in the air for &f%{_RoLduration}% sec<##b03228>.%nl%<##b03228>During this spell, Ghazan continously%nl%<##b03228>fires &f <##d14d43>Lava Burst <##b03228>at nearby enemies%nl%<##b03228>every &f%{_rain}% sec<##b03228>, prioritizing enemies inside%nl%&f <##d14d43>Molten Lava<##b03228>." with nbt from "{""minecraft:custom_model_data"":{floats:[4.0f]}}"
+						if string tag "Talents;Row 2" of custom nbt of {karta::%player%} is set:
+							if string tag "Talents;Row 2" of custom nbt of {karta::%player%} = "Ascendance":
+								set {_cdAsc} to "%360/{_pospiech}% seconds" parsed as timespan
+								set {_loreAscendance} to "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown:  &f%{_cdAsc}%%nl%&7Use: &fRMB%nl%<##b03228>Transform into a &f <##d14d43>Lava Ascendant <##b03228>for &f18 sec<##b03228>,%nl%<##b03228>removing the cooldown on &f <##d14d43>Lava Burst <##b03228>and%nl%<##b03228>increasing the damage of &f <##d14d43>Lava Burst <##b03228>by an%nl%<##b03228>amount equal to your <##d14d43> Critical Strike <##b03228>chance.%nl% %nl%<##b03228>When you transform into the &f <##d14d43> Lava Ascendant,%nl%<##b03228>instantly cast a &f <##d14d43>Lava Burst <##b03228>at all enemies%nl%<##b03228>affected by your &f <##d14d43>Molten Lava<##b03228>, and refresh%nl%<##b03228>your &f <##d14d43>Molten Lava <##b03228>durations."
+								set slot 29 of {_gui} to yellow dye named "<##b03228>Ascendance" with lore {_loreAscendance} with nbt from "{""minecraft:custom_model_data"":{floats:[5.0f]}}"
+						
+						set {_cast} to 1.5/{_haste}
+						set {_lWave} to 3 + ({damage::%player%}/35) + ({versatility::%player%}/105) + ({primarystat::%player%}/17.5)
+						set {_lFury} to 5 + ({damage::%player%}/18) + ({versatility::%player%}/36) + ({primarystat::%player%}/9)
+						if string tag "Talents;Row 3" of custom nbt of {karta::%player%} is set:
+							if string tag "Talents;Row 3" of custom nbt of {karta::%player%} = "Lava Wave":
+								set slot 21 of {_gui} to brown dye named "<##b03228>Lava Wave" with lore "&8Basic Ability%nl%&fInstant cast%nl%&7Cooldown: &8 &f1 minute%nl%&7Use: &fRMB%nl%<##b03228>Blast your target with a &f <##d14d43>Lava Wave<##b03228>, which%nl%<##b03228>deals &f%{_lWave}% <##ff3014>Lava <##b03228>damage <##b03228>and applies &f <##d14d43>Molten Lava%nl%<##b03228>upon reaching its target.%nl% %nl%<##b03228>Your next &f <##d14d43>Lava Burst <##b03228>will also hit all targets%nl%<##b03228>affected by &f <##d14d43>Molten Lava <##b03228>for &f80%% <##b03228>of normal%nl%<##b03228>damage." with nbt from "{""minecraft:custom_model_data"":{floats:[4.0f]}}"
+							else if string tag "Talents;Row 3" of custom nbt of {karta::%player%} = "Lavakeeper":
+								set slot 21 of {_gui} to brown dye named "<##b03228>Lavakeeper" with lore "&8Basic Ability%nl%&f%{_cast}% second cast%nl%&7Cooldown: &8 &f1 minute%nl%&7Use: &fRMB%nl%<##b03228>Charge yourself with heat, causing%nl%<##b03228>your next &f2 &f <##d14d43>Lava Burst <##b03228>casts to deal%nl%&f190%% <##b03228>increased damage." with nbt from "{""minecraft:custom_model_data"":{floats:[4.0f]}}"
+							else:
+								if boolean tag "Constellation;Splintered Lava" of custom nbt of {karta::%player%} is set:
+									set {_LFStacks} to 4
+									set {_LFBonus} to 60
+								else:
+									set {_LFStacks} to 3
+									set {_LFBonus} to 20
+								set slot 21 of {_gui} to brown dye named "<##b03228>Lavafury" with lore "&8Basic Ability%nl%&f%{_cast}% second cast%nl%&7Cooldown: &8 &f1 minute%nl%&7Use: &fRMB%nl%<##b03228>Hurls a hot lava rock at the target,%nl%<##b03228>dealing &f%{_lFury}% <##ff3014>Lava <##b03228>damage and causing your%nl%<##b03228>next &f%{_LFStacks}% &f <##d14d43>Molten Lava <##b03228>ticks to generate a%nl%&f <##d14d43>Lava Surge <##b03228>and deal &f%{_LFBonus}%%% <##b03228>increased%nl%<##b03228>damage." with nbt from "{""minecraft:custom_model_data"":{floats:[4.0f]}}"
 					if uncolored name of player's tool = "Brother Therold": #<##542c7a>
 						set {_mastery} to 1.096 + (({mastery::%player%}/6.25)/100)
 						set {_shadowyApparitionsDamage} to (0.8 + (({damage::%player%}/76) + ({versatility::%player%}/228) + {primarystat::%player%}/38))
@@ -429,8 +487,7 @@ on inventory click:
 						set {_SWPDuration} to 14
 						set {_channelTimeMF} to (3/{_pospiech})
 						set {_tickTimeMF} to ({_channelTimeMF}/4)/{_pospiech}
-						set {_MFDamage} to (0.5*4)
-						set {_MBDamage} to 2.5
+						set {_MFDamage} to (0.5*4) 
 						set {_VTDamage} to 1
 						set {_tickTimeVT} to 3/{_pospiech}
 						set {_VTDuration} to 18
@@ -438,10 +495,35 @@ on inventory click:
 							set {_mindBlastorSWV} to "Shadow Word: Void"
 							set {_icon} to ""
 							set {_madness} to "%nl%&f<##8165a6>Shadow Word: Pain <##613e82>and &f%{_icon}%<##8165a6>%{_mindBlastorSWV}%%nl%<##613e82>by &f%({_mastery}-1)*100%%%<##613e82>."
+							if boolean tag "Constellation;Thought Harvester" of custom nbt of {karta::%player%} is set:
+								set {_charges} to 3
+							else:
+								set {_charges} to 2
+							set {_cd} to "%9/{_pospiech}% seconds"
+							set {_damage} to (5 + (({damage::%player%}/22) + ({versatility::%player%}/66)) + ({primarystat::%player%}/11)) * (1.096 + (({mastery::%player%}/6.25)/100))
+							set {_insanity} to 15
+							if string tag "Talents;Row 1" of custom nbt of {karta::%player%} = "Fortress of the Mind":
+								set {_damage} to {_damage}*1.1
+								set {_insanity} to {_insanity}*1.2
+							set {_MBorSWV} to light gray dye named "<##613e82>Shadow Word: Void" with lore "&8Basic Ability%nl%&f%{_charges}% Charges%nl%&f%1.5/{_pospiech}% second cast%nl%&7Recharge time: &f%{_cd}%%nl%&7Use: &fRMB%nl%<##613e82>Blasts the target's mind for &f%{_damage}%%nl%<##431d53>Ghost <##613e82>damage.%nl% %nl%&fGenerates %{_insanity}% Insanity." with nbt from "{""minecraft:custom_model_data"":{floats:[4.0f]},""minecraft:custom_data"":{""Shadow Word: Void"":1b}}"
 						else:
 							set {_mindBlastorSWV} to "Mind Blast"
 							set {_icon} to ""
 							set {_madness} to "%nl%&f<##8165a6>Shadow Word: Pain <##613e82>and &f%{_icon}%<##8165a6>%{_mindBlastorSWV}% <##613e82>by &f%({_mastery}-1)*100%%%<##613e82>."
+							if boolean tag "Constellation;Thought Harvester" of custom nbt of {karta::%player%} is set:
+								set {_charges} to 2
+								set {_mindBlastLore} to "&8Basic Ability%nl%%{_charges}% Charges%nl%&f1.5 second cast"
+								set {_cd} to "&7Recharge time: &f%9/{_pospiech}% seconds"
+							else:
+								set {_charges} to 1
+								set {_mindBlastLore} to "&8Basic Ability%nl%&f%1.5/{_pospiech}% second cast"
+								set {_cd} to "&7Cooldown: &f%9/{_pospiech}% seconds"
+							set {_damage} to (4.5 + (({damage::%player%}/24) + ({versatility::%player%}/72) + {primarystat::%player%}/12)) * (1.096 + (({mastery::%player%}/6.25)/100))
+							set {_insanity} to 12
+							if string tag "Talents;Row 1" of custom nbt of {karta::%player%} = "Fortress of the Mind":
+								set {_damage} to {_damage}*1.1
+								set {_insanity} to {_insanity}*1.2
+							set {_MBorSWV} to light gray dye named "<##613e82>Mind Blast" with lore "%{_mindBlastLore}%%nl%%{_cd}%%nl%&7Use: &fRMB%nl%<##613e82>Blasts the target's mind for &f%{_MBDamage}%%nl%<##613e82>Shadow damage.%nl% %nl%&fGenerates %{_insanity}% Insanity." with nbt from "{""minecraft:custom_model_data"":{floats:[3.0f]},""minecraft:custom_data"":{""Mind Blast"":1b}}"
 						
 						set {_baseCasttime} to 2
 						if string tag "Talents;Row 5" of custom nbt of {karta::%player%} = "Legacy of the Void":
@@ -455,7 +537,7 @@ on inventory click:
 						set slot 1 of {_gui} to light gray dye named "<##613e82>Madness" with lore "&8Mastery Bonus%nl%&fNo cast%nl%&7Cooldown: &fnone%nl%&7Use: &fPassive%nl%<##613e82>Increases the damage of your &f<##8165a6>Mind Flay<##613e82>,%nl%&f<##8165a6>Void Eruption<##613e82>, &f<##8165a6>Void Bolt<##613e82>, &f<##8165a6>Vampiric Touch<##613e82>,%{_madness}%" with nbt from "{""minecraft:custom_model_data"":{floats:[3.0f]}}"
 						set slot 11 of {_gui} to purple dye named "<##613e82>Shadowy Apparitions" with lore "&8Passive Ability%nl%&fNo cast%nl%&7Cooldown: &fnone%nl%&7Use: &fPassive%nl%<##613e82>When your &f<##8165a6>Shadow Word: Pain <##613e82>damage%nl%<##613e82>over time &f <##8165a6>Critically strikes<##613e82>, you also create%nl%<##613e82>a shadowy version of yourself that floats%nl%<##613e82>towards the target and deals &f%{_shadowyApparitionsDamage}% <##431d53>Ghost%nl%<##613e82>damage." with nbt from "{""minecraft:custom_model_data"":{floats:[3.0f]}}"
 						set slot 10 of {_gui} to popped chorus fruit named "<##613e82>Voidform" with lore "&8Passive Ability%nl%&fNo cast%nl%&7Cooldown: &fnone%nl%&7Use: &fPassive%nl%<##613e82>Activated by casting &f<##8165a6>Void Eruption<##613e82>.%nl%<##613e82>Increases all damage you deal by &f20%% <##613e82>and%nl%<##613e82>grants an additional &f1%%  <##8165a6>Haste <##613e82>every &f1 sec<##613e82>.%nl%<##613e82>Your <##8165a6>Insanity <##613e82>will drain increasingly fast until%nl%<##613e82>it reaches &f0 <##613e82>and <##8165a6>Voidform <##613e82>ends." with nbt from "{""minecraft:custom_model_data"":{floats:[3.0f]}}"
-						set slot 19 of {_gui} to light gray dye named "<##613e82>Mind Blast" with lore "&8Basic Ability%nl%&f1.5 second cast%nl%&7Cooldown: &f9 seconds%nl%&7Use: &fRMB%nl%<##613e82>Blasts the target's mind for &f%{_MBDamage}%%nl%<##613e82>Shadow damage.%nl% %nl%&fGenerates 12 Insanity." with nbt from "{""minecraft:custom_model_data"":{floats:[3.0f]}}"
+						set slot 19 of {_gui} to {_MBorSWV}
 						set slot 20 of {_gui} to orange dye named "<##613e82>Shadow Word: Pain" with lore "&8Basic Ability%nl%&fInstant cast%nl%&7Global Cooldown: &f%{_gcd}%%nl%&7Use: &fRMB%nl%<##613e82>A word of darkness that causes%nl%&f%{_SWPdamage}% <##431d53>Ghost <##613e82>damage instantly, and%nl%<##613e82>an additional &f%(round({_SWPDuration}/(2/{_pospiech}), 0))*{_damageSWPTicks}% <##431d53>Ghost <##613e82>damage%nl%<##613e82>over &f%{_SWPDuration}% sec<##613e82>.%nl% %nl%&fGenerates 3 Insanity." with nbt from "{""minecraft:custom_model_data"":{floats:[5.0f]}}"
 						set slot 21 of {_gui} to gray dye named "<##613e82>Vampiric Touch" with lore "&8Basic Ability%nl%&f1.5 second cast%nl%&7No cooldown%nl%&7Use: &fRMB%nl%<##613e82>A touch of darkness that causes &f%(round({_VTDuration}/{_tickTimeVT}, 0))*{_VTDamage}% <##613e82>Shadow%nl%<##613e82>damage over %{_VTDuration}% sec, <##613e82>and heals the priest for%nl%&f50%% <##613e82>of damage dealt.%nl% %nl%&fGenerates 6 Insanity." with nbt from "{""minecraft:custom_model_data"":{floats:[2.0f]}}"
 						set slot 22 of {_gui} to cyan dye named "<##613e82>Mind Flay" with lore "&8Basic Ability%nl%&fChanneled%nl%&7No cooldown%nl%&7Use: &fRMB%nl%<##613e82>Assaults the target's mind with Shadow%nl%<##613e82>energy, causing &f%{_damage}*(rounded up 3/(({_cast}/4)/{_pospiech}))% <##431d53>Ghost <##613e82>damage over%nl%&f%{_cast}% sec <##613e82>and slowing their movement speed%nl%<##613e82>by &f50%%<##613e82>.%nl% %nl%&fGenerates %2*(rounded up 3/(({_cast}/4)/{_pospiech}))% Insanity over the duration." with nbt from "{""minecraft:custom_model_data"":{floats:[3.0f]}}"
@@ -470,7 +552,7 @@ on inventory click:
 						set {_starfallDuration} to 8
 						if string tag "Talents;Row 4" of custom nbt of {karta::%player%} = "Hail of Stars":
 							add 3 to {_starfallDuration}
-						set {_starfallDamage} to (1 + ((({damage::%{_p}%}/48) + ({versatility::%{_p}%}/144) + {primarystat::%{_p}%}/24)))
+						set {_starfallDamage} to (1 + ((({damage::%player%}/48) + ({versatility::%player%}/144) + {primarystat::%player%}/24)))
 						if string tag "Talents;Row 2" of custom nbt of {karta::%player%} = "Stellar Drift":
 							set {_starfallDamage} to {_starfallDamage}*1.3
 						set {_starfallDamage} to {_starfallDamage} * rounded ({_starfallDuration}/(1/{_hasteTt}))
@@ -592,7 +674,7 @@ on inventory click:
 						set {_seedFlareDMG} to 1
 						set {_seedFlareHeal} to 2
 						set slot 1 of {_gui} to slime ball named "<##dbef9e>Mastery: Seed Barrage" with lore "&8Mastery Bonus%nl%&fNo cast%nl%&7Cooldown:  &fnone%nl%&7Use: &fPassive%nl%<##dbef9e>When damaging or healing spells successfully%nl%<##dbef9e>hit their target, <##f8ffe3>Shaymin <##dbef9e>has a &f%{_masteryChance}%%% <##dbef9e>chance%nl%<##dbef9e>to shoot a seed towards the affected target,%nl%<##dbef9e>dealing &f%{_masteryDamage}% <##607c3c>Nature <##dbef9e>damage to an enemy or%nl%<##dbef9e>restoring &f%{_masteryHeal}% <##dbef9e>HP to an ally." with nbt from "{""minecraft:custom_model_data"":{floats:[1.0f]}}"
-						set slot 10 of {_gui} to lime dye named "<##dbef9e>Serene Grace" with lore "&8Passive Ability%nl%&fInstant cast%nl%&7Cooldown:  &fnone%nl%&7Use: &fPassive%nl%<##dbef9e>Gain a burst of stats on <##f8ffe3>Forme Swap<##dbef9e>.%nl%<##dbef9e>The type of stat gained depends on%nl%<##dbef9e>the <##f8ffe3>forme Shaymin <##dbef9e>swaps to.%nl% %nl%<##f8ffe3>Land: <##ae78d0> +%{_utilityGain}% Utility%nl%<##f8ffe3>Sky: &f +%{_mobilityGain}% Mobility%nl% %nl%<##dbef9e>Gaining a new bonus overrides the%nl%<##dbef9e>current stat bonus from the active%nl%<##f8ffe3>forme.%nl% %nl%<##dbef9e>Deal &f%{_bonusDMG}%%% <##dbef9e>increased damage in%nl%<##f8ffe3>Sky Forme <##dbef9e>based on &f Mobility<##dbef9e>.%nl% %nl%<##f8ffe3>Shaymin <##dbef9e>is immune to fall damage." with nbt from "{""minecraft:custom_model_data"":{floats:[8.0f]}}"
+						set slot 10 of {_gui} to lime dye named "<##dbef9e>Serene Grace" with lore "&8Passive Ability%nl%&fInstant cast%nl%&7Cooldown:  &fnone%nl%&7Use: &fPassive%nl%<##dbef9e>Gain a burst of stats on <##f8ffe3>Swap Forme<##dbef9e>.%nl%<##dbef9e>The type of stat gained depends on%nl%<##dbef9e>the <##f8ffe3>forme Shaymin <##dbef9e>swaps to.%nl% %nl%&f{CARDICON} <##f8ffe3>Land: <##ae78d0> +%{_utilityGain}% Utility%nl%&f{CARDICON} <##f8ffe3> Sky: &f +%{_mobilityGain}% Mobility%nl% %nl%<##dbef9e>Gaining a new bonus overrides the current%nl%<##dbef9e>stat bonus from the active <##f8ffe3>forme.%nl% %nl%<##dbef9e>Deal &f%{_bonusDMG}%%% <##dbef9e>increased damage in%nl%<##f8ffe3>Sky Forme <##dbef9e>based on &f Mobility<##dbef9e>.%nl% %nl%<##f8ffe3>Shaymin <##dbef9e>is immune to fall damage." with nbt from "{""minecraft:custom_model_data"":{floats:[8.0f]}}"
 						set slot 19 of {_gui} to lime dye named "<##dbef9e>Seed Flare" with lore "&8Basic Ability%nl%&f%{_seedFlareCast}% cast%nl%&7Cooldown:  &f%{_seedFlareCD}%%nl%&7Radius: &f6 blocks%nl%&7Use: &fRMB%nl%<##f8ffe3>Shaymin <##dbef9e>emits a seed shockwave from his%nl%<##dbef9e>body, dealing &f%{_seedFlareDMG}% <##607c3c>Nature <##dbef9e>damage to all%nl%<##dbef9e>enemies in a short radius." with nbt from "{""minecraft:custom_model_data"":{floats:[8.0f]}}"
 						set slot 28 of {_gui} to feather named "<##dbef9e>Swap Forme" with lore "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown:  &f%{_cdUlt}%%nl%&7Use: &fRMB%nl%<##dbef9e>Activates <##f8ffe3>Sky Forme <##dbef9e>for the next &f15 sec<##dbef9e>,%nl%<##dbef9e>assuming the &fAir <##dbef9e>element, allowing <##f8ffe3>flight%nl%<##dbef9e>and granting <##f8ffe3>Shaymin <##dbef9e>a new set of abilities.%nl% %nl%<##f8ffe3>Shaymin <##dbef9e>may freely switch between formes%nl%<##dbef9e>while this ability is active. Swapping to a%nl%<##dbef9e>different forme does not refresh the %nl%<##dbef9e>duration of this ability.%nl% %nl%<##dbef9e>When this ability ends, <##f8ffe3>Shaymin <##dbef9e>reverts%nl%<##dbef9e>back to <##f8ffe3>Land Forme<##dbef9e>." with nbt from "{""minecraft:custom_model_data"":{floats:[1.0f]}}"
 					else if uncolored name of player's tool = "Espeon":
@@ -612,26 +694,34 @@ on inventory click:
 						set {_maxStacks} to 50
 						set {_stacksAdd} to 1
 						set {_radiusmindTransfer} to 30
+						set {_radiusHypercognition} to 30
 						set {_extraDurationAdd} to "10 sec"
+						set {_silenceDuration} to "%2 + ({_crowdcontrol}/35)% seconds" parsed as timespan
 
 						set {_timeWarpHaste} to 120
 						set {_timeWarpDuration} to 40
 						set {_timeWarpRadius} to 50
+
+						set {_intHypercognition} to 4
+						set {_dmgHypercognition} to 8 + (({damage::%player%}/6) + ({versatility::%player%}/18) + ({primarystat::%player%}/3))
 
 						set {_loreFutureSight} to "&8Basic Ability%nl%&fInstant cast%nl%&7Cooldown:  &f%{_futureSightCd}%%nl%&7Use: &fRMB%nl%<##d48bc3>Prepares an attack on a target enemy that%nl%<##d48bc3>deals &f%{_futureSightDamage}% <##d84af7>Psychic <##d48bc3>damage after &f%{_futureSightFall}%<##d48bc3>.%nl% %nl%<##d48bc3>If &f <##f7b2e7>Future Sight <##d48bc3>is used on an enemy that%nl%<##d48bc3>already has the spell <##d48bc3>applied on them, it%nl%<##d48bc3>refreshes the duration, but does not add%nl%<##d48bc3>a stack."
 
 						set {_loremindTransfer3} to "<##d48bc3>If &f <##f7b2e7>Future Sight <##d48bc3>detonates while held by%nl%<##d48bc3>Espeon, they will take all &fdamage <##d48bc3>instead.%nl%<##d48bc3>Taking control of over &f%{_maxStacks}% stacks <##d48bc3>at once%nl%<##d48bc3>will overwhelm Espeon and cause their mind%nl%<##d48bc3>to explode."
 						set {_loremindTransfer2} to "<##d48bc3>ability transfers all &f <##f7b2e7>Future Sight &fstacks%nl%<##d48bc3>from targets within &f%{_radiusmindTransfer}% blocks <##d48bc3>onto Espeon.%nl% %nl%<##d48bc3>The next &f <##f7b2e7>Future Sight <##d48bc3>used afterward%nl%<##d48bc3>will add &fall stacks <##d48bc3>from Espeon to the &fstack%nl%&fcount <##d48bc3>of the select target.%nl% %nl%%{_loremindTransfer3}%"
 						set {_loremindTransfer} to "&8Basic Ability%nl%&fInstant cast &7| &f%{_mindTransferCastTime}% cast%nl%&7Cooldown:  &f%{_mindTransferCd}%%nl%&7Use: &fRMB &7| &fSNEAK + RMB%nl%<##d48bc3>Increases the &f <##f7b2e7>Future Sight &fstack count%nl%<##d48bc3>on the target by &f%{_stacksAdd}% <##d48bc3>and adds an additional%nl%&f%{_extraDurationAdd}% <##d48bc3>to the fall duration of the spell.%nl% %nl%<##d48bc3>If <##f7b2e7>Mind Transfer <##d48bc3>is used while &fsneaking<##d48bc3>, this%nl%%{_loremindTransfer2}%"
-
-						set slot 1 of {_gui} to purple dye named "<##d48bc3>Mastery: Mental Agility" with lore "&8Mastery Bonus%nl%&fNo cast%nl%&7Cooldown:  &fnone%nl%&7Use: &fPassive%nl%<##d48bc3>For each stack of &f <##f7b2e7>Future Sight <##d48bc3>that%nl%<##d48bc3>exists on the field, gain &f %{_intellectGain}% <##f7b2e7>Intellect%nl%<##d48bc3>and &f %{_hasteGain}% <##f7b2e7>Haste<##d48bc3>." with nbt from "{""minecraft:custom_model_data"":{floats:[11.0f]}}"
-						set slot 10 of {_gui} to ender pearl named "<##d48bc3>Psy Wave" with lore "&8Passive Ability%nl%&fInstant cast%nl%&7Cooldown:  &f%{_psyWaveCd}%%nl%&7Use: &fSNEAK + LMB%nl%<##d48bc3>Espeon can use &fsneak + left click <##d48bc3>to%nl%<##d48bc3>send out a psy wave towards an enemy%nl%<##d48bc3>and &finterrupt <##d48bc3>their spell cast."
-						set slot 19 of {_gui} to magenta dye named "<##d48bc3>Future Sight" with lore {_loreFutureSight} with nbt from "{""minecraft:custom_model_data"":{floats:[1.0f]}}"
-						set slot 20 of {_gui} to pink dye named "<##d48bc3>Mind Transfer" with lore {_loremindTransfer}
-						set slot 28 of {_gui} to poisonous potato named "<##d48bc3>Hypercognition" with lore "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown:  &f%{_hypercognitionCd}%%nl%&7Use: &fRMB%nl%<##d48bc3>Espeon enters a state of <##f7b2e7>Hypercognition<##d48bc3>," with nbt from "{""minecraft:custom_model_data"":{floats:[1.0f]}}"
-						set slot 29 of {_gui} to glowstone dust named "<##d48bc3>Time Warp" with lore "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown:  &f%{_timeWarpCd}%%nl%&7Use: &fRMB%nl%<##d48bc3>Warp the flow of time, increasing &f <##f7b2e7>Haste%nl%<##d48bc3>by &f%{_timeWarpHaste}% <##d48bc3>for all party <##d48bc3>members for &f%{_timeWarpDuration}% sec<##d48bc3>.%nl% %nl%<##d48bc3>If the player is not in a party or no party%nl%<##d48bc3>members can be found, grant the &f <##f7b2e7>Haste%nl%<##d48bc3>bonus to all allies within &f%{_timeWarpRadius}% blocks <##d48bc3>instead." with nbt from "{""minecraft:custom_model_data"":{floats:[1.0f]}}"
+						set {_loreHypercognition2} to "<##d48bc3>When this ability &fends <##d48bc3>or Espeon &ffails <##d48bc3>to complete%nl%<##d48bc3>a task set, Espeon releases a psychic shockwave,%nl%<##d48bc3>dealing &f%{_dmgHypercognition}% <##d84af7>Psychic <##d48bc3>damage in a &f%{_radiusHypercognition}% block <##d48bc3>radius <##d48bc3>and%nl%<##d48bc3>gaining &f %{_intHypercognition}% <##f7b2e7>Intellect <##d48bc3>per &f <##f7b2e7>Hypercognition <##d48bc3>stack.%nl%<##d48bc3>On &ftask failure<##d48bc3>, receive &f50%% <##d48bc3>of the accumulated%nl%<##d48bc3>damage.%nl% %nl%&f <##f7b2e7>Hypercognition <##d48bc3>will pause &fall active &f <##f7b2e7>Future Sight%nl%<##d48bc3>effects and &fdisable ability usage <##d48bc3>for the duration.%nl%<##d48bc3>Espeon will become &finvulnerable <##d48bc3>during this spell.%nl% %nl%<##f7b2e7>Hypercognition State:%nl%<##d48bc3>Espeon will gain a &fspecified amount of time <##d48bc3>to complete%nl%<##d48bc3>a randomly selected &fset of tasks <##d48bc3>in order from &fleft%nl%&fto right<##d48bc3>. If all tasks are completed successfully,%nl%<##d48bc3>a new list of tasks is chosen and Espeon gains a%nl%&fstack <##d48bc3>of &f <##f7b2e7>Hypercognition<##d48bc3>."
+						
+						set slot 1 of {_gui} to purple dye named "<##d48bc3>Mastery: Mental Agility" with lore "&8Mastery Bonus%nl%&fNo cast%nl%&7Cooldown:  &fnone%nl%&7Use: &fPASSIVE%nl%<##d48bc3>For each stack of &f <##f7b2e7>Future Sight <##d48bc3>that%nl%<##d48bc3>exists on the field, gain &f %{_intellectGain}% <##f7b2e7>Intellect%nl%<##d48bc3>and &f %{_hasteGain}% <##f7b2e7>Haste<##d48bc3>." with nbt from "{""minecraft:custom_model_data"":{floats:[11.0f]}}"
+						set slot 10 of {_gui} to ender pearl named "<##d48bc3>Psy Wave" with lore "&8Passive Ability%nl%&fInstant cast%nl%&7Cooldown:  &f%{_psyWaveCd}%%nl%&7Use: &fSNEAK + LMB%nl%<##d48bc3>Espeon can use &fsneak + left click <##d48bc3>to%nl%<##d48bc3>send out a psy wave towards an enemy%nl%<##d48bc3>and &finterrupt <##d48bc3>their spell cast. Psy Wave%nl%<##d48bc3>will additionally &fsilence <##d48bc3>the enemy for%nl%&f%{_silenceDuration}% sec <##d48bc3>on successful &finterrupt<##d48bc3>." with nbt from "{""minecraft:custom_model_data"":{floats:[1.0f]}}"
+						
+						set slot 19 of {_gui} to pink dye named "<##d48bc3>Future Sight" with lore {_loreFutureSight} with nbt from "{""minecraft:custom_model_data"":{floats:[9.0f]}}"
+						set slot 20 of {_gui} to fermented spider eye named "<##d48bc3>Mind Transfer" with lore {_loremindTransfer} with nbt from "{""minecraft:custom_model_data"":{floats:[2.0f]}}"
+						
+						set slot 28 of {_gui} to magenta dye named "<##d48bc3>Hypercognition" with lore "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown:  &f%{_hypercognitionCd}%%nl%&7Use: &fRMB%nl%<##d48bc3>Espeon enters a <##f7b2e7>state of &f <##f7b2e7>Hypercognition<##d48bc3>, gaining%nl%<##d48bc3>transcendental mental powers and allowing them to%nl%<##d48bc3>perform &fsequential tasks <##d48bc3>to gain increased power.%nl% %nl%%{_loreHypercognition2}%" with nbt from "{""minecraft:custom_model_data"":{floats:[1.0f]}}"
+						set slot 29 of {_gui} to glass bottle named "<##d48bc3>Time Warp" with lore "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown:  &f%{_timeWarpCd}%%nl%&7Use: &fRMB%nl%<##d48bc3>Warp the flow of time, increasing &f <##f7b2e7>Haste%nl%<##d48bc3>by &f%{_timeWarpHaste}% <##d48bc3>for all party <##d48bc3>members for &f%{_timeWarpDuration}% sec<##d48bc3>.%nl% %nl%<##d48bc3>If the player is not in a party or no party%nl%<##d48bc3>members can be found, grant the &f <##f7b2e7>Haste%nl%<##d48bc3>bonus to all allies within &f%{_timeWarpRadius}% blocks <##d48bc3>instead." with nbt from "{""minecraft:custom_model_data"":{floats:[6.0f]}}"
 					open {_gui} to player
-
+					stop
 			#COMBAT STATS
 
 			#MISCELLANEOUS
@@ -711,14 +801,14 @@ on inventory click:
 	if player's current inventory is (metadata tag "abilitygui" of player):
 		cancel event
 		#ABILITIES
-		if index of event-slot is between 0 and 8:
+		if index of event-slot is between 0 and 35:
 			if name of event-slot does not contain "Next Page" or "Last Page":
 				if event-slot is not air:
-					set metadata tag "abilitygui" of player to chest inventory with 1 rows named "%uncolored name of player's tool% - %uncolored name of clicked slot%"
-					set {_gui} to metadata tag "abilitygui" of player
+					set metadata tag "abilitymenu" of player to chest inventory with 1 rows named "%uncolored name of player's tool% - %uncolored name of clicked slot%"
+					set {_gui} to metadata tag "abilitymenu" of player
 					set {_ele} to line 17 of lore of player's tool
 					replace all "&7Element: " in {_ele} with ""
-					set {_color} to last color of {_ele}
+					set {_color} to last string color code of {_ele}
 					set {_ability::*} to "&8Basic Ability", "&8Mastery Bonus", "&8Passive Ability" and "&8Ultimate Ability"
 					loop {_ability::*}:
 						if loop-value = line 1 of lore of clicked slot:
@@ -726,8 +816,6 @@ on inventory click:
 							loop lore of {_slot}:
 								stop loop if {_true} is true
 								if loop-value-2 contains "&7Ability Level:":
-									set {_true} to true
-								else if loop-value-2 contains "&7Poziom Umiejętności:":
 									set {_true} to true
 								add loop-value-2 to {_lorelines::*}
 							set {_lore} to join {_lorelines::*} by nl
@@ -738,9 +826,6 @@ on inventory click:
 							set metadata tag "ClickedAbility" of player to {_clickedSlot}
 							stop loop
 					clear {_lore}
-					if clicked slot = shulker shell named "&dObtain Ability":
-						set {_clickedAbility} to metadata tag "ClickedAbility" of player
-						give player {_clickedAbility}
 					if uncolored name of clicked slot = "Mastery: Icicles" or "Mistrzostwo: Sopelki":
 						set {_lore} to "%nl%&7Level 1:%nl%%{_color}%Mastery Scaling:%nl%&7Lv. 0: &c1.25%% &7-> Lv. 1: &a1.33%%%nl% %nl%&e★ &7&oUpgrade cost:%nl%   %{_color}%30 %{_ele}% Essence%nl%   <##b5e550>200 Klejnot%nl%   <##f53b98>120 Tourmaline%nl%   <##ffe17a>800 Cosmic Flux"
 					if uncolored name of clicked slot = "Shatter" or "Rozstrzaskanie":
@@ -753,11 +838,20 @@ on inventory click:
 					if {_info} is set:
 						set slot 6 of {_gui} to gunpowder named "Info" with lore {_info}
 					open {_gui} to player
+	if player's current inventory is (metadata tag "abilitymenu" of player):
+		cancel event
+		#ABILITIES
+		if index of event-slot is between 0 and 8:
+			if event-slot = shulker shell named "&dObtain Ability":
+				set {_clickedAbility} to metadata tag "ClickedAbility" of player
+				give player {_clickedAbility}
+				open metadata tag "abilitygui" of player to player
 
 on inventory close:
 	if player's current inventory is (metadata tag "kartagui" of player):
-		clear (metadata tag "kartagui" of player)
-	if player's current inventory is (metadata tag "abilitygui" of player):
+		clear (metadata tag "kartagui" of player)	
+	if player's current inventory is (metadata tag "abilitymenu" of player):
+		clear metadata tag "abilitymenu" of player
 		clear metadata tag "ClickedAbility" of player
 		
 function topDesc(n: number, v: text) :: string:
