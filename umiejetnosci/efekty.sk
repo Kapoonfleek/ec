@@ -36,7 +36,7 @@ function Haste(p: player, scaling: number = 4) :: number:
     return {_haste}
 
 function CriticalHit(p: player, scaling: number = 10) :: number:
-    set {_crit} to 0
+    set {_crit} to 0 + {criticalhit::%{_p}%}
 
     if {bonusCriticalHit::%{_p}%} is set:
         add {bonusCriticalHit::%{_p}%} to {_crit}
@@ -48,6 +48,13 @@ function CriticalHit(p: player, scaling: number = 10) :: number:
     
     return {_crit}
 
+function Mastery(p: player) :: number:
+    set {_mastery} to ({mastery::%{_p}%} + {bonusMastery::%{_p}%})
+    if metadata value "MoltenBlast" of {_p} is set:
+        add metadata value "MoltenBlast" of {_p} to {_mastery}
+    
+    return {_mastery}
+
 function CrowdControl(p: player) :: number:
     set {_crowdcontrol} to {crowdcontrol::%{_p}%}
 
@@ -55,6 +62,10 @@ function CrowdControl(p: player) :: number:
         add {bonusCrowdControl::%{_p}%} to {_crowdcontrol}
     
     return {_crowdcontrol}
+
+function damageScalingSpell(p: player, base: number, scaling: number) :: number:
+    set {_damage} to {_base} + ({damage::%{_p}%}/({_scaling}*2) + ({versatility::%{_p}%}/({_scaling}*6)) + ({primarystat::%{_p}%})/{_scaling})
+    return {_damage}
 
 function GlobalCooldownSpells(p: player, abilities: texts, abilitiesItems: items, cd: timespan):
     loop {_abilities::*}:
@@ -73,6 +84,11 @@ function GlobalCooldown(p: player, name: text, item: item, cd: timespan):
                 if cooldown "%{_name}%%{_p}%" is not finished:
                     set {_duration} to cooldown "%{_name}%%{_p}%"
                     set the cooldown of loop-item for {_p} to {_duration}
+
+function cooldownSpell(p: player, spell: text, cd: timespan):
+    loop all items in the inventory of {_p}:
+        if boolean tag {_spell} of custom nbt of loop-item is set:
+            set the cooldown of loop-item for {_p} to {_cd}
 
 function Target(p: player, length: number, passThrough: boolean) :: entity:
     set {_x} to 0
@@ -158,10 +174,13 @@ function bonusStat(p: player, stat: string) :: number:
         set {_bonus} to {_bonus} + {bonus%{_stat}%::%{_p}%}
     if metadata value "EspeonBonus%{_stat}%" of {_p} is set:
         set {_bonus} to {_bonus} + metadata value "EspeonBonus%{_stat}%" of {_p}
-        
+
     if {_stat} = "CriticalHit":
         if metadata value "ChorusOfInsanityCrit" of {_p} is set:
             add metadata value "ChorusOfInsanityCrit" of {_p} to {_bonus}
+    else if {_stat} = "Mastery":
+        if metadata value "MoltenBlast" of {_p} is set:
+            add metadata value "MoltenBlast" of {_p} to {_bonus}
 
     set {_bonus} to round({_bonus}, 0)
     return {_bonus}
