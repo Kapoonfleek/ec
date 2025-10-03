@@ -1,9 +1,9 @@
 
 
 on rightclick:
-    if boolean tag "Swap Forme" of custom nbt of player's tool is set:
-        if {kartaname::%player%} = "Shaymin":
-            if CanUseAbility(player) != false:
+    if {kartaname::%player%} = "Shaymin":
+        if CanUseAbility(player) != false:
+            if boolean tag "Swap Forme" of custom nbt of player's tool is set:
                 if metadata value "casting" of player is not set:
                     if cooldown "Swap Forme%player%" is finished:
                         set {_cooldown} to 30 seconds
@@ -17,60 +17,181 @@ on rightclick:
                             allow flight for player
                             set string tag "ECElement" of custom nbt of player to "Air"
                             set metadata value "CurrentFormeShaymin" of player to "Sky"
+                            set {_cmd} to "{""minecraft:custom_model_data"":{floats:[5.0f]}}"
                         else:
                             set string tag "ECElement" of custom nbt of player to "Nature"
                             disable flight for player
+                            set {_cmd} to "{""minecraft:custom_model_data"":{floats:[4.0f]}}"
+
+                        loop all items in the inventory of player:
+                            if loop-item = {karta::%player%}:
+                                add nbt from {_cmd} to nbt of loop-item
 
                     else:
                         if {tekstcd::%player%} = true:
                             set {_cdd} to cooldown "Swap Forme%player%"
                             send "<##dbef9e>You must wait &f%{_cdd}% <##dbef9e>to use this ability." to player
 
-    else if boolean tag "Air Slash" of custom nbt of player's tool is set:
-        if cooldown "Air Slash Avoid Double%player%" is finished:
-            if {kartaname::%player%} = "Shaymin":
-                if CanUseAbility(player) != false:
-                    if metadata value "casting" of player is not set:
-                        if cooldown "Air Slash%player%" is finished:
-                            if metadata value "Air Slash Instant" of player is set:
-                                remove 1 from metadata value "Air Slash Instant" of player
-                                create cooldown "Air Slash Avoid Double%player%" for 1 tick
-                                if metadata value "Air Slash Instant" of player = 0:
-                                    clear metadata value "Air Slash Instant" of player
-                            set {_p} to player
-                            set {_randomAbove} to a random number between 1 and 1.25
-                            set {_loc} to location {_randomAbove} above {_p}
-                            set {_loc} to location 1 block in front of {_loc}
-                            set {_yaw} to {_p}'s yaw
-                            add (random number between -45.0 and 45.0) to {_yaw}
-                            set {_v} to vector from yaw {_yaw} and pitch {_p}'s pitch
-                            set {_v2} to vector from yaw {_yaw} and pitch {_p}'s pitch + 90
-                            #IF ANY AIR SLASH WAS DONE IN TH LAST 0.5-1.0 SEC, RANDOMIZE THE ROTATION NUMBER
-                            rotate {_v} around {_v2} by -90 #aligns center of circle with players looking direction
-
+            else if boolean tag "Air Slash" of custom nbt of player's tool is set:
+                if cooldown "Air Slash Avoid Double%player%" is finished:
+                    if cooldown "Air Slash%player%" is finished:
+                        if metadata value "casting" of player is not set:
+                            set {_airSlashRadius} to 4 + CrowdControl(player)/25
+                            set {_target} to Target(player, 100, false)
+                            if {_target} is set:
+                                if distance between player and {_target} <= {_airSlashRadius}:
                             
-                            set {_ogV} to {_v}
-                            set {_ogV2} to {_v2}
+                                    set {_haste} to Haste(player)
+                                    set {_cd} to "%5/{_haste}% seconds" parsed as timespan
+                                    set the cooldown of player's held item for player to {_cd}
+                                    create cooldown "Air Slash%player%" for {_cd}
 
-                            play sound "entity.player.attack.sweep" with volume 1 and pitch 1 at {_p}
+                                    if metadata value "Air Slash Instant" of player is set:
+                                        remove 1 from metadata value "Air Slash Instant" of player
+                                        create cooldown "Air Slash Avoid Double%player%" for 1 tick
+                                        if metadata value "Air Slash Instant" of player = 0:
+                                            clear metadata value "Air Slash Instant" of player
 
-                            loop 4 times:
-                                set vector length of {_v} to loop-counter*0.6
-                                loop 45 times:
-                                    set {_rx} to a random number between 0.00 and 0.08
-                                    draw 1 of snowflake particle at {_loc} ~ {_v} offset by vector({_rx},{_rx},{_rx}) with extra -0.01
-                                    rotate {_v} around {_v2} by 4 degrees
-                        else:
-                            if {tekstcd::%player%} = true:
-                                set {_cdd} to cooldown "Air Slash%player%"
-                                send "<##dbef9e>You must wait &f%{_cdd}% <##dbef9e>to use this ability." to player
-                    
+                                    set {_randomAbove} to a random number between 1 and 1.25
+                                    set {_loc} to location {_randomAbove} above player
+                                    set {_loc} to location 1 block in front of {_loc}
+                                    set {_yaw} to player's yaw
+                                    add (random number between -45.0 and 45.0) to {_yaw}
+                                    set {_v} to vector from yaw {_yaw} and pitch player's pitch
+                                    set {_v2} to vector from yaw {_yaw} and pitch player's pitch + 90
+                                    rotate {_v} around {_v2} by -90
+    
+                                    set {_ogV} to {_v}
+                                    set {_ogV2} to {_v2}
+
+                                    play sound "entity.generic.hurt" with volume 1 and pitch 1 at player
+                                    play sound "entity.player.attack.sweep" with volume 1 and pitch 2 at player
+                                    play sound "entity.breeze.land" with volume 1 and pitch 2 at player
+                                    play sound "entity.breeze.idle_ground" with volume 1 and pitch 2 at player
+
+
+                                    set {_damage} to damageScalingSpell(player, 3, 8)
+                                    if block under {_target} = air:
+                                        set {_damage} to {_damage}*1.2
+
+                                    set {_lore} to "&8Basic Ability%nl%&fInstant cast%nl%&7Cooldown:  &f%{_cd}%%nl%&7Radius: &f%{_airSlashRadius}% blocks%nl%&7Use: &fRMB%nl%<##f8fff5>Slashes the target with air, dealing &f%{_damage}% Air%nl%<##f8fff5>damage. This ability deals &f20%% <##f8fff5>increased%nl%<##f8fff5>damage to airborne targets and targets%nl%<##f8fff5>vulnerable to the &fAir <##f8fff5>element.%nl% %nl%&fRequires Sky Forme."
+                                    set {_target}'s last damage cause to sweep attack
+                                    set metadata value "LastDamageCause" of {_target} to "<##f8fff5>Air Slash"
+                                    set metadata value "LastDamageCauseLore" of {_target} to {_lore}
+                                    set metadata value "Element" of player to "Air"
+
+                                    set {_damage} to Crit(player, {_target}, {_crit}, {_damage})
+
+                                    make player damage {_target} by {_damage}*2
+
+                                    loop round({_airSlashRadius}, 0) times:
+                                        set vector length of {_v} to loop-counter*0.6
+                                        loop 45 times:
+                                            set {_rx} to a random number between 0.00 and 0.08
+                                            draw 1 of snowflake particle at {_loc} ~ {_v} offset by vector({_rx},{_rx},{_rx}) with extra -0.01
+                                            rotate {_v} around {_v2} by 4 degrees
+                    else:
+                        if {tekstcd::%player%} = true:
+                            set {_cdd} to cooldown "Air Slash%player%"
+                            send "<##dbef9e>You must wait &f%{_cdd}% <##dbef9e>to use this ability." to player
+
+            else if boolean tag "Sky Blast" of custom nbt of player's tool is set:
+                if cooldown "Sky Blast%player%" is finished:
+                    set {_haste} to Haste(player)
+                    set {_cast} to round((4/{_haste}), 1)
+                    set {_casttime} to "%{_cast}% seconds" parsed as timespan
+                    set {_cd} to "%20/{_haste}% seconds" parsed as timespan
+
+                    set {_skyBlastBallRadius} to 1 + CrowdControl(player)/70
+                    set {_ballSpeed} to 0.25
+                    set {_skyBlastImpactRadius} to 3 + CrowdControl(player)/60
+
+                    clear metadata value "cast" of player
+                    clear metadata value "casting" of player
+
+                    if metadata value "cast" of player is not set:
+                        play sound "skill.shaymin.skyblast_precast" with volume 3 and pitch 1 at player
+                        set metadata value "casting" of player to "Sky Blast"
+                        if metadata value "channeling" of player is set:
+                            clear metadata value "channeling" of player
+                            stopCastSoundEspeon(player)
+                        set metadata value "cast" of player to {_casttime}
+                        set {_pitch} to 0.5
+                        set {_loopCount} to {_cast}*10
+                        while metadata value "casting" of player = "Sky Blast":
+                            if metadata value "cast" of player is not set:
+                                clear metadata value "casting" of player
+                                stop
+                            if {_casttime} > 0 seconds:
+                                
+                                if loop-counter is divisible by (rounded down ({_loopCount}/5)):
+                                    play sound "entity.breeze.charge" with volume 2 and pitch {_pitch} at player
+                                add (1/{_loopCount}) to {_pitch}
+
+                                set {_cst} to "Casting... %{_casttime}%"
+                                if metadata value "FormeSwapDuration" of player is set:
+                                    set {_duration} to metadata value "FormeSwapDuration" of player
+                                    set {_cst} to "%{_cst}% | : %{_duration}%"
+                                send action bar {_cst} to player
+                                
+                                set {_loc} to location above player
+                                set {_loc} to location 0.75 in front of {_loc}
+
+                                add {_skyBlastBallRadius}/({_cast}*10) to {_size}
+                                set {_sphere} to a sphere with radius {_size}
+                                set particle of {_sphere} to snowflake particle
+                                draw shape {_sphere} at {_loc}
+
+                                wait 0.1 seconds
+                                remove 0.1 seconds from {_casttime}
+                            else:
+                                clear metadata value "casting" of player
+                                send action bar "" to player
+                    else:
+                        stop 
+
+                    clear metadata value "casting" of player
+                    clear metadata value "cast" of player
+                    stop sound "skill.shaymin.skyblast_precast" for all players in radius 2 around player
+
+                    if {_casttime} > 0 seconds:
+                        send action bar "&cInterrupted" to player
+                        stop
+
+                    create cooldown "Sky Blast%player%" for {_cd}
+                    cooldownSpell(player, "Sky Blast", {_cd})
+                    AbilityUse(player, "Sky Blast")
+                    play sound "skill.shaymin.skyblast_shoot" with volume 3 and pitch 1 at player
+                    play sound "entity.creeper.death" with volume 3 and pitch 1.75 at player
+                    play sound "entity.generic.extinguish_fire" with volume 3 and pitch 0.75 at player
+                    play sound "entity.breeze.jump" with volume 3 and pitch 1.25 at player
+
+                    if target entity of player exists:
+                        set {_f} to target entity of player
+                    else:
+                        set {_f} to target block of player
+                    if {_f} is not set:
+                        set {_f} to location 20 in front of player
+
+                    set {_vec} to vector between player and {_f}
+                    set {_sphere} to a sphere with radius {_size}
+                    set particle of {_sphere} to snowflake particle
+                    loop round(distance between {_loc} and {_f}) / 0.25 times:
+                        set {_vec} to vector between {_loc} and {_f}
+                        set vector length of {_vec} to loop-value * 0.25
+                        draw shape {_sphere} at {_loc} ~ {_vec}
+                        wait 1 tick
+
+                    play sound "entity.creeper.death" with volume 3 and pitch 1.75 at player
+                    draw {_skyBlastImpactRadius}*20 of snowflake particle at {_loc} ~ {_vec} with offset vector({_skyBlastImpactRadius}, {_size}, {_skyBlastImpactRadius}) with extra 0.03
+
 function FormeSwapShayminDuration(p: player):
     set {_duration} to 15 seconds
     set metadata value "FormeSwapDuration" of {_p} to {_duration}
     while metadata value "FormeSwapDuration" of {_p} > 0 seconds:
         buffRegister({_p}, "Forme", 4, "", "Value", "active", durationShort("%{_duration}%"))
-        send action bar ": %{_duration}%" to {_p}
+        if metadata value "casting" of {_p} is not set:
+            send action bar ": %{_duration}%" to {_p}
         wait 1 second
         remove 1 second from metadata value "FormeSwapDuration" of {_p}
         set {_duration} to metadata value "FormeSwapDuration" of {_p}
