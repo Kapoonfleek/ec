@@ -510,13 +510,23 @@ function Starfire(p: player, target: entity, astronomicalImpact: boolean = false
 		set {_astralPowerCap} to 120
 	else:
 		set {_astralPowerCap} to 100
+
+	set {_enemies::*} to LoopEntitiesAroundTarget({_target}, 5, true)
+	if size of {_enemies::*} >= 3:
+		set {_enemiesAffected} to 3
+	else:
+		set {_enemiesAffected} to size of {_enemies::*}
+
+	if boolean tag "Constellation;Soul of the Cosmos" of custom nbt of {karta::%{_p}%} is set:
+		set {_astralPower} to {_astralPower} * (1 + ({_enemiesAffected}/5))
+		set {_soulOfTheCosmos} to (1 + ({_enemiesAffected}/5))
+
 	if {astralpower::%{_p}%} + {_astralPower} <= {_astralPowerCap}:
 		add {_astralPower} to {astralpower::%{_p}%}
 	else:
 		set {astralpower::%{_p}%} to {_astralPowerCap}
 	AstralPowerUpdate({_p})
 
-	set {_enemies::*} to LoopEntitiesAroundTarget({_target}, 5, true)
 	loop {_enemies::*}:
 		set {_damage} to 1.5 + (({damage::%{_p}%}/30) + ({versatility::%{_p}%}/90) + {primarystat::%{_p}%}/15)
 		set {_crit} to 0 + ({criticalhit::%{_p}%}/10)
@@ -524,8 +534,10 @@ function Starfire(p: player, target: entity, astronomicalImpact: boolean = false
 			if string tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Aetherial Kindling":
 				set {_damage} to {_damage}*1.15
 			add 15 to {_crit}
-		if {_astronomicalImpact} is true:
+		if {_astronomicalImpact} = true:
 			set {_damage} to {_damage}*1.6
+		if {_soulOfTheCosmos} is set:
+			set {_damage} to {_damage}*{_soulOfTheCosmos}
 		if loop-value != {_target}:
 			if string tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Aetherial Kindling":
 				if metadata value "CelestialAlignment" of {_p} is set:
