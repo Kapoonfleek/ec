@@ -242,8 +242,7 @@ on rightclick:
 										set metadata value "StarsurgeStacks%player%" of {_target} to 0
 
 									if metadata value "StarsurgeStacks%player%" of {_target} < {_starsurgeBonusMax}:
-										add 1 to {_starsurgeStacks} 
-										set metadata value "StarsurgeStacks%player%" of {_target} to {_starsurgeStacks}
+										add 1 to metadata value "StarsurgeStacks%player%" of {_target}
 
 									set metadata value "StarsurgeTime%player%" of {_target} to 12 seconds
 									if metadata value "StarsurgeBonus%player%" of {_target} is not set:
@@ -365,6 +364,9 @@ on rightclick:
 							if cooldown "Global Cooldown Interrupted Cast%player%" is finished:
 								set {_pospiech} to Haste(player)
 								set {_baseCastTime} to 2.25
+								if boolean tag "Constellation;The Eternal Moon" of custom nbt of {karta::%player%} is set:
+									if metadata value "CelestialAlignment" of player is set:
+										set {_baseCastTime} to {_baseCastTime} - 0.25
 								if metadata value "AstronomicalImpact" of player is set:
 									set {_baseCastTime} to {_baseCastTime}/1.6
 									set {_astronomicalImpact} to metadata value "AstronomicalImpact" of player
@@ -604,12 +606,17 @@ function StarfireVisual(p: player, target: entity, mainTarget: boolean = false):
 function StarsurgeBonus(p: player, target: entity):
 	if metadata value "StarsurgeBonus%{_p}%" of {_target} = true:
 		set metadata value "StarsurgeBonus%{_p}%" of {_target} to false
+		set {_id} to entity id of {_target}
+		set {_meta} to metadata packet with id {_id}
 		while metadata value "StarsurgeTime%{_p}%" of {_target} > 0 seconds:
 			if {_target} is alive:
+				set {_stacks} to metadata value "StarsurgeStacks%{_p}%" of {_target}
+				set {_duration} to seconds of (metadata value "StarsurgeTime%{_p}%" of {_target})
+				set {_name} to "%name of {_target}% &8| &f %{_stacks}%x (%{_duration}%s)"
+				add data from "name %{_name}%" to {_meta}
+				send packet {_meta} to {_p}
 				wait 1 second
-				set {_time} to metadata value "StarsurgeTime%{_p}%" of {_target}
-				remove 1 second from {_time}
-				set metadata value "StarsurgeTime%{_p}%" of {_target} to {_time}
+				remove 1 second from metadata value "StarsurgeTime%{_p}%" of {_target}
 				if 0 seconds >= metadata value "StarsurgeTime%{_p}%" of {_target}:
 					clear metadata value "StarsurgeStacks%{_p}%" of {_target}
 					clear metadata value "StarsurgeTime%{_p}%" of {_target}
@@ -620,6 +627,9 @@ function StarsurgeBonus(p: player, target: entity):
 				clear metadata value "StarsurgeTime%{_p}%" of {_target}
 				clear metadata value "StarsurgeBonus%{_p}%" of {_target}
 				stop loop
+		if {_target} is alive:
+			add data from "name %name of {_target}%" to {_meta}
+			send packet {_meta} to {_p}
 
 function CresseliaStarsurgeVisual(p: player, target: entity):
 	set {_l} to location 0.7 blocks below {_p}'s head
