@@ -102,6 +102,10 @@ function ShootingStar(p: player):
 
 		if {_crashingStar} = true:
 			draw 25 firework particle at location above {_target} with offset vector(1.25, 0.5, 1.25) with extra 0.015
+
+		set {_critModifier} to 2
+		if boolean tag "Constellation;The Eternal Moon" of custom nbt of {karta::%{_p}%} is set:
+			add 0.2 to {_critModifier}
 		
 		loop {_loops} times:
 			set {_shootingStarsDamage} to {_damage}
@@ -109,8 +113,7 @@ function ShootingStar(p: player):
 			set metadata value "Element" of {_target} to "Astral"
 			set metadata value "LastDamageCause" of {_target} to {_damageCause}
 			set metadata value "LastDamageCauseLore" of {_target} to {_lore}
-			chance of {_crit}%:
-				set {_shootingStarsDamage} to {_shootingStarsDamage}*2
+			set {_shootingStarsDamage} to Crit({_p}, {_target}, {_crit}, {_shootingStarsDamage}, {_critModifier})
 			make {_p} damage {_target} by {_shootingStarsDamage}*2
 			chance of {_astralInvocationChance}%:
 				AstralInvocation({_p})
@@ -255,8 +258,9 @@ on rightclick:
 									set {_starsurgeBonus} to 1+(0.15*{_starsurgeStacks})
 									set {_damage} to {_damage}*{_starsurgeBonus}
 
-									chance of {_crit}%:
-										set {_damage} to {_damage}*2
+									set {_critModifier} to 2
+									if boolean tag "Constellation;The Eternal Moon" of custom nbt of {karta::%player%} is set:
+										add 0.2 to {_critModifier}
 									
 									set {_target}'s last damage cause to sweep attack
 									set metadata value "Element" of player to "Astral"
@@ -264,6 +268,7 @@ on rightclick:
 									set metadata value "LastDamageCause" of {_target} to "<##6a5e9e>Starsurge"
 									set metadata value "LastDamageCauseLore" of {_target} to {_lore}
 									play sound "skill.cresselia.starsurgeimpact" with volume 4 and pitch 1 at location of {_target}
+									set {_damage} to Crit(player, {_target}, {_crit}, {_damage}, {_critModifier})
 									make player damage {_target} by {_damage}*2
 
 									CresseliaRecentlyDamaged(player, {_target})
@@ -463,7 +468,7 @@ on rightclick:
 
 					if boolean tag "Constellation;The Eternal Moon" of custom nbt of {karta::%player%} is set:
 						set {_lastDamagedTarget} to (metadata value "MostRecentlyDamagedEnemy" of player)
-						FullMoon(player, {_lastDamagedTarget})
+						FullMoon(player, {_lastDamagedTarget}, 0.7)
 
 			else:
 				if {tekstcd::%player%} = true:
@@ -559,6 +564,10 @@ function Starfire(p: player, target: entity, astronomicalImpact: boolean = false
 		set {_baseCastTime} to {_baseCastTime}/1.6
 	set {_casttime} to "%round(({_baseCastTime}/{_haste}), 1)% seconds" parsed as timespan
 
+	set {_critModifier} to 2
+	if boolean tag "Constellation;The Eternal Moon" of custom nbt of {karta::%{_p}%} is set:
+		add 0.2 to {_critModifier}
+
 	loop {_enemies::*}:
 		set {_damage} to 1.5 + (({damage::%{_p}%}/30) + ({versatility::%{_p}%}/90) + {primarystat::%{_p}%}/15)
 		set {_crit} to 0 + ({criticalhit::%{_p}%}/10)
@@ -585,8 +594,7 @@ function Starfire(p: player, target: entity, astronomicalImpact: boolean = false
 		set metadata value "Element" of loop-value to "Astral"
 		set metadata value "LastDamageCause" of loop-value to "<##6a5e9e>Starfire"
 		set metadata value "LastDamageCauseLore" of loop-value to {_lore}
-		chance of {_crit}%:
-			set {_damage} to {_damage}*2
+		set {_damage} to Crit({_p}, loop-value, {_crit}, {_damage}, {_critModifier})
 		make {_p} damage loop-value by {_damage}*2
 
 	play sound "entity.player.hurt" with volume 0.5 and pitch 1 at location of {_target}
@@ -687,6 +695,11 @@ function StarfallStarTravel(p: player, e: entity, target: entity, duration: time
 		add 1 to {_count}
 		add 10 to {_y}
 	kill {_e}
+
+	set {_critModifier} to 2
+	if boolean tag "Constellation;The Eternal Moon" of custom nbt of {karta::%{_p}%} is set:
+		add 0.2 to {_critModifier}
+
 	if {_particle} != true:
 		set {_enemies::*} to LoopEntitiesAroundTarget({_target}, 3, true)
 		loop {_enemies::*}:
@@ -706,8 +719,7 @@ function StarfallStarTravel(p: player, e: entity, target: entity, duration: time
 			set metadata value "Element" of loop-value to "Astral"
 			set metadata value "LastDamageCause" of loop-value to "<##6a5e9e>Starfall"
 			set metadata value "LastDamageCauseLore" of loop-value to {_lore}
-			chance of {_crit}%:
-				set {_damage} to {_damage}*2
+			set {_damage} to Crit({_p}, loop-value, {_crit}, {_damage}, {_critModifier})
 			make {_p} damage loop-value by {_damage}*2
 			CresseliaRecentlyDamaged({_p}, loop-value)
 			if loop-value = {_target}:
@@ -818,6 +830,11 @@ function FullMoon(p: player, target: entity, effectiveness: number = 1):
 	set {_damageFullMoon} to (13 + (({damage::%{_p}%}/6.5) + ({versatility::%{_p}%}/19.5) + {primarystat::%{_p}%}/3.25)) * (1 + (({mastery::%{_p}%}/2.7)/100))
 	set {_damageFullMoon} to {_damageFullMoon}*{_effectiveness}
 	set {_lore} to "&f <##6a5e9e>Full Moon%nl%&7Deals &f%{_damage}% <##a99afc>Astral &7damage &7to the target and%nl%&f%{_damageFullMoon}*0.4% <##a99afc>Astral &7damage to all enemies around%nl%&7and generates &f40  <##6a5e9e>Astral Power&7."
+	
+	set {_critModifier} to 2
+	if boolean tag "Constellation;The Eternal Moon" of custom nbt of {karta::%{_p}%} is set:
+		add 0.2 to {_critModifier}
+
 	loop {_enemies::*}:
 		set {_crit} to 0 + ({criticalhit::%{_p}%}/10)
 		set {_damage} to {_damageFullMoon}
@@ -830,8 +847,7 @@ function FullMoon(p: player, target: entity, effectiveness: number = 1):
 		set metadata value "Element" of loop-value to "Astral"
 		set metadata value "LastDamageCause" of loop-value to "<##6a5e9e>Full Moon"
 		set metadata value "LastDamageCauseLore" of loop-value to {_lore}
-		chance of {_crit}%:
-			set {_damage} to {_damage}*2
+		set {_damage} to Crit({_p}, loop-value, {_crit}, {_damage}, {_critModifier})
 		make {_p} damage loop-value by {_damage}*2
 		CresseliaRecentlyDamaged({_p}, loop-value)
 		play sound "entity.player.hurt" with volume 1.5 and pitch 1 at loop-value
