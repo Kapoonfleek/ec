@@ -6,6 +6,8 @@ function ShootingStars(p: player):
 	while metadata value "ECEngaged" of {_p} is set:
 		if {_p} is alive:
 			set {_chance} to 8
+			if boolean tag "Constellation;Stellar Command" of custom nbt of {karta::%{_p}%} is set:
+				add 2 to {_chance}
 			if metadata value "CelestialAlignment" of {_p} is set:
 				set {_chance} to {_chance}*2
 			if metadata value "Solstice" of {_p} is set:
@@ -50,11 +52,11 @@ function ShootingStar(p: player):
 		if boolean tag "ECMob" of custom nbt of loop-entity is set:
 			if metadata value "RecentlyDamagedCresselia%{_p}%" of loop-entity is set:
 				add loop-entity to {_enti::*}
-
-	set {_loreShootingStars} to "&8Mastery Bonus%nl%&fNo cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fPASSIVE%nl%<##6a5e9e>Every <##b9aeeb>second<##6a5e9e>, you have a &f%{_chance}%%% <##b9aeeb>chance <##6a5e9e>to call%nl%<##6a5e9e>down a &f <##b9aeeb>Shooting Star<##6a5e9e>, dealing &f%{_damage}% <##a99afc>Astral <##6a5e9e>damage%nl%<##6a5e9e>to the enemy and generating &f %{_astralpower}% <##b9aeeb>Astral Power<##6a5e9e>.%nl% %nl%<##6a5e9e>This effect can only trigger when you have%nl%<##b9aeeb>attacked a target <##6a5e9e>through a different damage%nl%<##6a5e9e>source than &f <##b9aeeb>Shooting Stars <##6a5e9e>in the last &f20 sec<##6a5e9e>."
 	
 	if size of {_enti::*} > 0:
 		set {_target} to a random element of {_enti::*}
+		if metadata value "Stellar Command%{_p}%" of {_target} is set:
+			set {_damage} to {_damage}*1.3
 		if {_crashingStar} is true:
 			set {_starSpeed} to 0.2*{_haste}
 			set {_damageCause} to "<##6a5e9e>Crashing Star"
@@ -72,6 +74,7 @@ function ShootingStar(p: player):
 			set {_lore} to {_loreShootingStars}
 			play sound "entity.firework_rocket.launch" with volume 4 and pitch 0 at location of {_target}
 
+		set {_loreShootingStars} to "&8Mastery Bonus%nl%&fNo cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fPASSIVE%nl%<##6a5e9e>Every <##b9aeeb>second<##6a5e9e>, you have a &f%{_chance}%%% <##b9aeeb>chance <##6a5e9e>to call%nl%<##6a5e9e>down a &f <##b9aeeb>Shooting Star<##6a5e9e>, dealing &f%{_damage}% <##a99afc>Astral <##6a5e9e>damage%nl%<##6a5e9e>to the enemy and generating &f %{_astralpower}% <##b9aeeb>Astral Power<##6a5e9e>.%nl% %nl%<##6a5e9e>This effect can only trigger when you have%nl%<##b9aeeb>attacked a target <##6a5e9e>through a different damage%nl%<##6a5e9e>source than &f <##b9aeeb>Shooting Stars <##6a5e9e>in the last &f20 sec<##6a5e9e>."
 		LoreUpdate({_p}, "Shooting Stars", {_loreShootingStars})
 
 		set {_y} to 0
@@ -247,7 +250,9 @@ on rightclick:
 										set metadata value "StarsurgeBonus%player%" of {_target} to true
 										StarsurgeBonus(player, {_target})
 								
-
+									if boolean tag "Constellation;Stellar Command" of custom nbt of {karta::%player%} is set:
+										StellarCommand(player, {_target})
+										
 									set {_starsurgeBonus} to 1+(0.15*{_starsurgeStacks})
 									set {_damage} to {_damage}*{_starsurgeBonus}
 
@@ -892,6 +897,16 @@ function Starlord(p: player):
 		clear metadata value "StarlordStackCount" of {_p}
 		clear metadata value "Starlord" of {_p}
 		buffClear({_p}, "Starlord")	
+
+function StellarCommand(p: player, target: entity):
+	if metadata value "Stellar Command%{_p}%" of {_target} is not set:
+		set metadata value "Stellar Command%{_p}%" of {_target} to 8 seconds
+		while metadata value "Stellar Command%{_p}%" of {_target} > 0 seconds:
+			wait 1 second
+			remove 1 second from metadata value "Stellar Command%{_p}%" of {_target}
+		clear metadata value "Stellar Command%{_p}%" of {_target}
+	else:
+		set metadata value "Stellar Command%{_p}%" of {_target} to 8 seconds
 
 #on rightclick:
 #	set {_shape} to a star with 5 points, inner radius 0.25, and outer radius 2
