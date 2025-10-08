@@ -442,7 +442,7 @@ on rightclick:
 		if boolean tag "Celestial Alignment" of custom nbt of player's tool is set:
 			if cooldown "CelestialAlignment%player%" is finished:
 				if metadata value "casting" of player is not set:
-					create cooldown "CelestialAlignment%player%" for 3 minutes
+					create cooldown "CelestialAlignment%player%" for 2 seconds
 					play sound "skill.cresselia.celestial_alignment_cast" with volume 4 and pitch 1 at player
 					AbilityUse(player, "Celestial Alignment")
 					CelestialAlignment(player, 20 seconds)
@@ -460,6 +460,11 @@ on rightclick:
 					
 					if string tag "Talents;Row 1" of custom nbt of {karta::%player%} = "Solstice":
 						Solstice(player)
+
+					if boolean tag "Constellation;The Eternal Moon" of custom nbt of {karta::%player%} is set:
+						set {_lastDamagedTarget} to (metadata value "MostRecentlyDamagedEnemy" of player)
+						FullMoon(player, {_lastDamagedTarget})
+
 			else:
 				if {tekstcd::%player%} = true:
 					set {_cdd} to cooldown "CelestialAlignment%player%"
@@ -766,7 +771,7 @@ function Solstice(p: player):
 	else:
 		set metadata value "Solstice" of {_p} to 6 seconds
 
-function FullMoon(p: player, target: entity):
+function FullMoon(p: player, target: entity, effectiveness: number = 1):
 	play sound "skill.cresselia.fullmoon_cast" with volume 3 and pitch 1 at location of {_target}
 	set {_haste} to Haste({_p})
 	set {_randomIncrease} to a random number between 10 and 40
@@ -797,22 +802,25 @@ function FullMoon(p: player, target: entity):
 	kill {_e}
 	set {_enemies::*} to LoopEntitiesAroundTarget({_target}, 5, true)
 	set {_astralpower} to 40
+	set {_astralpower} to {_astralpower}*{_effectiveness}
 	if string tag "Talents;Row 2" of nbt of {karta::%{_p}%} = "Astral Communion":
 		set {_astralPowerCap} to 120
 	else:
 		set {_astralPowerCap} to 100
 	if {_astralPowerCap} >= {astralpower::%{_p}%} + {_astralpower}:
-		add 40 to {astralpower::%{_p}%}
+		add {_astralpower} to {astralpower::%{_p}%}
 	else:
 		set {astralpower::%{_p}%} to {_astralPowerCap}
 	AstralPowerUpdate({_p})
 	draw 25 smoke at location above {_target} with offset vector(2, 0.5, 2) with extra 0.01
 	draw 25 cloud at location above {_target} with offset vector(0.45, 0.5, 0.45) with extra 0.005
 	
-	set {_damage} to (13 + (({damage::%{_p}%}/6.5) + ({versatility::%{_p}%}/19.5) + {primarystat::%{_p}%}/3.25)) * (1 + (({mastery::%{_p}%}/2.7)/100))
-	set {_lore} to "&f <##6a5e9e>Full Moon%nl%&7Deals &f%{_damage}% <##a99afc>Astral &7damage &7to the target and%nl%&f%{_damage}*0.4% <##a99afc>Astral &7damage to all enemies around%nl%&7and generates &f40  <##6a5e9e>Astral Power&7."
+	set {_damageFullMoon} to (13 + (({damage::%{_p}%}/6.5) + ({versatility::%{_p}%}/19.5) + {primarystat::%{_p}%}/3.25)) * (1 + (({mastery::%{_p}%}/2.7)/100))
+	set {_damageFullMoon} to {_damageFullMoon}*{_effectiveness}
+	set {_lore} to "&f <##6a5e9e>Full Moon%nl%&7Deals &f%{_damage}% <##a99afc>Astral &7damage &7to the target and%nl%&f%{_damageFullMoon}*0.4% <##a99afc>Astral &7damage to all enemies around%nl%&7and generates &f40  <##6a5e9e>Astral Power&7."
 	loop {_enemies::*}:
 		set {_crit} to 0 + ({criticalhit::%{_p}%}/10)
+		set {_damage} to {_damageFullMoon}
 		if loop-value != {_target}:
 			set {_damage} to {_damage}*0.4
 		if metadata value "CelestialAlignment" of {_p} is set:
