@@ -30,13 +30,10 @@ function clearCombat(e: entity):
 	clear metadata value "ECEngaged" of {_e}
 	SetPlayerStats({_e})
 	clear {seconds::%{_e}%}
-	clear {lavasurge::%{_e}%}
 	clear {magmaarea::%{_e}%}
 	clear {circleofwater::%{_e}%}
 	clear {extraSecondsIcyVeins::%{_e}%}
 	clear {ascendanceDuration::%{_e}%}
-	clear {lavakeeper::%{_e}%}
-	clear {lavafury::%{_e}%}
 	clear {lingeringInsanityHaste::%{_e}%}
 	clear {hasteVoidform::%{_e}%}
 	clear {bonusHaste::%{_e}%}
@@ -45,6 +42,9 @@ function clearCombat(e: entity):
 		remove uuid of {_e} from {asyst::%uuid of loop-value%}
 	clear {incombatwith::%{_e}%::*}
 	clear metadata value "Lava Wave" of {_e}
+	clear metadata value "Lava Surge" of {_e}
+	clear metadata value "Lavakeeper" of {_e}
+	clear metadata value "Lavafury" of {_e}
 	clear {icicles::%{_e}%}
 	clear {iciclehave::%{_e}%}
 	if {kartaname::%{_e}%} = "Cresselia":
@@ -52,7 +52,8 @@ function clearCombat(e: entity):
 			set {astralpower::%{_e}%} to 60
 		else:
 			set {astralpower::%{_e}%} to 50
-		AstronomicalImpact({_e})
+		if string tag "Talents;Row 1" of custom nbt of {karta::%{_e}%} = "Astronomical Impact":
+			AstronomicalImpact({_e})
 	else if {kartaname::%{_e}%} = "Vaporeon":
 		loop all entities where [metadata value "CircleOfWater%{_e}%" of input is set]:
 			clear metadata value "CircleOfWater%{_e}%" of loop-entity
@@ -95,6 +96,7 @@ function clearCombat(e: entity):
 	clear metadata value "TidalWaves" of {_e}
 	clear metadata value "Undercurrent" of {_e}
 	clear metadata value "Mind Transfer" of {_e}
+	clear metadata value "PrimordialArcanicPulsar" of {_e}
 	remove {_e} from all boss bars
 	playerMoveSpeedUpdate({_e})
 	send title " " with subtitle " " to {_e} for 0 seconds with fade in 0 second and fade out 0 second
@@ -113,55 +115,57 @@ function clearCombat(e: entity):
 
 function scoreboardUpdateCombat(p: player):
 	if metadata value "DungeonInstance" of {_p} is not set:
-		if {meter::%{_p}%} = "healing":
-			set {_kolorek} to KolorekScoreboard({_p})
-			set title of {_p}'s fastboard to "&f&l«-───▬ %{_kolorek}%&lEC &f&l▬───-»"
-			set line 2 of {_p}'s fastboard to ""
-			set line 3 of {_p}'s fastboard to " &fIn combat for: %{_kolorek}%%{seconds::%{_p}%}% seconds     "
-			set line 4 of {_p}'s fastboard to " "
-			set {_x} to first element of createTop("healed", 5, "[P]")
-			set {_x2} to 2nd element of createTop("healed", 5, "[P]")
-			set {_x3} to 3rd element of createTop("healed", 5, "[P]")
-			set {_x4} to 4th element of createTop("healed", 5, "[P]")
-			set {_x5} to 5th element of createTop("healed", 5, "[P]")
-			if {healed::%{_x}%} > 0:
-				set line 5 of {_p}'s fastboard to "  &f1. &f%{ikonkakarta::%{_x}%}%%{kartacolor::%{_x}%}%%first element of createTop("healed", 5, "[P]")% &f%first element of createTop("healed", 5, "[V]")% %{kartacolor::%{_x}%}%HEAL | &f%{hps::%{_x}%}% %{kartacolor::%{_x}%}%HPS"
-			if {healed::%{_x2}%} > 0:
-				set line 6 of {_p}'s fastboard to "  &f2. &f%{ikonkakarta::%{_x2}%}%%{kartacolor::%{_x2}%}%%2nd element of createTop("healed", 5, "[P]")% &f%2nd element of createTop("healed", 5, "[V]")% %{kartacolor::%{_x2}%}%HEAL | &f%{hps::%{_x2}%}% %{kartacolor::%{_x2}%}%HPS"
-			if {healed::%{_x3}%} > 0:
-				set line 7 of {_p}'s fastboard to "  &f3. &f%{ikonkakarta::%{_x3}%}%%{kartacolor::%{_x3}%}%%3rd element of createTop("healed", 5, "[P]")% &f%3rd element of createTop("healed", 5, "[V]")% %{kartacolor::%{_x3}%}%HEAL | &f%{hps::%{_x3}%}% %{kartacolor::%{_x3}%}%HPS"
-			if {healed::%{_x4}%} > 0:
-				set line 8 of {_p}'s fastboard to "  &f4. %{ikonkakarta::%{_x4}%}%%{kartacolor::%{_x4}%}%%4th element of createTop("healed", 5, "[P]")% &f%4th element of createTop("healed", 5, "[V]")% %{kartacolor::%{_x4}%}%HEAL | &f%{hps::%{_x4}%}% %{kartacolor::%{_x4}%}%HPS"
-			if {healed::%{_x5}%} > 0:
-				set line 9 of {_p}'s fastboard to "  &f5. %{ikonkakarta::%{_x5}%}%%{kartacolor::%{_x5}%}%%5th element of createTop("healed", 5, "[P]")% &f%5th element of createTop("healed", 5, "[V]")% %{kartacolor::%{_x5}%}%HEAL | &f%{hps::%{_x5}%}% %{kartacolor::%{_x5}%}%HPS"
-			set line 10 of {_p}'s fastboard to ""
-			set line 11 of {_p}'s fastboard to " &fCombat ends in: %{_kolorek}%%metadata value "ECEngaged" of {_p}% seconds     "
-			set line 12 of {_p}'s fastboard to ""
-		else:
-			set {_kolorek} to KolorekScoreboard({_p})
-			if metadata value "DungeonInstance" of {_p} is not set:
+		if metadata value "IslandExpeditionInstance" of {_p} is not set:
+			if {meter::%{_p}%} = "healing":
+				set {_kolorek} to KolorekScoreboard({_p})
 				set title of {_p}'s fastboard to "&f&l«-───▬ %{_kolorek}%&lEC &f&l▬───-»"
 				set line 2 of {_p}'s fastboard to ""
 				set line 3 of {_p}'s fastboard to " &fIn combat for: %{_kolorek}%%{seconds::%{_p}%}% seconds     "
 				set line 4 of {_p}'s fastboard to " "
-				set {_x} to first element of createTop("dmgdealt", 5, "[P]")
-				set {_x2} to 2nd element of createTop("dmgdealt", 5, "[P]")
-				set {_x3} to 3rd element of createTop("dmgdealt", 5, "[P]")
-				set {_x4} to 4th element of createTop("dmgdealt", 5, "[P]")
-				set {_x5} to 5th element of createTop("dmgdealt", 5, "[P]")
-				if {dmgdealt::%{_x}%} > 0:
-					set line 5 of {_p}'s fastboard to "  &f1. &f%{ikonkakarta::%{_x}%}%%{kartacolor::%{_x}%}%%first element of createTop("dmgdealt", 5, "[P]")% &f%first element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x}%}%DMG | &f%{dps::%{_x}%}% %{kartacolor::%{_x}%}%DPS"
-				if {dmgdealt::%{_x2}%} > 0:
-					set line 6 of {_p}'s fastboard to "  &f2. &f%{ikonkakarta::%{_x2}%}%%{kartacolor::%{_x2}%}%%2nd element of createTop("dmgdealt", 5, "[P]")% &f%2nd element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x2}%}%DMG | &f%{dps::%{_x2}%}% %{kartacolor::%{_x2}%}%DPS"
-				if {dmgdealt::%{_x3}%} > 0:
-					set line 7 of {_p}'s fastboard to "  &f3. &f%{ikonkakarta::%{_x3}%}%%{kartacolor::%{_x3}%}%%3rd element of createTop("dmgdealt", 5, "[P]")% &f%3rd element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x3}%}%DMG | &f%{dps::%{_x3}%}% %{kartacolor::%{_x3}%}%DPS"
-				if {dmgdealt::%{_x4}%} > 0:
-					set line 8 of {_p}'s fastboard to "  &f4. %{ikonkakarta::%{_x4}%}%%{kartacolor::%{_x4}%}%%4th element of createTop("dmgdealt", 5, "[P]")% &f%4th element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x4}%}%DMG | &f%{dps::%{_x4}%}% %{kartacolor::%{_x4}%}%DPS"
-				if {dmgdealt::%{_x5}%} > 0:
-					set line 9 of {_p}'s fastboard to "  &f5. %{ikonkakarta::%{_x5}%}%%{kartacolor::%{_x5}%}%%5th element of createTop("dmgdealt", 5, "[P]")% &f%5th element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x5}%}%DMG | &f%{dps::%{_x5}%}% %{kartacolor::%{_x5}%}%DPS"
+				set {_x} to first element of createTop("healed", 5, "[P]")
+				set {_x2} to 2nd element of createTop("healed", 5, "[P]")
+				set {_x3} to 3rd element of createTop("healed", 5, "[P]")
+				set {_x4} to 4th element of createTop("healed", 5, "[P]")
+				set {_x5} to 5th element of createTop("healed", 5, "[P]")
+				if {healed::%{_x}%} > 0:
+					set line 5 of {_p}'s fastboard to "  &f1. &f%{ikonkakarta::%{_x}%}%%{kartacolor::%{_x}%}%%first element of createTop("healed", 5, "[P]")% &f%first element of createTop("healed", 5, "[V]")% %{kartacolor::%{_x}%}%HEAL | &f%{hps::%{_x}%}% %{kartacolor::%{_x}%}%HPS"
+				if {healed::%{_x2}%} > 0:
+					set line 6 of {_p}'s fastboard to "  &f2. &f%{ikonkakarta::%{_x2}%}%%{kartacolor::%{_x2}%}%%2nd element of createTop("healed", 5, "[P]")% &f%2nd element of createTop("healed", 5, "[V]")% %{kartacolor::%{_x2}%}%HEAL | &f%{hps::%{_x2}%}% %{kartacolor::%{_x2}%}%HPS"
+				if {healed::%{_x3}%} > 0:
+					set line 7 of {_p}'s fastboard to "  &f3. &f%{ikonkakarta::%{_x3}%}%%{kartacolor::%{_x3}%}%%3rd element of createTop("healed", 5, "[P]")% &f%3rd element of createTop("healed", 5, "[V]")% %{kartacolor::%{_x3}%}%HEAL | &f%{hps::%{_x3}%}% %{kartacolor::%{_x3}%}%HPS"
+				if {healed::%{_x4}%} > 0:
+					set line 8 of {_p}'s fastboard to "  &f4. %{ikonkakarta::%{_x4}%}%%{kartacolor::%{_x4}%}%%4th element of createTop("healed", 5, "[P]")% &f%4th element of createTop("healed", 5, "[V]")% %{kartacolor::%{_x4}%}%HEAL | &f%{hps::%{_x4}%}% %{kartacolor::%{_x4}%}%HPS"
+				if {healed::%{_x5}%} > 0:
+					set line 9 of {_p}'s fastboard to "  &f5. %{ikonkakarta::%{_x5}%}%%{kartacolor::%{_x5}%}%%5th element of createTop("healed", 5, "[P]")% &f%5th element of createTop("healed", 5, "[V]")% %{kartacolor::%{_x5}%}%HEAL | &f%{hps::%{_x5}%}% %{kartacolor::%{_x5}%}%HPS"
 				set line 10 of {_p}'s fastboard to ""
 				set line 11 of {_p}'s fastboard to " &fCombat ends in: %{_kolorek}%%metadata value "ECEngaged" of {_p}% seconds     "
 				set line 12 of {_p}'s fastboard to ""
+			else:
+				set {_kolorek} to KolorekScoreboard({_p})
+				if metadata value "DungeonInstance" of {_p} is not set:
+					if metadata value "IslandExpeditionInstance" of {_p} is not set:
+						set title of {_p}'s fastboard to "&f&l«-───▬ %{_kolorek}%&lEC &f&l▬───-»"
+						set line 2 of {_p}'s fastboard to ""
+						set line 3 of {_p}'s fastboard to " &fIn combat for: %{_kolorek}%%{seconds::%{_p}%}% seconds     "
+						set line 4 of {_p}'s fastboard to " "
+						set {_x} to first element of createTop("dmgdealt", 5, "[P]")
+						set {_x2} to 2nd element of createTop("dmgdealt", 5, "[P]")
+						set {_x3} to 3rd element of createTop("dmgdealt", 5, "[P]")
+						set {_x4} to 4th element of createTop("dmgdealt", 5, "[P]")
+						set {_x5} to 5th element of createTop("dmgdealt", 5, "[P]")
+						if {dmgdealt::%{_x}%} > 0:
+							set line 5 of {_p}'s fastboard to "  &f1. &f%{ikonkakarta::%{_x}%}%%{kartacolor::%{_x}%}%%first element of createTop("dmgdealt", 5, "[P]")% &f%first element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x}%}%DMG | &f%{dps::%{_x}%}% %{kartacolor::%{_x}%}%DPS"
+						if {dmgdealt::%{_x2}%} > 0:
+							set line 6 of {_p}'s fastboard to "  &f2. &f%{ikonkakarta::%{_x2}%}%%{kartacolor::%{_x2}%}%%2nd element of createTop("dmgdealt", 5, "[P]")% &f%2nd element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x2}%}%DMG | &f%{dps::%{_x2}%}% %{kartacolor::%{_x2}%}%DPS"
+						if {dmgdealt::%{_x3}%} > 0:
+							set line 7 of {_p}'s fastboard to "  &f3. &f%{ikonkakarta::%{_x3}%}%%{kartacolor::%{_x3}%}%%3rd element of createTop("dmgdealt", 5, "[P]")% &f%3rd element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x3}%}%DMG | &f%{dps::%{_x3}%}% %{kartacolor::%{_x3}%}%DPS"
+						if {dmgdealt::%{_x4}%} > 0:
+							set line 8 of {_p}'s fastboard to "  &f4. %{ikonkakarta::%{_x4}%}%%{kartacolor::%{_x4}%}%%4th element of createTop("dmgdealt", 5, "[P]")% &f%4th element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x4}%}%DMG | &f%{dps::%{_x4}%}% %{kartacolor::%{_x4}%}%DPS"
+						if {dmgdealt::%{_x5}%} > 0:
+							set line 9 of {_p}'s fastboard to "  &f5. %{ikonkakarta::%{_x5}%}%%{kartacolor::%{_x5}%}%%5th element of createTop("dmgdealt", 5, "[P]")% &f%5th element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x5}%}%DMG | &f%{dps::%{_x5}%}% %{kartacolor::%{_x5}%}%DPS"
+						set line 10 of {_p}'s fastboard to ""
+						set line 11 of {_p}'s fastboard to " &fCombat ends in: %{_kolorek}%%metadata value "ECEngaged" of {_p}% seconds     "
+						set line 12 of {_p}'s fastboard to ""
 
 function HealRefresh(p: player, h: number):
 	if metadata value "ECEngaged" of {_p} is not set:
@@ -172,22 +176,23 @@ function HealRefresh(p: player, h: number):
 		if {seconds::%{_p}%} is not set:
 			set {seconds::%{_p}%} to 0
 		if metadata value "DungeonInstance" of {_p} is not set:
-			clear fastboard of {_p}
-			set metadata value "ECEngaged" of {_p} to 59
-			while metadata value "ECEngaged" of {_p} > -1:
-				if metadata value "ECEngaged" of {_p} > 0:
-					inCombat({_p})
-					wait 1 second
-					set {_tag} to metadata value "ECEngaged" of {_p}
-					remove 1 from {_tag}
-					set metadata value "ECEngaged" of {_p} to {_tag}
-				else:
-					set {_data} to data()
-					if {hps::%{_p}%} is set:
-						log "%{_data}% %{_p}% exit combat with %{dmgdealt::%{_p}%}% damage dealt, | %{dps::%{_p}%}% DPS, %{healed::%{_p}%}% health healed and %{hps::%{_p}%}% HPS. Fight duration: %{seconds::%{_p}%}% seconds" to "logi/combat/combatdetails %{datatydzien}%-%{datatydzien2}%.log"
+			if metadata value "IslandExpeditionInstance" of {_p} is not set:
+				clear fastboard of {_p}
+				set metadata value "ECEngaged" of {_p} to 59
+				while metadata value "ECEngaged" of {_p} > -1:
+					if metadata value "ECEngaged" of {_p} > 0:
+						inCombat({_p})
+						wait 1 second
+						set {_tag} to metadata value "ECEngaged" of {_p}
+						remove 1 from {_tag}
+						set metadata value "ECEngaged" of {_p} to {_tag}
 					else:
-						log "%{_data}% %{_p}% exit combat with %{dmgdealt::%{_p}%}% damage dealt and | %{dps::%{_p}%}% DPS. Fight duration: %{seconds::%{_p}%}% seconds" to "logi/combat/combatdetails %{datatydzien}%-%{datatydzien2}%.log"
-					clearCombat({_p})
+						set {_data} to data()
+						if {hps::%{_p}%} is set:
+							log "%{_data}% %{_p}% exit combat with %{dmgdealt::%{_p}%}% damage dealt, | %{dps::%{_p}%}% DPS, %{healed::%{_p}%}% health healed and %{hps::%{_p}%}% HPS. Fight duration: %{seconds::%{_p}%}% seconds" to "logi/combat/combatdetails %{datatydzien}%-%{datatydzien2}%.log"
+						else:
+							log "%{_data}% %{_p}% exit combat with %{dmgdealt::%{_p}%}% damage dealt and | %{dps::%{_p}%}% DPS. Fight duration: %{seconds::%{_p}%}% seconds" to "logi/combat/combatdetails %{datatydzien}%-%{datatydzien2}%.log"
+						clearCombat({_p})
 	else:
 		set metadata value "ECEngaged" of {_p} to 59
 		add {_h} to {healed::%{_p}%}
@@ -196,8 +201,9 @@ function HealRefresh(p: player, h: number):
 	else:
 		set {hps::%{_p}%} to {healed::%{_p}%}
 	if metadata value "DungeonInstance" of {_p} is not set:
-		wait 1 tick
-		scoreboardUpdateCombat({_p})
+		if metadata value "IslandExpeditionInstance" of {_p} is not set:
+			wait 1 tick
+			scoreboardUpdateCombat({_p})
 	if metadata value "ECEngaged" of {_p} is not set:
 		clear {_p}'s fastboard
 		UpdateScoreboard({_p})
@@ -226,15 +232,19 @@ function combatInitiate(att: entity, vict: entity):
 		set {dmgdealt::%{_att}%} to 0
 		set {dps::%{_att}%} to 0
 		set {_id} to line 19 of lore of {karta::%{_att}%}
-		if {kartaname::%{_att}%} = "Cresselia":
-			ShootingStars({_att})
-			AstralPower({_att})
 		if metadata value "DungeonInstance" of {_att} is not set:
-			clear fastboard of {_att}
+			if metadata value "IslandExpeditionInstance" of {_att} is not set:
+				clear fastboard of {_att}
 		set metadata value "ECEngaged" of {_att} to 59
 		if name of {_att} = "agnes":
 			set {agnesstop} to true
 			#equip citizen 6512 with diamond sword
+		if {_att} is a player:
+			if {kartaname::%{_att}%} = "Cresselia":
+				ShootingStars({_att})
+				AstralPower({_att})
+			else if {kartaname::%{_att}%} = "Ghazan":
+				MagmaCheck({_att})
 		while metadata value "ECEngaged" of {_att} > -1:
 			if metadata value "ECEngaged" of {_att} > 0:
 				inCombat({_att})
@@ -260,35 +270,37 @@ function combatInitiate(att: entity, vict: entity):
 	wait 1 tick
 	if {_health1} != {_vict}'s health:
 		if metadata value "DungeonInstance" of {_att} is not set:
-			if title of {_att}'s fastboard is set:
-				if {meter::%{_att}%} is not "healing":
-					set {_kolorek} to KolorekScoreboard({_att})
-					set title of {_att}'s fastboard to "&f&l«-───▬ %{_kolorek}%&lEC &f&l▬───-»"
-					set line 2 of {_att}'s fastboard to ""
-					set line 3 of {_att}'s fastboard to " &fIn combat for: %{_kolorek}%%{seconds::%{_att}%}% seconds     "
-					set line 4 of {_att}'s fastboard to " "
-					set {_x} to first element of createTop("dmgdealt", 5, "[P]")
-					set {_x2} to 2nd element of createTop("dmgdealt", 5, "[P]")
-					set {_x3} to 3rd element of createTop("dmgdealt", 5, "[P]")
-					set {_x4} to 4th element of createTop("dmgdealt", 5, "[P]")
-					set {_x5} to 5th element of createTop("dmgdealt", 5, "[P]")
-					if {dmgdealt::%{_x}%} > 0:
-						set line 5 of {_att}'s fastboard to "  &f1. &f%{ikonkakarta::%{_x}%}%%{kartacolor::%{_x}%}%%first element of createTop("dmgdealt", 5, "[P]")% &f%first element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x}%}%DMG | &f%{dps::%{_x}%}% %{kartacolor::%{_x}%}%DPS"
-					if {dmgdealt::%{_x2}%} > 0:
-						set line 6 of {_att}'s fastboard to "  &f2. &f%{ikonkakarta::%{_x2}%}%%{kartacolor::%{_x2}%}%%2nd element of createTop("dmgdealt", 5, "[P]")% &f%2nd element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x2}%}%DMG | &f%{dps::%{_x2}%}% %{kartacolor::%{_x2}%}%DPS"
-					if {dmgdealt::%{_x3}%} > 0:
-						set line 7 of {_att}'s fastboard to "  &f3. &f%{ikonkakarta::%{_x3}%}%%{kartacolor::%{_x3}%}%%3rd element of createTop("dmgdealt", 5, "[P]")% &f%3rd element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x3}%}%DMG | &f%{dps::%{_x3}%}% %{kartacolor::%{_x3}%}%DPS"
-					if {dmgdealt::%{_x4}%} > 0:
-						set line 8 of {_att}'s fastboard to "  &f4. %{ikonkakarta::%{_x4}%}%%{kartacolor::%{_x4}%}%%4th element of createTop("dmgdealt", 5, "[P]")% &f%4th element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x4}%}%DMG | &f%{dps::%{_x4}%}% %{kartacolor::%{_x4}%}%DPS"
-					if {dmgdealt::%{_x5}%} > 0:
-						set line 9 of {_att}'s fastboard to "  &f5. %{ikonkakarta::%{_x5}%}%%{kartacolor::%{_x5}%}%%5th element of createTop("dmgdealt", 5, "[P]")% &f%5th element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x5}%}%DMG | &f%{dps::%{_x5}%}% %{kartacolor::%{_x5}%}%DPS"
-					set line 10 of {_att}'s fastboard to ""
-					set line 11 of {_att}'s fastboard to " &fCombat ends in: %{_kolorek}%%metadata value "ECEngaged" of {_att}% seconds     "
-					set line 12 of {_att}'s fastboard to ""
+			if metadata value "IslandExpeditionInstance" of {_att} is not set:
+				if title of {_att}'s fastboard is set:
+					if {meter::%{_att}%} is not "healing":
+						set {_kolorek} to KolorekScoreboard({_att})
+						set title of {_att}'s fastboard to "&f&l«-───▬ %{_kolorek}%&lEC &f&l▬───-»"
+						set line 2 of {_att}'s fastboard to ""
+						set line 3 of {_att}'s fastboard to " &fIn combat for: %{_kolorek}%%{seconds::%{_att}%}% seconds     "
+						set line 4 of {_att}'s fastboard to " "
+						set {_x} to first element of createTop("dmgdealt", 5, "[P]")
+						set {_x2} to 2nd element of createTop("dmgdealt", 5, "[P]")
+						set {_x3} to 3rd element of createTop("dmgdealt", 5, "[P]")
+						set {_x4} to 4th element of createTop("dmgdealt", 5, "[P]")
+						set {_x5} to 5th element of createTop("dmgdealt", 5, "[P]")
+						if {dmgdealt::%{_x}%} > 0:
+							set line 5 of {_att}'s fastboard to "  &f1. &f%{ikonkakarta::%{_x}%}%%{kartacolor::%{_x}%}%%first element of createTop("dmgdealt", 5, "[P]")% &f%first element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x}%}%DMG | &f%{dps::%{_x}%}% %{kartacolor::%{_x}%}%DPS"
+						if {dmgdealt::%{_x2}%} > 0:
+							set line 6 of {_att}'s fastboard to "  &f2. &f%{ikonkakarta::%{_x2}%}%%{kartacolor::%{_x2}%}%%2nd element of createTop("dmgdealt", 5, "[P]")% &f%2nd element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x2}%}%DMG | &f%{dps::%{_x2}%}% %{kartacolor::%{_x2}%}%DPS"
+						if {dmgdealt::%{_x3}%} > 0:
+							set line 7 of {_att}'s fastboard to "  &f3. &f%{ikonkakarta::%{_x3}%}%%{kartacolor::%{_x3}%}%%3rd element of createTop("dmgdealt", 5, "[P]")% &f%3rd element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x3}%}%DMG | &f%{dps::%{_x3}%}% %{kartacolor::%{_x3}%}%DPS"
+						if {dmgdealt::%{_x4}%} > 0:
+							set line 8 of {_att}'s fastboard to "  &f4. %{ikonkakarta::%{_x4}%}%%{kartacolor::%{_x4}%}%%4th element of createTop("dmgdealt", 5, "[P]")% &f%4th element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x4}%}%DMG | &f%{dps::%{_x4}%}% %{kartacolor::%{_x4}%}%DPS"
+						if {dmgdealt::%{_x5}%} > 0:
+							set line 9 of {_att}'s fastboard to "  &f5. %{ikonkakarta::%{_x5}%}%%{kartacolor::%{_x5}%}%%5th element of createTop("dmgdealt", 5, "[P]")% &f%5th element of createTop("dmgdealt", 5, "[V]")% %{kartacolor::%{_x5}%}%DMG | &f%{dps::%{_x5}%}% %{kartacolor::%{_x5}%}%DPS"
+						set line 10 of {_att}'s fastboard to ""
+						set line 11 of {_att}'s fastboard to " &fCombat ends in: %{_kolorek}%%metadata value "ECEngaged" of {_att}% seconds     "
+						set line 12 of {_att}'s fastboard to ""
 	if metadata value "ECEngaged" of {_att} is not set:
 		if metadata value "DungeonInstance" of {_att} is not set:
-			clear {_att}'s fastboard
-			UpdateScoreboard({_att})
+			if metadata value "IslandExpeditionInstance" of {_att} is not set:
+				clear {_att}'s fastboard
+				UpdateScoreboard({_att})
 	#while metadata value "ECEngaged" of {_att} = true:
 		#add 1 to {seconds::%{_att}%}
 		#wait 1 second
