@@ -50,8 +50,9 @@ function ShootingStar(p: player):
 
 	loop all living entities in radius 30 around {_p}:
 		if boolean tag "ECMob" of custom nbt of loop-entity is set:
-			if metadata value "RecentlyDamagedCresselia%{_p}%" of loop-entity is set:
-				add loop-entity to {_enti::*}
+			if metadata value "ECPulled" of loop-entity is set:
+				if metadata value "RecentlyDamagedCresselia%{_p}%" of loop-entity is set:
+					add loop-entity to {_enti::*}
 	
 	if size of {_enti::*} > 0:
 		set {_target} to a random element of {_enti::*}
@@ -428,8 +429,6 @@ on rightclick:
 					set {_cd} to 3 minutes
 					if boolean tag "Constellation;The Eternal Moon" of custom nbt of {karta::%player%} is set:
 						set {_cd} to {_cd} - 30 seconds
-						set {_lastDamagedTarget} to (metadata value "MostRecentlyDamagedEnemy" of player)
-						FullMoon(player, {_lastDamagedTarget}, 0.7)
 
 					create cooldown "CelestialAlignment%player%" for {_cd}
 					play sound "skill.cresselia.celestial_alignment_cast" with volume 4 and pitch 1 at player
@@ -446,9 +445,6 @@ on rightclick:
 					else:
 						set {astralpower::%player%} to {_astralPowerCap}
 					AstralPowerUpdate(player)
-					
-					if string tag "Talents;Row 1" of custom nbt of {karta::%player%} = "Solstice":
-						Solstice(player)
 
 			else:
 				if {tekstcd::%player%} = true:
@@ -791,6 +787,7 @@ function CresseliaRecentlyDamaged(p: player, e: entity):
 			if 0 seconds >= metadata value "RecentlyDamagedCresselia%{_p}%" of {_e}:
 				clear metadata value "RecentlyDamagedCresselia%{_p}%" of {_e}
 				stop loop
+		clear metadata value "RecentlyDamagedCresselia%{_p}%" of {_e}
 	else:
 		set metadata value "RecentlyDamagedCresselia%{_p}%" of {_e} to 20 seconds
 
@@ -917,6 +914,14 @@ function UmbralInspiration(p: player):
 		set metadata value "UmbralInspiration" of {_p} to 6 seconds
 
 function CelestialAlignment(p: player, duration: timespan):
+	if string tag "Talents;Row 1" of custom nbt of {karta::%{_p}%} = "Solstice":
+		Solstice({_p})
+	if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Touch the Cosmos":
+		Starfall({_p}, 4)
+	if boolean tag "Constellation;The Eternal Moon" of custom nbt of {karta::%{_p}%} is set:
+		set {_lastDamagedTarget} to (metadata value "MostRecentlyDamagedEnemy" of {_p})
+		FullMoon({_p}, {_lastDamagedTarget}, 0.7)
+
 	if metadata value "CelestialAlignment" of {_p} is not set:
 		set metadata value "CelestialAlignment" of {_p} to {_duration}
 		add 150 to {criticalhit::%{_p}%}
@@ -940,11 +945,6 @@ function CelestialAlignment(p: player, duration: timespan):
 		set {_timeRemaining} to 0 seconds if {_timeRemaining} is not set
 		add {_duration} to {_timeRemaining}
 		set metadata value "CelestialAlignment" of {_p} to {_duration}
-		Solstice({_p})
-		set {_lastDamagedTarget} to (metadata value "MostRecentlyDamagedEnemy" of {_p})
-		FullMoon({_p}, {_lastDamagedTarget}, 0.7)
-		if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Touch the Cosmos":
-			Starfall({_p}, 4)
 
 function StellarDrift(p: player, duration: timespan):
 	if metadata value "StellarDrift" of {_p} is not set:
