@@ -180,6 +180,16 @@ function AstralPowerUpdate(p: player):
 			set {_message} to "%{_message}% &f|  <##6a5e9e>CA: &f%{_remainingCADuration}%"
 		send action bar {_message} to {_p}
 
+function AstralPowerAdd(p: player, astralPower: number):
+	if string tag "Talents;Row 2" of custom nbt of {karta::%{_p}%} = "Astral Communion":
+		set {_astralPowerCap} to 120
+	else:
+		set {_astralPowerCap} to 100
+	if {astralpower::%{_p}%} + {_astralPower} <= {_astralPowerCap}:
+		add {_astralPower} to {astralpower::%{_p}%}
+	else:
+		set {astralpower::%{_p}%} to {_astralPowerCap}
+
 on rightclick:
 	if player's tool is magenta dye:
 		if boolean tag "Starsurge" of custom nbt of player's tool is set:
@@ -365,7 +375,6 @@ on rightclick:
 									set metadata value "casting" of player to true
 									if metadata value "channeling" of player is set:
 										clear metadata value "channeling" of player
-									set metadata value "lastspell" of player to player's tool's name
 									set metadata value "cast" of player to {_casttime}
 									while metadata value "casting" of player = true:
 										if metadata value "cast" of player is not set:
@@ -424,86 +433,76 @@ on rightclick:
 				play sound "block.glass.break" with volume 3 and pitch 0 to player
 	else if player's tool is light blue dye:
 		if boolean tag "Celestial Alignment" of custom nbt of player's tool is set:
-			if cooldown "CelestialAlignment%player%" is finished:
+			if cooldown "Celestial Alignment%player%" is finished:
 				if metadata value "casting" of player is not set:
 					set {_cd} to 3 minutes
 					if boolean tag "Constellation;The Eternal Moon" of custom nbt of {karta::%player%} is set:
 						set {_cd} to {_cd} - 30 seconds
+					create cooldown "Celestial Alignment%player%" for {_cd}
+					set the cooldown of player's held item for player to {_cd}
 
-					create cooldown "CelestialAlignment%player%" for {_cd}
 					play sound "skill.cresselia.celestial_alignment_cast" with volume 4 and pitch 1 at player
 					AbilityUse(player, "Celestial Alignment")
 					CelestialAlignment(player, 20 seconds)
 
 					set {_astralPower} to 40
-					if string tag "Talents;Row 2" of custom nbt of {karta::%player%} = "Astral Communion":
-						set {_astralPowerCap} to 120
-					else:
-						set {_astralPowerCap} to 100
-					if {astralpower::%player%} + {_astralPower} <= {_astralPowerCap}:
-						add {_astralPower} to {astralpower::%player%}
-					else:
-						set {astralpower::%player%} to {_astralPowerCap}
+
+					AstralPowerAdd(player, {_astralPower})
 					AstralPowerUpdate(player)
 
 			else:
 				if {tekstcd::%player%} = true:
-					set {_cdd} to cooldown "CelestialAlignment%player%"
+					set {_cdd} to cooldown "Celestial Alignment%player%"
 					send "<##6a5e9e>You must wait &f%{_cdd}%<##6a5e9e> to use this ability." to player
 				stop
+
 	else if player's tool is blue dye:
 		if boolean tag "Innervate" of custom nbt of player's tool is set:
 			if {kartaname::%player%} = "Cresselia":
-				if cooldown "innervate%player%" is finished:
+				if cooldown "Innervate%player%" is finished:
 					if CanUseAbility(player) != false:
-						set {_id} to line 19 of lore of {karta::%player%}
-						set {_pospiech} to Haste(player)
-						set {_cd} to "%180/{_pospiech}% seconds" parsed as timespan
-						set {_target} to target player of player
-						if {_target} is set:
-							create cooldown "innervate%player%" for {_cd}
-							set {_lastusedability} to metadata value "lastusedability" of {_target}
-							set {_cdreduction} to 40 seconds
-							if {_lastusedability} = "Icy Veins":
-								if {icyveins::use::%{_target}%} > {_cdreduction}:
-									remove {_cdreduction} from {icyveins::use::%{_target}%}
-									set {icyveins::cooldown::%{_target}%} to difference between {icyveins::use::%{_target}%} and now
-								else:
-									remove {icyveins::use::%{_target}%} from {icyveins::use::%{_target}%}
-									set {icyveins::cooldown::%{_target}%} to difference between {icyveins::use::%{_target}%} and now
-							else if {_lastusedability} = "Rain of Lava":
-								if cooldown "wildfire%{_target}%" > {_cdreduction}:
-									remove {_cdreduction} from cooldown "wildfire%{_target}%"
-								else:
-									set {_cdreduction} to cooldown "wildfire%{_target}%"
-									remove {_cdreduction} from cooldown "wildfire%{_target}%"
+						set {_cd} to 3 minutes
+						create cooldown "Innervate%player%" for {_cd}
+						set the cooldown of player's held item for player to {_cd}
+
+						set {_target} to FriendlyTarget(player, 100, false, true)
+						AbilityUse(player, "Innervate")
+						if {_target} != player:
+							set {_cdReduction} to 40 seconds
+							set {_lastusedability} to metadata value "lastspell" of {_target}
+							if cooldown "%{_cooldown}%%{_target}%" is not finished:
+								remove {_cdReduction} from cooldown "%{_cooldown}%%{_target}%"
+								send "&f Innervate <##6a5e9e>lowered the cooldown of your &f%{_lastusedability}% <##6a5e9e>by &f %{_cdreduction}%<##6a5e9e>!" to {_target}
+								play sound "skill.cresselia.innervate_cast" with volume 2 and pitch 1 to {_target}
+								play sound "block.beacon.power_select" with volume 2 and pitch 2 to {_target}
+								loop all items in the inventory of {_target}:
+									if boolean tag {_lastusedability} of custom nbt of loop-item is set:
+										set the cooldown of loop-item for {_target} to cooldown "%{_cooldown}%%{_target}%"
 							else:
-								set {_ability} to {_lastusedability} in lowercase
-								replace all " " in {_ability} with ""
-								if {_ability} = "stopionalawa":
-									set {_ability} to "moltenlava"
-								else if {_ability} = "wybuchlawy":
-									set {_ability} to "lavaburst"
-								else if {_ability} = "deszczlawy":
-									set {_ability} to "rainoflava"
-								else if {_ability} = "gwiezdnepobudzenie":
-									set {_ability} to "innervate"
-								else if {_ability} = "płomiennabariera":
-									set {_ability} to "flamebarrier"
-								else if {_ability} = "nocnecięcie":
-									set {_ability} to "nightslash"
-								else if {_ability} = "kulablaskuksiężyca":
-									set {_ability} to "moonlightorb"
-								if cooldown "%{_ability}%%{_target}%" > {_cdreduction}:
-									remove {_cdreduction} from cooldown "%{_ability}%%{_target}%"
-								else:
-									set {_cdreduction} to cooldown "%{_ability}%%{_target}%"
-									remove {_cdreduction} from cooldown "%{_ability}%%{_target}%"
-							send "<##6a5e9e>Innervate lowered the cooldown of your %{_lastusedability}% <##6a5e9e>by %{_cdreduction}% seconds!" to {_target}
+								set {_useOnSelf} to true
+						else:
+							set {_useOnSelf} to true
+
+						if {_useOnSelf} = true:
+							if cooldown "Celestial Alignment%player%" is not finished:
+								set {_cdReduction} to 30 seconds
+								remove {_cdReduction} from cooldown "Celestial Alignment%player%"
+							send "&f Innervate <##6a5e9e>lowered the cooldown of your &fCelestial Alignment <##6a5e9e>by &f %{_cdreduction}%<##6a5e9e>!" to {_target}
+							loop all items in the inventory of player:
+								if boolean tag "Celestial Alignment" of custom nbt of loop-item is set:
+									set the cooldown of loop-item for player to cooldown "Celestial Alignment%player%"
+							
+						play sound "skill.cresselia.innervate_cast" with volume 2 and pitch 1 to player
+						play sound "block.beacon.power_select" with volume 2 and pitch 2 to player	
+
+						set {_astralPower} to 100
+
+						AstralPowerAdd(player, {_astralPower})
+						AstralPowerUpdate(player)
 				else: 
 					cancel event
 					if {tekstcd::%player%} = true:
-						set {_cdd} to cooldown "innervate%player%"
+						set {_cdd} to cooldown "Innervate%player%"
 						send "<##6a5e9e>You must wait &f%{_cdd}%<##6a5e9e> to use this ability." to player
 					stop
 			else:
@@ -634,7 +633,6 @@ function Starfall(p: player, effectiveness: number):
 					add loop-entity to {_enemies::*}
 
 	if {_enemies::*} is set:
-		broadcast "Yuh"
 		set {_duration} to now
 		wait 1 tick
 		StellarDrift({_p}, {_starfallDuration})
