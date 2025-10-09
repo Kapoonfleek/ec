@@ -329,69 +329,8 @@ on rightclick:
 								AstralPowerUpdate(player)
 								AbilityUse(player, "Starfall")
 								play sound "skill.cresselia.starfall" with volume 5 and pitch 1 at player
+								Starfall(player, 1)
 
-								if string tag "Talents;Row 5" of custom nbt of {karta::%player%} = "Primordial Arcanic Pulsar":
-									PrimordialArcanicPulsar(player, {_astralPowerCost})
-
-								set {_starfallDuration} to 8 seconds
-								if string tag "Talents;Row 4" of custom nbt of {karta::%player%} = "Hail of Stars":
-									set {_pospiech} to Haste(player, 3.6)
-									add 3 seconds to {_starfallDuration}
-								else:
-									set {_pospiech} to Haste(player)
-								if boolean tag "Constellation;Stellar Amplification" of custom nbt of {karta::%player%} is set:
-									add 3 seconds to {_starfallDuration}
-								set {_wait} to "%1/{_pospiech}% seconds" parsed as timespan
-
-								if boolean tag "Constellation;Starlord" of custom nbt of {karta::%player%} is set:
-									Starlord(player)
-
-								if string tag "Talents;Row 3" of custom nbt of {karta::%player%} = "Aetherial Kindling":
-									if metadata value "CelestialAlignment" of player is set:
-										if metadata value "AetherialKindlingExtension" of player is not set:
-											set metadata value "AetherialKindlingExtension" of player to 0
-										if metadata value "AetherialKindlingExtension" of player < 27:
-											add 3 to metadata value "AetherialKindlingExtension" of player
-											add 3 seconds to metadata value "CelestialAlignment" of player
-
-								else if string tag "Talents;Row 3" of custom nbt of {karta::%player%} = "Starweaver":
-									chance of 40%:
-										set metadata value "Starweaver" of player to "Starsurge"
-										loop all items in the inventory of player:
-											if boolean tag "Starsurge" of custom nbt of loop-item is set:
-												set item amount of loop-item to 2
-
-								loop all living entities in radius 60 around the player:
-									if loop-entity is not a player:
-										if boolean tag "ECMob" of custom nbt of loop-entity is set:
-											add loop-entity to {_enemies::*}
-								if {_enemies::*} is set:
-									set {_duration} to now
-									wait 1 tick
-									StellarDrift(player, {_starfallDuration})
-									while (difference between {_duration} and now) < {_starfallDuration}:
-										#15.08.2024 -> Maybe increase the amount of stars falling based on amount enemies in the list?
-										#starfall would scale with the amount of enemies dynamically
-										set {_randomEnemy} to a random element of {_enemies::*}
-										set {_randomIncrease} to a random number between 8 and 35
-										set {_loc} to location of {_randomEnemy}
-										set y-coordinate of {_loc} to (y-coordinate of {_randomEnemy} + {_randomIncrease})
-
-										spawn an armor stand at {_loc} with nbt from "{Invisible:1b,Invulnerable:1b,NoGravity:1b,Pose:{Head:[180.0f,0.0f,0.0f]}}"
-										set {_starfallStar} to last spawned armor stand
-										set helmet of {_starfallStar} to stick named "StarfallModel"
-										StarfallStarKill({_starfallStar})
-										StarfallStarTravel(player, {_starfallStar}, {_randomEnemy}, {_starfallDuration}, {_pospiech})
-
-										spawn an armor stand at location 0.5 above {_loc} with nbt from "{Invulnerable:1b,NoGravity:1b}"
-										set {_starfallParticle} to last spawned armor stand
-										set name of {_starfallParticle} to "StarfallAnim"
-										StarfallStarTravel(player, {_starfallParticle}, {_randomEnemy}, {_starfallDuration}, {_pospiech}, true)
-										StarfallStarKill({_starfallParticle})
-
-										wait {_wait}
-										stop loop if (difference between {_duration} and now) >= {_starfallDuration}
-										#WSZYSCY LOSOWO
 							else:
 								if {tekstcd::%player%} = true:
 									send action bar "<##6a5e9e>You must have at least %{_astralPowerCost}% Astral Power to use this ability." to player
@@ -659,6 +598,71 @@ function StarfireVisual(p: player, target: entity, mainTarget: boolean = false):
 		if loop-number > 14:
 			draw 2 dust using dustOption(rgb(145, 164, 255), 1) at {_l} ~ {_v} with offset vector(0.6, 0.25, 0.6) with extra 0.06
 			draw 2 dust using dustOption(rgb(231, 145, 255), 1) at {_l} ~ {_v} with offset vector(0.6, 0.25, 0.6) with extra 0.06
+
+function Starfall(p: player, effectiveness: number):
+	if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Primordial Arcanic Pulsar":
+		PrimordialArcanicPulsar({_p}, {_astralPowerCost})
+
+	set {_starfallDuration} to 8 seconds
+	if string tag "Talents;Row 4" of custom nbt of {karta::%{_p}%} = "Hail of Stars":
+		set {_pospiech} to Haste({_p}, 3.6)
+		add 3 seconds to {_starfallDuration}
+	else:
+		set {_pospiech} to Haste({_p})
+	if boolean tag "Constellation;Stellar Amplification" of custom nbt of {karta::%{_p}%} is set:
+		add 3 seconds to {_starfallDuration}
+	set {_wait} to "%1/{_pospiech}% seconds" parsed as timespan
+
+	if boolean tag "Constellation;Starlord" of custom nbt of {karta::%{_p}%} is set:
+		Starlord({_p})
+
+	if string tag "Talents;Row 3" of custom nbt of {karta::%{_p}%} = "Aetherial Kindling":
+		if metadata value "CelestialAlignment" of {_p} is set:
+			if metadata value "AetherialKindlingExtension" of {_p} is not set:
+				set metadata value "AetherialKindlingExtension" of {_p} to 0
+			if metadata value "AetherialKindlingExtension" of {_p} < 27:
+				add 3 to metadata value "AetherialKindlingExtension" of {_p}
+				add 3 seconds to metadata value "CelestialAlignment" of {_p}
+
+	else if string tag "Talents;Row 3" of custom nbt of {karta::%{_p}%} = "Starweaver":
+		chance of 40%:
+			set metadata value "Starweaver" of {_p} to "Starsurge"
+			loop all items in the inventory of {_p}:
+				if boolean tag "Starsurge" of custom nbt of loop-item is set:
+					set item amount of loop-item to 2
+
+	loop all living entities in radius 60 around {_p}:
+		if loop-entity is not a player:
+			if boolean tag "ECMob" of custom nbt of loop-entity is set:
+				add loop-entity to {_enemies::*}
+
+	if {_enemies::*} is set:
+		set {_duration} to now
+		wait 1 tick
+		StellarDrift({_p}, {_starfallDuration})
+		while (difference between {_duration} and now) < {_starfallDuration}:
+			#15.08.2024 -> Maybe increase the amount of stars falling based on amount enemies in the list?
+			#starfall would scale with the amount of enemies dynamically
+			set {_randomEnemy} to a random element of {_enemies::*}
+			set {_randomIncrease} to a random number between 8 and 35
+			set {_loc} to location of {_randomEnemy}
+			set y-coordinate of {_loc} to (y-coordinate of {_randomEnemy} + {_randomIncrease})
+
+			spawn an armor stand at {_loc} with nbt from "{Invisible:1b,Invulnerable:1b,NoGravity:1b,Pose:{Head:[180.0f,0.0f,0.0f]}}"
+			set {_starfallStar} to last spawned armor stand
+			set helmet of {_starfallStar} to stick named "StarfallModel"
+			StarfallStarKill({_starfallStar})
+			StarfallStarTravel({_p}, {_starfallStar}, {_randomEnemy}, {_starfallDuration}, {_pospiech}, {_effectiveness})
+
+			spawn an armor stand at location 0.5 above {_loc} with nbt from "{Invulnerable:1b,NoGravity:1b}"
+			set {_starfallParticle} to last spawned armor stand
+			set name of {_starfallParticle} to "StarfallAnim"
+			StarfallStarTravel({_p}, {_starfallParticle}, {_randomEnemy}, {_starfallDuration}, {_pospiech}, {_effectiveness}, true)
+			StarfallStarKill({_starfallParticle})
+
+			wait {_wait}
+			stop loop if (difference between {_duration} and now) >= {_starfallDuration}
+			#WSZYSCY LOSOWO
 		
 function StarsurgeBonus(p: player, target: entity):
 	if metadata value "StarsurgeBonus%{_p}%" of {_target} = true:
@@ -717,7 +721,7 @@ function CresseliaRandomOffset() :: numbers:
 	set {_offset::*} to {_offsetX} and {_offsetY} and {_offsetZ}
 	return {_offset::*}
 
-function StarfallStarTravel(p: player, e: entity, target: entity, duration: timespan, haste: number, particle: boolean = false):
+function StarfallStarTravel(p: player, e: entity, target: entity, duration: timespan, haste: number, effectiveness: number, particle: boolean = false):
 	set {_y} to 0
 	set {_locStar} to location of {_e}
 	set {_count} to 0
@@ -748,7 +752,7 @@ function StarfallStarTravel(p: player, e: entity, target: entity, duration: time
 		set {_enemies::*} to LoopEntitiesAroundTarget({_target}, 3, true)
 		loop {_enemies::*}:
 			set {_crit} to 0 + ({criticalhit::%{_p}%}/10)
-			set {_damage} to (1 + (({damage::%{_p}%}/63) + ({versatility::%{_p}%}/189) + {primarystat::%{_p}%}/31.5))
+			set {_damage} to (1 + (({damage::%{_p}%}/63) + ({versatility::%{_p}%}/189) + {primarystat::%{_p}%}/31.5)) * {_effectiveness}
 			if metadata value "CelestialAlignment" of {_p} is set:
 				set {_damage} to {_damage}*1.15
 				add 15 to {_crit}
@@ -937,6 +941,8 @@ function CelestialAlignment(p: player, duration: timespan):
 		Solstice({_p})
 		set {_lastDamagedTarget} to (metadata value "MostRecentlyDamagedEnemy" of {_p})
 		FullMoon({_p}, {_lastDamagedTarget}, 0.7)
+		if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Touch the Cosmos":
+			Starfall({_p}, 4)
 
 function StellarDrift(p: player, duration: timespan):
 	if metadata value "StellarDrift" of {_p} is not set:
