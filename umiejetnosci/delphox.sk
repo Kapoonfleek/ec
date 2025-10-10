@@ -38,9 +38,7 @@ on rightclick:
 					if cooldown "Flamethrower%player%-%uuid of {_target}%" is finished:
 
 						Blaze(player, {_target})
-
 						Flamethrower(player, {_target})
-
 						AbilityUse(player, "Flamethrower")
 
 					else:
@@ -75,7 +73,6 @@ on rightclick:
 						set {_lore} to "%{_lore}%%nl% %nl%&f <##eb6146>Flaming Finale%nl%<##fa4420>Deals &f%{_flamingFinaleDamage}% <##ff4d00>Fire <##fa4420>damage to all affected targets%nl%<##fa4420>and detonates all &f <##f2636a>Infernos <##fa4420>for &f160%% <##fa4420>of the%nl%<##fa4420>normal damage."
 						
 					LoreUpdate(player, "Heat Snap", {_lore})
-					
 					HeatSnap(player)
 
 				else:
@@ -154,8 +151,15 @@ on sneak toggle:
 
 function InfernoParticles(target: entity):
 	while metadata value "InfernoTarget" of {_target} is true:
-		set {_shape} to sphere with radius 1
-		draw {_shape} at block above {_target}
+		set {_shape} to a sphere with radius 1
+		if string tag "Variant" of custom nbt of {karta::%{_p}%} = "Winter Delight":
+			set particle of {_shape} to snowflake
+			draw an animation of the shape {_shape} 0.5 above {_target}'s location over 0.5 seconds
+			set {_shapeIce} to a sphere with radius 1
+			set particle of {_shapeIce} to item particle using blue ice
+			draw an animation of the shape {_shapeIce} 0.5 above {_target}'s location over 0.5 seconds
+		else:
+			draw an animation of the shape {_shape} 0.5 above {_target}'s location over 0.5 seconds
 		wait 1 second
 
 function FlameBarrierInfo(p: player, duration: timespan):
@@ -172,10 +176,10 @@ function FlameBarrierInfo(p: player, duration: timespan):
 function Blaze(p: player, target: entity, heatSnap: boolean = false):
 	set {_blaze} to metadata value "Blaze" of {_p}
 	add 1 to {_blaze}
-	if string tag "Talents;Row 1" of nbt of {karta::%{_p}%} = "Pyrotechnics":
+	if string tag "Talents;Row 1" of custom nbt of {karta::%{_p}%} = "Pyrotechnics":
 		chance of 20%:
 			add 1 to {_blaze}
-	if string tag "Talents;Row 4" of nbt of {karta::%{_p}%} = "Flame Cascade":
+	if string tag "Talents;Row 4" of custom nbt of {karta::%{_p}%} = "Flame Cascade":
 		if {_heatSnap} is true:
 			set {_flameCascade} to true
 
@@ -201,7 +205,7 @@ function Blaze(p: player, target: entity, heatSnap: boolean = false):
 		set {_loopRadius} to 4 + ({crowdcontrol::%{_p}%}/50)
 		set {_entities::*} to LoopEntitiesAroundTarget({_target}, {_loopRadius}, true)
 
-		if string tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Firespread":
+		if string tag "Talents;Row 3" of custom nbt of {karta::%{_p}%} = "Firespread":
 			add 2 to {_targetsAffected}
 			set {_targetsHit} to size of {_entities::*}
 			if {_targetsHit} > 5:
@@ -217,11 +221,11 @@ function Blaze(p: player, target: entity, heatSnap: boolean = false):
 				set {_dmgBlaze} to {_dmgBlaze} * {_firespread}
 			if {_flameCascade} is set:
 				set {_dmgBlaze} to {_dmgBlaze} * 1.7
-			if string tag "Talents;Row 5" of nbt of {karta::%{_p}%} = "Wildfire":
+			if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Wildfire":
 				set {_wildfireDamageAmp} to 1 + metadata value "WildfireDelphox" of {_p}/100
 				set {_dmgBlaze} to {_dmgBlaze} * {_wildfireDamageAmp}
 
-			set {_dmgBlazeBeforeCrit}
+			set {_dmgBlazeBeforeCrit} to {_dmgBlaze}
 			set {_dmgBlaze} to Crit({_p}, loop-value, {_crit}, {_dmgBlaze}, {_mastery})
 			if {_dmgBlaze} != {_dmgBlazeBeforeCrit}:
 				Kindling({_p})
@@ -251,10 +255,10 @@ function HeatSnap(p: player):
 		Inferno({_p}, loop-entity)
 
 function Kindling(p: player):
-	if string tag "Talents;Row 2" of nbt of {karta::%{_p}%} = "Kindling":
+	if string tag "Talents;Row 2" of custom nbt of {karta::%{_p}%} = "Kindling":
 		remove 1 second from cooldown "Heat Snap%{_p}%"
 		loop all items in the inventory of {_p}:
-			if tag "HeatSnap" of nbt of loop-item is set:
+			if boolean tag "Heat Snap" of custom nbt of loop-item is set:
 				set the cooldown of loop-item for {_p} to cooldown "Heat Snap%{_p}%"
 				stop loop
 
@@ -262,7 +266,7 @@ function Flamethrower(p: player, target: entity):
 	set {_haste} to Haste({_p}) 
 	set {_cd} to 14/{_haste}
 	set {_hasteModifier} to 1/{_haste}
-	if string tag "Talents;Row 2" of nbt of {karta::%{_p}%} = "Flame Accelerant":
+	if string tag "Talents;Row 2" of custom nbt of {karta::%{_p}%} = "Flame Accelerant":
 		if metadata value "DelphoxFlamethrowerUsed" of {_p} is not set:
 			FlameAccelerant({_p}, {_cd})
 			set {_cd} to {_cd}*0.5
@@ -274,7 +278,7 @@ function Flamethrower(p: player, target: entity):
 	set {_damage} to 1.25 + ({versatility::%{_p}%}/360) + ({damage::%{_p}%}/120) + {primarystat::%{_p}%}/60
 	set {_dmgBlaze} to 3 + ({versatility::%{_p}%}/180) + ({damage::%{_p}%}/60) + {primarystat::%{_p}%}/30
 
-	if string tag "Talents;Row 5" of nbt of {karta::%{_p}%} = "Hot Spree":
+	if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Hot Spree":
 		set {_hotSpreeCount} to metadata value "HotSpree" of {_p}
 		add 1 to {_hotSpreeCount}
 		if {_hotSpreeCount} = 3:
@@ -288,7 +292,7 @@ function Flamethrower(p: player, target: entity):
 	if {_hotSpree} != true:
 		create cooldown "Flamethrower%{_p}%-%uuid of {_target}%" for {_cd}
 
-	if string tag "Talents;Row 5" of nbt of {karta::%{_p}%} = "Hot Spree":
+	if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Hot Spree":
 		set {_damage} to {_damage}*1.6
 
 	set {_baseDuration} to 4
@@ -321,10 +325,10 @@ function Flamethrower(p: player, target: entity):
 				remove 1 from {_ticks}
 				set metadata value "FlamethrowerTicks%{_p}%" of {_target} to {_ticks}
 
-				if string tag "Talents;Row 5" of nbt of {karta::%{_p}%} = "Hot Spree":
+				if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Hot Spree":
 					set {_damage} to {_damage}*1.6
 
-				if string tag "Talents;Row 1" of nbt of {karta::%{_p}%} = "Firestarter":
+				if string tag "Talents;Row 1" of custom nbt of {karta::%{_p}%} = "Firestarter":
 					if health of {_target} >= (0.9 * max health of {_target}):
 						set {_crit} to 100
 						set {_damage} to {_damage} * 1.5
@@ -336,7 +340,7 @@ function Flamethrower(p: player, target: entity):
 						set metadata value "FlameAccelerantTicks" of {_p} to {_flameAccelerantTicks}
 						set {_damage} to {_damage}*2.2
 
-				if string tag "Talents;Row 3" of nbt of {karta::%{_p}%} = "Oxidizing Flame":
+				if string tag "Talents;Row 3" of custom nbt of {karta::%{_p}%} = "Oxidizing Flame":
 					chance of 20%:	
 						play sound "entity.creeper.primed" with volume 1 and pitch 2 at {_target}
 						set {_damage} to {_damage}*1.3
@@ -347,20 +351,19 @@ function Flamethrower(p: player, target: entity):
 						remove 1 from {_hotSpreeTicks}
 						set metadata value "HotSpreeTicks" of {_p} to {_hotSpreeTicks}
 						set {_damage} to {_damage}*1.5
-						broadcast "Yes"
 
 				set {_damageBeforeCrit} to {_damage}
 				set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage}, {_mastery})
 				if {_damage} != {_damageBeforeCrit}:
 					Kindling({_p})
 
-				if string tag "Talents;Row 5" of nbt of {karta::%{_p}%} = "Wildfire":
+				if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Wildfire":
 					if metadata value "WildfireDelphox" of {_p} is not set:
 						set metadata value "WildfireDelphox" of {_p} to 0
 					if metadata value "WildfireDelphox" of {_p} < 600:
 						add 1 to metadata value "WildfireDelphox" of {_p}
 				
-				if string tag "Talents;Row 4" of nbt of {karta::%{_p}%} = "Will-o-Wisp":
+				if string tag "Talents;Row 4" of custom nbt of {karta::%{_p}%} = "Will-o-Wisp":
 					chance of 10%:	
 						WilloWisp({_p}, {_target})
 
@@ -440,6 +443,12 @@ function InfernoDetonate(p: player, target: entity):
 	play sound "entity.dragon_fireball.explode" with volume 1 and pitch 1 at {_p}
 	if canBeCCed({_target}) = true:
 		push {_target} upwards with velocity {_knock}
+
+	if string tag "Talents;Row 1" of custom nbt of {karta::%{_p}%} = "Hellcaller":
+		if metadata value "HellcallerStacks" of {_p} is set:
+			set {_hellcallerStacks} to metadata value "HellcallerStacks" of {_p}
+			set {_damage} to {_damage} * (1 + (0.125*{_hellcallerStacks}))
+		Hellcaller({_p})
 
 	set {_damageBeforeCrit} to {_damage}
 	set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage}, {_mastery})
@@ -537,31 +546,27 @@ function WilloWispVisual(p: player, target: entity):
 	set {_loc} to location 1.5 above {_loc}
 	set {_yaw} to yaw of {_p} - 180
 	set yaw of {_loc} to {_yaw}
-	spawn armor stand at {_loc} with nbt from "{Invulnerable:1b,NoGravity:1b}"
+	spawn armor stand at {_loc} with nbt from "{Invulnerable:1b,NoGravity:1b,Silent:1b}"
 	set name of last spawned armor stand to "willowisp"
 	set {_e} to last spawned armor stand
-	add nbt from "{Rotation:[%{_yaw}%.0f,0.0f]}" to nbt of {_e}
+	add nbt from "{Rotation:[%{_yaw}%f,0.0f]}" to nbt of {_e}
 	WillowispVisualDelete({_e})
 
 function WillowispVisualDelete(e: entity):
 	wait 3 seconds
 	kill {_e}
 
-function BlasterMaster(p: player):
-	if {blastermasterstacks::%{_p}%} > 0:
-		if {_p}'s chestplate is golden nugget:
-			if name of {_p}'s chestplate contains "Serce Earthcrafta" or "Heart of Earthcraft":
-				if line 30 of lore of {_p}'s chestplate contains {_p}'s name:
-					set {_loreheart::*} to lore of {_p}'s chestplate
-		#BLASTERMASTER
-		loop {_loreheart::*}:
-			loop-value contains "Blaster Master":
-				add (20*{trait::Delphox::Blaster Master::%{_p}%}) to {_blastermaster}
-		wait 3 seconds
-		remove 1 from {blastermasterstacks::%{_p}%}
-		remove {_blastermaster} from {mastery::%{_p}%}
-		if 0 >= {blastermasterstacks::%{_p}%}:
-			clear {blastermasterstacks::%{_p}%}
+function Hellcaller(p: player):
+	if metadata value "Hellcaller" of {_p} is not set:
+		set metadata value "Hellcaller" of {_p} to 3 seconds
+		set metadata value "HellcallerStacks" of {_p} to 1
+		while metadata value "Hellcaller" of {_p} > 0 seconds:
+			wait 1 second
+			remove 1 second from metadata value "Hellcaller" of {_p}
+		clear metadata value "Hellcaller" of {_p}
+		clear metadata value "HellcallerStacks" of {_p}
+	else:
+		add 1 to metadata value "HellcallerStacks" of {_p}
 			
 function Pyromaniac(p: player):
 	if {pyromaniacbonus::%{_p}%} is true:
