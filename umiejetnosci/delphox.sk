@@ -218,13 +218,13 @@ function Blaze(p: player, target: entity, heatSnap: boolean = false):
 			if {_flameCascade} is set:
 				set {_dmgBlaze} to {_dmgBlaze} * 1.7
 			if string tag "Talents;Row 5" of nbt of {karta::%{_p}%} = "Wildfire":
-				set {_wildfireDamageAmp} to 1 + {wildfireDelphox::%{_p}%}/100
+				set {_wildfireDamageAmp} to 1 + metadata value "WildfireDelphox" of {_p}/100
 				set {_dmgBlaze} to {_dmgBlaze} * {_wildfireDamageAmp}
 
-			chance of {_crit}%:
-				set {_dmgBlaze} to {_dmgBlaze} * {_mastery}
+			set {_dmgBlazeBeforeCrit}
+			set {_dmgBlaze} to Crit({_p}, loop-value, {_crit}, {_dmgBlaze}, {_mastery})
+			if {_dmgBlaze} != {_dmgBlazeBeforeCrit}:
 				Kindling({_p})
-				CritVisual(loop-value)
 
 			set loop-value's last damage cause to sweep attack
 			set metadata value "LastDamageCause" of loop-value to "<##d74327>Blaze"
@@ -349,16 +349,16 @@ function Flamethrower(p: player, target: entity):
 						set {_damage} to {_damage}*1.5
 						broadcast "Yes"
 
-				chance of {_crit}%:
-					set {_damage} to {_damage} * ({_mastery})
+				set {_damageBeforeCrit} to {_damage}
+				set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage}, {_mastery})
+				if {_damage} != {_damageBeforeCrit}:
 					Kindling({_p})
-					CritVisual({_target})
 
 				if string tag "Talents;Row 5" of nbt of {karta::%{_p}%} = "Wildfire":
-					if {wildfireDelphox::%{_p}%} is not set:
-						set {wildfireDelphox::%{_p}%} to 0
-					if {wildfireDelphox::%{_p}%} < 600:
-						add 1 to {wildfireDelphox::%{_p}%}
+					if metadata value "WildfireDelphox" of {_p} is not set:
+						set metadata value "WildfireDelphox" of {_p} to 0
+					if metadata value "WildfireDelphox" of {_p} < 600:
+						add 1 to metadata value "WildfireDelphox" of {_p}
 				
 				if string tag "Talents;Row 4" of nbt of {karta::%{_p}%} = "Will-o-Wisp":
 					chance of 10%:	
@@ -406,10 +406,10 @@ function Inferno(p: player, target: entity):
 
 			set metadata value "InfernoTarget" of {_target} to true
 
-			chance of {_crit}%:
-				set {_damage} to {_damage} * {_mastery}
+			set {_damageBeforeCrit} to {_damage}
+			set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage}, {_mastery})
+			if {_damage} != {_damageBeforeCrit}:
 				Kindling({_p})
-				CritVisual({_target})
 
 			set {_target}'s last damage cause to sweep attack
 			set metadata value "LastDamageCause" of {_target} to "<##d74327>Inferno"
@@ -441,10 +441,10 @@ function InfernoDetonate(p: player, target: entity):
 	if canBeCCed({_target}) = true:
 		push {_target} upwards with velocity {_knock}
 
-	chance of {_crit}%:
-		set {_damage} to {_damage} * {_mastery}
+	set {_damageBeforeCrit} to {_damage}
+	set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage}, {_mastery})
+	if {_damage} != {_damageBeforeCrit}:
 		Kindling({_p})
-		CritVisual({_target})
 
 	set {_target}'s last damage cause to sweep attack
 	set metadata value "LastDamageCause" of {_target} to "<##d74327>Inferno (Detonate)"
@@ -512,9 +512,7 @@ function WilloWisp(p: player, target: entity):
 	set {_crit} to ({criticalhit::%{_p}%}/10)
 	set {_lore} to "&8Passive Ability%nl%&fNo cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fPASSIVE%nl%&f <##f2636a>Flamethrower <##fa4420>ticks have a &f10%% <##fa4420>chance%nl%<##fa4420>to summon a &f <##eb6146>Will-o-Wisp&7.%nl% %nl%&f <##eb6146>Will-o-Wisp%nl%<##fa4420>Adds an &fadditional tick <##fa4420>of &f <##f2636a>Flamethrower%nl%<##fa4420>to the target and deals an instance of%nl%&f1.25 <##ff4d00>Fire <##fa4420>damage."
 	
-	chance of {_crit}%:
-		set {_damage} to {_damage} * {_mastery}
-		CritVisual({_target})
+	set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage}, {_mastery})
 
 	wait 1 tick
 
