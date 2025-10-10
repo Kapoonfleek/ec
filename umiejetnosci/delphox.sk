@@ -58,19 +58,20 @@ on rightclick:
 		if {kartaname::%player%} = "Delphox":
 			if CanUseAbility(player) != false:
 				if cooldown "Heat Snap%player%" is finished:
-					set {_haste} to Haste(player) 
-					set {_cd} to "%45/{_haste}% seconds" parsed as timespan
+					set {_haste} to Haste(player)
+					set {_lore} to "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown: &8 &f%{_cd}%%nl%&7Use: &fRMB%nl%<##fa4420>Resets the cooldown of &f <##f2636a>Flamethrower <##fa4420>on all%nl%<##fa4420>targets who have recently been affected%nl%<##fa4420>by the ability and immediately <##f2636a>traps them <##fa4420>in%nl%<##fa4420>an &f <##f2636a>Inferno<##fa4420>, all with the snap of a finger."
+					if string tag "Talents;Row 5" of custom nbt of {karta::%player%} = "Flaming Finale":
+						set {_flamingFinaleDamage} to 4 + ({versatility::%{_p}%}/96) + ({damage::%{_p}%}/32)  + ({primarystat::%{_p}%}/16)
+						set {_lore} to "%{_lore}%%nl% %nl%&f <##eb6146>Flaming Finale%nl%<##fa4420>Deals &f%{_flamingFinaleDamage}% <##ff4d00>Fire <##fa4420>damage to all affected targets%nl%<##fa4420>and detonates all &f <##f2636a>Infernos <##fa4420>for &f160%% <##fa4420>of the%nl%<##fa4420>normal damage."
+						set {_cd} to "%115/{_haste}% seconds" parsed as timespan
+					else:
+						set {_cd} to "%45/{_haste}% seconds" parsed as timespan
 
 					create cooldown "Heat Snap%player%" for {_cd}
 					set the cooldown of player's held item for player to {_cd}
 					AbilityUse(player, "Heat Snap")
 
 					play sound "skill.delphox.heatsnap" with volume 3 and pitch 1 at player
-
-					set {_lore} to "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown: &8 &f%{_cd}%%nl%&7Use: &fRMB%nl%<##fa4420>Resets the cooldown of &f <##f2636a>Flamethrower <##fa4420>on all%nl%<##fa4420>targets who have recently been affected%nl%<##fa4420>by the ability and immediately <##f2636a>traps them <##fa4420>in%nl%<##fa4420>an &f <##f2636a>Inferno<##fa4420>, all with the snap of a finger."
-					if string tag "Talents;Row 5" of custom nbt of {karta::%player%} = "Flaming Finale":
-						set {_flamingFinaleDamage} to 4
-						set {_lore} to "%{_lore}%%nl% %nl%&f <##eb6146>Flaming Finale%nl%<##fa4420>Deals &f%{_flamingFinaleDamage}% <##ff4d00>Fire <##fa4420>damage to all affected targets%nl%<##fa4420>and detonates all &f <##f2636a>Infernos <##fa4420>for &f160%% <##fa4420>of the%nl%<##fa4420>normal damage."
 						
 					LoreUpdate(player, "Heat Snap", {_lore})
 					HeatSnap(player)
@@ -92,8 +93,9 @@ on rightclick:
 				set {_target} to Target(player, 100, false)
 				if {_target} is set:
 					if CanUseAbility(player) != false:
-						Inferno(player, {_target})
-						AbilityUse(player, "Inferno")
+						if metadata value "FlamethrowerBurn" of {_target} = true:
+							Inferno(player, {_target})
+							AbilityUse(player, "Inferno")
 			else:
 				send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to player
 				play sound "block.glass.break" with volume 3 and pitch 0 to player
@@ -142,15 +144,16 @@ on rightclick:
 
 on sneak toggle:
 	if {kartaname::%player%} = "Delphox":
-		if CanUseAbility(player) != false:
-			set {_target} to Target(player, 100, false)
-			if {_target} is set:
-				if metadata value "InfernoTarget" of {_target} is true:
-					InfernoDetonate(player, {_target})
-					AbilityUse(player, "Inferno (Detonate)")
+		if player is not sneaking:
+			if CanUseAbility(player) != false:
+				set {_target} to Target(player, 100, false)
+				if {_target} is set:
+					if metadata value "InfernoTarget%player%" of {_target} is true:
+						InfernoDetonate(player, {_target})
+						AbilityUse(player, "Inferno (Detonate)")
 
-function InfernoParticles(target: entity):
-	while metadata value "InfernoTarget" of {_target} is true:
+function InfernoParticles(p: player, target: entity):
+	while metadata value "InfernoTarget%{_p}%" of {_target} is true:
 		set {_shape} to a sphere with radius 1
 		if string tag "Variant" of custom nbt of {karta::%{_p}%} = "Winter Delight":
 			set particle of {_shape} to snowflake
@@ -190,7 +193,6 @@ function Blaze(p: player, target: entity, heatSnap: boolean = false):
 
 	send action bar "%{_blaze}% " to {_p}
 
-	wait 1 tick
 	if metadata value "Blaze" of {_p} >= 3:
 		set {_blaze} to metadata value "Blaze" of {_p}
 		remove 3 from {_blaze}
@@ -211,6 +213,10 @@ function Blaze(p: player, target: entity, heatSnap: boolean = false):
 			if {_targetsHit} > 5:
 				set {_targetsHit} to 5
 			set {_firespread} to 1 + 0.3*{_targetsHit}
+
+		if metadata value "FireTricksReady" of {_p} = true:
+			set {_fireTricks} to true
+			clear metadata value "FireTricksReady" of {_p}
 
 		loop {_entities::*}:
 			add 1 to {_loopCount}
@@ -237,12 +243,25 @@ function Blaze(p: player, target: entity, heatSnap: boolean = false):
 			
 			make {_p} damage loop-value by ({_dmgBlaze}*2)
 			draw 20 flame at location above loop-value with offset vector(0.3, 0.6, 0.3) with extra 0.03
+			if {_fireTricks} = true:
+				Inferno({_p}, loop-value, 1.5)
 			stop loop if {_loopCount} = {_targetsAffected}
 
 function HeatSnap(p: player):
 	set {_haste} to Haste({_p}) 
 	set {_cd} to 14/{_haste}
 	set {_cd} to "%{_cd}% seconds" parsed as timespan
+	if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Flaming Finale":
+		set {_effectiveness} to 1.6
+		set {_flamingFinale} to true
+		set {_flamingFinaleDamage} to 4 + ({versatility::%{_p}%}/96) + ({damage::%{_p}%}/32)  + ({primarystat::%{_p}%}/16)
+		set {_mastery} to 2.5 + (({mastery::%{_p}%}/165))
+		set {_crit} to ({criticalhit::%{_p}%}/10) 
+		set {_cdHeatSnap} to "%115/{_haste}% seconds" parsed as timespan
+		set {_lore} to "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown: &8 &f%{_cdHeatSnap}%%nl%&7Use: &fRMB%nl%<##fa4420>Resets the cooldown of &f <##f2636a>Flamethrower <##fa4420>on all%nl%<##fa4420>targets who have recently been affected%nl%<##fa4420>by the ability and immediately <##f2636a>traps them <##fa4420>in%nl%<##fa4420>an &f <##f2636a>Inferno<##fa4420>, all with the snap of a finger."
+		set {_lore} to "%{_lore}%%nl% %nl%&f <##eb6146>Flaming Finale%nl%<##fa4420>Deals &f%{_flamingFinaleDamage}% <##ff4d00>Fire <##fa4420>damage to all affected targets%nl%<##fa4420>and detonates all &f <##f2636a>Infernos <##fa4420>for &f160%% <##fa4420>of the%nl%<##fa4420>normal damage."
+	else:
+		set {_effectiveness} to 1
 	loop all entities in radius 40 around {_p} where [metadata value "RecentlyDamagedDelphox%{_p}%" of input is set]:
 
 		clear cooldown "Flamethrower%{_p}%-%uuid of loop-entity%"
@@ -252,7 +271,16 @@ function HeatSnap(p: player):
 
 		Flamethrower({_p}, loop-entity)
 
-		Inferno({_p}, loop-entity)
+		Inferno({_p}, loop-entity, {_effectiveness})
+		if {_flamingFinale} = true:
+			set {_damage} to {_flamingFinaleDamage}
+			set loop-entity's last damage cause to sweep attack
+			set metadata value "LastDamageCause" of loop-entity to "<##d74327>Flaming Finale"
+			set metadata value "Element" of {_p} to "Fire"
+			set metadata value "LastDamageCauseLore" of loop-entity to {_lore}
+			set {_damage} to Crit({_p}, loop-entity, {_crit}, {_damage}, {_mastery})
+			make {_p} damage loop-entity by {_damage}*2
+			InfernoDetonate({_p}, loop-entity)
 
 function Kindling(p: player):
 	if string tag "Talents;Row 2" of custom nbt of {karta::%{_p}%} = "Kindling":
@@ -389,45 +417,60 @@ function Flamethrower(p: player, target: entity):
 		extinguish {_target}
 		ignite {_target} for "%{_ticksTarget}% seconds" parsed as timespan			
 
-function Inferno(p: player, target: entity):
+function Inferno(p: player, target: entity, effectiveness: number = 1):
+	if metadata value "InfernoTarget%{_p}%" of {_target} = true:
+		InfernoDetonate({_p}, {_target})
+
 	set {_mastery} to 2.5 + (({mastery::%{_p}%}/165))
 	set {_crit} to ({criticalhit::%{_p}%}/10)
-	if metadata value "FlamethrowerBurn" of {_target} is true:
-		set {_damage} to 3.5 + ({versatility::%{_p}%}/114) + ({damage::%{_p}%}/38)  + ({primarystat::%{_p}%}/19)
-		set {_stun} to "%2 + (({crowdcontrol::%{_p}%}/60))% seconds" parsed as timespan
-		set {_stuntekst} to 2 + (({crowdcontrol::%{_p}%}/60))
-		set {_explotekst} to 6 + ({versatility::%{_p}%}/52.5) + ({damage::%{_p}%}/17.5) + ({primarystat::%{_p}%}/8.75)
+	set {_damage} to 3.5 + ({versatility::%{_p}%}/114) + ({damage::%{_p}%}/38)  + ({primarystat::%{_p}%}/19)
+	set {_stun} to "%2 + (({crowdcontrol::%{_p}%}/60))% seconds" parsed as timespan
+	set {_stuntekst} to 2 + (({crowdcontrol::%{_p}%}/60))
+	set {_explotekst} to 6 + ({versatility::%{_p}%}/52.5) + ({damage::%{_p}%}/17.5) + ({primarystat::%{_p}%}/8.75)
 
-		clear metadata value "FlamethrowerBurn" of {_target}
+	clear metadata value "FlamethrowerBurn" of {_target}
 
-		set {_lore} to "&8Basic Ability%nl%&fInstant cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fRMB/SHIFT%nl%<##fa4420>RIGHT-CLICK:%nl%<##f2636a>Imprisons <##fa4420>a target affected by &f <##f2636a>Flamethrower%nl%<##fa4420>in a fiery prison, &f <##f2636a>Stunning <##fa4420>them for &f%{_stuntekst}% sec <##fa4420>and%nl%<##fa4420>inflicting &f%{_damage}% <##ff4d00>Fire <##fa4420>damage.%nl% %nl%<##fa4420>SHIFT:%nl%<##f2636a>Detonates <##fa4420>an active &f <##f2636a>Inferno<##fa4420>, dealing &f%{_explotekst}% <##ff4d00>Fire%nl%<##fa4420>damage and <##f2636a>tossing <##fa4420>the enemy into the air."
-		LoreUpdate({_p}, "Inferno", {_lore})
+	set {_lore} to "&8Basic Ability%nl%&fInstant cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fRMB/SHIFT%nl%<##fa4420>RIGHT-CLICK:%nl%<##f2636a>Imprisons <##fa4420>a target affected by &f <##f2636a>Flamethrower%nl%<##fa4420>in a fiery prison, &f <##f2636a>Stunning <##fa4420>them for &f%{_stuntekst}% sec <##fa4420>and%nl%<##fa4420>inflicting &f%{_damage}% <##ff4d00>Fire <##fa4420>damage.%nl% %nl%<##fa4420>SHIFT:%nl%<##f2636a>Detonates <##fa4420>an active &f <##f2636a>Inferno<##fa4420>, dealing &f%{_explotekst}% <##ff4d00>Fire%nl%<##fa4420>damage and <##f2636a>tossing <##fa4420>the enemy into the air."
+	LoreUpdate({_p}, "Inferno", {_lore})
 
-		if {_target} is alive:
-			if canBeCCed({_target}) = true:
-				InfernoStun({_p}, {_target})
+	if {_target} is alive:
+		if canBeCCed({_target}) = true:
+			InfernoStun({_p}, {_target})
 
-			set metadata value "InfernoTarget" of {_target} to true
+		set metadata value "InfernoTarget%{_p}%" of {_target} to true
+		set metadata value "InfernoEffectiveness%{_p}%" of {_target} to {_effectiveness}
 
-			set {_damageBeforeCrit} to {_damage}
-			set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage}, {_mastery})
-			if {_damage} != {_damageBeforeCrit}:
-				Kindling({_p})
+		set {_damageBeforeCrit} to {_damage}
+		set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage}, {_mastery})
+		if {_damage} != {_damageBeforeCrit}:
+			Kindling({_p})
 
-			set {_target}'s last damage cause to sweep attack
-			set metadata value "LastDamageCause" of {_target} to "<##d74327>Inferno"
-			set metadata value "Element" of {_p} to "Fire"
-			set metadata value "LastDamageCauseLore" of {_target} to {_lore}
-			make {_p} damage {_target} by {_damage}*2
-			play sound "entity.illusioner.mirror_move" with volume 1 and pitch 1 at {_p}
-			InfernoParticles({_target})
+		set {_target}'s last damage cause to sweep attack
+		set metadata value "LastDamageCause" of {_target} to "<##d74327>Inferno"
+		set metadata value "Element" of {_p} to "Fire"
+		set metadata value "LastDamageCauseLore" of {_target} to {_lore}
+		make {_p} damage {_target} by {_damage}*2
+		play sound "entity.illusioner.mirror_move" with volume 1 and pitch 1 at {_p}
+		InfernoParticles({_p}, {_target})
+
+		if string tag "Talents;Row 3" of custom nbt of {karta::%{_p}%} = "Fire to the Fuse":
+			set {_enemies::*} to LoopEntitiesAroundTarget({_target}, 3, true)
+			loop {_enemies::*}:
+				set loop-value's last damage cause to sweep attack
+				set metadata value "LastDamageCause" of loop-value to "<##d74327>Inferno"
+				set metadata value "Element" of {_p} to "Fire"
+				set metadata value "LastDamageCauseLore" of loop-value to {_lore}
+				make {_p} damage loop-value by ({_damage} * 2)*0.5
 
 function InfernoDetonate(p: player, target: entity):
 	set {_mastery} to 2.5 + (({mastery::%{_p}%}/165))
 	set {_crit} to ({criticalhit::%{_p}%}/10)
 
 	set {_damage} to 6 + ({versatility::%{_p}%}/60) + ({damage::%{_p}%}/20) + ({primarystat::%{_p}%}/10)
-	set metadata value "InfernoTarget" of {_target} to false
+	set {_effectiveness} to metadata value "InfernoEffectiveness%{_p}%" of {_target}
+	set {_damage} to {_damage}*{_effectiveness}
+	set metadata value "InfernoTarget%{_p}%" of {_target} to false
+	clear metadata value "InfernoEffectiveness%{_p}%" of {_target}
 
 	clear {stun::%{_target}%}
 	clear metadata value "InfernoStun%{_p}%" of {_target}
@@ -460,6 +503,27 @@ function InfernoDetonate(p: player, target: entity):
 	set metadata value "Element" of {_p} to "Fire"
 	set metadata value "LastDamageCauseLore" of {_target} to {_lore}
 	make {_p} damage {_target} by {_damage} * 2
+
+	if string tag "Talents;Row 3" of custom nbt of {karta::%{_p}%} = "Fire to the Fuse":
+		set {_enemies::*} to LoopEntitiesAroundTarget({_target}, 3, true)
+		loop {_enemies::*}:
+			set loop-value's last damage cause to sweep attack
+			set metadata value "LastDamageCause" of loop-value to "<##d74327>Inferno (Detonate)"
+			set metadata value "Element" of {_p} to "Fire"
+			set metadata value "LastDamageCauseLore" of loop-value to {_lore}
+			make {_p} damage loop-value by ({_damage} * 2)*0.5
+
+	if string tag "Talents;Row 2" of custom nbt of {karta::%{_p}%} = "Convection":
+		chance of 10%:
+			Inferno({_p}, {_target})
+
+	if string tag "Talents;Row 4" of custom nbt of {karta::%{_p}%} = "Fire Tricks":
+		if metadata value "FireTricks" of {_p} is not set:
+			set metadata value "FireTricks" of {_p} to 0
+		add 1 to metadata value "FireTricks" of {_p}
+		if metadata value "FireTricks" of {_p} = 15:
+			clear metadata value "FireTricks" of {_p}
+			set metadata value "FireTricksReady" of {_p} to true
 	
 function InfernoStun(p: player, target: entity):
 	set {_stunDuration} to "%2 + (({crowdcontrol::%{_p}%}/60))% seconds" parsed as timespan
@@ -473,7 +537,7 @@ function InfernoStun(p: player, target: entity):
 			if 0 seconds >= metadata value "InfernoStun%{_p}%" of {_target}:
 				clear metadata value "InfernoStun%{_p}%" of {_target}
 				clear {stun::%{_target}%}
-				clear metadata value "InfernoTarget" of {_target}
+				clear metadata value "InfernoTarget%{_p}%" of {_target}
 				stop loop
 	else:
 		set metadata value "InfernoStun%{_p}%" of {_target} to {_stunDuration}
@@ -519,7 +583,7 @@ function WilloWisp(p: player, target: entity):
 	set {_damage} to 1.25 + ({versatility::%{_p}%}/420) + ({damage::%{_p}%}/140) + {primarystat::%{_p}%}/70
 	set {_mastery} to 2.5 + (({mastery::%{_p}%}/165))
 	set {_crit} to ({criticalhit::%{_p}%}/10)
-	set {_lore} to "&8Passive Ability%nl%&fNo cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fPASSIVE%nl%&f <##f2636a>Flamethrower <##fa4420>ticks have a &f10%% <##fa4420>chance%nl%<##fa4420>to summon a &f <##eb6146>Will-o-Wisp&7.%nl% %nl%&f <##eb6146>Will-o-Wisp%nl%<##fa4420>Adds an &fadditional tick <##fa4420>of &f <##f2636a>Flamethrower%nl%<##fa4420>to the target and deals an instance of%nl%&f1.25 <##ff4d00>Fire <##fa4420>damage."
+	set {_lore} to "&8Passive Ability%nl%&fNo cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fPASSIVE%nl%&f < ##f2636a>Flamethrower <##fa4420>ticks have a &f10%% <##fa4420>chance%nl%<##fa4420>to summon a &f <##eb6146>Will-o-Wisp&7.%nl% %nl%&f <##eb6146>Will-o-Wisp%nl%<##fa4420>Adds an &fadditional tick <##fa4420>of &f <##f2636a>Flamethrower%nl%<##fa4420>to the target and deals an instance of%nl%&f1.25 <##ff4d00>Fire <##fa4420>damage."
 	
 	set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage}, {_mastery})
 
