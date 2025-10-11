@@ -214,9 +214,9 @@ function Blaze(p: player, target: entity, heatSnap: boolean = false):
 				set {_targetsHit} to 5
 			set {_firespread} to 1 + 0.3*{_targetsHit}
 
-		if metadata value "FireTricksReady" of {_p} = true:
-			set {_fireTricks} to true
-			clear metadata value "FireTricksReady" of {_p}
+		if metadata value "BlazingTricksReady" of {_p} = true:
+			set {_BlazingTricks} to true
+			clear metadata value "BlazingTricksReady" of {_p}
 
 		loop {_entities::*}:
 			add 1 to {_loopCount}
@@ -252,7 +252,7 @@ function Blaze(p: player, target: entity, heatSnap: boolean = false):
 				if boolean tag "Constellation;Critical Mass" of custom nbt of {karta::%{_p}%} is set:
 					add 20 to metadata value "BonusCritDelphox" of {_p}
 
-			if {_fireTricks} = true:
+			if {_BlazingTricks} = true:
 				Inferno({_p}, loop-value, 1.5)
 				
 			stop loop if {_loopCount} = {_targetsAffected}
@@ -412,7 +412,10 @@ function Flamethrower(p: player, target: entity):
 						add 1 to metadata value "WildfireDelphox" of {_p}
 				
 				if string tag "Talents;Row 4" of custom nbt of {karta::%{_p}%} = "Will-o-Wisp":
-					chance of 10%:	
+					set {_chanceWilloWisp} to 10
+					if boolean tag "Constellation;Fire Mastery" of custom nbt of {karta::%{_p}%} is set:
+						set {_chanceWilloWisp} to {_chanceWilloWisp} + 2
+					chance of {_chanceWilloWisp}%:	
 						WilloWisp({_p}, {_target})
 
 				set {_target}'s last damage cause to sweep attack
@@ -559,12 +562,12 @@ function InfernoDetonate(p: player, target: entity):
 			Inferno({_p}, {_target})
 
 	if string tag "Talents;Row 4" of custom nbt of {karta::%{_p}%} = "Fire Tricks":
-		if metadata value "FireTricks" of {_p} is not set:
-			set metadata value "FireTricks" of {_p} to 0
-		add 1 to metadata value "FireTricks" of {_p}
-		if metadata value "FireTricks" of {_p} = 15:
-			clear metadata value "FireTricks" of {_p}
-			set metadata value "FireTricksReady" of {_p} to true
+		if metadata value "BlazingTricks" of {_p} is not set:
+			set metadata value "BlazingTricks" of {_p} to 0
+		add 1 to metadata value "BlazingTricks" of {_p}
+		if metadata value "BlazingTricks" of {_p} = 15:
+			clear metadata value "BlazingTricks" of {_p}
+			set metadata value "BlazingTricksReady" of {_p} to true
 	
 function InfernoStun(p: player, target: entity):
 	set {_stunDuration} to "%2 + (({crowdcontrol::%{_p}%}/60))% seconds" parsed as timespan
@@ -617,9 +620,10 @@ function WilloWisp(p: player, target: entity):
 
 	if {_target} is alive:
 		if metadata value "FlamethrowerTicks%{_p}%" of {_target} is set:
-			set {_ticks} to metadata value "FlamethrowerTicks%{_p}%" of {_target}
-			add 1 to {_ticks}
-			set metadata value "FlamethrowerTicks%{_p}%" of {_target} to {_ticks}
+			set {_ticks} to 1
+			if boolean tag "Constellation;Fire Mastery" of custom nbt of {karta::%{_p}%} is set:
+				set {_ticks} to {_ticks} + 1
+			add {_ticks} to metadata value "FlamethrowerTicks%{_p}%" of {_target}
 
 	set {_damage} to 1.25 + ({versatility::%{_p}%}/420) + ({damage::%{_p}%}/140) + {primarystat::%{_p}%}/70
 	set {_crit} to CriticalHit({_p})
