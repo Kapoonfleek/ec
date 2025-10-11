@@ -37,7 +37,7 @@ on rightclick:
 
 					if cooldown "Flamethrower%player%-%uuid of {_target}%" is finished:
 
-						Blaze(player, {_target})
+						Blaze(player, {_target}, "Flamethrower")
 						Flamethrower(player, {_target})
 						AbilityUse(player, "Flamethrower")
 
@@ -176,14 +176,15 @@ function FlameBarrierInfo(p: player, duration: timespan):
 		wait 1 second
 		remove 1 second from {_duration}
 
-function Blaze(p: player, target: entity, heatSnap: boolean = false):
+function Blaze(p: player, target: entity, source: string):
 	set {_blaze} to metadata value "Blaze" of {_p}
 	add 1 to {_blaze}
-	if string tag "Talents;Row 1" of custom nbt of {karta::%{_p}%} = "Pyrotechnics":
-		chance of 20%:
-			add 1 to {_blaze}
-	if string tag "Talents;Row 4" of custom nbt of {karta::%{_p}%} = "Flame Cascade":
-		if {_heatSnap} is true:
+	if {_source} = "Flamethrower":
+		if string tag "Talents;Row 1" of custom nbt of {karta::%{_p}%} = "Pyrotechnics":
+			chance of 20%:
+				add 1 to {_blaze}
+	else if {_source} = "Heat Snap":
+		if string tag "Talents;Row 4" of custom nbt of {karta::%{_p}%} = "Flame Cascade":
 			set {_flameCascade} to true
 
 	set metadata value "Blaze" of {_p} to {_blaze}
@@ -203,11 +204,9 @@ function Blaze(p: player, target: entity, heatSnap: boolean = false):
 			if metadata value "Blazemania" of {_p} is not set:
 				set metadata value "Blazemania" of {_p} to 0
 			add 1 to metadata value "Blazemania" of {_p}
-			broadcast metadata value "Blazemania" of {_p}
 			if metadata value "Blazemania" of {_p} = 9:
 				set {_blazemania} to true
 				clear metadata value "Blazemania" of {_p}
-				broadcast {_blazemania}
 
 		set {_loopCount} to 0
 		set {_targetsAffected} to 3
@@ -245,7 +244,6 @@ function Blaze(p: player, target: entity, heatSnap: boolean = false):
 				set {_dmgBlaze} to {_dmgBlaze} * {_flameCascadeDmgAmp}
 			if {_blazemania} = true:
 				set {_dmgBlaze} to {_dmgBlaze} * 2.3
-				broadcast "blazemania %{_dmgBlaze}%"
 			if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Wildfire":
 				set {_wildfireDamageAmp} to 1 + metadata value "WildfireDelphox" of {_p}/100
 				set {_dmgBlaze} to {_dmgBlaze} * {_wildfireDamageAmp}
@@ -259,7 +257,6 @@ function Blaze(p: player, target: entity, heatSnap: boolean = false):
 			set metadata value "LastDamageCauseLore" of loop-value to {_loreBlaze}
 			
 			make {_p} damage loop-value by ({_dmgBlaze}*2)
-			broadcast {_dmgBlaze}
 			draw 20 flame at location above loop-value with offset vector(0.3, 0.6, 0.3) with extra 0.03
 
 			if {_dmgBlaze} != {_dmgBlazeBeforeCrit}:
@@ -300,7 +297,7 @@ function HeatSnap(p: player):
 		clear cooldown "Flamethrower%{_p}%-%uuid of loop-entity%"
 		create cooldown "Flamethrower%{_p}%-%uuid of loop-entity%" for {_cd}
 		
-		Blaze({_p}, loop-entity, true)
+		Blaze({_p}, loop-entity, "Heat Snap")
 
 		Flamethrower({_p}, loop-entity)
 
@@ -423,8 +420,12 @@ function Flamethrower(p: player, target: entity):
 						set metadata value "HotSpreeTicks" of {_p} to {_hotSpreeTicks}
 						set {_damage} to {_damage}*1.5
 
+				set {_critDmg} to {_mastery}
+				if boolean tag "Constellation;Playing with Fire" of custom nbt of {karta::%{_p}%} is set:
+					add 0.15 to {_critDmg}
+
 				set {_damageBeforeCrit} to {_damage}
-				set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage}, {_mastery})
+				set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage}, {_critDmg})
 
 				if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Wildfire":
 					if metadata value "WildfireDelphox" of {_p} is not set:
@@ -449,6 +450,8 @@ function Flamethrower(p: player, target: entity):
 				if {_damage} != {_damageBeforeCrit}:
 					Kindling({_p})
 					set metadata value "BonusCritDelphox" of {_p} to 0
+					if boolean tag "Constellation;Playing with Fire" of custom nbt of {karta::%{_p}%} is set:
+						PlayingWithFireCDReduction({_p}, {_target})
 				else:
 					if boolean tag "Constellation;Critical Mass" of custom nbt of {karta::%{_p}%} is set:
 						add 20 to metadata value "BonusCritDelphox" of {_p}
@@ -534,6 +537,9 @@ function InfernoDetonate(p: player, target: entity):
 
 	clear {stun::%{_target}%}
 	clear metadata value "InfernoStun%{_p}%" of {_target}
+
+	if boolean tag "Constellation;Sparking Cinders" of custom nbt of {karta::%{_p}%} is set:
+		Blaze({_p}, {_target}, "Inferno (Detonate)")
 	
 	set {_knock} to 1 + ({crowdcontrol::%{_p}%}/100)
 
@@ -710,6 +716,14 @@ function Hellcaller(p: player):
 		clear metadata value "HellcallerStacks" of {_p}
 	else:
 		add 1 to metadata value "HellcallerStacks" of {_p}
+
+function PlayingWithFireCDReduction(p: player, target: entity):
+	set {_cdFlamethrowerTarget} to cooldown "Flamethrower%{_p}%-%uuid of {_target}%"
+	set {_cdFlamethrowerTarget} to "%{_cdFlamethrowerTarget}%"
+	replace all " seconds" and " second" in {_cdFlamethrowerTarget} with ""
+	set {_cdFlamethrowerTarget} to {_cdFlamethrowerTarget} parsed as number
+	set {_cdFlamethrowerTarget} to {_cdFlamethrowerTarget}*0.02
+	remove ("%{_cdFlamethrowerTarget}% seconds" parsed as timespan) from cooldown "Flamethrower%{_p}%-%uuid of {_target}%"
 			
 function Pyromaniac(p: player):
 	if {pyromaniacbonus::%{_p}%} is true:
