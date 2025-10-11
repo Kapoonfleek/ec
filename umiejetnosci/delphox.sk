@@ -209,6 +209,9 @@ function Blaze(p: player, target: entity, source: string):
 			if metadata value "Blazemania" of {_p} = 9:
 				set {_blazemania} to true
 				clear metadata value "Blazemania" of {_p}
+				buffClear({_p}, "Blazemania")
+			else:
+				buffRegister({_p}, "Blazemania", 1, "", "Stacks", "%metadata value "Blazemania" of {_p}%", "-")
 
 		set {_loopCount} to 0
 		set {_targetsAffected} to 3
@@ -264,9 +267,11 @@ function Blaze(p: player, target: entity, source: string):
 			if {_dmgBlaze} != {_dmgBlazeBeforeCrit}:
 				Kindling({_p})
 				set metadata value "BonusCritDelphox" of {_p} to 0
+				buffClear({_p}, "Critical Mass")
 			else:
 				if boolean tag "Constellation;Critical Mass" of custom nbt of {karta::%{_p}%} is set:
-					add 20 to metadata value "BonusCritDelphox" of {_p}
+					add 10 to metadata value "BonusCritDelphox" of {_p}
+					buffRegister({_p}, "Critical Mass", 1, "", "Stacks", "%metadata value "BonusCritDelphox" of {_p}% <##fca417>", "-")
 
 			if {_BlazingTricks} = true:
 				if boolean tag "Constellation;Fire Mastery" of custom nbt of {karta::%{_p}%} is set:
@@ -277,7 +282,10 @@ function Blaze(p: player, target: entity, source: string):
 				
 			stop loop if {_loopCount} = {_targetsAffected}
 
-	buffRegister({_p}, "Blaze", 5, "", "Stacks", "%metadata value "Blaze" of {_p}%", "-")
+	if metadata value "Blaze" of {_p} > 0:
+		buffRegister({_p}, "Blaze", 5, "", "Stacks", "%metadata value "Blaze" of {_p}%", "-")
+	else:
+		buffClear({_p}, "Blaze")
 
 function HeatSnap(p: player):
 	set {_haste} to Haste({_p}) 
@@ -318,9 +326,11 @@ function HeatSnap(p: player):
 
 			if {_damageBeforeCrit} != {_damage}:
 				set metadata value "BonusCritDelphox" of {_p} to 0
+				buffClear({_p}, "Critical Mass")
 			else:
 				if boolean tag "Constellation;Critical Mass" of custom nbt of {karta::%{_p}%} is set:
-					add 20 to metadata value "BonusCritDelphox" of {_p}
+					add 10 to metadata value "BonusCritDelphox" of {_p}
+					buffRegister({_p}, "Critical Mass", 1, "", "Stacks", "%metadata value "BonusCritDelphox" of {_p}% <##fca417>", "-")
 
 			InfernoDetonate({_p}, loop-entity)
 
@@ -338,10 +348,10 @@ function Flamethrower(p: player, target: entity):
 	set {_hasteModifier} to 1/{_haste}
 	if string tag "Talents;Row 2" of custom nbt of {karta::%{_p}%} = "Flame Accelerant":
 		if metadata value "DelphoxFlamethrowerUsed" of {_p} is not set:
+			buffClear({_p}, "Accelerant")
 			set {_cd} to {_cd}*0.5
 			set {_flameAccelerant} to true
 			set {_hasteModifier} to {_hasteModifier}*0.7
-			buffClear({_p}, "Accelerant")
 		FlameAccelerant({_p}, {_cd})
 	set {_cdd} to {_cd}
 	set {_cd} to "%{_cd}% seconds" parsed as timespan
@@ -357,6 +367,11 @@ function Flamethrower(p: player, target: entity):
 			set {_damage} to {_damage} * 1.5
 			set {_hotSpreeCount} to -1
 			play sound "skill.delphox.hotspree" with volume 1.2 and pitch 1 to {_p}
+			buffRegister({_p}, "Hot Spree", 1, "", "Stacks", "ready", "-")
+		else if {_hotSpreeCount} >= 0:
+			buffRegister({_p}, "Hot Spree", 1, "", "Stacks", "%{_hotSpreeCount}%", "-")
+		else:
+			buffClear({_p}, "Hot Spree")
 			
 		set metadata value "HotSpree" of {_p} to {_hotSpreeCount}
 	
@@ -436,8 +451,8 @@ function Flamethrower(p: player, target: entity):
 					if metadata value "WildfireDelphox" of {_p} is not set:
 						set metadata value "WildfireDelphox" of {_p} to 0
 					if metadata value "WildfireDelphox" of {_p} < 600:
-						add 1 to metadata value "WildfireDelphox" of {_p}
-					buffRegister({_p}, "Wildfire", 2, "", "Stacks", "%metadata value "WildfireDelphox" of {_p}%", "-")
+						add 0.5 to metadata value "WildfireDelphox" of {_p}
+					buffRegister({_p}, "Wildfire", 2, "", "Stacks", "%metadata value "WildfireDelphox" of {_p}%%%", "-")
 				
 				if string tag "Talents;Row 4" of custom nbt of {karta::%{_p}%} = "Will-o-Wisp":
 					set {_chanceWilloWisp} to 10
@@ -458,9 +473,11 @@ function Flamethrower(p: player, target: entity):
 					set metadata value "BonusCritDelphox" of {_p} to 0
 					if boolean tag "Constellation;Playing with Fire" of custom nbt of {karta::%{_p}%} is set:
 						PlayingWithFireCDReduction({_p}, {_target})
+					buffClear({_p}, "Critical Mass")
 				else:
 					if boolean tag "Constellation;Critical Mass" of custom nbt of {karta::%{_p}%} is set:
-						add 20 to metadata value "BonusCritDelphox" of {_p}
+						add 10 to metadata value "BonusCritDelphox" of {_p}
+						buffRegister({_p}, "Critical Mass", 1, "", "Stacks", "%metadata value "BonusCritDelphox" of {_p}% <##fca417>", "-")
 			else:
 				stop loop
 			wait {_wait}
@@ -525,9 +542,11 @@ function Inferno(p: player, target: entity, effectiveness: number = 1):
 		if {_damage} != {_damageBeforeCrit}:
 			Kindling({_p})
 			set metadata value "BonusCritDelphox" of {_p} to 0
+			buffClear({_p}, "Critical Mass")
 		else:
 			if boolean tag "Constellation;Critical Mass" of custom nbt of {karta::%{_p}%} is set:
-				add 20 to metadata value "BonusCritDelphox" of {_p}
+				add 10 to metadata value "BonusCritDelphox" of {_p}
+				buffRegister({_p}, "Critical Mass", 1, "", "Stacks", "%metadata value "BonusCritDelphox" of {_p}% <##fca417>", "-")
 
 function InfernoDetonate(p: player, target: entity):
 	set {_crit} to CriticalHit({_p})
@@ -586,9 +605,11 @@ function InfernoDetonate(p: player, target: entity):
 	if {_damage} != {_damageBeforeCrit}:
 		Kindling({_p})
 		set metadata value "BonusCritDelphox" of {_p} to 0
+		buffClear({_p}, "Critical Mass")
 	else:
 		if boolean tag "Constellation;Critical Mass" of custom nbt of {karta::%{_p}%} is set:
-			add 20 to metadata value "BonusCritDelphox" of {_p}
+			add 10 to metadata value "BonusCritDelphox" of {_p}
+			buffRegister({_p}, "Critical Mass", 1, "", "Stacks", "%metadata value "BonusCritDelphox" of {_p}% <##fca417>", "-")
 
 	if string tag "Talents;Row 2" of custom nbt of {karta::%{_p}%} = "Convection":
 		chance of 10%:
@@ -646,7 +667,8 @@ function FlameAccelerant(p: player, cd: number):
 			wait 1 second
 			remove 1 second from metadata value "DelphoxFlamethrowerUsed" of {_p}
 		clear metadata value "DelphoxFlamethrowerUsed" of {_p}
-		buffRegister({_p}, "Accelerant", 1, "", "-", "ready", "-")
+		if metadata value "ECEngaged" of {_p} is set:
+			buffRegister({_p}, "Accelerant", 1, "", "-", "ready", "-")
 	else:
 		set metadata value "DelphoxFlamethrowerUsed" of {_p} to "%{_cd}% seconds" parsed as timespan
 
@@ -681,9 +703,11 @@ function WilloWisp(p: player, target: entity):
 
 	if {_damageBeforeCrit} != {_damage}:
 		set metadata value "BonusCritDelphox" of {_p} to 0
+		buffClear({_p}, "Critical Mass")
 	else:
 		if boolean tag "Constellation;Critical Mass" of custom nbt of {karta::%{_p}%} is set:
-			add 20 to metadata value "BonusCritDelphox" of {_p}
+			add 10 to metadata value "BonusCritDelphox" of {_p}
+			buffRegister({_p}, "Critical Mass", 1, "", "Stacks", "%metadata value "BonusCritDelphox" of {_p}% <##fca417>", "-")
 
 function WilloWispVisual(p: player, target: entity):
 	set {_where} to a random integer between 1 and 2
