@@ -30,6 +30,9 @@ function clearCombat(e: entity):
 	LogDmgBreakdown({_e})
 	clear metadata value "ECEngaged" of {_e}
 	SetPlayerStats({_e})
+	if {_e} is a player:
+		delete yaml "CombatDetails-%{_e}%"
+		unload yaml "CombatDetails-%{_e}%"
 	clear {seconds::%{_e}%}
 	clear {magmaarea::%{_e}%}
 	clear {circleofwater::%{_e}%}
@@ -219,16 +222,6 @@ function HealAssist(p: player, e: entity):
 		loop {incombatwith::%{_e}%::*}:
 			if {asyst::%uuid of loop-value%::*} does not contain uuid of {_p}:
 				add uuid of {_p} to {asyst::%uuid of loop-value%::*}
-on damage:
-	if attacker is a player:
-		if damage is not 0:
-			if victim is not a player:
-				combatInitiate(attacker, victim)
-
-	if victim is a player:
-		if attacker is alive:
-			if damage is not 0:
-				combatInitiate(victim, attacker)
 
 function combatInitiate(att: entity, vict: entity):
 	CombatRefresh({_vict}, {_att})
@@ -237,7 +230,7 @@ function combatInitiate(att: entity, vict: entity):
 	if metadata value "ECEngaged" of {_att} is not set:
 		set {dmgdealt::%{_att}%} to 0
 		set {dps::%{_att}%} to 0
-		set {_id} to line 19 of lore of {karta::%{_att}%}
+		set {_id} to string tag "Id" of custom nbt of {karta::%{_att}%}
 		if metadata value "DungeonInstance" of {_att} is not set:
 			if metadata value "IslandExpeditionInstance" of {_att} is not set:
 				clear fastboard of {_att}
@@ -246,6 +239,7 @@ function combatInitiate(att: entity, vict: entity):
 			set {agnesstop} to true
 			#equip citizen 6512 with diamond sword
 		if {_att} is a player:
+			load yaml "plugins/Skript/combat/details/%uuid of {_att}%" as "CombatDetails-%{_att}%"
 			if {kartaname::%{_att}%} = "Cresselia":
 				ShootingStars({_att})
 				AstralPower({_att})
@@ -419,8 +413,7 @@ command /healingbreakdown:
 		CombatBreakdown(player, "Healing")
 		
 function CombatBreakdown(p: player, type: text):
-	set {_id} to line 19 of lore of {karta::%{_p}%}
-	replace all "&8Id: " in {_id} with ""
+	set {_id} to string tag "Id" of custom nbt of {karta::%{_p}%}
 	set {_k} to {kartaname::%{_p}%}
 
 	
@@ -510,8 +503,34 @@ command /kill [<player>]:
 	trigger:
 		if name of player = "kapoonfleek":
 			kill arg-1
+
 function DamageBreakdown(p: player, e: entity, v: number):
-	set {_id} to line 19 of lore of {karta::%{_p}%}
+	set {_id} to string tag "Id" of custom nbt of {karta::%{_p}%}
 	replace all "&8Id: " in {_id} with ""
 	if metadata value "LastDamageCause" of {_e} is set:
-		add {_v} to {dmgbreak::%{kartaname::%{_p}%}%::%{_id}%::%uncolored (metadata value "LastDamageCause" of {_e} in strict proper case)%}
+		set {_lastDmgCause} to uncolored metadata value "LastDamageCause" of {_e}
+		add {_v} to {dmgbreak::%{kartaname::%{_p}%}%::%{_id}%::%{_lastDmgCause}%}
+
+		set {_dmg} to yaml value "Combat Details.%{_lastDmgCause}%.Damage" in "CombatDetails-%{_p}%"
+		add {_v} to {_dmg}
+		set yaml value "Combat Details.%{_lastDmgCause}%.Damage" in "CombatDetails-%{_p}%" to {_dmg}
+
+		set {_total} to yaml value "Total" in "CombatDetails-%{_p}%"
+		add {_v} to {_total}
+		set yaml value "Total" in "CombatDetails-%{_p}%" to {_total}
+
+		set {_hits} to yaml value "Combat Details.%{_lastDmgCause}%.Hits" in "CombatDetails-%{_p}%"
+		add 1 to {_hits}
+		set yaml value "Combat Details.%{_lastDmgCause}%.Hits" in "CombatDetails-%{_p}%" to {_hits}
+		save yaml "CombatDetails-%{_p}%"
+
+		damageMeterUpdate({_p})
+
+function CombatDetailsInit(p: player, source: string):
+	set yaml value "%{_source}%.Damage" in "CombatDetails-%{_p}%" to 0
+	set yaml value "%{_source}%.Hits" in "CombatDetails-%{_p}%" to 0
+	set yaml value "%{_source}%.Critical Hits" in "CombatDetails-%{_p}%" to 0
+	set yaml value "%{_source}%.Average Hit" in "CombatDetails-%{_p}%" to 0
+	set yaml value "%{_source}%.Lowest Hit" in "CombatDetails-%{_p}%" to 0
+	set yaml value "%{_source}%.Highest Hit" in "CombatDetails-%{_p}%" to 0
+	save yaml "CombatDetails-%{_p}%"

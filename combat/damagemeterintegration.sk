@@ -1,0 +1,38 @@
+import:
+    org.bukkit.plugin.messaging.PluginMessageListener
+    java.io.ByteArrayOutputStream
+    com.google.common.io.ByteStreams
+    ch.njol.skript.Skript
+    org.bukkit.Color
+
+on load:
+    server.getServer().getMessenger().registerOutgoingPluginChannel(Skript.getInstance(), "earthcraft:damagefeed")
+
+on jump:
+    damageMeterUpdate(player)
+
+function damageMeterUpdate(p: player):
+    if yaml value "Total" in "CombatDetails-%{_p}%" is set:
+        loop yaml node keys "Combat Details" in "CombatDetails-%{_p}%":
+            set {_abilities::*} to {_abilities::*} and loop-value
+        set {_json} to "["
+        set {_total} to yaml value "Total" in "CombatDetails-%{_p}%"
+        loop {_abilities::*}:
+            set {_ability} to loop-value
+            if yaml value "Card.%{kartaname::%{_p}%}%.%{_ability}%.Icon" in "SpellList" is set:
+                set {_icon} to yaml value "Card.%{kartaname::%{_p}%}%.%{_ability}%.Icon" in "SpellList"
+                set {_colour} to "%{kartacolor::%{_p}%}%"
+            else:
+                set {_icon} to yaml value "Effect.%{_ability}%.Icon" in "SpellList"
+                set {_colour} to yaml value "Effect.%{_ability}%.Colour" in "SpellList"
+            replace all "§" in {_colour} with ""
+            replace all "x" in {_colour} with ""
+            set {_out} to ByteStreams.newDataOutput()
+            set {_damage} to yaml value "Combat Details.%{_ability}%.Damage" in "CombatDetails-%{_p}%"
+            set {_percent} to ({_damage}/{_total})*100
+            set {_json} to "%{_json}%{""icon"":""%{_icon}%"",""name"":""%{_ability}%"",""damage"":%{_damage}%,""percent"":%{_percent}%,""color"":""#%{_colour}%""}"
+            if loop-counter != (size of {_abilities::*}):
+                set {_json} to "%{_json}%,"
+        set {_json} to "%{_json}%]"
+        {_out}.writeUTF({_json})
+        {_p}.sendPluginMessage(Skript.getInstance(), "earthcraft:damagefeed", {_out}.toByteArray())
