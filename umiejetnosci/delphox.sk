@@ -233,9 +233,7 @@ function Blaze(p: player, target: entity, heatSnap: boolean = false):
 
 			set {_dmgBlazeBeforeCrit} to {_dmgBlaze}
 			set {_dmgBlaze} to Crit({_p}, loop-value, {_crit}, {_dmgBlaze}, {_mastery})
-			if {_dmgBlaze} != {_dmgBlazeBeforeCrit}:
-				Kindling({_p})
-
+			
 			set loop-value's last damage cause to sweep attack
 			set metadata value "LastDamageCause" of loop-value to "<##d74327>Blaze"
 			set metadata value "Element" of {_p} to "Fire"
@@ -243,8 +241,17 @@ function Blaze(p: player, target: entity, heatSnap: boolean = false):
 			
 			make {_p} damage loop-value by ({_dmgBlaze}*2)
 			draw 20 flame at location above loop-value with offset vector(0.3, 0.6, 0.3) with extra 0.03
+
+			if {_dmgBlaze} != {_dmgBlazeBeforeCrit}:
+				Kindling({_p})
+				set metadata value "BonusCritDelphox" of {_p} to 0
+			else:
+				if boolean tag "Constellation;Critical Mass" of custom nbt of {karta::%{_p}%} is set:
+					add 20 to metadata value "BonusCritDelphox" of {_p}
+
 			if {_fireTricks} = true:
 				Inferno({_p}, loop-value, 1.5)
+				
 			stop loop if {_loopCount} = {_targetsAffected}
 
 function HeatSnap(p: player):
@@ -256,7 +263,7 @@ function HeatSnap(p: player):
 		set {_flamingFinale} to true
 		set {_flamingFinaleDamage} to 4 + ({versatility::%{_p}%}/96) + ({damage::%{_p}%}/32)  + ({primarystat::%{_p}%}/16)
 		set {_mastery} to 2.5 + (({mastery::%{_p}%}/165))
-		set {_crit} to ({criticalhit::%{_p}%}/10) 
+		set {_crit} to CriticalHit({_p})
 		set {_cdHeatSnap} to "%115/{_haste}% seconds" parsed as timespan
 		set {_lore} to "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown: &8 &f%{_cdHeatSnap}%%nl%&7Use: &fRMB%nl%<##fa4420>Resets the cooldown of &f <##f2636a>Flamethrower <##fa4420>on all%nl%<##fa4420>targets who have recently been affected%nl%<##fa4420>by the ability and immediately <##f2636a>traps them <##fa4420>in%nl%<##fa4420>an &f <##f2636a>Inferno<##fa4420>, all with the snap of a finger."
 		set {_lore} to "%{_lore}%%nl% %nl%&f <##eb6146>Flaming Finale%nl%<##fa4420>Deals &f%{_flamingFinaleDamage}% <##ff4d00>Fire <##fa4420>damage to all affected targets%nl%<##fa4420>and detonates all &f <##f2636a>Infernos <##fa4420>for &f160%% <##fa4420>of the%nl%<##fa4420>normal damage."
@@ -278,8 +285,16 @@ function HeatSnap(p: player):
 			set metadata value "LastDamageCause" of loop-entity to "<##d74327>Flaming Finale"
 			set metadata value "Element" of {_p} to "Fire"
 			set metadata value "LastDamageCauseLore" of loop-entity to {_lore}
+			set {_damageBeforeCrit} to {_damage}
 			set {_damage} to Crit({_p}, loop-entity, {_crit}, {_damage}, {_mastery})
 			make {_p} damage loop-entity by {_damage}*2
+
+			if {_damageBeforeCrit} != {_damage}:
+				set metadata value "BonusCritDelphox" of {_p} to 0
+			else:
+				if boolean tag "Constellation;Critical Mass" of custom nbt of {karta::%{_p}%} is set:
+					add 20 to metadata value "BonusCritDelphox" of {_p}
+
 			InfernoDetonate({_p}, loop-entity)
 
 function Kindling(p: player):
@@ -345,7 +360,7 @@ function Flamethrower(p: player, target: entity):
 			if {_target} is alive:
 				set {_damage} to 1.25 + ({versatility::%{_p}%}/360) + ({damage::%{_p}%}/120) + {primarystat::%{_p}%}/60
 				set {_mastery} to 2.5 + (({mastery::%{_p}%}/165))
-				set {_crit} to ({criticalhit::%{_p}%}/10) 
+				set {_crit} to CriticalHit({_p})
 				set {_haste} to  Haste({_p})
 				set {_wait} to "%1/{_haste}% seconds" parsed as timespan
 
@@ -382,8 +397,6 @@ function Flamethrower(p: player, target: entity):
 
 				set {_damageBeforeCrit} to {_damage}
 				set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage}, {_mastery})
-				if {_damage} != {_damageBeforeCrit}:
-					Kindling({_p})
 
 				if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Wildfire":
 					if metadata value "WildfireDelphox" of {_p} is not set:
@@ -401,6 +414,13 @@ function Flamethrower(p: player, target: entity):
 				set metadata value "LastDamageCauseLore" of {_target} to {_lore}
 				make {_p} damage {_target} by {_damage}*2
 				DelphoxRecentlyDamaged({_p}, {_target})
+
+				if {_damage} != {_damageBeforeCrit}:
+					Kindling({_p})
+					set metadata value "BonusCritDelphox" of {_p} to 0
+				else:
+					if boolean tag "Constellation;Critical Mass" of custom nbt of {karta::%{_p}%} is set:
+						add 20 to metadata value "BonusCritDelphox" of {_p}
 			else:
 				stop loop
 			wait {_wait}
@@ -422,7 +442,7 @@ function Inferno(p: player, target: entity, effectiveness: number = 1):
 		InfernoDetonate({_p}, {_target})
 
 	set {_mastery} to 2.5 + (({mastery::%{_p}%}/165))
-	set {_crit} to ({criticalhit::%{_p}%}/10)
+	set {_crit} to CriticalHit({_p})
 	set {_damage} to 3.5 + ({versatility::%{_p}%}/114) + ({damage::%{_p}%}/38)  + ({primarystat::%{_p}%}/19)
 	set {_stun} to "%2 + (({crowdcontrol::%{_p}%}/60))% seconds" parsed as timespan
 	set {_stuntekst} to 2 + (({crowdcontrol::%{_p}%}/60))
@@ -442,8 +462,6 @@ function Inferno(p: player, target: entity, effectiveness: number = 1):
 
 		set {_damageBeforeCrit} to {_damage}
 		set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage}, {_mastery})
-		if {_damage} != {_damageBeforeCrit}:
-			Kindling({_p})
 
 		set {_target}'s last damage cause to sweep attack
 		set metadata value "LastDamageCause" of {_target} to "<##d74327>Inferno"
@@ -462,9 +480,16 @@ function Inferno(p: player, target: entity, effectiveness: number = 1):
 				set metadata value "LastDamageCauseLore" of loop-value to {_lore}
 				make {_p} damage loop-value by ({_damage} * 2)*0.5
 
+		if {_damage} != {_damageBeforeCrit}:
+			Kindling({_p})
+			set metadata value "BonusCritDelphox" of {_p} to 0
+		else:
+			if boolean tag "Constellation;Critical Mass" of custom nbt of {karta::%{_p}%} is set:
+				add 20 to metadata value "BonusCritDelphox" of {_p}
+
 function InfernoDetonate(p: player, target: entity):
 	set {_mastery} to 2.5 + (({mastery::%{_p}%}/165))
-	set {_crit} to ({criticalhit::%{_p}%}/10)
+	set {_crit} to CriticalHit({_p})
 
 	set {_damage} to 6 + ({versatility::%{_p}%}/60) + ({damage::%{_p}%}/20) + ({primarystat::%{_p}%}/10)
 	set {_effectiveness} to metadata value "InfernoEffectiveness%{_p}%" of {_target}
@@ -495,8 +520,6 @@ function InfernoDetonate(p: player, target: entity):
 
 	set {_damageBeforeCrit} to {_damage}
 	set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage}, {_mastery})
-	if {_damage} != {_damageBeforeCrit}:
-		Kindling({_p})
 
 	set {_target}'s last damage cause to sweep attack
 	set metadata value "LastDamageCause" of {_target} to "<##d74327>Inferno (Detonate)"
@@ -512,6 +535,13 @@ function InfernoDetonate(p: player, target: entity):
 			set metadata value "Element" of {_p} to "Fire"
 			set metadata value "LastDamageCauseLore" of loop-value to {_lore}
 			make {_p} damage loop-value by ({_damage} * 2)*0.5
+
+	if {_damage} != {_damageBeforeCrit}:
+		Kindling({_p})
+		set metadata value "BonusCritDelphox" of {_p} to 0
+	else:
+		if boolean tag "Constellation;Critical Mass" of custom nbt of {karta::%{_p}%} is set:
+			add 20 to metadata value "BonusCritDelphox" of {_p}
 
 	if string tag "Talents;Row 2" of custom nbt of {karta::%{_p}%} = "Convection":
 		chance of 10%:
@@ -582,9 +612,10 @@ function WilloWisp(p: player, target: entity):
 
 	set {_damage} to 1.25 + ({versatility::%{_p}%}/420) + ({damage::%{_p}%}/140) + {primarystat::%{_p}%}/70
 	set {_mastery} to 2.5 + (({mastery::%{_p}%}/165))
-	set {_crit} to ({criticalhit::%{_p}%}/10)
+	set {_crit} to CriticalHit({_p})
 	set {_lore} to "&8Passive Ability%nl%&fNo cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fPASSIVE%nl%&f < ##f2636a>Flamethrower <##fa4420>ticks have a &f10%% <##fa4420>chance%nl%<##fa4420>to summon a &f <##eb6146>Will-o-Wisp&7.%nl% %nl%&f <##eb6146>Will-o-Wisp%nl%<##fa4420>Adds an &fadditional tick <##fa4420>of &f <##f2636a>Flamethrower%nl%<##fa4420>to the target and deals an instance of%nl%&f1.25 <##ff4d00>Fire <##fa4420>damage."
 	
+	set {_damageBeforeCrit} to {_damage}
 	set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage}, {_mastery})
 
 	wait 1 tick
@@ -594,6 +625,12 @@ function WilloWisp(p: player, target: entity):
 	set metadata value "Element" of {_p} to "Fire"
 	set metadata value "LastDamageCauseLore" of {_target} to {_lore}
 	make {_p} damage {_target} by {_damage} * 2
+
+	if {_damageBeforeCrit} != {_damage}:
+		set metadata value "BonusCritDelphox" of {_p} to 0
+	else:
+		if boolean tag "Constellation;Critical Mass" of custom nbt of {karta::%{_p}%} is set:
+			add 20 to metadata value "BonusCritDelphox" of {_p}
 
 function WilloWispVisual(p: player, target: entity):
 	set {_where} to a random integer between 1 and 2
