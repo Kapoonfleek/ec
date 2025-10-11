@@ -199,6 +199,16 @@ function Blaze(p: player, target: entity, heatSnap: boolean = false):
 		set metadata value "Blaze" of {_p} to {_blaze}
 		send action bar "%{_blaze}% " to {_p}
 
+		if boolean tag "Constellation;Blazemania" of custom nbt of {karta::%{_p}%} is set:
+			if metadata value "Blazemania" of {_p} is not set:
+				set metadata value "Blazemania" of {_p} to 0
+			add 1 to metadata value "Blazemania" of {_p}
+			broadcast metadata value "Blazemania" of {_p}
+			if metadata value "Blazemania" of {_p} = 9:
+				set {_blazemania} to true
+				clear metadata value "Blazemania" of {_p}
+				broadcast {_blazemania}
+
 		set {_loopCount} to 0
 		set {_targetsAffected} to 3
 
@@ -217,7 +227,6 @@ function Blaze(p: player, target: entity, heatSnap: boolean = false):
 		if metadata value "BlazingTricksReady" of {_p} = true:
 			set {_BlazingTricks} to true
 			clear metadata value "BlazingTricksReady" of {_p}
-
 		loop {_entities::*}:
 			add 1 to {_loopCount}
 			set {_dmgBlaze} to 3 + ({versatility::%{_p}%}/180) + ({damage::%{_p}%}/60) + {primarystat::%{_p}%}/30
@@ -234,6 +243,9 @@ function Blaze(p: player, target: entity, heatSnap: boolean = false):
 				else:
 					set {_flameCascadeDmgAmp} to 2.7
 				set {_dmgBlaze} to {_dmgBlaze} * {_flameCascadeDmgAmp}
+			if {_blazemania} = true:
+				set {_dmgBlaze} to {_dmgBlaze} * 2.3
+				broadcast "blazemania %{_dmgBlaze}%"
 			if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Wildfire":
 				set {_wildfireDamageAmp} to 1 + metadata value "WildfireDelphox" of {_p}/100
 				set {_dmgBlaze} to {_dmgBlaze} * {_wildfireDamageAmp}
@@ -247,6 +259,7 @@ function Blaze(p: player, target: entity, heatSnap: boolean = false):
 			set metadata value "LastDamageCauseLore" of loop-value to {_loreBlaze}
 			
 			make {_p} damage loop-value by ({_dmgBlaze}*2)
+			broadcast {_dmgBlaze}
 			draw 20 flame at location above loop-value with offset vector(0.3, 0.6, 0.3) with extra 0.03
 
 			if {_dmgBlaze} != {_dmgBlazeBeforeCrit}:
