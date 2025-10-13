@@ -20,8 +20,8 @@ function VoidEruptionAbilityCast(p: player):
                                     set {_casttime} to "%round(({_baseCasttime}/{_pospiech}), 1)% seconds" parsed as timespan
                                     if metadata value "cast" of {_p} is not set:
                                         set metadata value "casttimemax" of {_p} to {_casttime}
-                                        set metadata value "lastspell" of {_p} to uncolored {_p}'s tool's name
-                                        play sound "skill.therold.void_eruption_precast" with volume 3 and pitch 1 at {_p}
+                                        set metadata value "lastspellTherold" of {_p} to uncolored {_p}'s tool's name
+                                        play sound "skill.therold.void_eruption_precast" with volume 3 and pitch 1 at location of {_p}
                                         set metadata value "casting" of {_p} to true
                                         set metadata value "cast" of {_p} to {_casttime}
                                         while metadata value "casting" of {_p} = true:
@@ -65,7 +65,7 @@ function VoidEruptionAbilityCast(p: player):
                                     set metadata value "Voidform" of {_p} to true
                                     AbilityUse({_p}, "Void Eruption")
                                     buffRegister({_p}, "Voidform", 5, "", "Value", "active", "-")
-                                    play sound "skill.therold.void_eruption_cast" with volume 3 and pitch 1 at {_p}
+                                    play sound "skill.therold.void_eruption_cast" with volume 3 and pitch 1 at location of {_p}
                                     set {_crit} to CriticalHit({_p})
                                     loop all items in the inventory of {_p}:
                                         if loop-item is purple dye named "<##613e82>Void Eruption" with nbt from "{""minecraft:custom_model_data"":{floats:[9.0f]},""minecraft:custom_data"":{""Void Eruption"":1b}}":
@@ -136,17 +136,17 @@ function VoidBoltCast(p: player, target: entity):
         clear metadata value "cast" of {_p}
         StopCastSoundTherold({_p})
         send action bar "&cInterrupted" to {_p}
-    set metadata value "lastspell" of {_p} to "Void Bolt"
+    set metadata value "lastspellTherold" of {_p} to "Void Bolt"
     set {_randomLocation} to a random number between -0.40 and 0.40
     set {_l} to location 0.3 blocks below and {_randomLocation} left of {_p}'s head
     set {_vec} to vector between {_p} and {_target}'s head
-    play sound "skill.therold.void_bolt_cast" with volume 3 and pitch 1 at {_p}
-    play sound "skill.therold.shadowcast" with volume 3 and pitch 1 at {_p}
+    play sound "skill.therold.void_bolt_cast" with volume 3 and pitch 1 at location of {_p}
+    play sound "skill.therold.shadowcast" with volume 3 and pitch 1 at location of {_p}
     loop round(distance between {_l} and {_target}) / 0.5 times:
         set {_vec} to vector between {_l} and {_target}'s head
         set vector length of {_vec} to loop-value * 0.5
         draw 1 of dust using dustOption(rgb(65, 46, 115), 1) at {_l} ~ {_vec} with force
-    play sound "skill.therold.void_bolt_impact" with volume 3 and pitch 1 at {_p}
+    play sound "skill.therold.void_bolt_impact" with volume 3 and pitch 1 at location of {_p}
     GrantInsanity({_p}, 16)
     UpdateInsanity({_p})
     set {_crit} to CriticalHit({_p})
@@ -154,6 +154,11 @@ function VoidBoltCast(p: player, target: entity):
     if boolean tag "Constellation;Mass Hysteria" of custom nbt of {karta::%{_p}%} is set:
         set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
         set {_damage} to {_damage}*(1 + ({_voidformStacks}/100))
+
+    if metadata value "Heir to the Darkness" of {_p} > 0:
+        set {_heirToTheDarkness} to metadata value "Heir to the Darkness" of {_p}
+        set {_damage} to {_damage}*(1 + ({_heirToTheDarkness}/100))
+
     if offensiveTrait({_p}, "Brother Therold", "Sinister Thoughts") > 0:
         add offensiveTrait({_p}, "Brother Therold", "Sinister Thoughts") to {_damage}
         chance of 3%:
@@ -172,6 +177,10 @@ function VoidBoltCast(p: player, target: entity):
     set lore of {_p}'s tool to {_lore}
     set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage})
     make {_p} damage {_target} by {_damage}*2
+
+    if boolean tag "Constellation;Unleash the Shadows" of custom nbt of {karta::%{_p}%} is set:
+        ShadowyApparitionSpawn({_p}, {_target})
+
     loop all entities in radius 4 around {_target}:
         if metadata value "Shadow Word: Pain-%{_p}%" of loop-entity is set:
             ShadowWordPainRefresh({_p}, loop-entity)
@@ -249,12 +258,12 @@ function MindBlastAbilityCast(p: player):
                                         if metadata value "ShadowyInsight" of {_p} != true:
                                             if metadata value "cast" of {_p} is not set:
                                                 set metadata value "casttimemax" of {_p} to {_casttime}
-                                                play sound "skill.therold.mindblast_precast" with volume 3 and pitch 1 at {_p}
+                                                play sound "skill.therold.mindblast_precast" with volume 3 and pitch 1 at location of {_p}
                                                 set metadata value "casting" of {_p} to true
                                                 if metadata value "channeling" of {_p} is set:
                                                     clear metadata value "channeling" of {_p}
                                                     StopCastSoundTherold({_p})
-                                                set metadata value "lastspell" of {_p} to uncolored {_p}'s tool's name
+                                                set metadata value "lastspellTherold" of {_p} to uncolored {_p}'s tool's name
                                                 set metadata value "cast" of {_p} to {_casttime}
                                                 while metadata value "casting" of {_p} = true:
                                                     set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
@@ -307,8 +316,8 @@ function MindBlastAbilityCast(p: player):
                                             set {_insanity} to {_insanity}*1.2
                                         GrantInsanity({_p}, {_insanity})
                                         UpdateInsanity({_p})
-                                        play sound "skill.therold.mindblast_impact" with volume 3 and pitch 1 at {_p}
-                                        play sound "skill.therold.shadowcast" with volume 3 and pitch 1 at {_p}
+                                        play sound "skill.therold.mindblast_impact" with volume 3 and pitch 1 at location of {_p}
+                                        play sound "skill.therold.shadowcast" with volume 3 and pitch 1 at location of {_p}
                                         draw 20 dust using dustOption(rgb(95, 72, 156), 1) at {_target}'s head with offset vector(0.4, 0.5, 0.4) with extra 0.03
                                         draw 20 dust using dustOption(rgb(41, 22, 92), 1) at {_target}'s head with offset vector(0.35, 0.45, 0.35) with extra 0.03
                                         if {_target} is alive:
@@ -322,6 +331,10 @@ function MindBlastAbilityCast(p: player):
                                                 set {_damage} to {_damage}*1.2
                                             if string tag "Talents;Row 1" of custom nbt of {karta::%{_p}%} = "Fortress of the Mind":
                                                 set {_damage} to {_damage}*1.1
+                                            if boolean tag "Constellation;Dark Evangelism" of custom nbt of {karta::%{_p}%} is set:
+                                                if metadata value "Vampiric Touch-%{_p}%" of {_target} is set:
+                                                    if metadata value "Shadow Word: Pain-%{_p}%" of {_target} is set:
+                                                        set {_damage} to {_damage}*1.55
                                             if {_charges} = 1:
                                                 set {_chargesLore} to "%{_charges}% Charge"
                                             else:
@@ -350,6 +363,9 @@ function MindBlastAbilityCast(p: player):
                                                     GrantInsanity({_p}, 20)
                                                     UpdateInsanity({_p})
                                             make {_p} damage {_target} by {_damage}*2
+
+                                            if boolean tag "Constellation;Unleash the Shadows" of custom nbt of {karta::%{_p}%} is set:
+                                                ShadowyApparitionSpawn({_p}, {_target})
                                 else: 
                                     if {tekstcd::%{_p}%} = true:
                                         set {_cdd} to cooldown "Shadow Word: Death%{_p}%"
@@ -396,10 +412,13 @@ function ShadowWordPainAbilityCast(p: player):
                                 clear metadata value "cast" of {_p}
                                 StopCastSoundTherold({_p})
                                 send action bar "&cInterrupted" to {_p}
-                            set metadata value "lastspell" of {_p} to uncolored {_p}'s tool's name
+                            set metadata value "lastspellTherold" of {_p} to uncolored {_p}'s tool's name
                             set {_crit} to CriticalHit({_p})
                             set {_damage} to (0.6 + (({damage::%{_p}%}/45) + ({versatility::%{_p}%}/135) + {primarystat::%{_p}%}/22.5)) * (1.096 + (({mastery::%{_p}%}/6.25)/100))
-                            set {_SWPDuration} to 14
+                            if boolean tag "Constellation;Dark Evangelism" of custom nbt of {karta::%{_p}%} is set:
+                                set {_SWPDuration} to 18
+                            else:
+                                set {_SWPDuration} to 14
                             set {_damageSWPTicks} to (1 + (({damage::%{_p}%}/68) + ({versatility::%{_p}%}/204) + {primarystat::%{_p}%}/34)) * (1.096 + (({mastery::%{_p}%}/6.25)/100))
                             set {_totalTicks} to (round({_SWPDuration}/(2/{_pospiech}), 0))
                             if offensiveTrait({_p}, "Brother Therold", "Death Throes") > 0:
@@ -421,11 +440,11 @@ function ShadowWordPainAbilityCast(p: player):
                             make {_p} damage {_target} by {_damage}*2
                             GrantInsanity({_p}, 3)
                             UpdateInsanity({_p})
-                            play sound "skill.therold.shadow_word_pain" with volume 3 and pitch 1 at {_p}
-                            play sound "skill.therold.shadowcast" with volume 3 and pitch 1 at {_p}
+                            play sound "skill.therold.shadow_word_pain" with volume 3 and pitch 1 at location of {_p}
+                            play sound "skill.therold.shadowcast" with volume 3 and pitch 1 at location of {_p}
                             draw 10 dust using dustOption(rgb(77, 54, 138), 1) at location above {_target} with offset vector(0.4, 0.5, 0.4) with extra 0.03
                             if metadata value "Shadow Word: Pain-%{_p}%" of {_target} is not set:
-                                set metadata value "Shadow Word: Pain-%{_p}%" of {_target} to 14
+                                set metadata value "Shadow Word: Pain-%{_p}%" of {_target} to {_SWPDuration}
                                 amountOfDotsSet({_p}, {_target})
                                 ShadowWordPain({_p}, {_target})
                                 ShadowWordPainExpire({_p}, {_target})
@@ -480,14 +499,14 @@ function MindFlayAbilityCast(p: player):
                                         set {_abilitiesItems::*} to light gray dye, orange dye, gray dye, cyan dye, purple dye, black dye, light gray dye and yellow dye
                                         GlobalCooldownSpells({_p}, {_abilities::*}, {_abilitiesItems::*}, {_cd})
                                     create cooldown "Mind Flay%{_p}%" for 1 tick
-                                    set metadata value "lastspell" of {_p} to uncolored {_p}'s tool's name
+                                    set metadata value "lastspellTherold" of {_p} to uncolored {_p}'s tool's name
                                     set metadata value "channeling" of {_p} to true
                                     MindFlay({_p}, {_target}, {_casttime})
                                     AbilityUse({_p}, "Mind Flay")
                                     #set the cooldown of {_p}'s held item for {_p} to ("%{_casttime}% seconds" parsed as timespan)
-                                    play sound "skill.therold.mindflay_channel" with volume 3 and pitch 1 at {_p}
-                                    play sound "skill.therold.mindflay_channel_whisper" with volume 3 and pitch 1 at {_p}
-                                    play sound "skill.therold.shadowcast" with volume 3 and pitch 1 at {_p}
+                                    play sound "skill.therold.mindflay_channel" with volume 3 and pitch 1 at location of {_p}
+                                    play sound "skill.therold.mindflay_channel_whisper" with volume 3 and pitch 1 at location of {_p}
+                                    play sound "skill.therold.shadowcast" with volume 3 and pitch 1 at location of {_p}
                         else: 
                             if {tekstcd::%{_p}%} = true:
                                 set {_cdd} to cooldown "Shadow Word: Death%{_p}%"
@@ -520,14 +539,18 @@ function VampiricTouchAbilityCast(p: player):
                                     set {_id} to line 19 of lore of {karta::%{_p}%}
                                     set {_pospiech} to Haste({_p}) + (({hasteVoidform::%{_p}%}/4)/100)
                                     set {_casttime} to "%round((1.5/{_pospiech}), 1)% seconds" parsed as timespan
+                                    if boolean tag "Constellation;Dark Evangelism" of custom nbt of {karta::%{_p}%} is set:
+                                        set {_VPTDuration} to 21
+                                    else:
+                                        set {_VPTDuration} to 18
                                     if metadata value "cast" of {_p} is not set:
                                         set metadata value "casttimemax" of {_p} to {_casttime}
-                                        play sound "skill.therold.mindflay_channel_whisper" with volume 3 and pitch 1 at {_p}
+                                        play sound "skill.therold.mindflay_channel_whisper" with volume 3 and pitch 1 at location of {_p}
                                         set metadata value "casting" of {_p} to true
                                         if metadata value "channeling" of {_p} is set:
                                             clear metadata value "channeling" of {_p}
                                             StopCastSoundTherold({_p})
-                                        set metadata value "lastspell" of {_p} to uncolored {_p}'s tool's name
+                                        set metadata value "lastspellTherold" of {_p} to uncolored {_p}'s tool's name
                                         set metadata value "cast" of {_p} to {_casttime}
                                         while metadata value "casting" of {_p} = true:
                                             set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
@@ -567,13 +590,13 @@ function VampiricTouchAbilityCast(p: player):
                                     GrantInsanity({_p}, 6)
                                     UpdateInsanity({_p})
                                     AbilityUse({_p}, "Vampiric Touch")
-                                    play sound "skill.therold.vampirictouch" with volume 3 and pitch 1 at {_p}
-                                    play sound "skill.therold.shadowcast" with volume 3 and pitch 1 at {_p}
+                                    play sound "skill.therold.vampirictouch" with volume 3 and pitch 1 at location of {_p}
+                                    play sound "skill.therold.shadowcast" with volume 3 and pitch 1 at location of {_p}
                                     draw 15 dust using dustOption(rgb(44, 30, 77), 1) at location above {_target} with offset vector(0.5, 0.5, 0.5) with extra 0.03
                                     if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Misery":
                                         ShadowWordPainAbilityCast({_p})
                                     if metadata value "Vampiric Touch-%{_p}%" of {_target} is not set:
-                                        set metadata value "Vampiric Touch-%{_p}%" of {_target} to 18
+                                        set metadata value "Vampiric Touch-%{_p}%" of {_target} to {_VPTDuration}
                                         amountOfDotsSet({_p}, {_target})
                                         VampiricTouch({_p}, {_target})
                                         VampiricTouchExpire({_p}, {_target})
@@ -617,12 +640,12 @@ function ShadowWordVoidAbilityCast(p: player):
                                         if metadata value "ShadowyInsight" of {_p} != true:
                                             if metadata value "cast" of {_p} is not set:
                                                 set metadata value "casttimemax" of {_p} to {_casttime}
-                                                play sound "skill.therold.shadow_word_void_precast" with volume 3 and pitch 1 at {_p}
+                                                play sound "skill.therold.shadow_word_void_precast" with volume 3 and pitch 1 at location of {_p}
                                                 set metadata value "casting" of {_p} to true
                                                 if metadata value "channeling" of {_p} is set:
                                                     clear metadata value "channeling" of {_p}
                                                     StopCastSoundTherold({_p})
-                                                set metadata value "lastspell" of {_p} to uncolored {_p}'s tool's name
+                                                set metadata value "lastspellTherold" of {_p} to uncolored {_p}'s tool's name
                                                 set metadata value "cast" of {_p} to {_casttime}
                                                 while metadata value "casting" of {_p} = true:
                                                     set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
@@ -673,9 +696,9 @@ function ShadowWordVoidAbilityCast(p: player):
                                             set {_insanity} to {_insanity}*1.2
                                         GrantInsanity({_p}, {_insanity})
                                         UpdateInsanity({_p})
-                                        play sound "skill.therold.shadow_word_void_cast" with volume 3 and pitch 1 at {_p}
-                                        play sound "skill.therold.shadow_word_void_impact" with volume 3 and pitch 1 at {_p}
-                                        play sound "skill.therold.shadowcast" with volume 3 and pitch 1 at {_p}
+                                        play sound "skill.therold.shadow_word_void_cast" with volume 3 and pitch 1 at location of {_p}
+                                        play sound "skill.therold.shadow_word_void_impact" with volume 3 and pitch 1 at location of {_p}
+                                        play sound "skill.therold.shadowcast" with volume 3 and pitch 1 at location of {_p}
                                         draw 24 dust using dustOption(rgb(95, 72, 156), 1) at {_target}'s head with offset vector(0.42, 0.5, 0.42) with extra 0.04
                                         draw 24 dust using dustOption(rgb(41, 22, 92), 1) at {_target}'s head with offset vector(0.37, 0.45, 0.37) with extra 0.04
                                         if {_target} is alive:
@@ -689,6 +712,10 @@ function ShadowWordVoidAbilityCast(p: player):
                                             if boolean tag "Constellation;Mass Hysteria" of custom nbt of {karta::%{_p}%} is set:
                                                 set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
                                                 set {_damage} to {_damage}*(1 + ({_voidformStacks}/100))
+                                            if boolean tag "Constellation;Dark Evangelism" of custom nbt of {karta::%{_p}%} is set:
+                                                if metadata value "Vampiric Touch-%{_p}%" of {_target} is set:
+                                                    if metadata value "Shadow Word: Pain-%{_p}%" of {_target} is set:
+                                                        set {_damage} to {_damage}*1.55
                                             if {_charges} = 1:
                                                 set {_chargesLore} to "%{_charges}% Charge"
                                             else:
@@ -715,6 +742,9 @@ function ShadowWordVoidAbilityCast(p: player):
                                                     GrantInsanity({_p}, 20)
                                                     UpdateInsanity({_p})
                                             make {_p} damage {_target} by {_damage}*2
+
+                                            if boolean tag "Constellation;Unleash the Shadows" of custom nbt of {karta::%{_p}%} is set:
+                                                ShadowyApparitionSpawn({_p}, {_target})
                                 else: 
                                     if {tekstcd::%{_p}%} = true:
                                         set {_cdd} to cooldown "Shadow Word: Death%{_p}%"
@@ -764,7 +794,7 @@ function ShadowWordDeathAbilityCast(p: player):
                                         clear metadata value "cast" of {_p}
                                         StopCastSoundTherold({_p})
                                         send action bar "&cInterrupted" to {_p}
-                                    set metadata value "lastspell" of {_p} to uncolored {_p}'s tool's name
+                                    set metadata value "lastspellTherold" of {_p} to uncolored {_p}'s tool's name
                                     set {_charges} to metadata value "ShadowWordDeathCharges" of {_p}
                                     remove 1 from {_charges}
                                     set metadata value "ShadowWordDeathCharges" of {_p} to {_charges}
@@ -795,10 +825,10 @@ function ShadowWordDeathAbilityCast(p: player):
                                     set metadata value "Element" of {_p} to "Ghost"
                                     set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage})
                                     make {_p} damage {_target} by {_damage}*2
-                                    play sound "skill.therold.shadow_word_death" with volume 3 and pitch 1 at {_p}
-                                    play sound "skill.therold.shadow_word_death_cast" with volume 3 and pitch 1 at {_p}
-                                    play sound "skill.therold.shadow_word_death_impact" with volume 3 and pitch 1 at {_p}
-                                    play sound "skill.therold.shadowcast" with volume 3 and pitch 1 at {_p}
+                                    play sound "skill.therold.shadow_word_death" with volume 3 and pitch 1 at location of {_p}
+                                    play sound "skill.therold.shadow_word_death_cast" with volume 3 and pitch 1 at location of {_p}
+                                    play sound "skill.therold.shadow_word_death_impact" with volume 3 and pitch 1 at location of {_p}
+                                    play sound "skill.therold.shadowcast" with volume 3 and pitch 1 at location of {_p}
                                     draw 10 dust using dustOption(rgb(77, 54, 138), 1) at location above {_target} with offset vector(0.4, 0.5, 0.4) with extra 0.03
                                     if {_charges} > 0:
                                         set {_abilities::*} to "Mind Blast", "Shadow Word: Pain", "Vampiric Touch", "Mind Flay", "Void Eruption", "Void Bolt", "Shadow Word: Void", "Shadow Word: Death"
@@ -846,8 +876,8 @@ function SurrenderToMadnessAbilityCast(p: player):
                                     create cooldown "Surrender To Madness%{_p}%" for {_cd}
                                     AbilityUse({_p}, "Surrender to Madness")
                                     set metadata value "SurrenderToMadness" of {_p} to true
-                                    play sound "skill.therold.void_eruption_cast" with volume 3 and pitch 1 at {_p}
-                                    play sound "skill.therold.surrender_to_madness" with volume 3 and pitch 1 at {_p}
+                                    play sound "skill.therold.void_eruption_cast" with volume 3 and pitch 1 at location of {_p}
+                                    play sound "skill.therold.surrender_to_madness" with volume 3 and pitch 1 at location of {_p}
                                     play sound "entity.wither.spawn" with volume 3 and pitch 0 at {_p}
                             else: 
                                 if {tekstcd::%{_p}%} = true:
@@ -991,7 +1021,10 @@ function ShadowWordPain(p: player, target: entity):
         if {_target} is alive:
             set {_pospiech} to Haste({_p}) + (({hasteVoidform::%{_p}%}/4)/100)
             set {_crit} to CriticalHit({_p})
-            set {_SWPDuration} to 14
+            if boolean tag "Constellation;Dark Evangelism" of custom nbt of {karta::%{_p}%} is set:
+                set {_SWPDuration} to 18
+            else:
+                set {_SWPDuration} to 14
             set {_damage} to (1 + (({damage::%{_p}%}/68) + ({versatility::%{_p}%}/204) + {primarystat::%{_p}%}/34)) * (1.096 + (({mastery::%{_p}%}/6.25)/100))
             set {_totalTicks} to (round({_SWPDuration}/(2/{_pospiech}), 0))
             if offensiveTrait({_p}, "Brother Therold", "Death Throes") > 0:
@@ -1037,7 +1070,10 @@ function ShadowWordPain(p: player, target: entity):
             stop loop
 function ShadowWordPainExpire(p: player, target: entity):
     set {_id} to line 19 of lore of {karta::%{_p}%}
-    set {_duration} to 14
+    if boolean tag "Constellation;Dark Evangelism" of custom nbt of {karta::%{_p}%} is set:
+        set {_duration} to 18
+    else:
+        set {_duration} to 14
     set {_height} to amountOfDots({_p}, {_target})
     set {_dots} to metadata value "AmountOfDots%{_p}%" of {_target}
     while {_duration} > 0:
@@ -1050,7 +1086,10 @@ function ShadowWordPainExpire(p: player, target: entity):
             wait 1 second
             remove 1 from {_duration}
             if metadata value "Shadow Word: Pain - Refresh-%{_p}%" of {_target} is set:
-                set {_duration} to 14
+                if boolean tag "Constellation;Dark Evangelism" of custom nbt of {karta::%{_p}%} is set:
+                    set {_duration} to 18
+                else:
+                    set {_duration} to 14
                 clear metadata value "Shadow Word: Pain - Refresh-%{_p}%" of {_target}
         else:
             if offensiveTrait({_p}, "Brother Therold", "Death Throes") > 0:
@@ -1193,7 +1232,10 @@ function VampiricTouch(p: player, target: entity):
     while metadata value "Vampiric Touch-%{_p}%" of {_target} is set:
         if {_target} is alive:
             set {_pospiech} to Haste({_p}) + (({hasteVoidform::%{_p}%}/4)/100)
-            set {_VPTDuration} to 18
+            if boolean tag "Constellation;Dark Evangelism" of custom nbt of {karta::%{_p}%} is set:
+                set {_VPTDuration} to 21
+            else:
+                set {_VPTDuration} to 18
             set {_crit} to CriticalHit({_p})
             set {_damage} to (1.5 + (({damage::%{_p}%}/62) + ({versatility::%{_p}%}/186) + {primarystat::%{_p}%}/31)) * (1.096 + (({mastery::%{_p}%}/6.25)/100))
             set {_totalTicks} to (round({_VPTDuration}/(3/{_pospiech}), 0))
@@ -1211,7 +1253,7 @@ function VampiricTouch(p: player, target: entity):
                 set {_damage} to {_damage}*(1 + ({_voidformStacks}/100))
             loop all items in the inventory of {_p}:
                 if loop-item = gray dye named "<##613e82>Vampiric Touch" with nbt from "{""minecraft:custom_model_data"":{floats:[2.0f]},""minecraft:custom_data"":{""Vampiric Touch"":1b}}":
-                    set {_lore} to "&8Ability%nl%&f1.5 second cast%nl%&7No cooldown%nl%&7Use: &fRMB%nl%<##613e82>A touch of darkness that causes &f%{_totalTicks}*{_damage}% <##431d53>Ghost%nl%<##613e82>damage over &f%{_VPTDuration}% sec<##613e82>, and heals the priest for%nl%&f10%% <##613e82>of damage dealt.%nl% %nl%&fGenerates 6 Insanity."
+                    set {_lore} to "&8Ability%nl%&f1.5 second cast%nl%&7No cooldown%nl%&7Use: &fRMB%nl%<##613e82>A touch of darkness that causes &f%1 + {_totalTicks}*{_damage}% <##431d53>Ghost%nl%<##613e82>damage over &f%{_VPTDuration}% sec<##613e82>, and heals the priest for%nl%&f10%% <##613e82>of damage dealt.%nl% %nl%&fGenerates 6 Insanity."
                     set lore of loop-item to {_lore}
             set {_target}'s last damage cause to sweep attack
             set metadata value "Element" of {_p} to "Ghost"
@@ -1235,7 +1277,10 @@ function VampiricTouch(p: player, target: entity):
 
 function VampiricTouchExpire(p: player, target: entity):
     set {_id} to line 19 of lore of {karta::%{_p}%}
-    set {_duration} to 18
+    if boolean tag "Constellation;Dark Evangelism" of custom nbt of {karta::%{_p}%} is set:
+        set {_duration} to 21
+    else:
+        set {_duration} to 18
     set {_height} to amountOfDots({_p}, {_target})
     set {_dots} to metadata value "AmountOfDots%{_p}%" of {_target}
     while {_duration} > 0:
@@ -1248,7 +1293,10 @@ function VampiricTouchExpire(p: player, target: entity):
             wait 1 second
             remove 1 from {_duration}
             if metadata value "Vampiric Touch - Refresh-%{_p}%" of {_target} is set:
-                set {_duration} to 18
+                if boolean tag "Constellation;Dark Evangelism" of custom nbt of {karta::%{_p}%} is set:
+                    set {_duration} to 21
+                else:
+                    set {_duration} to 18
                 clear metadata value "Vampiric Touch - Refresh-%{_p}%" of {_target}
         else:
             stop loop
@@ -1269,7 +1317,7 @@ function ShadowyApparitionSpawn(p: player, target: entity):
             set {_shadowyApparition} to last spawned bee
             ShadowyApparitionFloat({_p}, {_shadowyApparition}, {_target})
             ShadowyApparitionVisual({_shadowyApparition})
-            play sound "skill.therold.shadowy_apparitions" with volume 2 and pitch 1 at {_p}
+            play sound "skill.therold.shadowy_apparitions" with volume 2 and pitch 1 at location of {_p}
             if cooldown "Shadowy Apparition Sound-%{_p}%" is finished:
                 set {_pitch} to a random number between 0.8 and 1.1
                 play sound "skill.therold.shadowy_apparitions_whisper" with volume 2 and pitch {_pitch} at {_p}
@@ -1316,6 +1364,9 @@ function ShadowyApparitionFloat(p: player, apparition: entity, target: entity):
         if boolean tag "Constellation;Mass Hysteria" of custom nbt of {karta::%{_p}%} is set:
             set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
             set {_damage} to {_damage}*(1 + ({_voidformStacks}/100))
+        if boolean tag "Constellation;Unleash the Shadows" of custom nbt of {karta::%{_p}%} is set:
+            set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
+            set {_damage} to {_damage}*(1 + (({_voidformStacks}/100)*3))
         set {_target}'s last damage cause to sweep attack
         set {_lore} to "&8Passive Ability%nl%&fNo cast%nl%&7Cooldown: &fnone%nl%&7Use: &fPassive%nl%<##613e82>When your <##8165a6>Shadow Word: Pain <##613e82>damage%nl%<##613e82>over time critically strikes, you also create%nl%<##613e82>a shadowy version of yourself that floats%nl%<##613e82>towards the target and deals &f%{_damage}% <##431d53>Ghost%nl%<##613e82>damage."
         set metadata value "Element" of {_p} to "Ghost"
@@ -1324,6 +1375,10 @@ function ShadowyApparitionFloat(p: player, apparition: entity, target: entity):
         if {_crit} is set:
             set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage})
         make {_p} damage {_target} by {_damage}*2
+        if boolean tag "Constellation;Heir to the Darkness" of custom nbt of {karta::%{_p}%} is set:
+            if metadata value "Heir to the Darkness" of {_p} < 300:
+                add 1 to metadata value "Heir to the Darkness" of {_p}
+                buffRegister({_p}, "Heir", 4, "", "Stacks", "%metadata value "Heir to the Darkness" of {_p}%%%", "-")
         loop all items in the inventory of {_p}:
             if loop-item = purple dye named "<##613e82>Shadowy Apparitions" with nbt from "{""minecraft:custom_model_data"":{floats:[3.0f]},""minecraft:custom_data"":{""Shadowy Apparitions"":1b}}":
                 set lore of loop-item to {_lore}
@@ -1336,7 +1391,7 @@ function ShadowyApparitionVisual(apparition: entity):
         wait 1 tick
 
 function StopCastSoundTherold(p: player):
-    set {_ability} to metadata value "lastspell" of {_p}
+    set {_ability} to metadata value "lastspellTherold" of {_p}
     if {_ability} = "Mind Blast":
         stop sound "skill.therold.mind_blast_precast" for all players in radius 2 around {_p}
     else if {_ability} = "Void Eruption":
@@ -1473,7 +1528,7 @@ function ShadowWordDeathRecharge(p: player, cd: timespan):
 function ShadowyInsight(p: player):
     send title " " with subtitle "" to {_p} for 1 minute with fade in 0.25 second and fade out 0 second
     set metadata value "ShadowyInsight" of {_p} to true
-    play sound "skill.therold.shadowy_insight_proc" with volume 2 and pitch 1 at {_p}
+    play sound "skill.therold.shadowy_insight_proc" with volume 2 and pitch 1 at location of {_p}
     clear cooldown "Mind Blast%{_p}%"
     clear cooldown "Shadow Word: Void%{_p}%"
     set {_time} to 60 seconds
