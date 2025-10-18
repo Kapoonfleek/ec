@@ -376,25 +376,29 @@ on damage:
 		if victim's last damage cause is attack:
 			if projectile does not exist:
 				if boolean tag "MeleeAbility" of custom nbt of attacker's tool is not set:
-					if cooldown "attack%attacker%" is finished:
-						create cooldown "attack%attacker%" for 0.5 seconds
-						set damage to damage*0.75
-						if name of attacker's tool is set:
-							set metadata value "LastDamageCause" of victim to name of attacker's tool
+					if boolean tag "Ability" of custom nbt of attacker's tool is not set:
+						if cooldown "attack%attacker%" is finished:
+							create cooldown "attack%attacker%" for 0.5 seconds
+							set damage to damage*0.75
+							if name of attacker's tool is set:
+								set metadata value "LastDamageCause" of victim to name of attacker's tool
+							else:
+								set metadata value "LastDamageCause" of victim to "%attacker's tool%"
+							if attacker's tool is enchanted:
+								set {_lastdmg::*} to "&5Enchants:"
+								loop enchantments of attacker's tool:
+									set {_level} to enchantment level of enchantment of loop-value
+									set {_line} to "&7%enchantment of loop-value% %roman numeral of {_level}%"
+									set {_lastdmg::*} to {_lastdmg::*} and {_line}
+							if lore of attacker's tool is set:
+								if {_level} is set:
+									set {_lastdmg::*} to {_lastdmg::*} and " "
+								set {_lastdmg::*} to {_lastdmg::*} and lore of attacker's tool
+						
+							set metadata value "LastDamageCauseLore" of victim to join {_lastdmg::*} by nl
 						else:
-							set metadata value "LastDamageCause" of victim to "%attacker's tool%"
-						if attacker's tool is enchanted:
-							set {_lastdmg::*} to "&5Enchants:"
-							loop enchantments of attacker's tool:
-								set {_level} to enchantment level of enchantment of loop-value
-								set {_line} to "&7%enchantment of loop-value% %roman numeral of {_level}%"
-								set {_lastdmg::*} to {_lastdmg::*} and {_line}
-						if lore of attacker's tool is set:
-							if {_level} is set:
-								set {_lastdmg::*} to {_lastdmg::*} and " "
-							set {_lastdmg::*} to {_lastdmg::*} and lore of attacker's tool
-					
-						set metadata value "LastDamageCauseLore" of victim to join {_lastdmg::*} by nl
+							set damage to 0
+							cancel event
 					else:
 						set damage to 0
 						cancel event
@@ -482,6 +486,10 @@ on damage:
 						GrantInsanity(attacker, 15)
 				UpdateInsanity(attacker)
 
+		if {kartaname::%attacker%} = "Umbreon":
+			if metadata value "Garrote%attacker%" of victim is set:
+				set damage to damage*1.1
+
 	if metadata value "IgnoreModifiers" of victim != true:
 
 		set {_damagered} to 1 + (({_resistance}/10) + ({_versatility}/30))/100
@@ -503,8 +511,8 @@ on damage:
 		chance of ({avoidance::%victim%}/20)%:
 			set damage to 0
 
-	if attacker is a player:		
-		if damage != 0:
+	if damage != 0:
+		if attacker is a player:		
 			if metadata value "Crit%attacker%" of victim is true:
 				clear metadata value "Crit%attacker%" of victim
 				set {_crit} to true
@@ -515,26 +523,14 @@ on damage:
 			if boolean tag "ECMob" of custom nbt of victim is set:
 				set metadata value "MostRecentlyDamagedEnemy" of attacker to victim
 
-	if {shwdea::%victim%} is true:
-		if attacker is a player:
-			clear {shwdea::%victim%}
-			if damage is not bigger than or equal to victim's health:
-				set {_swd} to damage
-				set {lastdmgcause::%attacker%} to "<##ff8921>Shadow Word: Death"
-				set attacker's last damage cause to attack
-				set {lastdmgcauselore::%attacker%::*} to attacker's tool's lore
-				make the attacker damage the attacker by {_swd}*2
-
-	if victim is a player:
-		if health of victim < (max health of victim*0.3):
-			if metadata value "Heartbeat" of victim is not set:
-				set metadata value "Heartbeat" of victim to true
-				Heartbeat(victim)
-		if health of victim > (max health of victim*0.3):
-			clear metadata value "Heartbeat" of victim
+		if victim is a player:
+			if health of victim < (max health of victim*0.3):
+				if metadata value "Heartbeat" of victim is not set:
+					set metadata value "Heartbeat" of victim to true
+					Heartbeat(victim)
+			if health of victim > (max health of victim*0.3):
+				clear metadata value "Heartbeat" of victim
 	
-	#	#1.18 JAK COŚ SIĘ ZEPSUJE TO ZMIENIŁEM TU ŻEBY NIE DODAWAŁO DAMAGE KIEDY ZADAMY DAMAGE GDY PRZECIWNIK JEST NIEWRAŻLIWY
-	if damage != 0:
 		if victim is not invulnerable:
 			if int tag "ShieldsActive" of custom nbt of victim > 0:
 				set {_damageShield} to shieldDamageEvent(victim, damage)
@@ -717,6 +713,8 @@ on packet event play_client_use_entity:
 	else if metadata value "Garrote%player%" of {_entity} is set:
 		cancel event
 	else if metadata value "Night Slash Vulnerability%player%" of {_entity} is set:
+		cancel event
+	else if metadata value "StarsurgeStacks%player%" of {_entity} is set:
 		cancel event
 
 #on heal:
