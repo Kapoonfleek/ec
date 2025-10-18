@@ -39,6 +39,32 @@ command /itemclaim [<text>]:
 				play sound "entity.item.pickup" with volume 5 and pitch 0.7 at player
 				wait 3 ticks
 
+command /pauseworldtime [<number>]:
+	trigger:
+		if {worldTimePaused} != true:
+			if arg-1 is set:
+				set {_duration} to "%arg-1% minutes" parsed as timespan
+				set {worldTimePaused} to true
+				send "&a&oPaused server world time! Time on EC will remain as &f%{_now}% &auntil unpaused." to player
+				send "&f%player% &epaused the server time for &f%{_duration}%&e." to all players
+				while {_duration} > 0 minutes:
+					wait 1 minute
+					remove 1 minute from {_duration}
+					stop loop if {worldTimePaused} != true
+				clear {worldTimePaused}
+				send "&eServer time has been unpaused." to all players
+			else:
+				set {worldTimePaused} to true
+				send "&a&oPaused server world time! Time on EC will remain as &f%{_now}%." to player
+				send "&f%player% &epaused the server time." to all players
+		else:
+			clear {worldTimePaused}
+			set {_now} to now formatted as "hh:mm"
+			set time in world "world" to {_now} parsed as time
+
+			send "&a&oUnpaused server world time! Time on EC is now &f%{_now}%&a." to player
+			send "&f%player% &eunpaused the server time." to all players
+
 command /completionclaim [<text>]:
 	trigger:
 		if target of player is a player:
@@ -429,17 +455,11 @@ command /npcskin [<integer>]:
 
 command /changecardcourse [<text>]:
 	trigger:
-		if {language::%player%} = "English":
-			if arg-1 = "yes":
-				send "&fSuccessfully reset your Stellar Card Course." to player
-			else:
-				send formatted "&f&oAre you sure you want to change your current Card Course from &c&m%{cardcourse::%player%}%&f? <tooltip:Click here to change your current Stellar Card Course.><command:/changecardcourse yes>&a[YES]" to player
+		if arg-1 = "yes":
+			send "&fSuccessfully reset your Stellar Card Course." to player
 		else:
-			if arg-1 = "yes":
-				send "&fPomyślnie zresetowano swoją preferowaną kartę w Stelarnej Skrzynce." to player
-			else:
-				send formatted "&f&oCzy jesteś pewien, że chcesz zmienić swoją obecną preferowaną kartę z &c&m%{cardcourse::%player%}%&f? <tooltip:Kliknij tutaj, by zmienić swoją obecną preferowaną Kartę w Stelarnej Skrzynce.><command:/changecardcourse yes>&a[YES]" to player
-			
+			send formatted "&f&oAre you sure you want to change your current Card Course from &c&m%{cardcourse::%player%}%&f? <tooltip:Click here to change your current Stellar Card Course.><command:/changecardcourse yes>&a[YES]" to player
+
 command /szynszyla32Obietnica:
 	trigger:
 		if metadata value "ECEngaged" of player is not set:
