@@ -149,7 +149,98 @@ on rightclick:
 							stop
 		else:
 			send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to player
-			play sound "block.glass.break" with volume 3 and pitch 0 to player 		
+			play sound "block.glass.break" with volume 3 and pitch 0 to player 	
+	else if boolean tag "Shadowstep" of custom nbt of player's tool is set:
+		cancel event
+		if {kartaname::%player%} = "Umbreon":
+			if CanUseAbility(player) != false:
+				set {_target} to Target(player, 100, false)
+				if {_target} is set:
+					set {_range} to 6 + CrowdControl(player)/30
+					if distance between player and {_target} <= {_range}:
+						if cooldown "Shadowstep%player%" is finished:
+							set {_cd} to 20 seconds
+							create cooldown "Shadowstep%player%" for {_cd}
+							set cooldown of player's tool for player to {_cd}
+
+							AbilityUse(player, "Shadowstep")
+
+							set {_damage} to 2 + ({damage::%player%}/100 + {versatility::%player%}/300 + {primarystat::%player%}/50)
+							set {_shadowstepDmgIncrease} to 8
+							set {_shadowstepDuration} to 6
+
+							set {_element} to "Dark"
+							if string tag "Talents;Row 2" of custom nbt of {karta::%player%} = "Moonlight Empowerment":
+								if checkIfInsideMoonlightOrb(player) = true:
+									set {_element} to "Moonlight"
+
+							set {_lore} to "&8Basic Ability%nl%&fInstant cast%nl%&7Cooldown: &8 &f%{_cd}%%nl%&7Range: &f%{_range}% blocks%nl%&7Use: &fRMB%nl%<##999999>Blink <##555555>behind a target, dealing &f%{_damage}% <##333333>Dark%nl%<##555555>damage and increasing <##999999>all damage they%nl%<##999999>take <##555555>from you by &f%{_shadowstepDmgIncrease}%%% <##555555>for &f%{_shadowstepDuration}% sec<##555555>."
+							LoreUpdate(player, "Shadowstep", {_lore})
+
+							set {_crit} to CriticalHit(player)
+							set {_target}'s last damage cause to sweep attack
+							set metadata value "Element" of player to {_element}
+							set metadata value "LastDamageCause" of {_target} to "<##555555>Shadowstep"
+							set metadata value "LastDamageCauseLore" of {_target} to {_lore}
+							set {_damage} to Crit(player, {_target}, {_crit}, {_damage})
+
+							make player damage {_target} by 2*({_damage})
+
+							Shadowstep(player, {_target})
+
+							play sound "entity.generic.hurt" with volume 1.25 and pitch 1.1 at location of {_target}
+							draw 20 of dust particle using dustOption(black, 1) at location above {_target} with offset vector(0.6, 0.6, 0.6) with extra 0.03
+
+							set {_loc} to findSafeLocation({_target})
+							if {_loc} is set:
+								teleport player to {_loc}
+								play sound "entity.enderman.teleport" with volume 2.25 and pitch 0.75 at location of {_target}
+							
+						else:
+							cancel event
+							if {tekstcd::%player%} = true:
+								set {_cdd} to cooldown "Shadowstep%player%"
+								send "<##555555>You must wait &f%{_cdd}%<##555555> to use this ability." to player
+							stop
+		else:
+			send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to player
+			play sound "block.glass.break" with volume 3 and pitch 0 to player
+	else if boolean tag "Vanish" of custom nbt of player's tool is set:
+		cancel event
+		if {kartaname::%player%} = "Umbreon":
+			if CanUseAbility(player) != false:
+				if cooldown "Vanish%player%" is finished:
+					set {_cd} to 40 seconds
+					create cooldown "Vanish%player%" for {_cd}
+					set cooldown of player's tool for player to {_cd}
+
+					AbilityUse(player, "Vanish")
+
+					set {_vanishDuration} to 10 seconds
+					set {_vanishMovementSpeed} to 50
+					set {_lore} to "&8Basic Ability%nl%&fInstant cast%nl%&7Cooldown: &8 &f%{_cd}%%nl%&7Use: &fRMB%nl%<##555555>Blend into the shadows, <##999999>vanishing <##555555>from%nl%<##555555>sight and becoming &f <##999999>Invisible <##555555>for &f%seconds of {_vanishDuration}% sec<##555555>.%nl% %nl%&f <##999999>Vanish <##555555>increases your <##999999> Movement%nl%<##999999>Speed <##555555>by &f%{_vanishMovementSpeed}%%% <##555555>for the duration."
+					LoreUpdate(player, "Vanish", {_lore})
+
+					apply invisibility 1 without particles to player for {_vanishDuration}
+
+					set {_movementSpeed} to player's walking speed
+					set player's walking speed to (player's walking speed)*1.5
+
+					draw 20 of dust particle using dustOption(black, 1) at location above player with offset vector(0.6, 0.6, 0.6) with extra 0.03
+					play sound "skill.umbreon.vanish" with volume 2.25 and pitch 1 at location of player
+
+					wait {_vanishDuration}
+					set player's walking speed to {_movementSpeed}
+					
+				else:
+					cancel event
+					if {tekstcd::%player%} = true:
+						set {_cdd} to cooldown "Shadowstep%player%"
+						send "<##555555>You must wait &f%{_cdd}%<##555555> to use this ability." to player
+					stop
+		else:
+			send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to player
+			play sound "block.glass.break" with volume 3 and pitch 0 to player		
 	
 function Garrote(p: player, target: entity):
 	if metadata value "Garrote%{_p}%" of {_target} is not set:
@@ -170,12 +261,19 @@ function Garrote(p: player, target: entity):
 				if string tag "Talents;Row 2" of custom nbt of {karta::%{_p}%} = "Scent of Blood":
 					set {_damage} to {_damage}*1.2
 
+			set {_element} to "Dark"
+
+			if string tag "Talents;Row 2" of custom nbt of {karta::%{_p}%} = "Moonlight Empowerment":
+				if checkIfInsideMoonlightOrb({_p}) = true:
+					set {_element} to "Moonlight"
+
 			set {_cd} to "%16/{_pospiech}% seconds" parsed as timespan
 			set {_range} to 3 + CrowdControl({_p})/30
 			set {_garroteDuration} to 18
 			set {_tickTimeTooltip} to 2/{_pospiech}
 
 			set {_lore} to "&8Basic Ability%nl%&fInstant cast%nl%&7Cooldown:  &f%{_cd}%%nl%&7Range: &f%{_range}% blocks%nl%&7Use: &fRMB%nl%<##999999>Umbreon <##555555>garrotes the enemy, causing the%nl%<##555555>target to <##999999>Bleed <##555555>for &f%{_damage}% <##333333>Dark <##555555>every &f%{_tickTimeTooltip}% sec%nl%<##555555>for a total of &f%{_damage}*({_garroteDuration}/{_tickTimeTooltip})% <##333333>Dark <##555555>damage over &f%{_garroteDuration}% sec<##555555>.%nl% %nl%<##555555>This ability increases all <##999999>damage taken <##555555>by%nl%<##555555>the target from your abilities by &f10%% <##555555>for%nl%<##555555>its duration."
+			LoreUpdate({_p}, "Garrote", {_lore})
 
 			if metadata value "AmountOfDots%{_p}%" of {_target} < {_dots}:
 				set {_height} to amountOfDots({_p}, {_target})
@@ -186,14 +284,14 @@ function Garrote(p: player, target: entity):
 			set {_crit} to CriticalHit({_p})
 
 			set {_target}'s last damage cause to sweep attack
-			set metadata value "Element" of {_p} to "Dark"
+			set metadata value "Element" of {_p} to {_element}
 			set metadata value "LastDamageCause" of {_target} to "<##555555>Garrote"
 			set metadata value "LastDamageCauseLore" of {_target} to {_lore}
 			set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage})
 
 			make {_p} damage {_target} by 2*({_damage})
 
-			play sound "entity.generic.hurt" with volume 1.25 and pitch 1.1 at location of {_target}
+			play sound "skill.umbreon.garrote_bleed" with volume 1.25 and pitch 1.1 at location of {_target}
 			draw 10 of item particle using (redstone block) at location above {_target} with offset vector(0.4, 0.4, 0.4) with extra 0.03
 			wait {_tickTime}
 			remove {_tickTime} from metadata value "Garrote%{_p}%" of {_target}
@@ -226,8 +324,18 @@ function NightSlash(p: player, target: entity, damage: number, haste: number, ef
 
 	set {_bonusDuration} to 6 seconds
 
+	set {_element} to "Dark"
+	set {_visual} to "Standard"
+
+	if string tag "Talents;Row 2" of custom nbt of {karta::%{_p}%} = "Moonlight Empowerment":
+		if checkIfInsideMoonlightOrb({_p}) = true:
+			set {_element} to "Moonlight"
+			set {_visual} to "Moonlight"
+			add 0.5 to {_pitch}
+
 	set {_target}'s last damage cause to sweep attack
-	set metadata value "Element" of {_p} to "Dark"
+	set metadata value "Element" of {_p} to {_element}
+	checkIfInsideMoonlightOrb({_p})
 	set metadata value "LastDamageCause" of {_target} to "<##555555>%{_damageSource}%"
 	set metadata value "LastDamageCauseLore" of {_target} to {_lore}
 	set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage})
@@ -240,7 +348,7 @@ function NightSlash(p: player, target: entity, damage: number, haste: number, ef
 		NightSlashBonus({_p}, {_target}, {_bonusDuration}, 0.075)
 		make {_p} swing their hand
 
-	NightSlashVisual({_p}, {_target})
+	NightSlashVisual({_p}, {_target}, {_visual})
 
 function MoonlightOrb(p: player, loc: location):
 	set {_locOrb} to block 0.5 blocks above block at {_loc}
@@ -297,7 +405,7 @@ function MoonlightOrb(p: player, loc: location):
 
 	MoonlightOrbRadius({_p}, {_id})
 	
-	MoonlightOrbExpire({_p}, {_id}, {_duration}, {_light})
+	MoonlightOrbExpire({_p}, {_id}, {_duration}, {_locOrb}, {_light})
 
 function MoonlightOrbRadius(p: player, id: text):
 	set {_radius} to metadata value "RadiusOrb%{_id}%" of {_p}
@@ -364,8 +472,9 @@ function NightSlashBonus(p: player, target: entity, duration: timespan, bonus: n
 	else:
 		add {_bonus} to metadata value "Night Slash Vulnerability%{_p}%" of {_target}
 
-function MoonlightOrbExpire(p: player, id: text, duration: timespan, light: boolean = false):
+function MoonlightOrbExpire(p: player, id: text, duration: timespan, locOrb: location, light: boolean = false):
 	if metadata value "MoonlightOrbDuration%{_id}%" of {_p} is not set:
+		set metadata value "MoonlightOrbId%{_p}%" of block at {_locOrb} to {_id}
 		set metadata value "MoonlightOrbDuration%{_id}%" of {_p} to {_duration}
 		while metadata value "MoonlightOrbDuration%{_id}%" of {_p} > 0 seconds:
 			wait 1 second
@@ -373,13 +482,27 @@ function MoonlightOrbExpire(p: player, id: text, duration: timespan, light: bool
 		clear metadata value "MoonlightOrb%{_id}%" of {_p}
 		clear metadata value "RadiusOrb%{_id}%" of {_p}
 		clear metadata value "MoonlightOrbDuration%{_id}%" of {_p}
+		clear metadata value "MoonlightOrbId%{_p}%" of block at {_locOrb}
 
 		if {_light} is true:
 			make all players see block at {_locOrb} as air
 	else:
 		set metadata value "MoonlightOrbDuration%{_id}%" of {_p} to {_duration}
 
-function NightSlashVisual(p: player, target: entity):
+function checkIfInsideMoonlightOrb(p: player) :: boolean:
+	set {_radius} to 3 + CrowdControl({_p})/20
+
+	if string tag "Talents;Row 3" of custom nbt of {karta::%{_p}%} = "Supermoon":
+		set {_radius} to {_radius}*1.2
+
+	loop all blocks in radius {_radius} around {_p}:
+		if metadata value "MoonlightOrbId%{_p}%" of loop-block is set:
+			set {_insideMoonlightOrb} to true
+			stop loop
+
+	return {_insideMoonlightOrb}
+
+function NightSlashVisual(p: player, target: entity, visual: string):
 	set {_randomAbove} to a random number between 1 and 1.25
 	set {_loc} to location {_randomAbove} above {_p}
 	set {_loc} to location 1 block in front of {_loc}
@@ -394,15 +517,35 @@ function NightSlashVisual(p: player, target: entity):
 
 	set vector length of {_v} to 0.8
 
-	create a new custom dust_color_transition particle with:
-		count: 0
-		velocity: outwards
-		extra: 0.5
-		force: true
-		data: dustTransition(black, gray, 1)
-	set {_particle} to last created particle
-
 	loop 45 times:
 		set {_rx} to a random number between 0.00 and 0.08
-		draw 1 of dust_color_transition particle using dustTransition(black, gray, 1) at {_loc} ~ {_v} offset by vector({_rx},{_rx},{_rx}) with extra -0.01
+		if {_visual} = "Standard":
+			draw 1 of dust_color_transition particle using dustTransition(black, gray, 1) at {_loc} ~ {_v} offset by vector({_rx},{_rx},{_rx}) with extra -0.01
+		else if {_visual} = "Moonlight":
+			draw 1 of dust_color_transition particle using dustTransition(dark gray, yellow, 1) at {_loc} ~ {_v} offset by vector({_rx},{_rx},{_rx}) with extra -0.01
 		rotate {_v} around {_v2} by 8 degrees
+
+function Shadowstep(p: player, target: entity):
+	set {_duration} to 6 seconds
+	if metadata value "ShadowstepDamageIncrease%{_p}%" of {_target} is not set:
+
+		amountOfDotsSet({_p}, {_target})
+		set {_height} to amountOfDots({_p}, {_target})
+		set {_dots} to metadata value "AmountOfDots%{_p}%" of {_target}
+
+		set metadata value "ShadowstepDamageIncrease%{_p}%" of {_target} to {_duration}
+		while metadata value "ShadowstepDamageIncrease%{_p}%" of {_target} > 0 seconds:
+
+			if metadata value "AmountOfDots%{_p}%" of {_target} < {_dots}:
+				set {_height} to amountOfDots({_p}, {_target})
+
+			set {_durationLeft} to seconds of metadata value "ShadowstepDamageIncrease%{_p}%" of {_target}
+			dotsText(" %{_durationLeft}% sec", {_p}, (location {_height} above {_target}'s head), 0 seconds, 1 second)
+
+			wait 1 second
+			remove 1 second from metadata value "ShadowstepDamageIncrease%{_p}%" of {_target}
+
+		clear metadata value "ShadowstepDamageIncrease%{_p}%" of {_target}
+		amountOfDotsSubtract({_p}, {_target})
+	else:
+		set metadata value "ShadowstepDamageIncrease%{_p}%" of {_target} to {_duration}
