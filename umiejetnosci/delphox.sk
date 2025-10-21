@@ -348,6 +348,7 @@ function Flamethrower(p: player, target: entity):
 	set {_hasteModifier} to 1/{_haste}
 	if string tag "Talents;Row 2" of custom nbt of {karta::%{_p}%} = "Flame Accelerant":
 		if metadata value "DelphoxFlamethrowerUsed" of {_p} is not set:
+			broadcast "Not set"
 			buffClear({_p}, "Accelerant")
 			set {_cd} to {_cd}*0.5
 			set {_flameAccelerant} to true
@@ -377,6 +378,7 @@ function Flamethrower(p: player, target: entity):
 	
 	if {_hotSpree} != true:
 		create cooldown "Flamethrower%{_p}%-%uuid of {_target}%" for {_cd}
+		FlamethrowerCooldownTickDown({_p}, {_target})
 
 	if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Hot Spree":
 		set {_damage} to {_damage}*1.6
@@ -399,6 +401,7 @@ function Flamethrower(p: player, target: entity):
 		if {_hotSpree} is true:
 			set metadata value "HotSpreeTicks" of {_p} to {_seconds}
 		ignite {_target} for "%{_seconds}% seconds" parsed as timespan
+
 		while metadata value "FlamethrowerTicks%{_p}%" of {_target} > 0:
 			if {_target} is alive:
 				set {_damage} to 1.25 + ({versatility::%{_p}%}/360) + ({damage::%{_p}%}/120) + {primarystat::%{_p}%}/60
@@ -409,9 +412,7 @@ function Flamethrower(p: player, target: entity):
 				set {_haste} to  Haste({_p})
 				set {_wait} to "%1/{_haste}% seconds" parsed as timespan
 
-				set {_ticks} to metadata value "FlamethrowerTicks%{_p}%" of {_target}
-				remove 1 from {_ticks}
-				set metadata value "FlamethrowerTicks%{_p}%" of {_target} to {_ticks}
+				remove 1 from metadata value "FlamethrowerTicks%{_p}%" of {_target}
 
 				if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Hot Spree":
 					set {_damage} to {_damage}*1.6
@@ -775,3 +776,16 @@ function Pyromaniac(p: player):
 			else:
 				clear {pyromaniacstacks::%{_p}%}
 				stop loop
+
+function FlamethrowerCooldownTickDown(p: player, target: entity):
+	set {_id} to entity id of {_target}
+	set {_meta} to metadata packet with id {_id}
+	while cooldown "Flamethrower%{_p}%-%uuid of {_target}%" is not finished:
+		set {_remainingCdFlamethrower} to seconds of cooldown "Flamethrower%{_p}%-%uuid of {_target}%"
+		set {_name} to "%name of {_target}% &8| &f %{_remainingCdFlamethrower}%s"
+		add data from "name %{_name}%" to {_meta}
+		send packet {_meta} to {_p}
+		wait 1 second
+	if {_target} is alive:
+		add data from "name %name of {_target}%" to {_meta}
+		send packet {_meta} to {_p}
