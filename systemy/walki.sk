@@ -12,7 +12,15 @@ on death:
 		clear drops
 
 		if {kartaname::%attacker%} = "Umbreon":
-			apply invisibility 1 without particles to attacker for 5 seconds
+			set {_baseDuration} to 5
+			if string tag "Talents;Row 2" of custom nbt of {karta::%attacker%} = "Chosen of the Night":
+				set {_baseDuration} to {_baseDuration}*1.2
+
+			set {_invisibilityDuration} to "%{_baseDuration}% seconds" parsed as timespan
+
+			apply invisibility 1 without particles to attacker for {_invisibilityDuration}
+
+			clear metadata value "From the Shadows%attacker%" of victim
 
 	if uuid tag "ECEntityTitle" of custom nbt of victim is set:
 		set {_entityTitle} to (uuid tag "ECEntityTitle" of custom nbt of victim) parsed as entity
@@ -20,13 +28,12 @@ on death:
 		
 	if boolean tag "ECExpAreaMayanMob" of custom nbt of victim is set:
 		if attacker is a player:
-			if {winterDelightPassLEVEL::%attacker%} >= 0:
-				getMission(attacker, "Sleighing the Mobs", "Pokonywanie Potworów", 1)
-			set {_id} to uncolored line 19 of lore of {karta::%attacker%}
-			replace all "Id: " in {_id} with ""
+			#if {winterDelightPassLEVEL::%attacker%} >= 0:
+			#	getMission(attacker, "Sleighing the Mobs", "Pokonywanie Potworów", 1)
+			set {_id} to string tag "Id" of custom nbt of {karta::%attacker%}
 			load yaml "plugins/Skript/playerdata/karty/%{kartaname::%attacker%}%/%{_id}%.yml" as "cardExpAreaMayanXP-%attacker%"
 			set {_cardLevel} to yaml value "Card.Level" in "cardExpAreaMayanXP-%attacker%"
-			set {_maxLevel} to 50
+			set {_maxLevel} to 60
 			set {_xp} to 0.4/1.171 ^ ((({_cardLevel}/{_maxLevel}))+sqrt({_cardLevel}*10))
 			if boolean tag "ECSuperMob" of custom nbt of victim is set:
 				set {_xp} to {_xp}*2.5
@@ -39,11 +46,10 @@ on death:
 			remove uuid of attacker from {asyst::%uuid of victim%::*}
 			if size of {asyst::%uuid of victim%::*} > 0:
 				loop {asyst::%uuid of victim%::*}:
-					if {winterDelightPassLEVEL::%loop-value%} >= 0:
-						getMission(loop-value, "Sleighing the Mobs", "Pokonywanie Potworów", 1)
+					#if {winterDelightPassLEVEL::%loop-value%} >= 0:
+					#	getMission(loop-value, "Sleighing the Mobs", "Pokonywanie Potworów", 1)
 					set {_p} to loop-value parsed as a player
-					set {_id} to uncolored line 19 of lore of {karta::%{_p}%}
-					replace all "Id: " in {_id} with ""
+					set {_id} to string tag "Id" of custom nbt of {karta::%{_p}%}
 					load yaml "plugins/Skript/playerdata/karty/%{kartaname::%{_p}%}%/%{_id}%.yml" as "cardExpAreaMayanXP-%{_p}%"
 					set {_cardLevel} to yaml value "Card.Level" in "cardExpAreaMayanXP-%{_p}%"
 					set {_maxLevel} to 50
@@ -84,11 +90,8 @@ on death:
 	if {testentity::%victim%} is true:
 		clear {testentity::%victim%}
 		stop
-	if {lavaburststacks::%attacker%::%victim%} is set:
-		clear {lavaburststacks::%attacker%::%victim%}
 	if victim is a player:
-		set {_id} to line 19 of lore of {karta::%victim%}
-		replace all "&8Id: " in {_id} with ""
+		set {_id} to string tag "Id" of custom nbt of {karta::%victim%}
 		add 1 to {deaths::%victim%}
 		add 1 to {deaths::%{kartaname::%victim%}%::%{_id}%}
 	else:
@@ -108,8 +111,6 @@ on death:
 					show flash at victim
 			else:
 				clear drops
-	if {miod::%victim%} is set:
-		set {miod::%victim%} to 0
 	if victim is a player:
 		clear metadata value "Heartbeat" of victim
 	if boolean tag "ECMob" of custom nbt of victim is set:
@@ -238,6 +239,9 @@ on respawn:
 		set player's last damage cause to attack
 import:
 	org.bukkit.entity.LivingEntity
+	java.time.ZonedDateTime
+	java.time.ZoneId
+
 on damage:
 	if attacker is a player:
 		if victim is a living entity:
@@ -443,6 +447,7 @@ on damage:
 	replace all "&8Id: " in {_idV} with ""
 	replace all "&8Id: " in {_idA} with ""
 	
+	set {_attackerElement} to metadata value "Element" of attacker
 	set {_zywiol} to Zywiol(attacker, victim)
 
 	set {_resistance} to {resistance::%victim%}
@@ -487,17 +492,88 @@ on damage:
 				UpdateInsanity(attacker)
 
 		if {kartaname::%attacker%} = "Umbreon":
+
 			if metadata value "Garrote%attacker%" of victim is set:
+				set damage to damage*1.1
+
+			if metadata value "ShadowstepDamageIncrease%attacker%" of victim is set:
+				set damage to damage*1.08
+
+			if (time in world "world") is between 10:00 PM and 4:00 AM:
 				set damage to damage*1.1
 
 			if attacker has invisibility:
 				set {_baseDamageBonus} to 0.15
+				
 				if string tag "Talents;Row 2" of custom nbt of {karta::%attacker%} = "Chosen of the Night":
-					set {_baseDamageBonus} to 0.15 + 0.05
+					set {_baseDamageBonus} to {_baseDamageBonus} + 0.1
 
 				set {_damageBonus} to (1 + ({_baseDamageBonus} + (({mastery::%attacker%}/130))))
 
-				set {_damage} to {_damage}*{_damageBonus}
+				set damage to damage*{_damageBonus}
+
+				if metadata value "LastDamageCause" of victim = "<##555555>Shadow Claws":
+					clear metadata value "ShadowstepDamageIncrease%attacker%" of victim
+					clear metadata value "Garrote%attacker%" of victim
+
+					if string tag "Talents;Row 5" of custom nbt of {karta::%attacker%} = "Shadow Macabre":
+						remove invisibility from attacker
+						set damage to damage*1.05
+
+			if string tag "Talents;Row 2" of custom nbt of {karta::%attacker%} = "Moonlight Empowerment":
+				set {_darkIncrease} to 1.08
+				set {_lightIncrease} to 1.08
+
+				if {_attackerElement} = "Dark":
+					set damage to damage*{_darkIncrease}
+				else if {_attackerElement} = "Light":
+					set damage to damage*{_lightIncrease}
+				else if {_attackerElement} = "Moonlight":
+					set damage to damage*{_darkIncrease}*{_lightIncrease}
+
+			if string tag "Talents;Row 4" of custom nbt of {karta::%attacker%} = "Midnight":
+
+				if {_attackerElement} != "Moonlight":
+					if metadata value "MidnightDamageIncrease%{_attackerElement}%" of attacker is set:
+						set {_midnightIncrease} to metadata value "MidnightDamageIncrease%{_attackerElement}%" of attacker 
+						set damage to damage*{_midnightIncrease}
+				else:
+					if metadata value "MidnightDamageIncreaseDark" of attacker is set:
+						set {_midnightIncreaseDark} to metadata value "MidnightDamageIncreaseDark" of attacker
+					else:
+						set {_midnightIncreaseDark} to 1
+
+					if metadata value "MidnightDamageIncreaseLight" of attacker is set:
+						set {_midnightIncreaseLight} to metadata value "MidnightDamageIncreaseLight" of attacker
+					else:
+						set {_midnightIncreaseLight} to 1
+
+					set damage to damage*{_midnightIncreaseDark}*{_midnightIncreaseLight}
+
+				if ("Light", "Dark", "Moonlight") contains {_attackerElement}:
+					if {_attackerElement} = "Moonlight":
+						MidnightDamageIncrease(attacker, "Dark")
+						MidnightDamageIncrease(attacker, "Light")
+					else:
+						if {_attackerElement} = "Dark":
+							MidnightDamageIncrease(attacker, "Light")
+						else:
+							MidnightDamageIncrease(attacker, "Dark")
+				
+				MidnightBuff(attacker)
+
+			if string tag "Talents;Row 5" of custom nbt of {karta::%attacker%} = "Moonlight Echo":
+				if metadata value "LastDamageCause" of victim != "<##555555>Moonlight Echo":
+					if ("Light", "Dark", "Moonlight") contains {_attackerElement}:
+						if {_attackerElement} = "Moonlight":
+							set {_damageRepeat} to 0.16*damage
+							MoonlightEcho(attacker, victim, {_damageRepeat}, "Moonlight")
+						else if {_attackerElement} = "Dark":
+							set {_damageRepeat} to 0.08*damage
+							MoonlightEcho(attacker, victim, {_damageRepeat}, "Light")
+						else:
+							set {_damageRepeat} to 0.08*damage
+							MoonlightEcho(attacker, victim, {_damageRepeat}, "Dark")
 
 	if metadata value "IgnoreModifiers" of victim != true:
 
@@ -531,6 +607,10 @@ on damage:
 
 			if boolean tag "ECMob" of custom nbt of victim is set:
 				set metadata value "MostRecentlyDamagedEnemy" of attacker to victim
+
+			if {kartaname::%attacker%} = "Umbreon":
+				if metadata value "ShadowMark%attacker%" of victim is set:
+					add damage to metadata value "ShadowMark%attacker%" of victim
 
 		if victim is a player:
 			if health of victim < (max health of victim*0.3):
