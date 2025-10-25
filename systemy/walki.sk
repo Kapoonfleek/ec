@@ -25,85 +25,99 @@ on death:
 	if uuid tag "ECEntityTitle" of custom nbt of victim is set:
 		set {_entityTitle} to (uuid tag "ECEntityTitle" of custom nbt of victim) parsed as entity
 		kill {_entityTitle}
-		
-	if boolean tag "ECExpAreaMayanMob" of custom nbt of victim is set:
-		if attacker is a player:
-			#if {winterDelightPassLEVEL::%attacker%} >= 0:
-			#	getMission(attacker, "Sleighing the Mobs", "Pokonywanie Potworów", 1)
-			set {_id} to string tag "Id" of custom nbt of {karta::%attacker%}
-			load yaml "plugins/Skript/playerdata/karty/%{kartaname::%attacker%}%/%{_id}%.yml" as "cardExpAreaMayanXP-%attacker%"
-			set {_cardLevel} to yaml value "Card.Level" in "cardExpAreaMayanXP-%attacker%"
-			set {_maxLevel} to 60
-			set {_xp} to 0.4/1.171 ^ ((({_cardLevel}/{_maxLevel}))+sqrt({_cardLevel}*10))
-			if boolean tag "ECSuperMob" of custom nbt of victim is set:
-				set {_xp} to {_xp}*2.5
-			if boolean tag "ECBoss" of custom nbt of victim is set:
-				set {_xp} to {_xp}*6
-				if {expAreaMayanBoss} = uuid of victim:
-					clear {expAreaMayanBoss}
-			cardLevelup(attacker, {_xp}, victim)
-			unload yaml "cardExpAreaMayanXP-%attacker%"
-			remove uuid of attacker from {asyst::%uuid of victim%::*}
-			if size of {asyst::%uuid of victim%::*} > 0:
+
+	if victim is not a player:
+		if boolean tag "ECExpAreaMayanMob" of custom nbt of victim is set:
+			if attacker is a player:
+				#if {winterDelightPassLEVEL::%attacker%} >= 0:
+				#	getMission(attacker, "Sleighing the Mobs", "Pokonywanie Potworów", 1)
+				set {_id} to string tag "Id" of custom nbt of {karta::%attacker%}
+				load yaml "plugins/Skript/playerdata/karty/%{kartaname::%attacker%}%/%{_id}%.yml" as "cardExpAreaMayanXP-%attacker%"
+				set {_cardLevel} to yaml value "Card.Level" in "cardExpAreaMayanXP-%attacker%"
+				set {_maxLevel} to 60
+				set {_xp} to 0.4/1.171 ^ ((({_cardLevel}/{_maxLevel}))+sqrt({_cardLevel}*10))
+				if boolean tag "ECSuperMob" of custom nbt of victim is set:
+					set {_xp} to {_xp}*2.5
+				if boolean tag "ECBoss" of custom nbt of victim is set:
+					set {_xp} to {_xp}*6
+					if {expAreaMayanBoss} = uuid of victim:
+						clear {expAreaMayanBoss}
+				cardLevelup(attacker, {_xp}, victim)
+				unload yaml "cardExpAreaMayanXP-%attacker%"
+				remove uuid of attacker from {asyst::%uuid of victim%::*}
+				if size of {asyst::%uuid of victim%::*} > 0:
+					loop {asyst::%uuid of victim%::*}:
+						#if {winterDelightPassLEVEL::%loop-value%} >= 0:
+						#	getMission(loop-value, "Sleighing the Mobs", "Pokonywanie Potworów", 1)
+						set {_p} to loop-value parsed as a player
+						set {_id} to string tag "Id" of custom nbt of {karta::%{_p}%}
+						load yaml "plugins/Skript/playerdata/karty/%{kartaname::%{_p}%}%/%{_id}%.yml" as "cardExpAreaMayanXP-%{_p}%"
+						set {_cardLevel} to yaml value "Card.Level" in "cardExpAreaMayanXP-%{_p}%"
+						set {_maxLevel} to 50
+						set {_xp} to 0.4/1.171 ^ ((({_cardLevel}/{_maxLevel}))+sqrt({_cardLevel}*10))
+						set {_xp} to {_xp}*0.5
+						if boolean tag "ECSuperMob" of custom nbt of victim is set:
+							set {_xp} to {_xp}*2.5
+						if boolean tag "ECBoss" of custom nbt of victim is set:
+							set {_xp} to {_xp}*6
+						cardLevelup({_p}, {_xp}, victim)
+						unload yaml "cardExpAreaMayanXP-%{_p}%"
+			if {expAreaMayanMobs} - 1 >= 0:
+				set {expAreaMayanMobs} to {expAreaMayanMobs} - 1
+				if boolean tag "ECBoss" of custom nbt of victim is set:
+					set {_multiplier} to 10
+					set {_type} to "boss"
+				else if boolean tag "ECSuperMob" of custom nbt of victim is set:
+					set {_multiplier} to 4
+					set {_type} to "supermob"
+				else:
+					set {_multiplier} to 1
+					set {_type} to "mob"
+				ExpAreaMayanMobDrop(attacker, victim, {_multiplier}, {_type})
 				loop {asyst::%uuid of victim%::*}:
-					#if {winterDelightPassLEVEL::%loop-value%} >= 0:
-					#	getMission(loop-value, "Sleighing the Mobs", "Pokonywanie Potworów", 1)
 					set {_p} to loop-value parsed as a player
-					set {_id} to string tag "Id" of custom nbt of {karta::%{_p}%}
-					load yaml "plugins/Skript/playerdata/karty/%{kartaname::%{_p}%}%/%{_id}%.yml" as "cardExpAreaMayanXP-%{_p}%"
-					set {_cardLevel} to yaml value "Card.Level" in "cardExpAreaMayanXP-%{_p}%"
-					set {_maxLevel} to 50
-					set {_xp} to 0.4/1.171 ^ ((({_cardLevel}/{_maxLevel}))+sqrt({_cardLevel}*10))
-					set {_xp} to {_xp}*0.5
-					if boolean tag "ECSuperMob" of custom nbt of victim is set:
-						set {_xp} to {_xp}*2.5
-					if boolean tag "ECBoss" of custom nbt of victim is set:
-						set {_xp} to {_xp}*6
-					cardLevelup({_p}, {_xp}, victim)
-					unload yaml "cardExpAreaMayanXP-%{_p}%"
-		if {expAreaMayanMobs} - 1 >= 0:
-			set {expAreaMayanMobs} to {expAreaMayanMobs} - 1
+					ExpAreaMayanMobDrop({_p}, victim, {_multiplier}, {_type})
+					add 1 to {weeklyMobsDefeated::%{_p}%}
+					add 1 to {totalMobsDefeated::%{_p}%}
 			if boolean tag "ECBoss" of custom nbt of victim is set:
-				set {_multiplier} to 10
-				set {_type} to "boss"
-			else if boolean tag "ECSuperMob" of custom nbt of victim is set:
-				set {_multiplier} to 4
-				set {_type} to "supermob"
-			else:
-				set {_multiplier} to 1
-				set {_type} to "mob"
-			ExpAreaMayanMobDrop(attacker, victim, {_multiplier}, {_type})
-			loop {asyst::%uuid of victim%::*}:
-				set {_p} to loop-value parsed as a player
-				ExpAreaMayanMobDrop({_p}, victim, {_multiplier}, {_type})
-				add 1 to {weeklyMobsDefeated::%{_p}%}
-				add 1 to {totalMobsDefeated::%{_p}%}
-		if boolean tag "ECBoss" of custom nbt of victim is set:
-			set {_id} to string tag "ECBossBossBar" of custom nbt of victim
-			remove all players from boss bar with id {_id}
-	else if victim is a player:
+				set {_id} to string tag "ECBossBossBar" of custom nbt of victim
+				remove all players from boss bar with id {_id}
+
+		clear string tag "ECElement" of custom nbt of victim
+		
+		if {testentity::%victim%} is set:
+			clear {testentity::%victim%}
+
+	else:
 		if "%region at victim%" contains "ExpAreaMayan":
 			if {expAreaMayan} - 1 >= 0:
 				set {expAreaMayan} to {expAreaMayan}-1
 			if {expAreaMayan} = 0:
 				clear {expAreaMayan}
-	if {testentity::%victim%} is true:
-		clear {testentity::%victim%}
-		stop
-	if victim is a player:
+
+		if {kartaname::%victim%} = "Umbreon":
+			if boolean tag "Constellation;Cheat Death" of custom nbt of {karta::%victim%} is set:
+				if cooldown "Cheat Death%victim%" is finished:
+					cancel event
+					create cooldown "Cheat Death%victim%" for 30 minutes
+					set {_health} to (victim's max health)*0.05
+					set victim's health to {_health}
+					CheatDeathUmbreon(victim)
+					stop
+
 		set {_id} to string tag "Id" of custom nbt of {karta::%victim%}
 		add 1 to {deaths::%victim%}
 		add 1 to {deaths::%{kartaname::%victim%}%::%{_id}%}
-	else:
-		clear string tag "ECElement" of custom nbt of victim
-		if {testentity::%victim%} is set:
-			clear {testentity::%victim%}
+
+		clear metadata value "Heartbeat" of victim
+
 	if attacker is a player:
 		if boolean tag "ECMob" of custom nbt of victim is set:
 			set {_id} to line 19 of lore of {karta::%attacker%}
 			replace all "&8Id: " in {_id} with ""
 			add 1 to {mobskilled::%attacker%}
 			add 1 to {mobskilled::%{kartaname::%attacker%}%::%{_id}%}
+
 	if boolean tag "TowerDefenceMob" of custom nbt of victim is not set:
 		if boolean tag "ECAbility" of custom nbt of victim is not set:
 			if boolean tag "RemoveOnReset" of custom nbt of victim is not set:
@@ -111,8 +125,7 @@ on death:
 					show flash at victim
 			else:
 				clear drops
-	if victim is a player:
-		clear metadata value "Heartbeat" of victim
+
 	if boolean tag "ECMob" of custom nbt of victim is set:
 		if attacker is a player:
 			#if display name of victim is not set:
@@ -172,7 +185,19 @@ on death:
 			if metadata value "LastDamageCause" of victim = air:
 				set metadata value "LastDamageCause" of victim to "attack"
 			if metadata value "LastDamageCause" of victim is not set:
-				set metadata value "LastDamageCause" of victim to " "
+				set metadata value "LastDamageCause" of victim to " "	
+		else:
+
+			if metadata value "LastDamageCause" of victim = "<##555555>End Game":
+				if 50 >= metadata value "UmbreonExecutioner" of attacker:
+					add 5 to metadata value "UmbreonExecutioner" of attacker
+					set {_endGameCd} to cooldown "End Game%attacker%"
+					set {_endGameCdSeconds} to (ticks of {_endGameCd})*0.05
+					set {_endGameCdSeconds} to "%(0.05*{_endGameCdSeconds})% seconds" parsed as timespan
+					remove {_endGameCdSeconds} from cooldown "End Game%attacker%"
+				else:
+					clear metadata value "UmbreonExecutioner" of attacker
+
 		if boolean tag "TowerDefenceMob" of custom nbt of victim is not set:
 			if victim's name is set:
 				#usuwanie hp przeciwnika z wiadomości
@@ -597,8 +622,16 @@ on damage:
 			set {_effective} to "strong"
 	
 		set damage to damage/{_damagered}
+
+		if metadata value "DamageReduction" of victim is set:
+			set {_dmgTakenPercentage} to metadata value "DamageReduction" of victim
+			set damage to damage*{_dmgTakenPercentage}
+
 		chance of ({avoidance::%victim%}/20)%:
 			set damage to 0
+
+	else:
+		clear metadata value "IgnoreModifiers" of victim
 
 	if damage != 0:
 		if attacker is a player:		
