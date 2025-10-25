@@ -38,12 +38,25 @@ on rightclick:
 							set {_lore} to "&8Basic Ability%nl%&fInstant cast%nl%&7Cooldown:  &f%{_cd}%%nl%&7Range: &f%{_range}% blocks%nl%&7Use: &fRMB%nl%<##999999>Umbreon <##555555>slashes her target with her claw%nl%<##555555>at short range, dealing &f%{_damage}% <##333333>Dark <##555555>damage.%nl% %nl%<##555555>The enemy will take &f7.5%% <##555555>increased damage%nl%<##555555>from your upcoming &f <##999999>Night Slash <##555555>attacks%nl%<##555555>for the next &f6 sec<##555555>. This effect stacks."
 							LoreUpdate(player, "Night Slash", {_lore})
 
-							NightSlash(player, {_target}, {_damage}, {_pospiech}, 1, {_lore})
+							NightSlash(player, {_target}, {_damage}, {_pospiech}, {_lore})
 
 							if string tag "Talents;Row 1" of custom nbt of {karta::%player%} is set:
-								chance of 30%:
+							
+								if boolean tag "Constellation;Hunter of the Claw" of custom nbt of {karta::%player%} is set:
+									set {_chance} to 40
+									set {_loops} to 2
+								else:
+									set {_chance} to 30
+									set {_loops} to 1
+
+								chance of {_chance}%:
 									set {_moonStrikesEffectiveness} to 0.8
-									NightSlash(player, {_target}, {_damage}, {_pospiech}, {_moonStrikesEffectiveness}, {_lore}, true)
+									set {_wait} to "%0.5/{_pospiech}% seconds" parsed as timespan
+									loop {_loops} times:
+										set {_damage} to {_damage}*{_moonStrikesEffectiveness}
+										wait {_wait}
+										if {_target} is alive:
+											NightSlash(player, {_target}, {_damage}, {_pospiech}, {_lore}, true)
 						else:
 							cancel event
 							if {tekstcd::%player%} = true:
@@ -254,14 +267,15 @@ on rightclick:
 
 						apply invisibility 1 without particles to player for {_vanishDuration}
 
-						set {_movementSpeed} to player's walking speed
-						set player's walking speed to (player's walking speed)*1.5
+						set metadata value "Vanish" of player to true
+						playerMoveSpeedUpdate(player)
 
 						draw 20 of dust particle using dustOption(black, 1) at location above player with offset vector(0.6, 0.6, 0.6) with extra 0.03
 						play sound "skill.umbreon.vanish" with volume 2.25 and pitch 1 at location of player
 
 						wait {_vanishDuration}
-						set player's walking speed to {_movementSpeed}
+						clear metadata value "Vanish" of player
+						playerMoveSpeedUpdate(player)
 						
 					else:
 						cancel event
@@ -418,14 +432,12 @@ function Garrote(p: player, target: entity):
 		set metadata value "Garrote%{_p}%" of {_target} to 18 seconds
 
 
-function NightSlash(p: player, target: entity, damage: number, haste: number, effectiveness: number, lore: text, moonStrikes: boolean = false):
+function NightSlash(p: player, target: entity, damage: number, haste: number, lore: text, moonStrikes: boolean = false):
 	set {_crit} to CriticalHit({_p})
 
 	if {_moonStrikes} = true:
 		set {_pitch} to 0.7
-		set {_wait} to "%0.5/{_haste}% seconds" parsed as timespan
 		set {_damageSource} to "Moon Strikes"
-		wait {_wait}
 	else:
 		set {_damageSource} to "Night Slash"
 		set {_pitch} to 0.2
@@ -433,8 +445,6 @@ function NightSlash(p: player, target: entity, damage: number, haste: number, ef
 	if metadata value "Night Slash Vulnerability%{_p}%" of {_target} is set:
 		set {_nightSlashBonus} to metadata value "Night Slash Vulnerability%{_p}%" of {_target}
 		set {_damage} to {_damage} * (1 + {_nightSlashBonus})
-
-	set {_damage} to {_damage} * {_effectiveness}
 
 	set {_bonusDuration} to 6 seconds
 
@@ -457,10 +467,14 @@ function NightSlash(p: player, target: entity, damage: number, haste: number, ef
 	make {_p} damage {_target} by 2*({_damage})
 
 	play sound "entity.player.attack.sweep" with volume 3 and pitch {_pitch} at location of {_target}
+	play sound "skill.umbreon.nightslash" with volume 3 and pitch {_pitch}+0.8 at location of {_target}
 
 	if {_moonStrikes} != true:
 		NightSlashBonus({_p}, {_target}, {_bonusDuration}, 0.075)
 		make {_p} swing their hand
+	else:
+		if boolean tag "Constellation;Nightfall" of custom nbt of {karta::%{_p}%} is set:
+			NightSlashBonus({_p}, {_target}, {_bonusDuration}, 0.075)
 
 	NightSlashVisual({_p}, {_target}, {_visual})
 
