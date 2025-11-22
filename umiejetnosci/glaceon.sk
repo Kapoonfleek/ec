@@ -16,7 +16,16 @@ function IcicleForm(p: player, icicle: integer):
 	add nbt from "{Invisible:1b,Marker:1b,NoGravity:1b,Invulnerable:1b,Silent:1b}" to nbt of last spawned armor stand
 	set {_icicleModel} to last spawned armor stand
 	add nbt from "{Invisible:0b}" to nbt of {_icicleModel}
-	set {_model} to BetterModel.model("icicle").get().getOrCreate({_icicleModel})
+	
+	if string tag "Talents;Row 3" of custom nbt of {karta::%{_p}%} = "Black Ice":
+		chance of 30%:
+			set boolean tag "BlackIce" of custom nbt of {_icicleModel} to true
+			set {_modelName} to "icicle_blackfrost"
+
+	if {_modelName} is not set:
+		set {_modelName} to "icicle"
+
+	set {_model} to BetterModel.model({_modelName}).get().getOrCreate({_icicleModel})
 	{_model}.scaler({_model}.scaler().multiply(1.0))
 	{_model}.registry().reload()
 
@@ -99,7 +108,7 @@ function icelanceHitSound(p: location):
 function icelancehurlSound(p: location):
 	play sound "skill.glaceon.icelance_hurl" with volume 3 and pitch 1 at location of {_p}
 
-function IcicleFormIcicleStorm(p: player, icicle: integer) :: entity:
+function IcicleFormIcicleStorm(p: player, icicle: integer, blackIce: boolean = false) :: entity:
 	set {_loc} to {_p}'s location
 	increase {_loc}'s y-coordinate by 1.75
 	if boolean tag "Constellation;Eternal Winter" of custom nbt of {karta::%{_p}%} is not set:
@@ -137,6 +146,11 @@ function IcicleFormIcicleStorm(p: player, icicle: integer) :: entity:
 			increase {_loc}'s y-coordinate by (0.1*{_icicle})
 		else:
 			increase {_loc}'s y-coordinate by (-0.1*{_icicle}) + 0.8
+
+	if {_blackIce} = true:
+		set {_modelName} to "icicle_blackfrost"
+	else:
+		set {_modelName} to "blackfrost"
 
 	spawn 1 armor stand at {_loc} with nbt from "{Invisible:1b,Marker:1b,NoGravity:1b,Invulnerable:1b,Silent:1b}"
 	set {_icicleModel} to last spawned armor stand
@@ -975,9 +989,8 @@ function GlacialSpikeForm(p: player, crit: number, target: entity):
 			if string tag "Talents;Row 2" of custom nbt of {karta::%{_p}%} = "Ice Nine":
 				add 1 to {icicleCount::%{_p}%}
 			set {_rgb} to (rgb 106, 184, 230)
-			if string tag "Talents;Row 3" of custom nbt of {karta::%{_p}%} = "Black Ice":
-				chance of 30%:
-					set {_damageicicles} to {_damageicicles}*1.7
+			if boolean tag "BlackIce" of custom nbt of {icicle%loop-number%::%{_p}%} = true:
+				set {_damageicicles} to {_damageicicles}*1.7
 
 			if boolean tag "Constellation;Eternal Winter" of custom nbt of {karta::%{_p}%} is set:
 				set {_damageicicles} to {_damageicicles}*1.2
@@ -1093,10 +1106,9 @@ function HurlIcicle(p: player, target: entity, iciclesCap: integer):
 			set {_damageicicles} to {_damageicicles}*1.2
 
 		set {_rgb} to (rgb 106, 184, 230)
-		if string tag "Talents;Row 3" of custom nbt of {karta::%{_p}%} = "Black Ice":
-			chance of 30%:
-				set {_damageicicles} to {_damageicicles}*1.7
-				set {_rgb} to (rgb 28, 28, 28)
+		if boolean tag "BlackIce" of custom nbt of {_icicleVisual} = true:
+			set {_damageicicles} to {_damageicicles}*1.7
+			set {_rgb} to (rgb 28, 28, 28)
 
 		if {_rgb} = (rgb 28, 28, 28):
 			play sound "skill.glaceon.icelance_hurl" with volume 3 and pitch 0.7 at location of {_p}
@@ -1201,10 +1213,9 @@ function HurlIcicleIceLance(p: player, target: entity, frozen: boolean):
 				if string tag "Talents;Row 2" of custom nbt of {karta::%{_p}%} = "Ice Nine":
 					add 1 to {icicleCount::%{_p}%}
 				set {_rgb} to (rgb 106, 184, 230)
-				if string tag "Talents;Row 3" of custom nbt of {karta::%{_p}%} = "Black Ice":
-					chance of 30%:
-						set {_damageicicles} to {_damageicicles}*1.7
-						set {_rgb} to (rgb 28, 28, 28)
+				if boolean tag "BlackIce" of custom nbt of {icicle%loop-number%::%{_p}%} = true:
+					set {_damageicicles} to {_damageicicles}*1.7
+					set {_rgb} to (rgb 28, 28, 28)
 				set {_rgb::%loop-number%} to {_rgb}
 				if {_rgb} = (rgb 28, 28, 28):
 					play sound "skill.glaceon.icelance_hurl" with volume 3 and pitch 0.7 at location of {_p}
@@ -1296,7 +1307,13 @@ function IcicleStorm(p: player, target: entity):
 	loop {_loops} times:
 		set {_damageicicles} to 0.5*(0.4 + {damage::%{_p}%}/75 + {damage::%{_p}%}/225 + {primarystat::%{_p}%}/37.5) * (1 + ({mastery::%{_p}%}/3.75/100))
 		set {_randomIcicle} to a random integer between 1 and {_iciclesCap}
-		set {_icicle} to IcicleFormIcicleStorm({_p}, {_randomIcicle})
+		set {_rgb} to (rgb 106, 184, 230)
+		if string tag "Talents;Row 3" of custom nbt of {karta::%{_p}%} = "Black Ice":
+			chance of 30%:
+				set {_damageicicles} to {_damageicicles}*1.7
+				set {_rgb} to (rgb 28, 28, 28)
+				set {_blackIce} to true
+		set {_icicle} to IcicleFormIcicleStorm({_p}, {_randomIcicle}, {_blackIce})
 		if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Chilled to the Core":
 			if metadata value "Icy Veins" of {_p} is true:
 				set {_damageicicles} to {_damageicicles}*1.2
@@ -1309,11 +1326,6 @@ function IcicleStorm(p: player, target: entity):
 			set {_damageicicles} to {_damageicicles}*1.2
 		else:
 			set {_iciclesCap} to 5
-		set {_rgb} to (rgb 106, 184, 230)
-		if string tag "Talents;Row 3" of custom nbt of {karta::%{_p}%} = "Black Ice":
-			chance of 30%:
-				set {_damageicicles} to {_damageicicles}*1.7
-				set {_rgb} to (rgb 28, 28, 28)
 		if metadata value "WintersChill%{_p}%" of {_target} > 0:
 			if boolean tag "Constellation;Subzero" of custom nbt of {karta::%{_p}%} is set:
 				set {_damageicicles} to {_damageicicles}*1.05
