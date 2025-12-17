@@ -33,6 +33,7 @@ define new bot named "Earthcraft":
         set {_bot} to bot named "Earthcraft"
 
         set {_refreshBot} to new slash command named "refreshbot" with description "for my badge"
+    
 
         update {_level} and {_linkaccount} and {_cardlist} and {_refreshBot} globally in {_bot}
         
@@ -224,7 +225,7 @@ on slash command:
                 reply with hidden "You must provide a Card name. (ex. Glaceon)"
         else if event-string is "linkaccount":
             set {_code} to argument "code" as string
-            load yaml "plugins/Skript/playerdata/admin/discord/LinkedAccounts.yml" as "Discord"
+            load yaml "plugins/Skript/playerdata/admin/player/discord/LinkedAccounts.yml" as "Discord"
             if {discordCodes::*} contains {_code}:
                 remove {_code} from {discordCodes::*}
                 if size of {discordCodes::*} = 0:
@@ -241,7 +242,7 @@ on slash command:
                 broadcast {discordCodes::*}
                 reply with hidden "The entered code was not recognized."
         else if event-string = "refreshbot":
-            reply with uncolored "Thank you for helping me refresh <@&&900385261786120212>'s BADGE"
+            reply with unformatted "Thank you for helping me refresh <@&900385261786120212>'s BADGE"
         else if event-string is "cardlist":
             set {_name} to argument "name" as string
             if {_name} is set:
@@ -326,7 +327,7 @@ on message receive:
             if discord id of event-channel = "900397064251379752":
                 set {_data::*} to data() split at " "
                 set {_discordId} to "<@%event-user's discord id%>"
-                load yaml "plugins/Skript/playerdata/admin/discord/LinkedAccounts.yml" as "Discord"
+                load yaml "plugins/Skript/playerdata/admin/player/discord/LinkedAccounts.yml" as "Discord"
                 set {_player} to (yaml value "Accounts.%{_discordId}%.UUID" in "Discord") parsed as player
                 if message attachments of event-message exists:
                     set {_attachments::*} to message attachments of event-message
@@ -346,8 +347,8 @@ on message receive:
                         replace all "<@%discord id of loop-value%>" in {_messageContent} with "&9@%loop-value%&r"
                 if {_player} is set:
                     #set {_message} to "<##7289da>[EarthCraft] &f%{_data::1}% | %event-user%: %message content of event-message%"
-                    #set {_message} to "<##7289da>[Discord] &8[%{kolorek::%{_player}%}%%{poziom::%{_player}%}% Lvl&8] <%{kolorek::%{_player}%}%%{pseudonim::%{_player}%}%&8> &f%{_messageContent}%"
-                    load yaml "plugins/Skript/playerdata/admin/%uuid of {_player}%-Admin.yml" as "dataAdmin-%{_player}%"
+                    #set {_message} to "<##7289da>[Discord] &8[%{kolorek1::%{_player}%}%%{poziom::%{_player}%}% Lvl&8] <%{kolorek1::%{_player}%}%%{pseudonim::%{_player}%}%&8> &f%{_messageContent}%"
+                    load yaml "plugins/Skript/playerdata/admin/player/%uuid of {_player}%Admin" as "dataAdmin-%{_player}%"
                     if (yaml value "Player.Preferred Discord Name" in "dataAdmin-%{_player}%" in lowercase) = "discord":
                         set {_user::*} to "%event-member%" split at "##"
                         set {_message} to "<##7289da>[EarthCraft] &f%{_data::1}% | <##7289da>%{_user::1}%&f: %{_messageContent}%"
@@ -361,6 +362,8 @@ on message receive:
                         replace all "<:xdd:1208802789715873822>" in {_message} with ""
                     if {_message} contains "🥰":
                         replace all "🥰" in {_message} with ""
+                    if {_message} contains "<@881202434029006910>":
+                        replace all "<@881202434029006910>" in {_message} with "@EarthCraft"
                     broadcast formatted {_message}
                 if "%message content of event-message%" contains "<@881202434029006910>":
                     set {_tag::*} to mention tag of event-user split at "##"
@@ -368,11 +371,16 @@ on message receive:
                     wait 1 second
                     set {_randomReply} to a random integer between 1 and 2
                     if {_randomReply} = 1:
-                        set {_randomReply::*} to "What do you want", "Yes?", "What is it", "Leave me alone", "Wuh", "Huh" and "'As a water bead on a lotus leaf, as water on a red lily, does not adhere, so the sage does not adhere to the seen, the heard, or the sensed.'"
+                        set {_randomReply::*} to a random element of yaml list "messages" in "DiscordList"
                     else if {_randomReply} = 2:
                         set {_randomReply::*} to "https://media1.tenor.com/m/7t63GFnoIPUAAAAd/huh-cat-huh-m4rtin.gif", "<:kristina553344459916443648:1197291090244534282>", "What<:xdd:1186836934677499944>", "https://tenor.com/view/cat-gif-27443459", "<a:HelpMe:1209511777809993808>", "Love island", "I know what you are"
                     set {_random} to a random element of {_randomReply::*}
                     reply with "%{_tag::1}% %{_random}%"
+                    if yaml list "messages" in "DiscordList" does not contain {_saveMessage}:
+                        set {_saveMessage} to "%message content of event-message%"
+                        replace all "<@881202434029006910>" in {_saveMessage} with ""
+                        add {_saveMessage} to yaml list "messages" in "DiscordList"
+                        save yaml "DiscordList"
                 unload yaml "Discord"
 
 command /discord [<text>] [<text>] [<text>]:
@@ -384,7 +392,7 @@ command /discord [<text>] [<text>] [<text>]:
         if arg-1 = "preferences" or "preferencje":
             if arg-2 = "name" or "nazwa":
                 if arg-3 is "in-game" or "discord":
-                    load yaml "plugins/Skript/playerdata/admin/%uuid of player%-Admin.yml" as "dataAdmin-%player%"
+                    load yaml "plugins/Skript/playerdata/admin/player/%uuid of player%Admin" as "dataAdmin-%player%"
                     set yaml value "Player.Preferred Discord Name" in "dataAdmin-%player%" to arg-3
                     save yaml "dataAdmin-%player%"
                     send "<##7289da>[EarthCraft Discord] &fSuccessfully set your preferred name in global messages to &7&o%arg-3%&f." to player
@@ -392,7 +400,7 @@ command /discord [<text>] [<text>] [<text>]:
                     send "<##7289da>[EarthCraft Discord] &fNo argument was been given for the preferred name or used an incorrect argument. Possible arguments are &7&oin-game&f and &7&odiscord&f." to player
             else if arg-2 = "reminder":
                 send "<##7289da>[EarthCraft Discord] &fSuccessfully disabled account linking reminders." to player
-                load yaml "plugins/Skript/playerdata/admin/%uuid of player%-Admin.yml" as "dataAdmin-%player%"
+                load yaml "plugins/Skript/playerdata/admin/player/%uuid of player%Admin" as "dataAdmin-%player%"
                 set yaml value "Player.Discord Reminders" in "dataAdmin-%player%" to "Disabled"
                 save yaml "dataAdmin-%player%"
         
@@ -403,11 +411,15 @@ command /discordmsg [<text>] [<text>]:
         replace all "discordmsg " in {_msg} with ""
         post {_msg} to text channel with id arg-1
 
-
+command /discordbanner:
+    trigger:
+        if player's name = "Pehrek":
+            set {_link} to "https://media.discordapp.net/attachments/880136171164934194/1437061936670965911/2015-03-14_sso_skok.png?ex=6943f8b9&is=6942a739&hm=6e7c163ef460090993a34e246d8286ba0b5598681d11b65e1a9c3349491e1949&="
+            set profile banner of bot "Earthcraft" to {_link}
 command /accountsync:
     aliases: /polaczkonto, /linkaccount
     trigger:
-        load yaml "plugins/Skript/playerdata/admin/discord/LinkedAccounts.yml" as "Discord"
+        load yaml "plugins/Skript/playerdata/admin/player/discord/LinkedAccounts.yml" as "Discord"
         if yaml value "Player Accounts.%player's uuid%.Discord ID" in "Discord" is not set:
             set {_code} to random 8 char string from charset `0-9`
             if metadata value "DiscordCode" of player is not set:
