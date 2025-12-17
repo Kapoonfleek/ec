@@ -615,6 +615,33 @@ function BindingShotEffect(p: player, e: entity):
 	while metadata value "BindingShotTarget1" of {_p} = {_e}:
 		BindingShotParticles({_e})
 		wait 0.2 seconds
+
+function MagicTether(p: player, e1: entity, e2: entity):
+	set {_shape} to a line from {_e1} to {_e2}
+	set particle of {_shape} to dragon breath particle
+
+	while distance between {_e1} and {_e2} < 5:
+		draw shape {_shape} at {_e1} for 0.5 seconds
+		wait 0.5 seconds
+	
+	set {_damage} to (8 + ({damage::%{_p}%}/9) + ({versatility::%{_p}%}/27) + ({primarystat::%{_p}%}/4.5)) * (1.8 + (({mastery::%{_p}%}/7.25)/100))
+	set {_stunDuration} to 2 + CrowdControl({_p})/70
+	set {_crit} to CriticalHit({_p})
+	set {_lore} to "lore"
+	set {_element} to "Magic"
+
+	set {_targets::*} to {_e1} and {_e2}
+	loop {_targets::*}:
+		set {_damage} to Crit({_p}, loop-value, {_crit}, {_damage})
+
+		set loop-value's last damage cause to sweep attack
+		set metadata value "Element" of {_p} to {_element}
+		set metadata value "LastDamageCause" of loop-value to "<##866da4>Binding Shot"
+		set metadata value "LastDamageCauseLore" of loop-value to {_lore}
+		make {_p} damage loop-value by {_damage}
+
+		if loop-value is alive:
+			Stun(loop-value, {_stunDuration})
 #buckshot = spreadshot
 #flameslinger = rain of arrows inferno
 #jakas karta co czas odmierza strzal w powietrzu
