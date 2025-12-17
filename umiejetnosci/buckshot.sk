@@ -501,11 +501,13 @@ on projectile collide:
 											clear metadata value "BindingShotTarget1" of {_shooter}
 											clear metadata value "BindingShotCoordinates1" of {_shooter}
 
-											set {_cd} to 45 seconds
+											set {_cd} to 5 seconds
 											create cooldown "Binding Shot%{_shooter}%" for {_cd}
 											cooldownSpell({_shooter}, "Binding Shot", {_cd})
 
 											BindingShotParticles(event-entity)
+											set metadata value "BindingShotPartner" of event-entity to {_firstTarget}
+											set metadata value "BindingShotPartner" of {_firstTarget} to event-entity
 
 											set {_coords::*} to {_firstTargetLocText} split at ","
 											loop {_coords::*}:
@@ -531,7 +533,7 @@ on projectile collide:
 
 											loop {_targets::*}:
 												if loop-value is alive:
-													BindingShotPull(loop-value, {_middleLoc})
+													BindingShotPull({_shooter}, loop-value, metadata value "BindingShotPartner" of loop-value, {_middleLoc})
 													set {_damage} to Crit({_shooter}, loop-value, {_crit}, {_damage})
 
 													set loop-value's last damage cause to sweep attack
@@ -539,6 +541,7 @@ on projectile collide:
 													set metadata value "LastDamageCause" of loop-value to "<##866da4>Binding Shot"
 													set metadata value "LastDamageCauseLore" of loop-value to {_lore}
 													make {_shooter} damage loop-value by {_damage}
+													play sound "entity.generic.hurt" with volume 2 and pitch 1 at location of loop-value
 
 		else:
 			set {_projectileType} to string tag "ProjectileTypeOriginal" of custom nbt of event-projectile
@@ -581,11 +584,19 @@ on projectile hit:
 		set {_p} to (string tag "BuckshotArrowBalthazar" of custom nbt of event-projectile) parsed as entity
 		BuckshotSpawn({_p}, event-location)
 
-function BindingShotPull(e: entity, loc: location):
-	while distance between {_e} and {_loc} > 2:
-		push {_e} (vector from {_e} to {_loc}) with speed 0.5
-		stop if loop-counter = 200
-		wait 1 tick
+function BindingShotPull(p: player, e: entity, e2: entity, loc: location):
+	if canBeCCed({_e}) = true:
+		while distance between {_e} and {_loc} > 2:
+			wait 1 tick
+			push {_e} (vector from {_e} to {_loc}) with speed 0.5
+			stop if loop-counter = 200
+	
+	if string tag "Talents;Row 2" of custom nbt of {karta::%{_p}%} = "Magic Tether":
+		if metadata value "BindingShotPartner" of {_e} is set:
+			set {_tetherPartner} to metadata value "BindingShotPartner" of {_e}
+			clear metadata value "BindingShotPartner" of {_e}
+			clear metadata value "BindingShotPartner" of {_tetherPartner}
+			MagicTether({_p}, {_e}, {_tetherPartner})
 
 function BindingShotReset(p: player):
 	if metadata value "BindingShotTimer" of {_p} is not set:
@@ -615,17 +626,28 @@ function BindingShotEffect(p: player, e: entity):
 	while metadata value "BindingShotTarget1" of {_p} = {_e}:
 		BindingShotParticles({_e})
 		wait 0.2 seconds
+	
+function MagicTetherSound(e: entity):
+	set {_pitch} to 0.5
+	loop 3 times:
+		play sound "entity.shulker.shoot" with volume 3 and pitch {_pitch} at location of {_e}
+		wait 4 ticks
+		add 0.5 to {_pitch}
 
 function MagicTether(p: player, e1: entity, e2: entity):
-	set {_shape} to a line from {_e1} to {_e2}
-	set particle of {_shape} to dragon breath particle
-
 	while distance between {_e1} and {_e2} < 5:
-		draw shape {_shape} at {_e1} for 0.5 seconds
-		wait 0.5 seconds
+		stop loop if {_e1} is not alive
+		stop loop if {_e2} is not alive
+
+		set {_shape} to a line from {_e1} to {_e2}
+		set particle of {_shape} to witch particle
+		draw shape {_shape} at (location 1 above {_e1}) for 2 ticks
+		wait 2 ticks
 	
 	set {_damage} to (8 + ({damage::%{_p}%}/9) + ({versatility::%{_p}%}/27) + ({primarystat::%{_p}%}/4.5)) * (1.8 + (({mastery::%{_p}%}/7.25)/100))
-	set {_stunDuration} to 2 + CrowdControl({_p})/70
+	set {_stunDurationValue} to 2 + CrowdControl({_p})/70
+	set {_stunDuration} to "%{_stunDurationValue}% seconds" parsed as timespan
+
 	set {_crit} to CriticalHit({_p})
 	set {_lore} to "lore"
 	set {_element} to "Magic"
@@ -636,12 +658,14 @@ function MagicTether(p: player, e1: entity, e2: entity):
 
 		set loop-value's last damage cause to sweep attack
 		set metadata value "Element" of {_p} to {_element}
-		set metadata value "LastDamageCause" of loop-value to "<##866da4>Binding Shot"
+		set metadata value "LastDamageCause" of loop-value to "<##866da4>Magic Tether"
 		set metadata value "LastDamageCauseLore" of loop-value to {_lore}
 		make {_p} damage loop-value by {_damage}
 
 		if loop-value is alive:
 			Stun(loop-value, {_stunDuration})
+
+		play sound "entity.generic.hurt" with volume 2 and pitch 1 at location of loop-value
 #buckshot = spreadshot
 #flameslinger = rain of arrows inferno
 #jakas karta co czas odmierza strzal w powietrzu
