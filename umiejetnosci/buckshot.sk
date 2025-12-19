@@ -33,17 +33,28 @@ on EntityShootBowEvent:
 function SingleShotFire(p: player):
 	AbilityUse({_p}, "Single Shot")
 	set {_modifier} to 1
+
 	play sound "entity.skeleton.shoot" with volume 3 and pitch 1 at location of {_p}
 	play sound "entity.puffer_fish.blow_out" with volume 3 and pitch 1.1 at location of {_p}
-	set {_x} to location 0 in front of {_p}
-	set {_x} to location 1 above {_x}
-	set {_loc} to {_x}
+	set {_loc} to location 1 above {_p}
+
+	if string tag "Talents;Row 3" of custom nbt of {karta::%{_p}%} = "Shotweaving":
+		ShotweavingBuckshot({_p}, 10 seconds, "Spread Shot")
+
 	SpreadShotArrow({_p}, {_loc}, false, {_modifier}, "Single")
 
 function SingleShotModifiers(p: player, modifier: number) :: number:
 	if string tag "Talents;Row 1" of custom nbt of {karta::%{_p}%} = "Quickshot":
 		set {_arrowSpeed} to {_arrowSpeed}*1.3
 		set {_modifier} to {_modifier} * 1.1
+
+	if string tag "Talents;Row 3" of custom nbt of {karta::%{_p}%} = "Shotweaving":
+		set {_shotweavingCount} to metadata value "Shotweaving-Single Shot" of {_p}
+		if {_shotweavingCount} > 0:
+			set {_shotweavingPercentModifier} to 2.5
+			set {_shotweaving} to 1 + ({_shotweavingPercentModifier} * {_shotweavingCount})/100
+			set {_modifier} to {_modifier} * {_shotweaving}
+
 	return {_modifier}
 
 function SpreadShotFire(p: player, modifier: number):
@@ -68,6 +79,15 @@ function SpreadShotFire(p: player, modifier: number):
 		play sound "block.end_portal_frame.fill" with volume 1 and pitch 2 at location of {_p}
 	else:
 		play sound "entity.puffer_fish.blow_up" with volume 3 and pitch 1.1 at location of {_p}
+
+	if string tag "Talents;Row 3" of custom nbt of {karta::%{_p}%} = "Shotweaving":
+		ShotweavingBuckshot({_p}, 10 seconds, "Single Shot")
+
+		set {_shotweavingCount} to metadata value "Shotweaving-Spread Shot" of {_p}
+		if {_shotweavingCount} > 0:
+			set {_shotweavingPercentModifier} to 2.5
+			set {_shotweaving} to 1 + ({_shotweavingPercentModifier} * {_shotweavingCount})/100
+			set {_modifier} to {_modifier} * {_shotweaving}
 
 	if metadata value "G.O.A.T" of {_p} = true:
 		if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Main Attraction":
@@ -267,10 +287,15 @@ function BuckshotPortalCreate(p: player, portals: boolean, eventblock: location,
 
 	set boolean tag "Invisible" of nbt of {_portal} to false
 
+	if string tag "Talents;Row 4" of custom nbt of {karta::%{_p}%} != "More Bang for your Buck":
+		MoreBangForYourBuck({_p})
+
 	BuckshotPortalDelete({_p}, {_portal}, {_duration})
 
+	set {_scale} to 2.0
+
 	set {_model} to BetterModel.model("portalbuckshot").get().getOrCreate({_portal})
-	{_model}.scaler({_model}.scaler().multiply(2.0))
+	{_model}.scaler({_model}.scaler().multiply({_scale}))
 	{_model}.registry().reload()
 
 
@@ -742,6 +767,78 @@ function ArrowBarrageArrow(p: player, loc: location):
 	set {_modifier} to (1.8 + (({mastery::%{_p}%}/7.25)/100))
 	SpreadShotArrow({_p}, {_loc}, false, {_modifier}, "Arrow Barrage")
 
+function ShotweavingBuckshot(p: player, duration: timespan, shotType: string):
+	if metadata value "ECEngaged" of {_p} is set:
+		if metadata value "Shotweaving-%{_shotType}%" of {_p} is not set:
+			set metadata value "Shotweaving-%{_shotType}%" of {_p} to 1
+
+			set metadata value "Shotweaving-%{_shotType}%Duration" of {_p} to {_duration}
+			while metadata value "Shotweaving-%{_shotType}%Duration" of {_p} > 0 seconds:
+
+				ShotweavingBuckshotUpdate({_p})
+
+				wait 1 second
+				remove 1 second from metadata value "Shotweaving-%{_shotType}%Duration" of {_p}
+
+			clear metadata value "Shotweaving-%{_shotType}%Duration" of {_p}
+			clear metadata value "Shotweaving-%{_shotType}%" of {_p}
+
+			if metadata value "Shotweaving-Spread Shot" of {_p} is not set:
+				if metadata value "Shotweaving-Single Shot" of {_p} is not set:
+					buffClear({_p}, "Shot")
+		else:
+			set metadata value "Shotweaving-%{_shotType}%Duration" of {_p} to {_duration}
+			if metadata value "Shotweaving-%{_shotType}%" of {_p} < 10:
+				add 1 to metadata value "Shotweaving-%{_shotType}%" of {_p}
+				ShotweavingBuckshotUpdate({_p})
+
+function ShotweavingBuckshotUpdate(p: player):
+	set {_percentIncrease} to 2.5
+	if metadata value "Shotweaving-Single Shot" of {_p} is set:
+		set {_stacksSingle} to metadata value "Shotweaving-Single Shot" of {_p}*{_percentIncrease}
+		set {_durationSingle} to metadata value "Shotweaving-Single ShotDuration" of {_p}
+
+		set {_durationSingle} to "%{_durationSingle}%"
+		replace all " seconds" and " second" in {_durationSingle} with "s"
+	else:
+		set {_stacksSingle} to 0
+		set {_durationSingle} to "0s"
+
+	if metadata value "Shotweaving-Spread Shot" of {_p} is set:
+		set {_stacksSpread} to metadata value "Shotweaving-Spread Shot" of {_p}*{_percentIncrease}
+		set {_durationSpread} to metadata value "Shotweaving-Spread ShotDuration" of {_p}
+
+		set {_durationSpread} to "%{_durationSpread}%"
+		replace all " seconds" and " second" in {_durationSpread} with "s"
+	else:
+		set {_stacksSpread} to 0
+		set {_durationSpread} to "0s"
+
+	buffRegister({_p}, "Shot", 1, "", "Stacks", "&f <##866da4>%{_stacksSingle}%%% &f%{_durationSingle}% &7| &f <##866da4>%{_stacksSpread}%%% &f%{_durationSpread}%", "-")
+
+function MoreBangForYourBuck(p: player):
+	set {_portalsExisting} to (size of {buckshotportals::%{_p}%::*})-1
+	set {_baseDuration} to 3.0 seconds
+	set {_masteryScaling} to 7.25
+	set {_extensionPerPortal} to 0.3
+
+	set {_duration} to {_baseDuration} + {_portalsExisting}*{_extensionPerPortal}
+	set {_duration} to "%{_duration}% seconds" parsed as timespan
+
+	if metadata value "MoreBangForYourBuck" of {_p} is not set:
+		set metadata value "MoreBangForYourBuck" of {_p} to {_masteryScaling}
+	else:
+		add {_masteryScaling} to metadata value "MoreBangForYourBuck" of {_p}
+
+	set {_moreBang} to metadata value "MoreBangForYourBuck" of {_p}
+	buffRegister({_p}, "More", 1, "", "Stacks", "&f %{_moreBang}% <##f53b98>", "-")
+		
+	wait {_duration}
+	remove {_masteryScaling} from metadata value "MoreBangForYourBuck" of {_p}
+	buffRegister({_p}, "More", 1, "", "Stacks", "&f %metadata value "MoreBangForYourBuck" of {_p}% <##f53b98>", "-")
+
+	if metadata value "MoreBangForYourBuck" of {_p} = 0:
+		buffClear({_p}, "More")
 #buckshot = spreadshot
 #flameslinger = rain of arrows inferno
 #jakas karta co czas odmierza strzal w powietrzu
