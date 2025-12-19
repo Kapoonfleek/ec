@@ -113,7 +113,7 @@ function SpreadShotFire(p: player, modifier: number):
 
 function SpreadShotArrow(p: player, x: location, nocharge: boolean, modifier: number, type: string, originalType: string = ""):
 	set {_arrowSpeed} to 0.7
-	
+
 	shoot an arrow from {_x} with speed 2.75
 	if {_type} = "Multi":
 		set string tag "ProjectileType" of custom nbt of last shot arrow to "Spread Shot"
@@ -139,6 +139,10 @@ function SpreadShotArrow(p: player, x: location, nocharge: boolean, modifier: nu
 		set string tag "ProjectileType" of custom nbt of last shot arrow to "Magic Volley"
 		if string tag "Talents;Row 4" of custom nbt of {karta::%{_p}%} = "Arrowmaster":
 			set {_modifier} to SingleShotModifiers({_p}, {_modifier})
+
+	else if {_type} = "Arrow Barrage":
+		set string tag "ProjectileType" of custom nbt of last shot arrow to "Arrow Barrage"
+
 	else:
 		set string tag "ProjectileType" of custom nbt of last shot arrow to "Portal Shot"
 		set boolean tag "PortalArrow" of custom nbt of last shot arrow to true
@@ -357,6 +361,12 @@ on rightclick:
 					set {_cd} to 5 #240
 					set {_pospiech} to Haste(player)
 					set {_duration} to 20 seconds
+					set {_portalCount} to 12
+
+					if string tag "Talents;Row 3" of custom nbt of {karta::%player%} = "Hail of Portals":
+						set {_cd} to {_cd} - 2 #60
+						set {_portalCount} to {_portalCount} + 4
+						set {_hailOfPortals} to true
 
 					set {_cd} to "%{_cd}/{_pospiech}% seconds" parsed as timespan
 
@@ -366,7 +376,6 @@ on rightclick:
 
 					set {_lore} to "lore"
 					LoreUpdate(player, "G.O.A.T", {_lore})
-					set metadata value "G.O.A.T" of player to true
 
 					play sound "skill.buckshot.goat" with volume 4 and pitch 1.4 at location of player
 					play sound "block.end_portal.spawn" with volume 4 and pitch 2 at location of player
@@ -383,8 +392,7 @@ on rightclick:
 						remove {_block} from {_blocks::*}
 						BuckshotPortalCreate(player, true, {_block}, {_duration}, true)
 
-					wait {_duration}
-					clear metadata value "G.O.A.T" of player
+					GOATBuckshot(player, {_duration}, {_blocks::*}, {_hailOfPortals})
 					
 				else: 
 					cancel event
@@ -431,10 +439,12 @@ on projectile collide:
 				if event-entity is not a player:
 					if boolean tag "AlreadyDamagedBuckshot%uuid of event-entity%" of (custom nbt of event-projectile) is not set:
 						set boolean tag "AlreadyDamagedBuckshot%uuid of event-entity%" of (custom nbt of event-projectile) to true
-						set {_shotTypes::*} to "Single Shot", "Spread Shot", "Portal Shot", "Ethereal Shot", "Magic Volley"
+						set {_shotTypes::*} to "Single Shot", "Spread Shot", "Portal Shot", "Ethereal Shot", "Magic Volley", "Arrow Barrage"
 						if {_shotTypes::*} contains (string tag "ProjectileType" of custom nbt of event-projectile):
 							set {_crit} to CriticalHit({_shooter})
 							set {_damage} to 2 + ({damage::%{_shooter}%}/33) + ({versatility::%{_shooter}%}/99) + ({primarystat::%{_shooter}%}/16.5)
+							set {_arrowBarrageDamage} to (1 + (({damage::%{_shooter}%}/47) + ({versatility::%{_shooter}%}/141) + {primarystat::%{_shooter}%}/23.5))
+
 							set {_spreadShotDamage} to {_damage}*0.6
 							set {_element} to "Magic"
 
@@ -451,6 +461,9 @@ on projectile collide:
 
 							else if string tag "ProjectileType" of custom nbt of event-projectile is "Magic Volley":
 								set {_damage} to {_spreadShotDamage}
+
+							else if string tag "ProjectileType" of custom nbt of event-projectile is "Arrow Barrage":
+								set {_damage} to {_arrowBarrageDamage}
 								
 							else if string tag "ProjectileType" of custom nbt of event-projectile is "Portal Shot":
 								if metadata value "ECPulled" of event-entity is set:
@@ -462,6 +475,11 @@ on projectile collide:
 										set {_damage} to {_spreadShotDamage}
 
 									set {_damage} to {_damage}*{_mastery}
+
+									if string tag "Talents;Row 2" of custom nbt of {karta::%{_shooter}%} = "Arrow Barrage":
+										chance of 5%:
+											set {_arrowBarrageDuration} to 4 seconds
+											ArrowBarrage({_shooter}, event-entity, {_arrowBarrageDuration})
 
 								else:
 									cancel event
@@ -501,7 +519,7 @@ on projectile collide:
 											clear metadata value "BindingShotTarget1" of {_shooter}
 											clear metadata value "BindingShotCoordinates1" of {_shooter}
 
-											set {_cd} to 5 seconds
+											set {_cd} to 25 seconds
 											create cooldown "Binding Shot%{_shooter}%" for {_cd}
 											cooldownSpell({_shooter}, "Binding Shot", {_cd})
 
@@ -573,7 +591,7 @@ on projectile collide:
 		
 on projectile hit:
 	set {_shooter} to metadata value "ProjectileShooter" of event-projectile
-	set {_shotTypes::*} to "Single Shot", "Spread Shot", "Portal Shot", "Ethereal Shot", "Magic Volley", "Binding Shot"
+	set {_shotTypes::*} to "Single Shot", "Spread Shot", "Portal Shot", "Ethereal Shot", "Magic Volley", "Binding Shot", "Arrow Barrage"
 	if {_shotTypes::*} contains (string tag "ProjectileType" of custom nbt of event-projectile):
 		if event-block is a block:
 			clear metadata value "ProjectileType" of event-projectile
@@ -626,7 +644,24 @@ function BindingShotEffect(p: player, e: entity):
 	while metadata value "BindingShotTarget1" of {_p} = {_e}:
 		BindingShotParticles({_e})
 		wait 0.2 seconds
-	
+
+function GOATBuckshot(p: player, duration: timespan, blocks: locations, hailOfPortals: boolean = false):
+	if metadata value "G.O.A.T" of {_p} is not set:
+		set metadata value "G.O.A.T" of {_p} to {_duration}
+		while metadata value "G.O.A.T" of {_p} > 0 seconds:
+			if {_hailOfPortals} = true:
+				if loop-counter is divisible by 5: 
+					set {_block} to a random element of {_blocks::*}
+					remove {_block} from {_blocks::*}
+					BuckshotPortalCreate({_p}, true, {_block}, metadata value "G.O.A.T" of {_p}, true)
+					play sound "skill.buckshot.magic_portal_create" with volume 3 and pitch 0 at {_block}
+					play sound "entity.enderman.teleport" with volume 3 and pitch 1.5 at {_block}
+			wait 1 second
+			remove 1 second from metadata value "G.O.A.T" of {_p}
+		clear metadata value "G.O.A.T" of {_p}
+	else:
+		set metadata value "G.O.A.T" of {_p} to {_duration}
+
 function MagicTetherSound(e: entity):
 	set {_pitch} to 0.5
 	loop 3 times:
@@ -666,6 +701,47 @@ function MagicTether(p: player, e1: entity, e2: entity):
 			Stun(loop-value, {_stunDuration})
 
 		play sound "entity.generic.hurt" with volume 2 and pitch 1 at location of loop-value
+
+function ArrowBarrage(p: player, e: entity, duration: timespan):
+	if metadata value "ArrowBarrageBuckshot%{_p}%" of {_e} is not set:
+		play sound "skill.buckshot.magic_portal_create" with volume 3 and pitch 2 at location of {_e}
+		play sound "entity.enderman.teleport" with volume 2 and pitch 0.6 at location of {_e}
+
+		set {_shapes::inner-circle} to a circle of radius 1
+		set {_shapes::tiny-circle} to a circle of radius 0.675
+
+		set {_shapes::triangle-1} to a triangle with radius 1
+		set {_shapes::triangle-2} to a triangle with radius 1
+		rotate shapes {_shapes::triangle-2} around y axis by 60 degrees
+
+		set particle of {_shapes::*} to dragon breath particle
+
+		set metadata value "ArrowBarrageBuckshot%{_p}%" of {_e} to {_duration}
+
+		while metadata value "ArrowBarrageBuckshot%{_p}%" of {_e} > 0 seconds:
+			set {_loc} to location 3 above {_e}
+
+			draw shapes {_shapes::*} at {_loc} for 1 tick
+			set pitch of {_loc} to 90
+
+			ArrowBarrageArrow({_p}, {_loc})
+			play sound "entity.chicken.egg" with volume 1.5 and pitch 1.25 at {_loc}
+			play sound "entity.arrow.shoot" with volume 1.5 and pitch 1.25 at {_loc}
+
+			wait 0.5 seconds
+			remove 0.5 seconds from metadata value "ArrowBarrageBuckshot%{_p}%" of {_e}
+
+			rotate shapes {_shapes::*} around y axis by 10 degrees
+
+		clear metadata value "ArrowBarrageBuckshot%{_p}%" of {_e}
+
+	else:
+		set metadata value "ArrowBarrageBuckshot%{_p}%" of {_e} to {_duration}
+
+function ArrowBarrageArrow(p: player, loc: location):
+	set {_modifier} to (1.8 + (({mastery::%{_p}%}/7.25)/100))
+	SpreadShotArrow({_p}, {_loc}, false, {_modifier}, "Arrow Barrage")
+
 #buckshot = spreadshot
 #flameslinger = rain of arrows inferno
 #jakas karta co czas odmierza strzal w powietrzu
