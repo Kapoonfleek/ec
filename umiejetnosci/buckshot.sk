@@ -294,6 +294,8 @@ function BuckshotPortalCreate(p: player, portals: boolean, eventblock: location,
 	BuckshotPortalDelete({_p}, {_portal}, {_duration})
 
 	set {_scale} to 2.0
+	if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Dimensional Damage":
+		set {_scale} to {_scale}*1.2
 
 	set {_model} to BetterModel.model("portalbuckshot").get().getOrCreate({_portal})
 	{_model}.scaler({_model}.scaler().multiply({_scale}))
@@ -307,26 +309,30 @@ function BuckshotPortalDelete(p: player, portal: entity, t: timespan):
 	play sound "entity.ender_eye.death" with volume 2 and pitch 0.5 at location of {_portal}
 
 	if string tag "Talents;Row 1" of custom nbt of {karta::%{_p}%} = "Abracadabra":
-		set {_portalRange} to 4 + CrowdControl({_p})/25
-		set {_enemies::*} to LoopEntitiesAroundTarget({_portal}, {_portalRange}, false)
-		set {_crit} to CriticalHit({_p})
-		set {_damage} to 3 + ({damage::%{_p}%}/25) + ({versatility::%{_p}%}/75) + ({primarystat::%{_p}%}/12.5)
-		set {_lore} to "lore"
+		if metadata value "ECEngaged" of {_p} is set:
+			set {_portalRange} to 4 + CrowdControl({_p})/25
+			set {_enemies::*} to LoopEntitiesAroundTarget({_portal}, {_portalRange}, false)
+			set {_crit} to CriticalHit({_p})
+			set {_damage} to 3 + ({damage::%{_p}%}/25) + ({versatility::%{_p}%}/75) + ({primarystat::%{_p}%}/12.5)
+			set {_lore} to "lore"
 
-		set {_pitch} to a random number between 0.0 and 2.0
-		play sound "skill.buckshot.magicportal_explode" with volume 1.5 and pitch {_pitch} at location of {_portal}
+			if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Dimensional Damage":
+				set {_dimensionalDamageModifier} to 1.5
+				set {_damage} to {_damage}*{_dimensionalDamageModifier}
 
-		loop {_enemies::*}:
-			if metadata value "ECPulled" of loop-value is set:
-				set {_damage} to Crit({_p}, loop-value, {_crit}, {_damage})
-				set loop-value's last damage cause to sweep attack
-				set metadata value "Element" of {_shooter} to "Magic"
-				set metadata value "LastDamageCause" of loop-value to "<##866da4>Magic Portals"
-				set metadata value "LastDamageCauseLore" of loop-value to {_lore}
-				make {_p} damage loop-value by {_damage}
-				play sound "entity.generic.hurt" with volume 1.5 and pitch 1 at location of loop-value
+			set {_pitch} to a random number between 0.0 and 2.0
+			play sound "skill.buckshot.magicportal_explode" with volume 1.5 and pitch {_pitch} at location of {_portal}
 
-		draw 20 dragon breath particle at location above {_portal} with offset vector(2, 1, 2) with extra 0.5
+			loop {_enemies::*}:
+				if metadata value "ECPulled" of loop-value is set:
+					set {_damage} to Crit({_p}, loop-value, {_crit}, {_damage})
+					set loop-value's last damage cause to sweep attack
+					set metadata value "Element" of {_shooter} to "Magic"
+					set metadata value "LastDamageCause" of loop-value to "<##866da4>Magic Portals"
+					set metadata value "LastDamageCauseLore" of loop-value to {_lore}
+					make {_p} damage loop-value by {_damage}
+
+			draw 20 dragon breath particle at location above {_portal} with offset vector(2, 1, 2) with extra 0.5
 
 on rightclick:
 	if boolean tag "Magic Portals" of custom nbt of player's tool is set:
@@ -344,6 +350,8 @@ on rightclick:
 						set the cooldown of player's held item for player to {_cd}
 
 						set {_duration} to 40 seconds
+						if string tag "Talents;Row 5" of custom nbt of {karta::%player%} = "Dimensional Damage":
+							set {_duration} to {_duration} + 10 seconds
 
 						AbilityUse(player, "Magic Portals")
 						set {_lore} to "&8Basic Ability%nl%&f2 Charges%nl%&fInstant cast%nl%&7Cooldown:  &f%{_cdd}% seconds%nl%&7Range: &f%{_portalRange}%%nl%&7Use: &fRMB%nl%<##866da4>Creates a &f <##c6b1de>Magic Portal <##866da4>at the target location%nl%<##866da4>for &f%seconds of {_duration}% sec<##866da4>. Arrows passing through a portal will%nl%<##866da4>vanish and <##c6b1de>fire <##866da4>from all other active &f <##c6b1de>Magic Portals<##866da4>.%nl%<##866da4>Pressing SHIFT will cause the portal to be created%nl%<##866da4>a block higher.%nl% %nl%<##866da4>Arrows can <##c6b1de>bounce <##866da4>between portals a maximum of%nl%&f3 <##866da4>times."
@@ -478,6 +486,9 @@ on projectile collide:
 
 							else if string tag "ProjectileType" of custom nbt of event-projectile is "Arrow Barrage":
 								set {_damage} to {_arrowBarrageDamage}
+								if string tag "Talents;Row 5" of custom nbt of {karta::%{_shooter}%} = "Dimensional Damage":
+									set {_dimensionalDamageModifier} to 1.5
+									set {_damage} to {_damage}*{_dimensionalDamageModifier}
 								
 							else if string tag "ProjectileType" of custom nbt of event-projectile is "Portal Shot":
 								if metadata value "ECPulled" of event-entity is set:
@@ -559,6 +570,10 @@ on projectile collide:
 											set {_damage} to 5 + ({damage::%{_shooter}%}/11) + ({versatility::%{_shooter}%}/33) + ({primarystat::%{_shooter}%}/5.5)
 											set {_element} to "Magic"
 											set {_lore} to "lore"
+
+											if string tag "Talents;Row 5" of custom nbt of {karta::%{_shooter}%} = "Dimensional Damage":
+												set {_dimensionalDamageModifier} to 1.5
+												set {_damage} to {_damage}*{_dimensionalDamageModifier}
 
 											if Marksmanship4Set({_shooter}) is true:
 												set {_damage} to {_damage}*1.35
@@ -705,6 +720,10 @@ function MagicTether(p: player, e1: entity, e2: entity):
 	set {_lore} to "lore"
 	set {_element} to "Magic"
 
+	if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Dimensional Damage":
+		set {_dimensionalDamageModifier} to 1.5
+		set {_damage} to {_damage}*{_dimensionalDamageModifier}
+
 	set {_targets::*} to {_e1} and {_e2}
 	loop {_targets::*}:
 		set {_damage} to Crit({_p}, loop-value, {_crit}, {_damage})
@@ -846,6 +865,10 @@ function SupernovaBuckshot(p: player, loc: location, portal: entity):
 	set {_pitch} to a random number between 0.0 and 2.0
 	play sound "skill.buckshot.supernova" with volume 1.5 and pitch {_pitch} at {_loc}
 
+	if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Dimensional Damage":
+		set {_dimensionalDamageModifier} to 1.5
+		set {_damage} to {_damage}*{_dimensionalDamageModifier}
+
 	loop {_enemies::*}:
 		if metadata value "ECPulled" of loop-value is set:
 			set {_damage} to Crit({_p}, loop-value, {_crit}, {_damage})
@@ -854,7 +877,6 @@ function SupernovaBuckshot(p: player, loc: location, portal: entity):
 			set metadata value "LastDamageCause" of loop-value to "<##866da4>Supernova"
 			set metadata value "LastDamageCauseLore" of loop-value to {_lore}
 			make {_p} damage loop-value by {_damage}
-			play sound "entity.generic.hurt" with volume 1.5 and pitch 1 at location of loop-value
 
 	set {_shape} to a helix with radius 2, height 4, and winding rate 0.5 loops per block
 	create a new custom dust_color_transition particle with:
