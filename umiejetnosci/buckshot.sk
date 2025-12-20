@@ -65,6 +65,7 @@ function SpreadShotFire(p: player, modifier: number):
 	set {_baseShotCount} to 5
 	set {_shotCount} to {_baseShotCount}
 	set {_change} to 0.6
+	
 	if string tag "Talents;Row 1" of custom nbt of {karta::%{_p}%} = "Wideshot":
 		set {_shotCount} to {_shotCount} + 1
 		set {_change} to {_change}*1.15
@@ -89,9 +90,9 @@ function SpreadShotFire(p: player, modifier: number):
 			set {_shotweaving} to 1 + ({_shotweavingPercentModifier} * {_shotweavingCount})/100
 			set {_modifier} to {_modifier} * {_shotweaving}
 
-	if metadata value "G.O.A.T" of {_p} is set:
-		if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Main Attraction":
-			
+	
+	if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Main Attraction":
+		if metadata value "G.O.A.T" of {_p} is set:
 			set {_totalShots} to 20
 			if {_etherealArrow} is set:
 				set {_etherealArrow} to a random integer between 1 and {_totalShots}
@@ -311,6 +312,10 @@ function BuckshotPortalDelete(p: player, portal: entity, t: timespan):
 		set {_crit} to CriticalHit({_p})
 		set {_damage} to 3 + ({damage::%{_p}%}/25) + ({versatility::%{_p}%}/75) + ({primarystat::%{_p}%}/12.5)
 		set {_lore} to "lore"
+
+		set {_pitch} to a random number between 0.0 and 2.0
+		play sound "skill.buckshot.magicportal_explode" with volume 1.5 and pitch {_pitch} at location of {_portal}
+
 		loop {_enemies::*}:
 			set {_damage} to Crit({_p}, loop-value, {_crit}, {_damage})
 			set loop-value's last damage cause to sweep attack
@@ -318,26 +323,9 @@ function BuckshotPortalDelete(p: player, portal: entity, t: timespan):
 			set metadata value "LastDamageCause" of loop-value to "<##866da4>Magic Portals"
 			set metadata value "LastDamageCauseLore" of loop-value to {_lore}
 			make {_p} damage loop-value by {_damage}
+			play sound "entity.generic.hurt" with volume 1.5 and pitch 1 at location of loop-value
 
-		set {_shape} to a helix with radius 2, height 4, and winding rate 0.5 loops per block
-		create a new custom dust_color_transition particle with:
-			count: 1
-			velocity: inwards
-			force: true
-			data: dustTransition(purple, magenta, 0.55)
-		set particle of {_shape} to last created particle
-		draw an animation of shape {_shape} at location 0.5 above {_portal} over 10 ticks:
-			rotate shape drawn shape around relative y axis by -1 * (yaw of {_p})
-
-		set {_shape} to a solid sphere with radius 1
-		create a new custom dust_color_transition particle with:
-			count: 1
-			velocity: inwards
-			force: true
-			data: dustTransition(purple, black, 1)
-		set particle of {_shape} to last created particle
-		draw shape {_shape} at location 0.5 above {_portal} for 5 ticks:
-			rotate shape drawn shape around relative y axis by -0.5 * (yaw of {_p})
+		draw 20 dragon breath particle at location above {_portal} with offset vector(2, 1, 2) with extra 0.5
 
 on rightclick:
 	if boolean tag "Magic Portals" of custom nbt of player's tool is set:
@@ -609,6 +597,10 @@ on projectile collide:
 								if {_PortalShotLimit} is not set:
 									SpreadShotArrow({_shooter}, loop-value's eye, false, {_modifier}, "Portal", {_projectileType})
 									play sound "entity.enderman.teleport" with volume 2 and pitch 2 at location of loop-value
+									
+									if string tag "Talents;Row 4" of custom nbt of {karta::%{_shooter}%} = "Supernova":
+										chance of 8%:
+											SupernovaBuckshot({_shooter}, location of loop-value, event-entity)
 		cancel event
 
 	if boolean tag "Invisible" of nbt of event-projectile is true:
@@ -842,6 +834,45 @@ function MoreBangForYourBuck(p: player):
 
 	if metadata value "MoreBangForYourBuck" of {_p} <= 0:
 		buffClear({_p}, "More")
+
+function SupernovaBuckshot(p: player, loc: location, portal: entity):
+	set {_portalRange} to 4 + CrowdControl({_p})/25
+	set {_enemies::*} to LoopEntitiesAroundTarget({_portal}, {_portalRange}, false)
+	set {_crit} to CriticalHit({_p})
+	set {_damage} to 4 + ({damage::%{_p}%}/21.75) + ({versatility::%{_p}%}/65.25) + ({primarystat::%{_p}%}/10.875)
+	set {_lore} to "lore"
+
+	set {_pitch} to a random number between 0.0 and 2.0
+	play sound "skill.buckshot.supernova" with volume 1.5 and pitch {_pitch} at {_loc}
+
+	loop {_enemies::*}:
+		set {_damage} to Crit({_p}, loop-value, {_crit}, {_damage})
+		set loop-value's last damage cause to sweep attack
+		set metadata value "Element" of {_shooter} to "Magic"
+		set metadata value "LastDamageCause" of loop-value to "<##866da4>Supernova"
+		set metadata value "LastDamageCauseLore" of loop-value to {_lore}
+		make {_p} damage loop-value by {_damage}
+		play sound "entity.generic.hurt" with volume 1.5 and pitch 1 at location of loop-value
+
+	set {_shape} to a helix with radius 2, height 4, and winding rate 0.5 loops per block
+	create a new custom dust_color_transition particle with:
+		count: 1
+		velocity: inwards
+		force: true
+		data: dustTransition(purple, magenta, 0.55)
+	set particle of {_shape} to last created particle
+	draw an animation of shape {_shape} at location 0.5 above {_loc} over 10 ticks:
+		rotate shape drawn shape around relative y axis by -1 * (yaw of {_p})
+
+	set {_shape} to a solid sphere with radius 1
+	create a new custom dust_color_transition particle with:
+		count: 1
+		velocity: inwards
+		force: true
+		data: dustTransition(purple, black, 1)
+	set particle of {_shape} to last created particle
+	draw shape {_shape} at location 0.5 above {_loc} for 5 ticks:
+		rotate shape drawn shape around relative y axis by -0.5 * (yaw of {_p})
 #buckshot = spreadshot
 #flameslinger = rain of arrows inferno
 #jakas karta co czas odmierza strzal w powietrzu
