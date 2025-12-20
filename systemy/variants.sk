@@ -1,15 +1,13 @@
-on inventory click:
-    if event-inventory = (metadata tag "kartagui" of player):
-        if index of event-slot is 22:
-            if name of event-slot contains "&6Variants":
-                VariantMenu(player)
-                play sound "skill.cresselia.shootingstarhit" with volume 1 and pitch 2 to player
-
 function VariantMenu(p: player) :: number:
     set metadata tag "variantgui" of {_p} to chest inventory with 3 rows named "%uncolored name of {_p}'s tool% - Variants"
     set {_gui} to metadata tag "variantgui" of {_p}
     set {_id} to string tag "Id" of custom nbt of {_p}'s tool
     set {_card} to uncolored name of {_p}'s tool
+    set {_cardColour} to last string colour code of (name of {_p}'s tool)
+
+    if yaml value "%{_card}%.Classic.Owned" in "Variants%{_p}%" is not set:
+        set yaml value "%{_card}%.Classic.Owned" in "Variants%{_p}%" to true
+        save yaml "Variants%{_p}%"
 
     load yaml "plugins/Skript/playerdata/karty/%{_card}%/%{_id}%.yml" as "cardVariant-%{_p}%"
     set {_variant} to yaml value "Card.Variant" in "cardVariant-%{_p}%"
@@ -26,9 +24,9 @@ function VariantMenu(p: player) :: number:
     if size of {_variants::*} > 4:
         set {_change} to 1
 
-    set slot 4 of {_gui} to orange stained glass pane named "&6What are Variants?" with lore "&7TBD"
-
-    set {_} to "<##d4eaff>|⃓"
+    set {_info1} to "&7Variants are unlockable appearances for Cards.%nl%&7These can be collected through a variety of%nl%&7sources, e.g. Events, Achievements, Stellar Chest%nl%&7and other gameplay features."
+    set {_info2} to "&7Variants alter many aspects of a Card's gameplay,%nl%&7including visual effect changes to all abilities,%nl%&7sounds, new icons, new VFX and particle effects,%nl%&7as well as a unique Card colour and damage%nl%&7meter look."
+    set slot 4 of {_gui} to orange stained glass pane named "&6Variants" with lore "&f✨ What are Variants?%nl%%{_info1}%%nl% %nl%&f✨ What do Variants unlock?%nl%%{_info2}%"
 
     loop {_variants::*}:
         set {_item} to yaml value "%{_card}%.%loop-value%.Item" in "VariantList"
@@ -36,20 +34,32 @@ function VariantMenu(p: player) :: number:
         set boolean tag "minecraft:enchantments;show_in_tooltip" of nbt of {_item} to false
 
         set {_colourDesc} to yaml value "Variant Options.Description Colour" in "VariantList"
-        set {_colour} to yaml value "Variant List.%loop-value%.Colour" in "VariantList"
 
-        set name of {_item} to (mini message from "%{_colour}%%loop-value% %{_card}%")
+        if loop-value != "Classic":
+            set {_colour} to yaml value "Variant List.%loop-value%.Colour" in "VariantList"
+            set name of {_item} to (mini message from "%{_colour}%%loop-value% %{_card}%")
+            set {_source} to yaml value "%{_card}%.%loop-value%.Source" in "VariantList"
+            set {_acquired} to yaml value "%{_card}%.%loop-value%.Acquired" in "Variants%{_p}%"
+        else:
+            set {_colour} to {_cardColour}
+            set name of {_item} to (text component from "%{_colour}%%loop-value% %{_card}%")
+            set {_source} to "Unlock Card"
+            set {_randomId} to random 8 char string from charset `0-9` `a-z`
+            load yaml "plugins/Skript/playerdata/karty/%{_card}%/%{_id}%.yml" as "%{_randomId}%-%{_p}%"
+            set {_acquired} to yaml value "Card.Dropped" in "%{_randomId}%-%{_p}%"
+            set {_acquired::*} to {_acquired} split at " "
+            set {_acquired} to "%{_acquired::2}% | %{_acquired::1}%"
+            unload yaml "%{_randomId}%-%{_p}%"
 
+        set {_} to text component from "&f|⃓"
+        
         set {_description::*} to (yaml list "Variant List.%loop-value%.Description" in "VariantList") 
         loop {_description::*}:
             set {_currentLine} to loop-value-2
             replace all "{CARDNAME}" in {_currentLine} with {_card}
             set {_description::%loop-counter-2%} to (mini message from "<i>%{_colourDesc}%%{_currentLine}%")
 
-        set {_description} to join {_description::*} by "%nl%%{_}%  "
-
-        set {_source} to yaml value "%{_card}%.%loop-value%.Source" in "Variants%{_p}%"
-        set {_acquired} to yaml value "%{_card}%.%loop-value%.Acquired" in "Variants%{_p}%"
+        set {_description} to join {_description::*} by "%nl%%{_}%  " 
         set {_owned} to yaml value "%{_card}%.%loop-value%.Owned" in "Variants%{_p}%"
 
         if {_source} is not set:
@@ -57,48 +67,80 @@ function VariantMenu(p: player) :: number:
         if {_acquired} is not set:
             set {_acquired} to "Not unlocked"
 
-        set {_lore} to "%{_}%  <##9376E0>✨ %{_card}% Card Variant ✨%nl%%{_}%  %nl%%{_}%  ✨ %{_description}%%nl%%{_}%%nl%%{_}%  <##9376E0>Source: &f%{_source}%%nl%%{_}%  <##9376E0>Acquired: &f%{_acquired}%"
-        set {_currentVariant} to yaml value "%{_card}%.Current Variant" in "Variants%{_p}%"
+        set {_lore} to "%{_}%  <##9376E0>✨ %{_card}% Card Variant ✨%nl%%{_}%  %nl%%{_}%  🌠 %{_description}%%nl%%{_}%%nl%%{_}%  <##9376E0>Source: &f%{_source}%%nl%%{_}%  <##9376E0>Acquired: &f%{_acquired}%"
+        
+        set {_currentVariant} to getCurrentVariant({_p}, {_card})
         if {_currentVariant} = loop-value:
             set {_lore} to "%{_lore}%%nl%%{_}%%nl%%{_}%  &a&o✔ Selected"
+            set boolean tag "Unlocked" of custom nbt of {_item} to true
+            set boolean tag "Selected" of custom nbt of {_item} to true
         else:
             if {_owned} = true:
                 set {_lore} to "%{_lore}%%nl%%{_}%%nl%%{_}%  &9&o🖍 Click here to select Variant"
+                set boolean tag "Unlocked" of custom nbt of {_item} to true
             else:
                 set {_lore} to "%{_lore}%%nl%%{_}%%nl%%{_}%  &c&o✘ You do not own this Variant"
+                set boolean tag "Unlocked" of custom nbt of {_item} to false
+
+        set string tag "Card" of custom nbt of {_item} to {_card}
+        set string tag "Variant" of custom nbt of {_item} to loop-value
 
         set lore of {_item} to {_lore}
-        
         set slot {_baseSlot} of {_gui} to {_item}
-
+        
         set {_baseSlot} to {_baseSlot} + {_change}
 
     open {_gui} to {_p}
 
-command /tv:
-    trigger:
-        set {_divider} to "• —– ٠ ✤ ٠ —– • ·"
-        set {_f} to "<gradient:##d4eaff:##82c3ff:##d4eaff:##82c3ff>"
-        #mini message from "<gradient:##d4eaff:##82c3ff:##d4eaff:##82c3ff>Winter Delight {CARDNAME}"
-        set {_w} to "Winter Delight {CARDNAME}"
-        replace all "{CARDNAME}" in {_w} with "Delphox"
-        set {_mi} to mini message from "%{_f}%%{_w}%"
-        broadcast {_mi}
-        stop
-        give player glowing stick
-        
-        #|⃓
-        set lore of player's tool to "<##d4eaff>|⃓  <##9376E0>✨ Delphox Card Variant ✨%nl%<##d4eaff>|⃓  %nl%<##d4eaff>|⃓  ✨ %{_gradient}%%nl%<##d4eaff>|⃓  %{_gradient2}%%nl%<##d4eaff>|⃓%nl%<##d4eaff>|⃓  <##9376E0>Source: &fWinter Delight 2024 Event%nl%<##d4eaff>|⃓  <##9376E0>Acquired: &f{ACQUIREDDATE}%nl%<##d4eaff>|⃓%nl%<##d4eaff>|⃓  &a&o✔ Selected"           
-        
-command /tvr [<text>]:
-    trigger:
-        set {_gradient} to "Frostbite your enemies with this"
-        set {_gradient2} to "exclusive variant for {CARDNAME}."
-        #set yaml value "Delphox.Winter Delight.Item" in "VariantList" to player's tool
+function getCurrentVariant(p: player, card: text) :: text:
+    set {_currentVariant} to yaml value "%{_card}%.Current Variant" in "Variants%{_p}%"
+    return {_currentVariant}
 
-        set yaml list "Variant List.Winter Delight.Description" in "VariantList" to {_gradient} and {_gradient2}
-        set yaml value "Variant List.Winter Delight.Colour" in "VariantList" to "<gradient:##d4eaff:##82c3ff:##d4eaff:##82c3ff>"
+function setCurrentVariant(p: player, card: string, variant: string):
+    set yaml value "%{_card}%.Current Variant" in "Variants%{_p}%" to {_variant}
+    save yaml "Variants%{_p}%"
 
-        set {_colour} to "<i><gradient:##f57fd2:##ffe3e9>"
-        set yaml value "Variant Options.Description Colour" in "VariantList" to {_colour}
-        save yaml "VariantList"
+command /variantitem:
+    trigger:
+        if player's name = "Pehrek":
+            set {_value} to "Cresselia.Arctic Lights.Item"
+            set yaml value {_value} in "VariantList" to player's tool
+            send "Successfully registered %{_value}%." to player
+            save yaml "VariantList"
+
+command /variantoption:
+    trigger:
+        if player's name = "Pehrek":
+            set yaml value "Variant List.Winterfjord.Colour" in "VariantList" to "<gradient:##638fc9:##d9d9d9:##57b2f2:##c5def0>"
+            set yaml list "Variant List.Winterfjord.Description" in "VariantList" to "Channel the spirit of the artic" and "hunt and unleash a volley of" and "jagged ice arrows with this" and "exclusive Variant for {CARDNAME}."
+            save yaml "VariantList"
+
+on inventory click:
+    if event-inventory = (metadata tag "kartagui" of player):
+        if index of event-slot is 22:
+            if name of event-slot contains "&6Variants":
+                VariantMenu(player)
+                play sound "skill.cresselia.shootingstarhit" with volume 1 and pitch 2 to player
+
+    else if event-inventory = (metadata tag "variantgui" of player):
+        cancel event
+        if boolean tag "Unlocked" of custom nbt of event-slot = true:
+            if boolean tag "Selected" of custom nbt of event-slot != true:
+                set {_card} to string tag "Card" of custom nbt of event-slot
+                set {_variant} to string tag "Variant" of custom nbt of event-slot
+                setCurrentVariant(player, {_card}, {_variant})
+
+                teleport player to player's location
+                send "&f&oSuccessfully selected the %name of event-slot% &f&oVariant." to player
+
+                play sound "item.bucket.empty" with volume 1 and pitch 0.8 to player
+                play sound "ui.hud.bubble_pop" with volume 1 and pitch 1 to player
+                play sound "ui.select" with volume 1 and pitch 1.5 to player
+                play sound "entity.experience_orb.pickup" with volume 1 and pitch 1.75 to player
+            else:
+                send "&6&oYou already have this Variant selected." to player
+                play sound "ui.no_function" with volume 1 and pitch 1 to player
+
+        else:
+            play sound "ui.no_function" with volume 1 and pitch 1 to player
+            send "&c&oYou do not have this Variant unlocked." to player
