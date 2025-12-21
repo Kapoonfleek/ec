@@ -99,7 +99,6 @@ function chatBubble(p: player, t: text, viewers: players):
 function damageText(a: entity, e: entity, damage: number, crit: boolean, effective: string, modifier: number = 1.0):
     set {_source} to metadata value "LastDamageCause" of {_e}
     set {_id} to random integer between 0 and 999999999999
-    set {_id2} to random integer between 0 and 999999999999
     set {_1} to a random integer between 1 and 2
     set {_2} to a random integer between 1 and 2
 
@@ -126,12 +125,22 @@ function damageText(a: entity, e: entity, damage: number, crit: boolean, effecti
     set {_name} to "%{_damageFormatted}%"
 
     set {_scale} to 0.75 + ({_damage}*0.0025)
-    if {_effective} = "weak":
+    set {_effectiveDamage::*} to "super strong", "strong", "moderately strong"
+    set {_ineffectiveDamage::*} to "super weak", "weak", "mildly weak"
+
+    if {_ineffectiveDamage::*} contains {_effective}:
         set {_scale} to {_scale}*0.67
-        set {_name} to "&o%{_name}% ↓"
-    else if {_effective} = "strong":
+        if {_effective} = "super weak":
+            set {_name} to "&o%{_name}% ↓↓"
+        else:
+            set {_name} to "&o%{_name}% ↓"
+        
+    else if {_effectiveDamage::*} contains {_effective}:
         set {_scale} to {_scale}*1.1
-        set {_name} to "%{_name}% ↑"
+        if {_effective} = "super strong":
+            set {_name} to "%{_name}% ↑↑"
+        else:
+            set {_name} to "%{_name}% ↑"
 
     set {_meta} to metadata packet with id {_id}
 
@@ -142,21 +151,23 @@ function damageText(a: entity, e: entity, damage: number, crit: boolean, effecti
     if {_scale} > 5:
         set {_scale} to 5
 
-    spawn fake text display entity at location 0.25 above {_loc} for all players with id {_id2}
-    set {_meta2} to metadata packet with id {_id2}
-
     set {_name} to "&c%{_name}%"
     add data from "display text %{_name}%" to {_meta}
     add data from "display billboard center" to packet {_meta}
     add data from "display brightness 15 15" to packet {_meta}
     add data from "display scale %{_scale}% %{_scale}% %{_scale}%" to packet {_meta}
 
-    set {_name} to "<##d5ff57>x%{_modifier}% (%{_effective}%)"
-    add data from "display text %{_name}%" to {_meta2}
-    add data from "display billboard center" to packet {_meta2}
-    add data from "display brightness 15 15" to packet {_meta2}
-    add data from "display scale %{_scale}*0.5% %{_scale}*0.5% %{_scale}*0.5%" to packet {_meta2}
-    send packet {_meta2} to all players
+    if {_effective} is set:
+        if {_effective} != {_neutral}:
+            set {_id2} to random integer between 0 and 999999999999
+            spawn fake text display entity at location 0.25 above {_loc} for all players with id {_id2}
+            set {_meta2} to metadata packet with id {_id2}
+            set {_name} to "<##d5ff57>x%{_modifier}% (%{_effective}%)"
+            add data from "display text %{_name}%" to {_meta2}
+            add data from "display billboard center" to packet {_meta2}
+            add data from "display brightness 15 15" to packet {_meta2}
+            add data from "display scale %{_scale}*0.5% %{_scale}*0.5% %{_scale}*0.5%" to packet {_meta2}
+            send packet {_meta2} to all players
     
     send packet {_meta} to all players
 
