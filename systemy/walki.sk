@@ -472,12 +472,15 @@ on damage:
 	replace all "&8Id: " in {_idV} with ""
 	replace all "&8Id: " in {_idA} with ""
 	
+	set {_elementModifier} to 1
+
 	if string tag "ECElement" of custom nbt of victim is set:
 		if metadata value "Element" of attacker is set:
 			set {_attackerElement} to metadata value "Element" of attacker
-
+			set {_elementVictim} to string tag "ECElement" of custom nbt of victim
+			
 			set {_element::*} to Zywiol(attacker, victim)
-			set {_elementModifier} to {_element::1}
+			set {_elementModifier} to ({_elementModifier} + {_element::1})
 			set {_elementEffect} to ElementEffective({_element::2}, {_element::3})
 
 	if victim is a player:
@@ -624,13 +627,25 @@ on damage:
 			clear metadata value "IgnoreResistance%attacker%" of victim
 			set {_damagered} to (({_damagered}-1) * 0.7) + 1
 
-		set damage to damage * (1 + {_elementModifier})
+		set damage to damage * {_elementModifier}
 		
-		if {_elementEffect} = "super strong" or "strong":
+		set {_effectiveDamage::*} to "super strong", "strong", "moderately strong"
+		set {_ineffectiveDamage::*} to "super weak", "weak", "mildly weak"
+
+		if {_effectiveDamage::*} contains {_elementEffect}:
 			if {kartaname::%attacker%} = "Shaymin":
 				if metadata value "LastDamageCause" of victim = "<##f8fff5>Air Slash":
 					set damage to damage*1.2
-	
+
+		else if {_ineffectiveDamage::*} contains {_elementEffect}:
+			if {kartaname::%attacker%} = "Buckshot":
+				if boolean tag "Constellation;Elemental Bypass" of custom nbt of {karta::%attacker%} is set:
+					ElementalBypassBuckshot(attacker, {_elementVictim})
+					set {_elementalBypassBuckshot} to 1 + (getElementalBypassBuckshot(attacker, {_elementVictim})/100)
+
+					set damage to damage * {_elementalBypassBuckshot}
+					set {_elementModifier} to {_elementModifier}*{_elementalBypassBuckshot}
+
 		set damage to damage/{_damagered}
 
 		if metadata value "DamageReduction" of victim is set:
@@ -650,7 +665,7 @@ on damage:
 				set {_crit} to true
 			else:
 				set {_crit} to false
-			damageText(attacker, victim, damage, {_crit}, {_elementEffect}, (1 + {_elementModifier}))
+			damageText(attacker, victim, damage, {_crit}, {_elementEffect}, {_elementModifier})
 
 			if boolean tag "ECMob" of custom nbt of victim is set:
 				set metadata value "MostRecentlyDamagedEnemy" of attacker to victim
