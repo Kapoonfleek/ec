@@ -96,9 +96,10 @@ function chatBubble(p: player, t: text, viewers: players):
         remove 1 from {_loops} if {_loops} > 1
         add 1 to {_index}
 
-function damageText(a: entity, e: entity, damage: number, crit: boolean, effective: string = "none"):
+function damageText(a: entity, e: entity, damage: number, crit: boolean, effective: string, modifier: number = 1.0):
     set {_source} to metadata value "LastDamageCause" of {_e}
     set {_id} to random integer between 0 and 999999999999
+    set {_id2} to random integer between 0 and 999999999999
     set {_1} to a random integer between 1 and 2
     set {_2} to a random integer between 1 and 2
 
@@ -127,30 +128,44 @@ function damageText(a: entity, e: entity, damage: number, crit: boolean, effecti
     set {_scale} to 0.75 + ({_damage}*0.0025)
     if {_effective} = "weak":
         set {_scale} to {_scale}*0.67
-        set {_name} to "&o%{_name}%"
+        set {_name} to "&o%{_name}% ↓"
     else if {_effective} = "strong":
-        set {_scale} to {_scale}*1.5
-        set {_name} to "%{_name}%!"
+        set {_scale} to {_scale}*1.1
+        set {_name} to "%{_name}% ↑"
 
     set {_meta} to metadata packet with id {_id}
 
     if {_crit} = true:
         set {_name} to "&l%{_name}%"
-        set {_scale} to {_scale}*1.5
+        set {_scale} to {_scale}*1.1
+    
+    if {_scale} > 5:
+        set {_scale} to 5
+
+    spawn fake text display entity at location 0.25 above {_loc} for all players with id {_id2}
+    set {_meta2} to metadata packet with id {_id2}
+
     set {_name} to "&c%{_name}%"
     add data from "display text %{_name}%" to {_meta}
     add data from "display billboard center" to packet {_meta}
     add data from "display brightness 15 15" to packet {_meta}
     add data from "display scale %{_scale}% %{_scale}% %{_scale}%" to packet {_meta}
+
+    set {_name} to "<##d5ff57>x%{_modifier}% (%{_effective}%)"
+    add data from "display text %{_name}%" to {_meta2}
+    add data from "display billboard center" to packet {_meta2}
+    add data from "display brightness 15 15" to packet {_meta2}
+    add data from "display scale %{_scale}*0.5% %{_scale}*0.5% %{_scale}*0.5%" to packet {_meta2}
+    send packet {_meta2} to all players
     
     send packet {_meta} to all players
-
 
     set {_waitNum} to 2 + ({_damage}*0.02)
     set {_waitNum} to 5 if {_waitNum} > 5
     set {_wait} to "%{_waitNum}% seconds" parsed as timespan
     wait {_wait}
     remove fake entity with id {_id} for all players
+    remove fake entity with id {_id2} for all players
     
 
 function chatBubbleRemove(wait: timespan, id: integer):
@@ -159,11 +174,17 @@ function chatBubbleRemove(wait: timespan, id: integer):
 
 import:
     com.destroystokyo.paper.profile.ProfileProperty
+    org.bukkit.map.MinecraftFont
 
 function dialogueAnimate(id: integer, loops: integer = 5):
     loop {_loops} times:
         move entity with id {_id} by 0 256 0 for all players
         wait 1 tick
+
+function npcChat():
+    #Format
+    broadcast " &f'Brodaty' Zachary &709:58"
+    broadcast " &8&l𜸩  &rThis is a test message to see%nl%       &8&l𜸩  &rthis is a test message again"
 
 
             
