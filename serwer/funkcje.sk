@@ -118,6 +118,13 @@ function addMiningXP(p: player, xp: number, modifier: number = 1):
 function getStatList() :: strings:
 	set {_statList::*} to yaml list "Stat List" in "StatList"
 	return {_statList::*}
+
+function RGBToHex(number: numbers) :: string:
+	loop {_number::*}:
+		set {_m} to (character at (mod((floor(min(max(loop-value, 0), 255) / 16)), 16) + 1) in "0123456789ABCDEF")
+		set {_f} to (character at ((mod(min(max(loop-value, 0), 255), 16)) + 1) in "0123456789ABCDEF")
+		set {_r} to join {_r}, {_m} and {_f}
+	return colored "<#%{_r}%>"
 	
 function DamageHologram(p: entity, t: text):
 	#set {_r} to a random integer between 1 and 2
@@ -296,6 +303,40 @@ function spawnQuestMarker(p: players, e: entity, offset: number = 0) :: integer:
 	send packet {_meta} to {_p::*}
 	
 	return {_id}
+
+function textWrapper(text: string, divider: string, maxLength: integer) :: objects:
+    set {_list::*} to {_text} split at " "
+    set {_s} to ""
+
+    loop {_list::*}:
+        if (length of {_s} + length of loop-value) is less than or equal to {_maxLength}:
+            if {_s} is "":
+                set {_s} to "%loop-value%%{_divider}%"
+
+            else:
+                set {_s} to "%{_s}%%{_divider}%%loop-value%%{_divider}%"
+
+        else:
+            add "%{_s}%%{_divider}%" to {_output::*}
+            set {_s} to loop-value
+
+    add {_s} to {_output::*} if {_s} is not ""
+    replace all "%{_divider}%%{_divider}%" in {_output::*} with {_divider}
+
+    return {_output::*}
+
+function autosplit(t: text, length: integer) :: texts:
+	if length of {_t} < {_length}:
+		return {_t}
+	set {_desc::*} to split {_t} at " "
+	set {_line} to ""
+	loop {_desc::*}:
+		set {_line} to "%{_line}% %loop-value%"
+		if length of {_line} > {_length}:
+			add {_line} to {_lines::*}
+			set {_line} to ""    
+	add {_line} to {_lines::*}
+	return {_lines::*}
 
 	#return {_number}
 # This function will check if player has enough item or not
@@ -558,8 +599,18 @@ function BlockFlowerPath(e: entity):
 		wait 1 second
 
 function playerMoveSpeedUpdate(p: player):
-	set {_p}'s walking speed to 0.2 + {mobility::%{_p}%}/1250
-	set {_p}'s flying speed to 0.1 + {mobility::%{_p}%}/2500
+	set {_mobility} to {mobility::%{_p}%} + {bonusMobility::%{_p}%}
+
+	if metadata value "UmbreonFeatherfoot" of {_p} is set:
+		add metadata value "UmbreonFeatherfoot" of {_p} to {_mobility}
+
+	set {_p}'s walking speed to 0.2 + {_mobility}/1250
+	set {_p}'s flying speed to 0.1 + {_mobility}/2500
+
+	if metadata value "Vanish" of {_p} = true:
+		set {_p}'s walking speed to ({_p}'s walking speed)*1.5
+		set {_p}'s flying speed to ({_p}'s flying speed)*1.5
+		
 	set long tag "ECMovementSpeed" of custom nbt of {_p} to {_p}'s walking speed
 
 function returnStats() :: strings:
@@ -617,397 +668,76 @@ function returnStatIcon(stat: text) :: string:
 
 	return {_statText}
 
-function Zywiol(a: entity, v: entity) :: text:
-	if {_a} is not a player:
-		set {_ElementA} to string tag "ECElement" of custom nbt of {_a}
+function Zywiol(a: entity, v: entity) :: numbers:
+	#This code assumes that no enemies with double elements exist. If this ever changes, add code that cheks for the elements in fusion.
+	set {_ElementAttacker} to metadata value "Element" of {_a}
+	set {_ElementVictim} to string tag "ECElement" of custom nbt of {_v}
+	set {_effectiveness} to 0
+
+	set {_elementStatAttacker} to 0.1 + (({element::%{_v}%}/5)/100)
+	set {_elementStatVictim} to 0.1 + (({element::%{_v}%}/5)/100)
+
+	set {_totalEffect} to 0
+	
+	# Base elements
+	set {_elements::*} to yaml list "Elements" in "ElementList"
+	if {_elements::*} contains {_ElementAttacker}:
+		set {_elementCount} to 1
+		set {_elementCountNotNeutral} to {_elementCount}
+		if yaml list "%{_ElementAttacker}%.Strong" in "ElementList" contains {_ElementVictim}:
+			set {_effectiveness} to {_effectiveness} + {_elementStatAttacker}
+			set {_totalEffect} to {_totalEffect} + 1
+		else if yaml list "%{_ElementAttacker}%.Weak" in "ElementList" contains {_ElementVictim}:
+			set {_effectiveness} to {_effectiveness} + (-1 * {_elementStatVictim})
+			set {_totalEffect} to {_totalEffect} - 1
+		else:
+			set {_elementCountNotNeutral} to {_elementCountNotNeutral} - 1
+	# Fusion elements
 	else:
-		set {_ElementA} to metadata value "Element" of {_a}
+		if yaml list "Fusion.%{_ElementAttacker}%" in "ElementList" is set:
+			set {_elements::*} to yaml list "Fusion.%{_ElementAttacker}%" in "ElementList"
+			set {_elementCount} to size of {_elements::*}
+			set {_elementCountNotNeutral} to {_elementCount}
+			loop {_elements::*}:
+				if yaml list "%loop-value%.Strong" in "ElementList" contains {_ElementVictim}:
+					set {_effectiveness} to {_effectiveness} + {_elementStatAttacker}
+					set {_totalEffect} to {_totalEffect} + 1
+				else if yaml list "%loop-value%.Weak" in "ElementList" contains {_ElementVictim}:
+					set {_effectiveness} to {_effectiveness} + (-1 * {_elementStatVictim})
+					set {_totalEffect} to {_totalEffect} - 1
+				else:
+					set {_elementCountNotNeutral} to {_elementCountNotNeutral} - 1
 
-	set {_ElementV} to string tag "ECElement" of custom nbt of {_v}
+	set {_effectiveness} to ({_effectiveness}/{_elementCount})*{_elementCountNotNeutral}
+	set {_totalEffect} to ({_totalEffect}/{_elementCount})*{_elementCountNotNeutral}
 
-	if {_ElementA} = "Fire":
-		if {_ElementV} = "Fire":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Water":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Dragon":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Lava":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Ice":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Nature":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Metal":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Beast":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Tech":
-			set {_damage} to "supereffective"
-
-	else if {_ElementA} = "Water":
-		if {_ElementV} = "Fire":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Water":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Earth":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Nature":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Beast":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Lava":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Tech":
-			set {_damage} to "supereffective"
-
-	else if {_ElementA} = "Earth":
-		if {_ElementV} = "Fire":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Air":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Poison":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Storm":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Nature":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Metal":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Dragon":
-			set {_damage} to "resist"
-
-	else if {_ElementA} = "Air":
-		if {_ElementV} = "Earth":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Storm":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Metal":
-			set {_damage} to "resist"
-
-		else if {_ElementV} = "Beast":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Nature":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Fight":
-			set {_damage} to "supereffective"
-
-	else if {_ElementA} = "Poison":
-		if {_ElementV} = "Earth":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Poison":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Metal":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Ghost":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Nature":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Water":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Beast":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Tech":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Fight":
-			set {_damage} to "resist"
-
-	else if {_ElementA} = "Ice":
-		if {_ElementV} = "Fire":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Water":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Ice":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Beast":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Astral":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Metal":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Lava":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Tech":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Earth":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Air":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Nature":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Dragon":
-			set {_damage} to "supereffective"
-
-	else if {_ElementA} = "Storm":
-		if {_ElementV} = "Dragon":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Earth":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Storm":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Air":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Water":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Light":
-			set {_damage} to "supereffective"
-
-	else if {_ElementA} = "Psychic":
-		if {_ElementV} = "Metal":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Psychic":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Dark":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Poison":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Magic":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Tech":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Fight":
-			set {_damage} to "supereffective"
-
-	else if {_ElementA} = "Nature":
-		if {_ElementV} = "Fire":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Water":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Earth":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Poison":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Air":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Dragon":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Metal":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Lava":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Tech":
-			set {_damage} to "resist"
-
-	else if {_ElementA} = "Metal":
-		if {_ElementV} = "Ice":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Fairy":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Beast":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Fire":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Water":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Earth":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Metal":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Lava":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Tech":
-			set {_damage} to "resist"
-
-	else if {_ElementA} = "Ghost":
-		if {_ElementV} = "Psychic":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Ghost":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Light":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Dark":
-			set {_damage} to "resist"
-
-	else if {_ElementA} = "Shadowflame":
-		if {_ElementV} = "Fire":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Water":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Dragon":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Lava":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Dark":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Ice":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Nature":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Metal":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Beast":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Tech":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Psychic":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Ghost":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Light":
-			set {_damage} to "supereffective"
-
-	else if {_ElementA} = "Dragon":
-		if {_ElementV} = "Lava":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Fairy":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Dragon":
-			set {_damage} to "supereffective"
-
-	else if {_ElementA} = "Dark":
-		if {_ElementV} = "Psychic":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Ghost":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Dark":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Beast":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Fairy":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Light":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Fight":
-			set {_damage} to "resist"
-
-	else if {_ElementA} = "Fairy":
-		if {_ElementV} = "Dragon":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Dark":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Fight":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Fire":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Poison":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Metal":
-			set {_damage} to "resist"
-
-	else if {_ElementA} = "Light":
-		if {_ElementV} = "Dark":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Metal":
-			set {_damage} to "resist"
-
-	else if {_ElementA} = "Moonlight":
-		if {_ElementV} = "Psychic":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Ghost":
-			set {_damage} to "supereffective"
-
-		else if {_ElementV} = "Metal":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Beast":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Fairy":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Light":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Fight":
-			set {_damage} to "resist"
-
-	else if {_ElementA} = "Beast":
-		if {_ElementV} = "Fire":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Air":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Metal":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Astral":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Magic":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Tech":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Fight":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Psychic":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Nature":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Dark":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Fairy":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Beast":
-			set {_damage} to "supereffective"
-	else if {_ElementA} = "Astral":
-		if {_ElementV} = "Earth":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Dark":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Astral":
-			set {_damage} to "supereffective"
-	else if {_ElementA} = "Lava":
-		if {_ElementV} = "Water":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Fire":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Earth":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Ice":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Nature":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Beast":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Tech":
-			set {_damage} to "supereffective"
-	else if {_ElementA} = "Magic":
-		if {_ElementV} = "Nature":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Beast":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Magic":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Fight":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Poison":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Psychic":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Fairy":
-			set {_damage} to "resist"
-
-	else if {_ElementA} = "Tech":
-		if {_ElementV} = "Fire":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Water":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Lava":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Poison":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Nature":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Metal":
-			set {_damage} to "supereffective"
-
-	else if {_ElementA} = "Fight":
-		if {_ElementV} = "Metal":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Ice":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Beast":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Dark":
-			set {_damage} to "supereffective"
-		else if {_ElementV} = "Poison":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Air":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Psychic":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Ghost":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Fairy":
-			set {_damage} to "resist"
-		else if {_ElementV} = "Magic":
-			set {_damage} to "resist"
-			
 	clear metadata value "Element" of {_a}
-	return {_damage}
+	set {_return::*} to {_effectiveness}, {_totalEffect} and {_elementCount}
+	return {_return::*}
+
+function ElementEffective(modifier: number, elementCount: number) :: string:
+	if {_modifier} <= -1:
+		if {_elementCount} != 1:
+			set {_return} to "super weak"
+		else:
+			set {_return} to "weak"
+
+	else if {_modifier} is between -0.5 and -1:
+		set {_return} to "weak"
+
+	else if {_modifier} = 0:
+		set {_return} to "neutral"
+
+	else if {_modifier} >= 1:
+		if {_elementCount} != 1:
+			set {_return} to "super strong"
+		else:
+			set {_return} to "strong"
+
+	else if {_modifier} is between 0.5 and 1:
+		set {_return} to "strong"
+
+	return {_return}
 
 on join:
 	if {KeystoneClaim::%player%} is set:
@@ -1164,3 +894,43 @@ function InterruptHideCastBar(e: entity):
 	set display name of {_e} to "&cInterrupted"
 	wait 1 second
 	kill {_e}
+
+function petFollow(p: player):
+	while {_p} is alive:
+		set {_baseRadius} to 2
+		set {_baseSpacing} to 180 / 4 
+		set {_max} to 1
+		set {_i} to 0
+		while {_i} < {_max}:
+			set {_pet} to {pets::%{_p}%::%{_i}%}
+			if {_pet} is set:
+
+				set {_row} to floor({_i} / 4)
+				set {_index} to {_i} - ({_row} * 4)
+
+				set {_radius} to {_baseRadius} + ({_row} * 1.5)
+				set {_spacing} to {_baseSpacing} * ({_baseRadius} / {_radius})
+
+				set {_offset} to ({_index} - 1.5) * {_spacing} 
+				set {_yaw} to yaw of {_p} + {_offset} + 180
+
+				set {_vec} to spherical vector radius {_radius}, yaw {_yaw}, pitch 0
+				set {_vec} to {_vec} + vector(0, 1.5, 0)
+
+				set teleport duration of {_pet} to 2 ticks
+				teleport {_pet} to location of {_p} ~ {_vec}
+
+				set {_petloc} to location of {_p} ~ {_vec}
+				set {_v} to vector between {_petloc} and location of {_p} 
+				set yaw of {_pet} to yaw of {_v}                 
+
+			add 1 to {_i}
+		wait 2 ticks
+
+#cool "arc' effect if arrows rain down from the sky"
+function arrowRainAbility(p: player, arrow: projectile):
+	set {_target} to nearest zombie to {_arrow}
+	if {_target} is set:
+		set {_vec} to vector between {_arrow} and {_target}
+		set {_vec} to normalized {_vec}
+		set velocity of {_arrow} to {_vec}

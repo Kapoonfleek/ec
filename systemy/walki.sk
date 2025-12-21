@@ -472,12 +472,20 @@ on damage:
 	replace all "&8Id: " in {_idV} with ""
 	replace all "&8Id: " in {_idA} with ""
 	
-	set {_attackerElement} to metadata value "Element" of attacker
-	set {_zywiol} to Zywiol(attacker, victim)
+	if string tag "ECElement" of custom nbt of victim is set:
+		if metadata value "Element" of attacker is set:
+			set {_attackerElement} to metadata value "Element" of attacker
 
-	set {_resistance} to {resistance::%victim%}
-	set {_versatility} to {versatility::%victim%}
+			set {_element::*} to Zywiol(attacker, victim)
+			set {_elementModifier} to {_element::1}
+			set {_elementEffect} to ElementEffective({_element::2}, {_element::3})
 
+	if victim is a player:
+		set {_resistance} to {resistance::%victim%}
+		set {_versatility} to {versatility::%victim%}
+	else:
+		set {_resistance} to metadata value "Stats/Resistance" of victim
+		set {_versatility} to metadata value "Stats/Versatility" of victim
 
 	if {karta::%attacker%} is set:
 		if metadata value "Voidform" of attacker is set:
@@ -612,22 +620,16 @@ on damage:
 
 		set {_damagered} to 1 + (({_resistance}/10) + ({_versatility}/30))/100
 
-		if {_zywiol} = "resist":
-			add 0.1 + (({element::%victim%}/5)/100) to {_damagered}
-			set {_effective} to "weak"
+		if metadata value "IgnoreResistance%attacker%" of victim = true:
+			clear metadata value "IgnoreResistance%attacker%" of victim
+			set {_damagered} to (({_damagered}-1) * 0.7) + 1
 
-		else if {_zywiol} = "superresist":
-			add (0.1 + (({element::%victim%}/5)/100))*2 to {_damagered}
-			set {_effective} to "super weak"
-			
-		else if {_zywiol} = "supereffective":
-			set damage to damage*((1.1 + (({element::%attacker%}/5)/100)))
-
+		set damage to damage * (1 + {_elementModifier})
+		
+		if {_elementEffect} = "super strong" or "strong":
 			if {kartaname::%attacker%} = "Shaymin":
 				if metadata value "LastDamageCause" of victim = "<##f8fff5>Air Slash":
 					set damage to damage*1.2
-
-			set {_effective} to "strong"
 	
 		set damage to damage/{_damagered}
 
@@ -648,7 +650,7 @@ on damage:
 				set {_crit} to true
 			else:
 				set {_crit} to false
-			damageText(attacker, victim, damage, {_crit}, {_effective})
+			damageText(attacker, victim, damage, {_crit}, {_elementEffect})
 
 			if boolean tag "ECMob" of custom nbt of victim is set:
 				set metadata value "MostRecentlyDamagedEnemy" of attacker to victim
