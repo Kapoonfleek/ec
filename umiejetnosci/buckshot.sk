@@ -44,9 +44,19 @@ function SingleShotFire(p: player):
 	SpreadShotArrow({_p}, {_loc}, false, {_modifier}, "Single")
 
 function SingleShotModifiers(p: player, modifier: number) :: number:
-	if string tag "Talents;Row 1" of custom nbt of {karta::%{_p}%} = "Quickshot":
-		set {_arrowSpeed} to {_arrowSpeed}*1.3
-		set {_modifier} to {_modifier} * 1.1
+	set {_quickshotSpeedModifier} to 1.3
+	set {_quickshotDamageModifier} to 1.1
+	if boolean tag "Constellation;And For My Next Trick" of custom nbt of {karta::%{_p}%} is set:
+		if string tag "Talents;Row 1" of custom nbt of {karta::%{_p}%} = "Quickshot":
+			set {_quickshotSpeedModifier} to 1 + ({_quickshotSpeedModifier}-1)*2
+			set {_quickshotDamageModifier} to 1 + ({_quickshotDamageModifier}-1)*2
+
+		set {_arrowSpeed} to {_arrowSpeed} * {_quickshotSpeedModifier}
+		set {_modifier} to {_modifier} * {_quickshotDamageModifier}
+
+	else if string tag "Talents;Row 1" of custom nbt of {karta::%{_p}%} = "Quickshot":
+		set {_arrowSpeed} to {_arrowSpeed} * {_quickshotSpeedModifier}
+		set {_modifier} to {_modifier} * {_quickshotDamageModifier}
 
 	if string tag "Talents;Row 3" of custom nbt of {karta::%{_p}%} = "Shotweaving":
 		set {_shotweavingCount} to metadata value "Shotweaving-Single Shot" of {_p}
@@ -66,10 +76,22 @@ function SpreadShotFire(p: player, modifier: number):
 	set {_shotCount} to {_baseShotCount}
 	set {_change} to 0.6
 	
-	if string tag "Talents;Row 1" of custom nbt of {karta::%{_p}%} = "Wideshot":
-		set {_shotCount} to {_shotCount} + 1
-		set {_change} to {_change}*1.15
-		set {_modifier} to {_modifier} * 1.15
+	set {_wideShotShotCount} to 1
+	set {_wideShotBaseModifier} to 1.15
+	if boolean tag "Constellation;And For My Next Trick" of custom nbt of {karta::%{_p}%} is set:
+		if string tag "Talents;Row 1" of custom nbt of {karta::%{_p}%} = "Wideshot":
+			set {_wideShotShotCount} to {_wideShotShotCount}*2
+			set {_wideShotBaseModifier} to 1 + ({_wideShotBaseModifier}-1)*2
+
+		set {_shotCount} to {_shotCount} + {_wideShotShotCount}
+		set {_change} to {_change}*{_wideShotBaseModifier}
+		set {_modifier} to {_modifier} * {_wideShotBaseModifier}
+
+	else if string tag "Talents;Row 1" of custom nbt of {karta::%{_p}%} = "Wideshot":
+		set {_shotCount} to {_shotCount} + {_wideShotShotCount}
+		set {_change} to {_change}*{_wideShotBaseModifier}
+		set {_modifier} to {_modifier} * {_wideShotBaseModifier}
+
 	if string tag "Talents;Row 3" of custom nbt of {karta::%{_p}%} = "Spreading Shots":
 		chance of 20%:
 			add 2 to {_shotCount}
@@ -328,32 +350,43 @@ function BuckshotPortalDelete(p: player, portal: entity, t: timespan):
 
 	kill {_portal}
 	play sound "entity.ender_eye.death" with volume 2 and pitch 0.5 at location of {_portal}
+	
+	set {_modifier} to 1
+	if boolean tag "Constellation;And For My Next Trick" of custom nbt of {karta::%{_p}%} is set:
+		if string tag "Talents;Row 1" of custom nbt of {karta::%{_p}%} = "Abracadabra":
+			set {_modifier} to 2
+		AbracadabraBuckshot({_p}, {_portal}, {_modifier})
 
-	if string tag "Talents;Row 1" of custom nbt of {karta::%{_p}%} = "Abracadabra":
-		if metadata value "ECEngaged" of {_p} is set:
-			set {_portalRange} to 4 + CrowdControl({_p})/25
-			set {_enemies::*} to LoopEntitiesAroundTarget({_portal}, {_portalRange}, false)
-			set {_crit} to CriticalHit({_p})
-			set {_damage} to 3 + ({damage::%{_p}%}/25) + ({versatility::%{_p}%}/75) + ({primarystat::%{_p}%}/12.5)
-			set {_lore} to "lore"
+	else if string tag "Talents;Row 1" of custom nbt of {karta::%{_p}%} = "Abracadabra":
+		AbracadabraBuckshot({_p}, {_portal}, {_modifier})
 
-			if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Dimensional Damage":
-				set {_dimensionalDamageModifier} to 1.5
-				set {_damage} to {_damage}*{_dimensionalDamageModifier}
+function AbracadabraBuckshot(p: player, portal: entity, modifier: number):
+	if metadata value "ECEngaged" of {_p} is set:
+		set {_portalRange} to 4 + CrowdControl({_p})/25
+		set {_enemies::*} to LoopEntitiesAroundTarget({_portal}, {_portalRange}, false)
+		set {_crit} to CriticalHit({_p})
+		set {_damage} to 3 + ({damage::%{_p}%}/25) + ({versatility::%{_p}%}/75) + ({primarystat::%{_p}%}/12.5)
+		set {_lore} to "lore"
 
-			set {_pitch} to a random number between 0.0 and 2.0
-			play sound "skill.buckshot.magicportal_explode" with volume 1.5 and pitch {_pitch} at location of {_portal}
+		if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Dimensional Damage":
+			set {_dimensionalDamageModifier} to 1.5
+			set {_damage} to {_damage}*{_dimensionalDamageModifier}
 
-			loop {_enemies::*}:
-				if metadata value "ECPulled" of loop-value is set:
-					set {_damage} to Crit({_p}, loop-value, {_crit}, {_damage})
-					set loop-value's last damage cause to sweep attack
-					set metadata value "Element" of {_shooter} to "Magic"
-					set metadata value "LastDamageCause" of loop-value to "<##866da4>Magic Portals"
-					set metadata value "LastDamageCauseLore" of loop-value to {_lore}
-					make {_p} damage loop-value by {_damage}
+		set {_damage} to {_damage}*{_modifier}
 
-			draw 20 dragon breath particle at location above {_portal} with offset vector(2, 1, 2) with extra 0.5
+		set {_pitch} to a random number between 0.0 and 2.0
+		play sound "skill.buckshot.magicportal_explode" with volume 1.5 and pitch {_pitch} at location of {_portal}
+
+		loop {_enemies::*}:
+			if metadata value "ECPulled" of loop-value is set:
+				set {_damage} to Crit({_p}, loop-value, {_crit}, {_damage})
+				set loop-value's last damage cause to sweep attack
+				set metadata value "Element" of {_shooter} to "Magic"
+				set metadata value "LastDamageCause" of loop-value to "<##866da4>Magic Portals"
+				set metadata value "LastDamageCauseLore" of loop-value to {_lore}
+				make {_p} damage loop-value by {_damage}
+
+		draw 20 dragon breath particle at location above {_portal} with offset vector(2, 1, 2) with extra 0.5
 
 on rightclick:
 	if boolean tag "Magic Portals" of custom nbt of player's tool is set:
