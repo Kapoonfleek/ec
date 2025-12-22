@@ -24,6 +24,7 @@ on EntityShootBowEvent:
 										SpreadShotFire({_shooter}, 0.6)
 
 							event.setCancelled(true)
+
 						else:
 							cancel event
 				else:
@@ -124,7 +125,7 @@ function SpreadShotFire(p: player, modifier: number):
 			set {_y} to 0
 			set {_yaw} to -180
 			set {_mod} to 360/{_totalShots}
-			#If you do not update the yaw it creates a sort of chakram effect, cool for some kind of effect in the future
+			#If you do not update the yaw it creates a sort of chakram effect, cool for some kind of ability in the future
 
 			loop {_totalShots} times:
 				set {_x} to {_p}'s location
@@ -153,6 +154,13 @@ function SpreadShotFire(p: player, modifier: number):
 				SpreadShotArrow({_p}, {_loc}, false, {_modifier}, "Ethereal")
 			else:
 				SpreadShotArrow({_p}, {_loc}, false, {_modifier}, "Multi")	
+
+	set {_damageSingleShot} to 2 + ({damage::%{_p}%}/33) + ({versatility::%{_p}%}/99) + ({primarystat::%{_p}%}/16.5)
+	set {_spreadShotEffectiveness} to 0.6
+	set {_valueNames::*} to "DAMAGE", "ARROWS", "EFFECTIVENESS"
+	set {_values::*} to {_damageSingleShot}, {_shotCount}, {_spreadShotEffectiveness}*100
+	set {_lore} to GetAbilityDescription("Buckshot", "Starbolt", {_valueNames::*}, {_values::*})
+	LoreUpdate({_p}, "Starbolt", {_lore})
 
 function SpreadShotArrow(p: player, x: location, nocharge: boolean, modifier: number, type: string, originalType: string = ""):
 	set {_arrowSpeed} to 0.7
@@ -316,6 +324,10 @@ function BuckshotPortalCreate(p: player, portals: boolean, eventblock: location,
 
 	if string tag "Talents;Row 4" of custom nbt of {karta::%{_p}%} = "More Bang for Your Buck":
 		MoreBangForYourBuck({_p})
+		
+		set {_mastery} to 1 + (80 + (Mastery({_p})/7.25))/100
+		set {_lore} to GetAbilityDescription("Buckshot", "Portal Mastery", "MASTERY", {_mastery}*100)
+		LoreUpdate({_p}, "Portal Mastery", {_lore})
 
 	BuckshotPortalDelete({_p}, {_portal}, {_duration})
 
@@ -330,6 +342,7 @@ function BuckshotPortalCreate(p: player, portals: boolean, eventblock: location,
 
 	if boolean tag "Constellation;Magical Adjustment" of custom nbt of {karta::%{_p}%} is set:
 		MagicalAdjustment({_p}, {_portal})
+
 
 function BuckshotPortalScale(p: player) :: number:
 	set {_scale} to 2.0
@@ -366,7 +379,6 @@ function AbracadabraBuckshot(p: player, portal: entity, modifier: number):
 		set {_enemies::*} to LoopEntitiesAroundTarget({_portal}, {_portalRange}, false)
 		set {_crit} to CriticalHit({_p})
 		set {_damage} to 3 + ({damage::%{_p}%}/25) + ({versatility::%{_p}%}/75) + ({primarystat::%{_p}%}/12.5)
-		set {_lore} to "lore"
 
 		if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Dimensional Damage":
 			set {_dimensionalDamageModifier} to 1.5
@@ -376,6 +388,10 @@ function AbracadabraBuckshot(p: player, portal: entity, modifier: number):
 
 		set {_pitch} to a random number between 0.0 and 2.0
 		play sound "skill.buckshot.magicportal_explode" with volume 1.5 and pitch {_pitch} at location of {_portal}
+
+		set {_valueNames::*} to "DAMAGE", "RADIUS"
+		set {_values::*} to {_damage}, {_portalRange}
+		set {_lore} to GetAbilityDescription("Buckshot", "Abracadabra", {_valueNames::*}, {_values::*})
 
 		loop {_enemies::*}:
 			if metadata value "ECPulled" of loop-value is set:
@@ -391,8 +407,9 @@ function AbracadabraBuckshot(p: player, portal: entity, modifier: number):
 function MagicPortalsRecharge(p: player, cd: timespan):
 	wait {_cd}
 	add 1 to metadata value "MagicPortalsCharges" of {_p}
+	set {_charges} to metadata value "MagicPortalsCharges" of {_p}
 	loop all items in the inventory of {_p}:
-		if boolean tag "Magic Portals" of nbt of (1 of loop-item) is set:
+		if boolean tag "Magic Portals" of custom nbt of (1 of loop-item) is set:
 			if {_charges} > 0:
 				set item amount of loop-item to {_charges}
 				if {_charges} = 1:
@@ -411,52 +428,56 @@ on rightclick:
 			if CanUseAbility(player) != false:
 				if metadata value "MagicPortalsCharges" of player is not set:
 					set metadata value "MagicPortalsCharges" of player to 2
-					if metadata value "MagicPortalsCharges" of player > 0:
-						if cooldown "Magic Portals%player%" is finished:
-							if cooldown "Magic PortalsDoublePrevent%player%" is finished:
-								create cooldown "Magic PortalsDoublePrevent%player%" for 1 tick
-								set {_portalRange} to 4 + CrowdControl(player)/25
-								if distance between target block of player and player <= {_portalRange}:
-									set {_cd} to 9
-									set {_pospiech} to Haste(player)
-									set {_cd} to {_cd}/{_pospiech}
-									set {_cdd} to {_cd}
-									set {_cd} to "%{_cd}% seconds" parsed as timespan
+				if metadata value "MagicPortalsCharges" of player > 0:
+					if cooldown "Magic Portals%player%" is finished:
+						if cooldown "Magic PortalsDoublePrevent%player%" is finished:
+							create cooldown "Magic PortalsDoublePrevent%player%" for 1 tick
+							set {_portalRange} to 4 + CrowdControl(player)/25
+							if distance between target block of player and player <= {_portalRange}:
+								set {_cd} to 9
+								set {_pospiech} to Haste(player)
+								set {_cd} to {_cd}/{_pospiech}
+								set {_cdd} to {_cd}
+								set {_cd} to "%{_cd}% seconds" parsed as timespan
 
-									remove 1 from metadata value "MagicPortalsCharges" of player
-									MagicPortalsRecharge(player, {_cd})
+								remove 1 from metadata value "MagicPortalsCharges" of player
+								MagicPortalsRecharge(player, {_cd})
 
-									if etadata value "MagicPortalsCharges" of player = 0:
-										create cooldown "Magic Portals%player%" for {_cd}
-										set the cooldown of player's held item for player to {_cd}
+								if metadata value "MagicPortalsCharges" of player = 0:
+									create cooldown "Magic Portals%player%" for {_cd}
+									set the cooldown of player's held item for player to {_cd}
 
-									set {_duration} to 40 seconds
-									if string tag "Talents;Row 5" of custom nbt of {karta::%player%} = "Dimensional Damage":
-										set {_duration} to {_duration} + 10 seconds
+								set {_duration} to 40 seconds
+								if string tag "Talents;Row 5" of custom nbt of {karta::%player%} = "Dimensional Damage":
+									set {_duration} to {_duration} + 10 seconds
 
-									AbilityUse(player, "Magic Portals")
-									set {_lore} to "&8Basic Ability%nl%&f2 Charges%nl%&fInstant cast%nl%&7Cooldown:  &f%{_cdd}% seconds%nl%&7Range: &f%{_portalRange}%%nl%&7Use: &fRMB%nl%<##866da4>Creates a &f <##c6b1de>Magic Portal <##866da4>at the target location%nl%<##866da4>for &f%seconds of {_duration}% sec<##866da4>. Arrows passing through a portal will%nl%<##866da4>vanish and <##c6b1de>fire <##866da4>from all other active &f <##c6b1de>Magic Portals<##866da4>.%nl%<##866da4>Pressing SHIFT will cause the portal to be created%nl%<##866da4>a block higher.%nl% %nl%<##866da4>Arrows can <##c6b1de>bounce <##866da4>between portals a maximum of%nl%&f3 <##866da4>times."
-									LoreUpdate(player, "Magic Portals", {_lore})
-									
-									if player is sneaking:
-										BuckshotPortalCreate(player, false, block above target block of player, {_duration})
-									else:
-										BuckshotPortalCreate(player, false, target block of player, {_duration})
+								AbilityUse(player, "Magic Portals")
 
-									play sound "skill.buckshot.magic_portal_create" with volume 3 and pitch 0 at location of target block of player
-									play sound "entity.enderman.teleport" with volume 3 and pitch 1.5 at location of target block of player
-					else:
-						if {tekstcd::%player%} = true:
-							set {_cdd} to cooldown "Magic Portals%player%"
-							send "<##866da4>You must wait &f%{_cdd}% <##866da4>to use this ability." to player
-						stop
-				else: 
-					cancel event
+								set {_valueNames::*} to "CHARGES", "COOLDOWN", "RANGE", "DURATION", "BOUNCES"
+								set {_portalMaxBounces} to 3
+								set {_values::*} to metadata value "MagicPortalsCharges" of player, {_cdd}, {_portalRange}, (seconds of {_duration}), {_portalMaxBounces}
+
+								set {_lore} to GetAbilityDescription("Buckshot", "Magic Portals", {_valueNames::*}, {_values::*})
+								LoreUpdate(player, "Magic Portals", {_lore})
+								
+								if player is sneaking:
+									BuckshotPortalCreate(player, false, block above target block of player, {_duration})
+								else:
+									BuckshotPortalCreate(player, false, target block of player, {_duration})
+
+								play sound "skill.buckshot.magic_portal_create" with volume 3 and pitch 0 at location of target block of player
+								play sound "entity.enderman.teleport" with volume 3 and pitch 1.5 at location of target block of player
+
+								loop all items in the inventory of player:
+									if boolean tag "Magic Portals" of custom nbt of (1 of loop-item) is set:
+										if metadata value "MagicPortalsCharges" of player > 0:
+											set item amount of loop-item to metadata value "MagicPortalsCharges" of player
+				else:
 					if {tekstcd::%player%} = true:
 						if cooldown "CdTextOverlap%player%" is finished:
 							create cooldown "CdTextOverlap%player%" for 2 ticks
 							set {_cdd} to cooldown "Magic Portals%player%"
-							send "<##866da4>You must wait &f%{_cdd}%<##866da4> to use this ability." to player
+							send "<##866da4>You must wait &f%{_cdd}% <##866da4>to use this ability." to player
 					stop
 		else:
 			send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to player
@@ -470,32 +491,36 @@ on rightclick:
 					set {_pospiech} to Haste(player)
 					set {_duration} to 20 seconds
 					set {_portalCount} to 12
+					set {_goatDistance} to 15
 
 					if string tag "Talents;Row 3" of custom nbt of {karta::%player%} = "Hail of Portals":
 						set {_cd} to {_cd} - 60
 						set {_portalCount} to {_portalCount} + 4
 						set {_hailOfPortals} to true
-
+					
 					set {_cd} to "%{_cd}/{_pospiech}% seconds" parsed as timespan
 
 					create cooldown "G.O.A.T%player%" for {_cd}
 					set the cooldown of player's held item for player to {_cd}
 					AbilityUse(player, "G.O.A.T")
 
-					set {_lore} to "lore"
+					set {_valueNames::*} to "COOLDOWN", "PORTALCOUNT", "DISTANCE", "DURATION"
+					set {_values::*} to (seconds of {_cd}), {_portalCount}, {_goatDistance}, (seconds of {_duration})
+					set {_lore} to GetAbilityDescription("Buckshot", "GOAT", {_valueNames::*}, {_values::*})
+
 					LoreUpdate(player, "G.O.A.T", {_lore})
 
 					play sound "skill.buckshot.goat" with volume 4 and pitch 1.4 at location of player
 					play sound "block.end_portal.spawn" with volume 4 and pitch 2 at location of player
 
 					set {_y} to rounded down y-coordinate of player
-					loop blocks in radius 15 around the player:
+					loop blocks in radius {_goatDistance} around the player:
 						if (rounded down y-coordinate of loop-block) = {_y}:
 							add loop-block to {_blocks::*}
 						else if (rounded down y-coordinate of loop-block) = ({_y}+ 1):
 							add loop-block to {_blocks::*}
 
-					loop 12 times:
+					loop {_portalCount} times:
 						set {_block} to a random element of {_blocks::*}
 						remove {_block} from {_blocks::*}
 						BuckshotPortalCreate(player, true, {_block}, {_duration}, true)
@@ -592,34 +617,66 @@ on projectile collide:
 						if {_shotTypes::*} contains (string tag "ProjectileType" of custom nbt of event-projectile):
 							set {_crit} to CriticalHit({_shooter})
 							set {_damage} to 2 + ({damage::%{_shooter}%}/33) + ({versatility::%{_shooter}%}/99) + ({primarystat::%{_shooter}%}/16.5)
-							set {_arrowBarrageDamage} to (1 + (({damage::%{_shooter}%}/47) + ({versatility::%{_shooter}%}/141) + {primarystat::%{_shooter}%}/23.5))
+							set {_mastery} to 1 + (80 + (Mastery({_shooter})/7.25))/100
+							set {_arrowBarrageDamage} to (1 + (({damage::%{_shooter}%}/47) + ({versatility::%{_shooter}%}/141) + {primarystat::%{_shooter}%}/23.5)) * {_mastery}
 
-							set {_spreadShotDamage} to {_damage}*0.6
+							set {_modifier} to float tag "DamageModifier" of custom nbt of event-projectile
+							set {_damage} to {_damage}*{_modifier}
+							set {_arrowBarrageDamage} to {_arrowBarrageDamage}*{_modifier}
+							
+							set {_spreadShotEffectiveness} to 0.6
+
+							if Marksmanship4Set({_shooter}) is true:
+								set {_damage} to {_damage}*1.35
+								set {_arrowBarrageDamage} to {_arrowBarrageDamage}*1.35
+
+							set {_spreadShotDamage} to {_damage}*{_spreadShotEffectiveness}
 							set {_element} to "Magic"
 
 							set {_shot} to string tag "ProjectileType" of custom nbt of event-projectile
 							set {_shotType} to "<##866da4>%{_shot}%"
+							
 
 							if string tag "ProjectileType" of custom nbt of event-projectile is "Spread Shot":
 								set {_damage} to {_spreadShotDamage}
+								set {_lore} to GetAbilityDescription("Buckshot", "Spread Shot", "DAMAGE", {_damage})
+
+							else if string tag "ProjectileType" of custom nbt of event-projectile is "Single Shot":
+								set {_lore} to GetAbilityDescription("Buckshot", "Single Shot", "DAMAGE", {_damage})
 
 							else if string tag "ProjectileType" of custom nbt of event-projectile is "Ethereal Shot":
 								set {_damage} to {_spreadShotDamage}
 								set {_element} to "Ethereal"
-								set metadata value "IgnoreResistance%{_shooter}%" of event-entity to true
+
+								set {_resistanceIgnore} to 0.3
+								set {_etherealShotModifier} to 3
+								set metadata value "IgnoreResistance%{_shooter}%" of event-entity to {_resistanceIgnore}
+
+								set {_valueNames::*} to "MODIFIER", "RESISTANCEIGNORE"
+								set {_values::*} to ({_etherealShotModifier}*100), ({_resistanceIgnore}*100)
+								set {_lore} to GetAbilityDescription("Buckshot", "Ethereal Shot", {_valueNames::*}, {_values::*})
 
 							else if string tag "ProjectileType" of custom nbt of event-projectile is "Magic Volley":
 								set {_damage} to {_spreadShotDamage}
+								
+								set {_valueNames::*} to "EFFECTIVENESS", "MODIFIER"
+								set {_magicVolleyEffectiveness} to 1.2
+								set {_magicVolleyModifier} to 5.0
+								set {_values::*} to ({_magicVolleyEffectiveness}*100, {_magicVolleyModifier})
+								set {_lore} to GetAbilityDescription("Buckshot", "Magic Volley", {_valueNames::*}, {_values::*})
 
 							else if string tag "ProjectileType" of custom nbt of event-projectile is "Arrow Barrage":
 								set {_damage} to {_arrowBarrageDamage}
 								if string tag "Talents;Row 5" of custom nbt of {karta::%{_shooter}%} = "Dimensional Damage":
 									set {_dimensionalDamageModifier} to 1.5
 									set {_damage} to {_damage}*{_dimensionalDamageModifier}
+
+								set {_valueNames::*} to "CHANCE", "DURATION", "TICKTIME", "DAMAGE", "EFFECTIVENESS"
+								set {_values::*} to 5.0, 4.0, 0.5, {_damage}, 100
+								set {_lore} to GetAbilityDescription("Buckshot", "Arrow Barrage", {_valueNames::*}, {_values::*})
 								
 							else if string tag "ProjectileType" of custom nbt of event-projectile is "Portal Shot":
 								if metadata value "ECPulled" of event-entity is set:
-									set {_mastery} to 1 + (80 + ({mastery::%{_shooter}%}/7.25))/100
 
 									if string tag "ProjectileTypeOriginal" of custom nbt of event-projectile = "Single Shot":
 										set {_damage} to {_damage}*1
@@ -633,15 +690,12 @@ on projectile collide:
 											set {_arrowBarrageDuration} to 4 seconds
 											ArrowBarrage({_shooter}, event-entity, {_arrowBarrageDuration})
 
+									set {_lore} to GetAbilityDescription("Buckshot", "Portal Mastery", "MASTERY", {_mastery}*100)
+									LoreUpdate({_shooter}, "Portal Mastery", {_lore})
+
 								else:
 									cancel event
 									stop
-
-							set {_modifier} to float tag "DamageModifier" of custom nbt of event-projectile
-							set {_damage} to {_damage}*{_modifier}
-
-							if Marksmanship4Set({_shooter}) is true:
-								set {_damage} to {_damage}*1.35
 
 							set {_damage} to Crit({_shooter}, event-entity, {_crit}, {_damage})
 
@@ -696,7 +750,6 @@ on projectile collide:
 											set {_crit} to CriticalHit({_shooter})
 											set {_damage} to 5 + ({damage::%{_shooter}%}/11) + ({versatility::%{_shooter}%}/33) + ({primarystat::%{_shooter}%}/5.5)
 											set {_element} to "Magic"
-											set {_lore} to "lore"
 
 											if string tag "Talents;Row 5" of custom nbt of {karta::%{_shooter}%} = "Dimensional Damage":
 												set {_dimensionalDamageModifier} to 1.5
@@ -704,6 +757,12 @@ on projectile collide:
 
 											if Marksmanship4Set({_shooter}) is true:
 												set {_damage} to {_damage}*1.35
+											
+											set {_valueNames::*} to "COOLDOWN", "DURATION", "DURATIONPULL", "DAMAGE"
+											set {_values::*} to (seconds of {_cd}), 10, 10, {_damage}
+											set {_lore} to GetAbilityDescription("Buckshot", "Binding Shot", {_valueNames::*}, {_values::*})
+
+											LoreUpdate({_shooter}, "Binding Shot", {_lore})
 
 											loop {_targets::*}:
 												if loop-value is alive:
@@ -830,7 +889,8 @@ function MagicTetherSound(e: entity):
 		add 0.5 to {_pitch}
 
 function MagicTether(p: player, e1: entity, e2: entity):
-	while distance between {_e1} and {_e2} < 5:
+	set {_distance} to 5
+	while distance between {_e1} and {_e2} < {_distance}:
 		stop loop if {_e1} is not alive
 		stop loop if {_e2} is not alive
 
@@ -844,12 +904,15 @@ function MagicTether(p: player, e1: entity, e2: entity):
 	set {_stunDuration} to "%{_stunDurationValue}% seconds" parsed as timespan
 
 	set {_crit} to CriticalHit({_p})
-	set {_lore} to "lore"
 	set {_element} to "Magic"
 
 	if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Dimensional Damage":
 		set {_dimensionalDamageModifier} to 1.5
 		set {_damage} to {_damage}*{_dimensionalDamageModifier}
+
+	set {_valueNames::*} to "DISTANCE", "DAMAGE", "MASTERYSCALING", "STUN"
+	set {_values::*} to {_distance}, {_damage}, 100, {_stunDurationValue}
+	set {_lore} to GetAbilityDescription("Buckshot", "Supernova", {_valueNames::*}, {_values::*})
 
 	set {_targets::*} to {_e1} and {_e2}
 	loop {_targets::*}:
@@ -987,7 +1050,6 @@ function SupernovaBuckshot(p: player, loc: location, portal: entity):
 	set {_enemies::*} to LoopEntitiesAroundTarget({_portal}, {_portalRange}, false)
 	set {_crit} to CriticalHit({_p})
 	set {_damage} to 4 + ({damage::%{_p}%}/21.75) + ({versatility::%{_p}%}/65.25) + ({primarystat::%{_p}%}/10.875)
-	set {_lore} to "lore"
 
 	set {_pitch} to a random number between 0.0 and 2.0
 	play sound "skill.buckshot.supernova" with volume 1.5 and pitch {_pitch} at {_loc}
@@ -995,6 +1057,11 @@ function SupernovaBuckshot(p: player, loc: location, portal: entity):
 	if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Dimensional Damage":
 		set {_dimensionalDamageModifier} to 1.5
 		set {_damage} to {_damage}*{_dimensionalDamageModifier}
+
+	set {_valueNames::*} to "CHANCE", "RADIUS", "DAMAGE"
+	set {_chanceSupernova} to 8.0
+	set {_values::*} to {_chanceSupernova}, {_portalRange}, {_damage}
+	set {_lore} to GetAbilityDescription("Buckshot", "Supernova", {_valueNames::*}, {_values::*})
 
 	loop {_enemies::*}:
 		if metadata value "ECPulled" of loop-value is set:
