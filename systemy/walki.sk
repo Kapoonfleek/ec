@@ -623,14 +623,17 @@ on damage:
 
 		set {_damagered} to 1 + (({_resistance}/10) + ({_versatility}/30))/100
 
-		if metadata value "IgnoreResistance%attacker%" of victim = true:
+		if metadata value "IgnoreResistance%attacker%" of victim is set:
+			set {_ignoreResistanceAmount} to metadata value "IgnoreResistance%attacker%" of victim
 			clear metadata value "IgnoreResistance%attacker%" of victim
-			set {_damagered} to (({_damagered}-1) * 0.7) + 1
+			set {_damagered} to (({_damagered}-1) * (1-{_ignoreResistanceAmount})) + 1
 
 		set damage to damage * {_elementModifier}
 		
 		set {_effectiveDamage::*} to "super strong", "strong", "moderately strong"
 		set {_ineffectiveDamage::*} to "super weak", "weak", "mildly weak"
+
+		set {_elementTypes::*} to getElement(attacker)
 
 		if {_effectiveDamage::*} contains {_elementEffect}:
 			if {kartaname::%attacker%} = "Shaymin":
@@ -640,11 +643,12 @@ on damage:
 		else if {_ineffectiveDamage::*} contains {_elementEffect}:
 			if {kartaname::%attacker%} = "Buckshot":
 				if boolean tag "Constellation;Elemental Bypass" of custom nbt of {karta::%attacker%} is set:
-					ElementalBypassBuckshot(attacker, {_elementVictim})
-					set {_elementalBypassBuckshot} to 1 + (getElementalBypassBuckshot(attacker, {_elementVictim})/100)
+					if {_elementTypes::*} contains "Magic":
+						ElementalBypassBuckshot(attacker, {_elementVictim})
+						set {_elementalBypassBuckshot} to 1 + (getElementalBypassBuckshot(attacker, {_elementVictim})/100)
 
-					set damage to damage * {_elementalBypassBuckshot}
-					set {_elementModifier} to {_elementModifier}*{_elementalBypassBuckshot}
+						set damage to damage * {_elementalBypassBuckshot}
+						set {_elementModifier} to {_elementModifier}*{_elementalBypassBuckshot}
 
 		set damage to damage/{_damagered}
 
