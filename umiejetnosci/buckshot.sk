@@ -388,36 +388,68 @@ function AbracadabraBuckshot(p: player, portal: entity, modifier: number):
 
 		draw 20 dragon breath particle at location above {_portal} with offset vector(2, 1, 2) with extra 0.5
 
+function MagicPortalsRecharge(p: player, cd: timespan):
+	wait {_cd}
+	add 1 to metadata value "MagicPortalsCharges" of {_p}
+	loop all items in the inventory of {_p}:
+		if boolean tag "Magic Portals" of nbt of (1 of loop-item) is set:
+			if {_charges} > 0:
+				set item amount of loop-item to {_charges}
+				if {_charges} = 1:
+					set line 2 of lore of loop-item to "&f%{_charges}% Charge"
+				else:
+					set line 2 of lore of loop-item to "&f%{_charges}% Charges"
+				reset item cooldown of loop-item for {_p}
+				clear cooldown "Magic Portals%{_p}%"
+			else:
+				set line 2 of lore of loop-item to "&f%{_charges}% Charges"
+			stop loop
+
 on rightclick:
 	if boolean tag "Magic Portals" of custom nbt of player's tool is set:
 		if {kartaname::%player%} = "Buckshot":
 			if CanUseAbility(player) != false:
-				if cooldown "Magic Portals%player%" is finished:
-					set {_portalRange} to 4 + CrowdControl(player)/25
-					if distance between target block of player and player <= {_portalRange}:
-						set {_cd} to 9
-						set {_pospiech} to Haste(player)
-						set {_cd} to {_cd}/{_pospiech}
-						set {_cdd} to {_cd}
-						set {_cd} to "%{_cd}% seconds" parsed as timespan
-						create cooldown "Magic Portals%player%" for {_cd}
-						set the cooldown of player's held item for player to {_cd}
+				if metadata value "MagicPortalsCharges" of player is not set:
+					set metadata value "MagicPortalsCharges" of player to 2
+					if metadata value "MagicPortalsCharges" of player > 0:
+						if cooldown "Magic Portals%player%" is finished:
+							if cooldown "Magic PortalsDoublePrevent%player%" is finished:
+								create cooldown "Magic PortalsDoublePrevent%player%" for 1 tick
+								set {_portalRange} to 4 + CrowdControl(player)/25
+								if distance between target block of player and player <= {_portalRange}:
+									set {_cd} to 9
+									set {_pospiech} to Haste(player)
+									set {_cd} to {_cd}/{_pospiech}
+									set {_cdd} to {_cd}
+									set {_cd} to "%{_cd}% seconds" parsed as timespan
 
-						set {_duration} to 40 seconds
-						if string tag "Talents;Row 5" of custom nbt of {karta::%player%} = "Dimensional Damage":
-							set {_duration} to {_duration} + 10 seconds
+									remove 1 from metadata value "MagicPortalsCharges" of player
+									MagicPortalsRecharge(player, {_cd})
 
-						AbilityUse(player, "Magic Portals")
-						set {_lore} to "&8Basic Ability%nl%&f2 Charges%nl%&fInstant cast%nl%&7Cooldown:  &f%{_cdd}% seconds%nl%&7Range: &f%{_portalRange}%%nl%&7Use: &fRMB%nl%<##866da4>Creates a &f <##c6b1de>Magic Portal <##866da4>at the target location%nl%<##866da4>for &f%seconds of {_duration}% sec<##866da4>. Arrows passing through a portal will%nl%<##866da4>vanish and <##c6b1de>fire <##866da4>from all other active &f <##c6b1de>Magic Portals<##866da4>.%nl%<##866da4>Pressing SHIFT will cause the portal to be created%nl%<##866da4>a block higher.%nl% %nl%<##866da4>Arrows can <##c6b1de>bounce <##866da4>between portals a maximum of%nl%&f3 <##866da4>times."
-						LoreUpdate(player, "Magic Portals", {_lore})
-						
-						if player is sneaking:
-							BuckshotPortalCreate(player, false, block above target block of player, {_duration})
-						else:
-							BuckshotPortalCreate(player, false, target block of player, {_duration})
+									if etadata value "MagicPortalsCharges" of player = 0:
+										create cooldown "Magic Portals%player%" for {_cd}
+										set the cooldown of player's held item for player to {_cd}
 
-						play sound "skill.buckshot.magic_portal_create" with volume 3 and pitch 0 at location of target block of player
-						play sound "entity.enderman.teleport" with volume 3 and pitch 1.5 at location of target block of player
+									set {_duration} to 40 seconds
+									if string tag "Talents;Row 5" of custom nbt of {karta::%player%} = "Dimensional Damage":
+										set {_duration} to {_duration} + 10 seconds
+
+									AbilityUse(player, "Magic Portals")
+									set {_lore} to "&8Basic Ability%nl%&f2 Charges%nl%&fInstant cast%nl%&7Cooldown:  &f%{_cdd}% seconds%nl%&7Range: &f%{_portalRange}%%nl%&7Use: &fRMB%nl%<##866da4>Creates a &f <##c6b1de>Magic Portal <##866da4>at the target location%nl%<##866da4>for &f%seconds of {_duration}% sec<##866da4>. Arrows passing through a portal will%nl%<##866da4>vanish and <##c6b1de>fire <##866da4>from all other active &f <##c6b1de>Magic Portals<##866da4>.%nl%<##866da4>Pressing SHIFT will cause the portal to be created%nl%<##866da4>a block higher.%nl% %nl%<##866da4>Arrows can <##c6b1de>bounce <##866da4>between portals a maximum of%nl%&f3 <##866da4>times."
+									LoreUpdate(player, "Magic Portals", {_lore})
+									
+									if player is sneaking:
+										BuckshotPortalCreate(player, false, block above target block of player, {_duration})
+									else:
+										BuckshotPortalCreate(player, false, target block of player, {_duration})
+
+									play sound "skill.buckshot.magic_portal_create" with volume 3 and pitch 0 at location of target block of player
+									play sound "entity.enderman.teleport" with volume 3 and pitch 1.5 at location of target block of player
+					else:
+						if {tekstcd::%player%} = true:
+							set {_cdd} to cooldown "Magic Portals%player%"
+							send "<##866da4>You must wait &f%{_cdd}% <##866da4>to use this ability." to player
+						stop
 				else: 
 					cancel event
 					if {tekstcd::%player%} = true:
@@ -434,13 +466,13 @@ on rightclick:
 		if {kartaname::%player%} = "Buckshot":
 			if CanUseAbility(player) != false:
 				if cooldown "G.O.A.T%player%" is finished:
-					set {_cd} to 5 #240
+					set {_cd} to 240
 					set {_pospiech} to Haste(player)
 					set {_duration} to 20 seconds
 					set {_portalCount} to 12
 
 					if string tag "Talents;Row 3" of custom nbt of {karta::%player%} = "Hail of Portals":
-						set {_cd} to {_cd} - 2 #60
+						set {_cd} to {_cd} - 60
 						set {_portalCount} to {_portalCount} + 4
 						set {_hailOfPortals} to true
 
