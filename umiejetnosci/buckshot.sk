@@ -342,6 +342,8 @@ function BuckshotPortalCreate(p: player, portals: boolean, eventblock: location,
 
 	if boolean tag "Constellation;Magical Adjustment" of custom nbt of {karta::%{_p}%} is set:
 		MagicalAdjustment({_p}, {_portal})
+	
+	buffRegister({_p}, "Portals", 2, "", "Value", "&f%size of {buckshotportals::%{_p}%::*}%", "-")
 
 
 function BuckshotPortalScale(p: player) :: number:
@@ -372,6 +374,11 @@ function BuckshotPortalDelete(p: player, portal: entity, t: timespan):
 
 	else if string tag "Talents;Row 1" of custom nbt of {karta::%{_p}%} = "Abracadabra":
 		AbracadabraBuckshot({_p}, {_portal}, {_modifier})
+
+	if size of {buckshotportals::%{_p}%::*} > 0:
+		buffRegister({_p}, "Portals", 2, "", "Value", "&f%size of {buckshotportals::%{_p}%::*}%", "-")
+	else:
+		buffClear({_p}, "Portals")
 
 function AbracadabraBuckshot(p: player, portal: entity, modifier: number):
 	if metadata value "ECEngaged" of {_p} is set:
@@ -461,9 +468,9 @@ on rightclick:
 								LoreUpdate(player, "Magic Portals", {_lore})
 								
 								if player is sneaking:
-									BuckshotPortalCreate(player, false, block above target block of player, {_duration})
-								else:
 									BuckshotPortalCreate(player, false, target block of player, {_duration})
+								else:
+									BuckshotPortalCreate(player, false, block above target block of player, {_duration})
 
 								play sound "skill.buckshot.magic_portal_create" with volume 3 and pitch 0 at location of target block of player
 								play sound "entity.enderman.teleport" with volume 3 and pitch 1.5 at location of target block of player
@@ -563,47 +570,48 @@ on rightclick:
 	if clicked entity is armor stand:
 		if boolean tag "BuckshotPortal" of custom nbt of clicked entity is set:
 			cancel event
-			if boolean tag "Constellation;Interdimensional Travel" of custom nbt of {karta::%player%} is set:
-				if boolean tag "AlreadyTraversed" of custom nbt of clicked entity != true:
-					set {_owner} to uuid tag "PortalOwner" of custom nbt of clicked entity
-					
-					if ({_owner} parsed as player) = player:
-						loop {buckshotportals::%player%::*}:
-							if boolean tag "AlreadyTraversed" of custom nbt of loop-value != true:
-								if loop-value != clicked entity:
-									add loop-value to {_untraversedPortals::*}
+			if boolean tag "Starbolt" of custom nbt of player's tool is not set:
+				if boolean tag "Constellation;Interdimensional Travel" of custom nbt of {karta::%player%} is set:
+					if boolean tag "AlreadyTraversed" of custom nbt of clicked entity != true:
+						set {_owner} to uuid tag "PortalOwner" of custom nbt of clicked entity
+						
+						if ({_owner} parsed as player) = player:
+							loop {buckshotportals::%player%::*}:
+								if boolean tag "AlreadyTraversed" of custom nbt of loop-value != true:
+									if loop-value != clicked entity:
+										add loop-value to {_untraversedPortals::*}
 
-						if size of {_untraversedPortals::*} > 0:
-							set {_randomPortal} to a random element of {_untraversedPortals::*}
+							if size of {_untraversedPortals::*} > 0:
+								set {_randomPortal} to a random element of {_untraversedPortals::*}
 
-							set boolean tag "AlreadyTraversed" of custom nbt of clicked entity to true
+								set boolean tag "AlreadyTraversed" of custom nbt of clicked entity to true
 
-							set {_loc} to location 0.5 above {_randomPortal}
-							set yaw of {_loc} to {_randomPortal}'s yaw
-							set pitch of {_loc} to {_randomPortal}'s pitch
+								set {_loc} to location 0.5 above {_randomPortal}
+								set yaw of {_loc} to {_randomPortal}'s yaw
+								set pitch of {_loc} to {_randomPortal}'s pitch
 
-							teleport player to {_loc}
-							play sound "entity.enderman.teleport" with volume 3 and pitch 0.65 at location of {_randomPortal}
+								teleport player to {_loc}
+								play sound "entity.enderman.teleport" with volume 3 and pitch 0.65 at location of {_randomPortal}
 
-							set {_idText} to random integer between 0 and 999999999999
+								set {_idText} to random integer between 0 and 999999999999
 
-							set {_textAbove} to BuckshotPortalScale(player)
+								set {_textAbove} to BuckshotPortalScale(player)
 
-							set {_loc} to location {_textAbove} above clicked entity
-							spawn fake text display entity at {_loc} for player with id {_idText}
-							set {_meta} to metadata packet with id {_idText}
+								set {_loc} to location {_textAbove} above clicked entity
+								spawn fake text display entity at {_loc} for player with id {_idText}
+								set {_meta} to metadata packet with id {_idText}
 
-							set {_name} to "<##866da4>Traversed"
-							add data from "display text %{_name}%" to {_meta}
-							add data from "display billboard center" to packet {_meta}
-							add data from "display brightness 15 15" to packet {_meta}
-							add data from "display scale 0.75 0.75 0.75" to packet {_meta}
+								set {_name} to "<##866da4>Traversed"
+								add data from "display text %{_name}%" to {_meta}
+								add data from "display billboard center" to packet {_meta}
+								add data from "display brightness 15 15" to packet {_meta}
+								add data from "display scale 0.75 0.75 0.75" to packet {_meta}
 
-							send packet {_meta} to player
-							set int tag "AdditionalTextPortal" of custom nbt of clicked entity to {_idText}
+								send packet {_meta} to player
+								set int tag "AdditionalTextPortal" of custom nbt of clicked entity to {_idText}
 
-							draw 30 dragon breath particle at location above {_randomPortal} with offset vector(1, 0.5, 1) with extra 0.25
-							draw 30 dragon breath particle at location above clicked entity with offset vector(1, 0.5, 1) with extra 0.25
+								draw 30 dragon breath particle at location above {_randomPortal} with offset vector(1, 0.5, 1) with extra 0.25
+								draw 30 dragon breath particle at location above clicked entity with offset vector(1, 0.5, 1) with extra 0.25
 
 on projectile collide:
 	if boolean tag "BuckshotArrow" of custom nbt of event-projectile is set:
@@ -875,9 +883,16 @@ function GOATBuckshot(p: player, duration: timespan, blocks: locations, hailOfPo
 					BuckshotPortalCreate({_p}, true, {_block}, metadata value "G.O.A.T" of {_p}, true)
 					play sound "skill.buckshot.magic_portal_create" with volume 3 and pitch 0 at {_block}
 					play sound "entity.enderman.teleport" with volume 3 and pitch 1.5 at {_block}
+
+			set {_durationLeft} to metadata value "G.O.A.T" of {_p}
+			buffRegister({_p}, "Goat", 1, "", "-", "-", durationShort("%{_durationLeft}%"))
+
 			wait 1 second
 			remove 1 second from metadata value "G.O.A.T" of {_p}
+
 		clear metadata value "G.O.A.T" of {_p}
+		buffClear({_p}, "Goat")
+		
 	else:
 		set metadata value "G.O.A.T" of {_p} to {_duration}
 
