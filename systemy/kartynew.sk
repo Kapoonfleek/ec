@@ -321,8 +321,6 @@ on inventory click:
 		cancel event
 	else if player's current inventory is (metadata tag "kartagui2" of player):
 		cancel event
-	else if player's current inventory is (metadata tag "variantgui" of player):
-		cancel event
 	else if player's current inventory is (metadata tag "kartagui" of player):
 		cancel event
 		if event-inventory is (metadata tag "kartagui" of player):
@@ -335,6 +333,7 @@ on inventory click:
 				else:
 					set metadata tag "gemykarta" of player to chest inventory with 6 rows named "Gemy"
 				open (metadata tag "gemykarta" of player) to player
+				play sound "ui.click_echo" with volume 1 and pitch 1 to player
 				loop 54 times:
 					add 1 to {_loopnumber}
 					if {gem::%{_id}%::%{_loopnumber}%} is not set:
@@ -463,27 +462,67 @@ on inventory click:
 							set slot 29 of {_gui} to prismarine crystals named "<##4bbfe2>Glacial Spike" with lore "&8Ultimate Ability%nl%&f%{_glacialSpikeCast}% cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fRMB%nl%<##4bbfe2>Conjures a massive spike of ice, and merges%nl%<##4bbfe2>your current &f <##7fd6f0>Icicles <##4bbfe2>into it. It impales your%nl%<##4bbfe2>target, dealing &f%{_damageGlacialSpike}% <##add8e6>Ice <##4bbfe2>damage plus all of the%nl%<##4bbfe2>damage stored in your &f <##7fd6f0>Icicles.<##4bbfe2>%nl% %nl%<##4bbfe2>Requires &f5  <##7fd6f0>Icicles to cast.%nl% %nl%&f <##7fd6f0>Ice Lance <##4bbfe2>no longer launches &f <##7fd6f0>Icicles<##4bbfe2>." with nbt from "{""minecraft:custom_model_data"":{floats:[1.0f]}}"
 					
 					else if uncolored name of player's tool = "Buckshot":
+						#PORTALS
 						set {_cdportals} to round((9/{_pospiech}), 1)
-						set {_portalduration} to 30
-						set {_cdGoat} to 240
-						set {_mastery} to (180 + ({mastery::%player%}/7.25))
-						set {_damage} to 2 + ({damage::%player%}/33) + ({versatility::%player%}/99) + ({primarystat::%player%}/16.5)
-						set {_goatDuration} to 20
+						set {_portalduration} to 40
+						set {_portalCharges} to 2
 						set {_portalRange} to 4 + CrowdControl(player)/25
 
-						set {_cdbinding} to 25
+						#BINDING
 						set {_bindingShotDamage} to 5 + ({damage::%player%}/11) + ({versatility::%player%}/33) + ({primarystat::%player%}/5.5)
+						if string tag "Talents;Row 5" of custom nbt of player's tool = "Dimensional Damage":
+							add 10 to {_portalduration}
+							set {_bindingShotDamage} to {_bindingShotDamage}*1.5
 
+						set {_bindingShotDuration} to 10
+						set {_bindingShotDurationPull} to 10
+						set {_cdbinding} to 25
+						
+						#SHOTS
+						set {_mastery} to (180 + ({mastery::%player%}/7.25))
+						set {_damage} to 2 + ({damage::%player%}/33) + ({versatility::%player%}/99) + ({primarystat::%player%}/16.5)
 						set {_spreadShotArrows} to 5
-						if string tag "Talents;Row 1" of custom nbt of player's tool = "Wideshot":
+						set {_spreadShotEffectiveness} to 60
+						if boolean tag "Constellation;And For My Next Trick" of custom nbt of {karta::%player%} is set:
 							add 1 to {_spreadShotArrows}
 
-						set slot 1 of {_gui} to arrow named "<##866da4>Mastery: Portal Mastery" with lore "&8Mastery Bonus%nl%&fNo cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fPASSIVE%nl%<##866da4>Arrows passing through &f <##c6b1de>Magic Portals <##866da4>will%nl%<##866da4>become &f <##c6b1de>Portal Shots<##866da4>, dealing &f%{_mastery}%%% <##866da4>of%nl%<##866da4>the normal damage." with nbt from "{""minecraft:custom_model_data"":{floats:[3.0f]}}"
-						set slot 10 of {_gui} to magenta dye named "<##866da4>Mystic Shots" with lore "&8Passive Ability%nl%&fNo cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fPASSIVE%nl%<##c6b1de>Buckshot's <##866da4>arrows have special properties:%nl% &f• <##866da4>Arrows pierce through enemies%nl% &f• <##866da4>Arrows have no gravity%nl% &f• <##866da4>Shots do not consume arrows%nl% &f• <##866da4>Arrows travel in a straight line and move%nl%   <##866da4>slower than usual%nl% &f• <##866da4>Arrows disappear when they hit terrain,%nl%   <##866da4>or after spending enough time in the air%nl% %nl%<##866da4>Buckshot can fire off either a &f <##c6b1de>Single Shot%nl%<##866da4>or a &f <##c6b1de>Spread Shot<##866da4>, depending on charge time." with nbt from "{""minecraft:custom_model_data"":{floats:[5.0f]}}"
-						set slot 19 of {_gui} to bow named "<##866da4>Starbolt" with lore "&8Basic Ability%nl%&fRanged attack%nl%&7Cooldown: &fnone%nl%&7Use: &fHOLD%nl%<##c6b1de>Buckshot <##866da4>wields a magical bow able to fire%nl%<##866da4>two different types of arrows depending on%nl%<##866da4>the charge time of this ability:%nl% %nl% &f• <##866da4>Hold for &f0.5-1.0 sec <##866da4>to fire a &f <##c6b1de>Single Shot%nl% &f• <##866da4>Hold for at least &f1.0 sec <##866da4>to fire a &f <##c6b1de>Spread Shot%nl% %nl%&f <##c6b1de>Single Shot%nl%  <##866da4>A single arrow that travels forward%nl%  <##866da4>and deals &f%{_damage}% <##512989>Magic <##866da4>damage.%nl% %nl%&f <##c6b1de>Spread Shot%nl%  <##866da4>Fire off &f%{_spreadShotArrows}% <##866da4>arrows at a time with &f60%%%nl%  <##866da4>effectiveness." with nbt from "{""minecraft:custom_model_data"":{floats:[3.0f]}}"
-						set slot 20 of {_gui} to purple dye named "<##866da4>Magic Portals" with lore "&8Basic Ability%nl%&f2 Charges%nl%&fInstant cast%nl%&7Cooldown:  &f%{_cdportals}% seconds%nl%&7Range: &f%{_portalRange}%%nl%&7Use: &fRMB%nl%<##866da4>Creates a &f <##c6b1de>Magic Portal <##866da4>at the target location%nl%<##866da4>for &f40 sec<##866da4>. Arrows passing through the portal will%nl%<##866da4>vanish and <##c6b1de>fire <##866da4>from all other active &f <##c6b1de>Magic Portals<##866da4>.%nl%<##866da4>Pressing <##c6b1de>SHIFT <##866da4>will cause the portal to be created%nl%<##866da4>a block higher.%nl% %nl%<##866da4>Arrows can <##c6b1de>bounce <##866da4>between identical portals a%nl%<##866da4>maximum of &f3 <##866da4>times." with nbt from "{""minecraft:custom_model_data"":{floats:[8.0f]}}"
-						set slot 21 of {_gui} to popped chorus fruit named "<##866da4>Binding Shot" with lore "&8Basic Ability%nl%&fInstant cast%nl%&7Cooldown: &8 &f%{_cdbinding}% seconds%nl%&7Use: &fRMB%nl%<##866da4>Fire a binding shot at target, marking them for &f10 sec<##866da4>.%nl%<##866da4>Using this ability again on a different target during%nl%<##866da4>the next &f10 sec <##866da4>will bind the enemies, pulling them%nl%<##866da4>together until they meet in the middle. Once enemies%nl%<##866da4>are pulled, deal &f%{_bindingShotDamage}% <##512989>Magic <##866da4>damage to each target.%nl% %nl%<##866da4>The cooldown of this ability triggers when targets%nl%<##866da4>are pulled together." with nbt from "{""minecraft:custom_model_data"":{floats:[4.0f]}}"
-						set slot 28 of {_gui} to pink dye named "<##866da4>G.O.A.T" with lore "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdGoat}/60% minutes%nl%&7Use: &fRMB%nl%<##866da4>Creates &f12  <##c6b1de>Magic Portals <##866da4>at random locations%nl%<##866da4>within &f15 <##866da4>blocks distance. Portals created with%nl%<##866da4>this ability act the same way as portals created%nl%<##866da4>with the &f <##c6b1de>Magic Portals <##866da4>ability, but only last%nl%&f%{_goatDuration}% sec<##866da4>." with nbt from "{""minecraft:custom_model_data"":{floats:[6.0f]}}"
+							if string tag "Talents;Row 1" of custom nbt of player's tool = "Wideshot":
+								add 1 to {_spreadShotArrows}
+						else:
+							if string tag "Talents;Row 1" of custom nbt of player's tool = "Wideshot":
+								add 1 to {_spreadShotArrows}
+						
+						#GOAT
+						set {_goatDuration} to 20
+						set {_cdGoat} to 240
+						if string tag "Talents;Row 3" of custom nbt of {karta::%player%} = "Hail of Portals":
+							set {_cdGoat} to {_cdGoat} - 60
+						set {_portalMaxBounces} to 3
+						set {_goatPortals} to 12
+						if string tag "Talents;Row 3" of custom nbt of player's tool = "Hail of Portals":
+							add 4 to {_goatPortals}
+						set {_goatDistance} to 15
+
+						set slot 1 of {_gui} to arrow named "<##866da4>Mastery: Portal Mastery" with lore GetAbilityDescription("Buckshot", "Portal Mastery", "MASTERY", {_mastery}) with nbt from "{""minecraft:custom_model_data"":{floats:[3.0f]}}"
+						set slot 10 of {_gui} to magenta dye named "<##866da4>Mystic Shots" with lore GetAbilityDescription("Buckshot", "Mystic Shots", "", 0) with nbt from "{""minecraft:custom_model_data"":{floats:[5.0f]}}"
+						set {_valueNames::*} to "DAMAGE", "ARROWS", "EFFECTIVENESS"
+						set {_values::*} to {_damage}, {_spreadShotArrows}, {_spreadShotEffectiveness}
+
+						set slot 19 of {_gui} to bow named "<##866da4>Starbolt" with lore GetAbilityDescription("Buckshot", "Starbolt", {_valueNames::*}, {_values::*}) with nbt from "{""minecraft:custom_model_data"":{floats:[3.0f]}}"
+						
+						set {_valueNames::*} to "CHARGES", "COOLDOWN", "RANGE", "DURATION", "BOUNCES"
+						set {_values::*} to {_portalCharges}, {_cdportals}, {_portalRange}, {_portalduration}, {_portalMaxBounces}
+
+						set slot 20 of {_gui} to purple dye named "<##866da4>Magic Portals" with lore GetAbilityDescription("Buckshot", "Magic Portals", {_valueNames::*}, {_values::*}) with nbt from "{""minecraft:custom_model_data"":{floats:[8.0f]}}"
+						
+						set {_valueNames::*} to "COOLDOWN", "DURATION", "DURATIONPULL", "DAMAGE"
+						set {_values::*} to {_cdbinding}, {_bindingShotDuration}, {_bindingShotDurationPull}, {_bindingShotDamage}
+
+						set slot 21 of {_gui} to popped chorus fruit named "<##866da4>Binding Shot" with lore GetAbilityDescription("Buckshot", "Binding Shot", {_valueNames::*}, {_values::*}) with nbt from "{""minecraft:custom_model_data"":{floats:[4.0f]}}"
+						
+						set {_valueNames::*} to "COOLDOWN", "PORTALCOUNT", "DISTANCE", "DURATION"
+						set {_values::*} to {_cdGoat}, {_goatPortals}, {_goatDistance}, {_goatDuration}
+						set slot 28 of {_gui} to pink dye named "<##866da4>G.O.A.T" with lore GetAbilityDescription("Buckshot", "GOAT", {_valueNames::*}, {_values::*}) with nbt from "{""minecraft:custom_model_data"":{floats:[6.0f]}}"
 					
 					else if uncolored name of player's tool = "Ghazan":
 						set {_mastery} to 4 + ({mastery::%player%}/26)
