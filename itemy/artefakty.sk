@@ -31,7 +31,7 @@ function getArtifactType(artifactSet: text, artifactPiece: text) :: texts:
 	return {_type}
 
 function getArtifactSetsEquipped(p: player, yamlOrNBT: text) :: strings:
-	set {_id} to string tag "Id" of custom nbt of {karta::%{_p}%}
+	set {_id} to yaml value "Card.Id" in "activeCard-%{_p}%"
 
 	if {_yamlOrNBT} = "NBT":
 		set {_artifactSetsTag} to compound tag "Artifact Sets" of custom nbt of {karta::%{_p}%}
@@ -42,7 +42,7 @@ function getArtifactSetsEquipped(p: player, yamlOrNBT: text) :: strings:
 	return {_artifactSets::*}
 
 function getArtifactSetsCompletion(p: player, artifactSets: strings, yamlOrNBT: text) :: integers:
-	set {_id} to yaml value "Card.Artifact Sets.%loop-value%" in "activeCard-%{_p}%"
+	set {_id} to yaml value "Card.Id" in "activeCard-%{_p}%"
 
 	loop {_artifactSets::*}:
 		if {_yamlOrNBT} = "NBT":
@@ -52,7 +52,7 @@ function getArtifactSetsCompletion(p: player, artifactSets: strings, yamlOrNBT: 
 
 	return {_piecesCompleted::*}
 
-function getArtifactString(p: player, yamlOrNBT: text) :: string:
+function getArtifactString(p: player, yamlOrNBT: text) :: strings:
 	set {_artifactSets::*} to getArtifactSetsEquipped({_p}, {_yamlOrNBT})
 
 	if {_artifactSets::*} is set:
@@ -63,12 +63,20 @@ function getArtifactString(p: player, yamlOrNBT: text) :: string:
 			set {_abbreviation} to yaml value "Artifacts.%loop-value%.Abbreviation" in "ArtifactList"
 			set {_pieces} to {_piecesCompleted::%loop-counter%}
 
-			add "&f%{_icon}% %{_pieces}%-set" to {_setsEquipped::*}
+			set {_joinBy} to " &7| "
 
-		set {_setsEquipped} to join {_setsEquipped::*} by " &7| "
+			if size of {_setsEquipped::*} > 0:
+				if loop-counter is divisible by 2:
+					set {_joinBy} to "{NEXTLINE}"
+				if loop-counter = size of {_artifactSets::*}:
+					set {_joinBy} to ""
+
+			add "&f%{_icon}% %{_abbreviation}%: %{_pieces}%-set%{_joinBy}%" to {_setsEquipped::*}
+
+		set {_setsEquipped::*} to (join {_setsEquipped::*} by "") split at "{NEXTLINE}"
 
 	else:
-		set {_setsEquipped} to " "
+		set {_setsEquipped::*} to " "
 
-	return {_setsEquipped}
+	return {_setsEquipped::*}
 
