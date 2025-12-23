@@ -30,4 +30,30 @@ function getArtifactType(artifactSet: text, artifactPiece: text) :: texts:
 	set {_type} to yaml value "Artifact Pieces.%{_artifactSet}%.%{_artifactPiece}%.Type" in "ArtifactList"
 	return {_type}
 
+function getArtifactSetsEquipped(p: player) :: strings:
+	set {_artifactSetsTag} to compound tag "Artifact Sets" of custom nbt of {karta::%{_p}%}
+	set {_artifactSets::*} to nbt tags of {_artifactSetsTag}
+
+	return {_artifactSets::*}
+
+function getArtifactSetsCompletion(p: player, artifactSets: strings) :: integers:
+	loop {_artifactSets::*}:
+		add int tag "Artifact Sets;%loop-value%" of custom nbt of {karta::%{_p}%} to {_piecesCompleted::*}
+
+	return {_piecesCompleted::*}
+
+function getArtifactStringTab(p: player) :: string:
+	set {_artifactSets::*} to getArtifactSetsEquipped({_p})
+	set {_piecesCompleted::*} to getArtifactSetsCompletion({_p}, {_artifactSets::*})
+
+	loop {_artifactSets::*}:
+		set {_icon} to yaml value "Artifacts.%loop-value%.Icon" in "ArtifactList"
+		set {_abbreviation} to yaml value "Artifacts.%loop-value%.Abbreviation" in "ArtifactList"
+		set {_pieces} to {_piecesCompleted::%loop-counter%}
+
+		add "&f%{_icon}% %{_pieces}%-set" to {_setsEquipped::*}
+
+	set {_setsEquipped} to join {_setsEquipped::*} by " &7| "
+
+	return {_setsEquipped}
 
