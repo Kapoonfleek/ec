@@ -30,23 +30,33 @@ function getArtifactType(artifactSet: text, artifactPiece: text) :: texts:
 	set {_type} to yaml value "Artifact Pieces.%{_artifactSet}%.%{_artifactPiece}%.Type" in "ArtifactList"
 	return {_type}
 
-function getArtifactSetsEquipped(p: player) :: strings:
-	set {_artifactSetsTag} to compound tag "Artifact Sets" of custom nbt of {karta::%{_p}%}
-	set {_artifactSets::*} to nbt tags of {_artifactSetsTag}
+function getArtifactSetsEquipped(p: player, yamlOrNBT: text) :: strings:
+	set {_id} to string tag "Id" of custom nbt of {karta::%{_p}%}
+
+	if {_yamlOrNBT} = "NBT":
+		set {_artifactSetsTag} to compound tag "Artifact Sets" of custom nbt of {karta::%{_p}%}
+		set {_artifactSets::*} to nbt tags of {_artifactSetsTag}
+	else:
+		set {_artifactSets::*} to yaml node keys "Card.Artifact Sets" in "card-%{_id}%-%{_p}%"
 
 	return {_artifactSets::*}
 
-function getArtifactSetsCompletion(p: player, artifactSets: strings) :: integers:
+function getArtifactSetsCompletion(p: player, artifactSets: strings, yamlOrNBT: text) :: integers:
+	set {_id} to string tag "Id" of custom nbt of {karta::%{_p}%}
+
 	loop {_artifactSets::*}:
-		add int tag "Artifact Sets;%loop-value%" of custom nbt of {karta::%{_p}%} to {_piecesCompleted::*}
+		if {_yamlOrNBT} = "NBT":
+			add int tag "Artifact Sets;%loop-value%" of custom nbt of {karta::%{_p}%} to {_piecesCompleted::*}
+		else:
+			add yaml value "Card.Artifact Sets.%loop-value%" in "card-%{_id}%-%{_p}%" to {_piecesCompleted::*}
 
 	return {_piecesCompleted::*}
 
-function getArtifactStringTab(p: player) :: string:
-	set {_artifactSets::*} to getArtifactSetsEquipped({_p})
+function getArtifactString(p: player, yamlOrNBT: text) :: string:
+	set {_artifactSets::*} to getArtifactSetsEquipped({_p}, {_yamlOrNBT})
 
 	if {_artifactSets::*} is set:
-		set {_piecesCompleted::*} to getArtifactSetsCompletion({_p}, {_artifactSets::*})
+		set {_piecesCompleted::*} to getArtifactSetsCompletion({_p}, {_artifactSets::*}, {_yamlOrNBT})
 		
 		loop {_artifactSets::*}:
 			set {_icon} to yaml value "Artifacts.%loop-value%.Icon" in "ArtifactList"
@@ -56,7 +66,7 @@ function getArtifactStringTab(p: player) :: string:
 			add "&f%{_icon}% %{_pieces}%-set" to {_setsEquipped::*}
 
 		set {_setsEquipped} to join {_setsEquipped::*} by " &7| "
-		
+
 	else:
 		set {_setsEquipped} to " "
 
