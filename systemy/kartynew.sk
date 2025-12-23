@@ -30,6 +30,7 @@ function newCardAssignments(p: player, card: item, ele: string, prim: string, ic
 	add "&8Dropped: %{_y}%" to lore of {_card}
 
 	set string tag "Element" of custom nbt of {_card} to {_ele}
+	set boolean tag "Card" of custom nbt of {_card} to true
 
 	set int tag "Stats;%{_prim}%" of custom nbt of {_card} to 0
 	set int tag "Stats;Health" of custom nbt of {_card} to 0
@@ -62,249 +63,256 @@ function newCardAssignments(p: player, card: item, ele: string, prim: string, ic
 	return {_card}
 	
 on rightclick:
-	if line 19 of lore of player's tool contains "&8Id:":
-		cancel event if clicked entity is not item frame
-		if target of player is a player:
-			if target of player is not online:
-				if (distance between (target of player) and player) < 7:
-					stop
+	if boolean tag "Card" of custom nbt of player's tool is not set:
+		if line 19 of lore of player's tool contains "&8Id:":
+			set boolean tag "Card" of custom nbt of player's tool to true
+	else:
+		if string tag "Id" of custom nbt of player's tool is set:
+			cancel event if clicked entity is not item frame
+			if target of player is a player:
+				if target of player is not online:
+					if (distance between (target of player) and player) < 7:
+						stop
 
-		else if metadata value "dungeon" of player is set:
-			cancel event
-			send "&9You can't open the card menu while in a dungeon." to player
-			play sound "block.glass.break" with volume 3 and pitch 1 to player
-			stop
-
-		if player is alive:
-			if metadata value "ECEngaged" of player is set:
-				send "&9You can't open the card menu during combat." to player
+			else if metadata value "dungeon" of player is set:
+				cancel event
+				send "&9You can't open the card menu while in a dungeon." to player
 				play sound "block.glass.break" with volume 3 and pitch 1 to player
 				stop
 
-			UpdateCard(player)
-			SetPlayerStats(player) #Sets player stats to current selected card's stats (funkcje.sk)
-		
-			set {kartaname::%player%} to uncolored name of player's tool
-			set {kartacolor::%player%} to last string color code of player's tool's name
-			if line 19 of lore of {karta::%player%} contains "Id: ":
-				set {_id} to uncolored line 19 of lore of {karta::%player%}
-				replace all "Id: " in {_id} with ""
-				load yaml "plugins/Skript/playerdata/karty/%uncolored name of player's tool%/%{_id}%.yml" as "karty-%player%"
-			set {_cardLevel} to yaml value "Card.Level" in "karty-%player%"
+			if player is alive:
+				if metadata value "ECEngaged" of player is set:
+					send "&9You can't open the card menu during combat." to player
+					play sound "block.glass.break" with volume 3 and pitch 1 to player
+					stop
 
-			set {karta::%{_id}%} to {kartaname::%player%}
-			set string tag "Owner" of custom nbt of player's tool to "%player%"
+				set {_idPreviousCard} to string tag "Id" of custom nbt of {karta::%player%}
+				unload yaml "card-%{_idPreviousCard}%-%player%"
 
-			set {_elementText} to string tag "Element" of custom nbt of player's tool
-			set string tag "ECElement" of custom nbt of player to {_elementText} #Card's Element when receiving damage
+				set {_id} to string tag "Id" of custom nbt of player's tool
+				load yaml "plugins/Skript/playerdata/karty/%uncolored name of player's tool%/%{_id}%.yml" as "card-%{_id}%-%player%"
 
+				UpdateCard(player)
+				SetPlayerStats(player) #Sets player stats to current selected card's stats (funkcje.sk)
 			
-			set {_primaryStatType} to string tag "PrimaryStat" of custom nbt of player's tool
-			set metadata value "PrimaryStatType" of player to {_primaryStatType}
-
-			if string tag "OriginalOwner" of custom nbt of player's tool is not set:
-				set string tag "OriginalOwner" of custom nbt of player's tool to player's name
-
-			set {_primarystat} to int tag "Stats;%{_primaryStatType}%" of custom nbt of player's tool
-			set {_health} to int tag "Stats;Health" of custom nbt of player's tool
-			set {_damage} to int tag "Stats;Damage" of custom nbt of player's tool
-			set {_resistance} to int tag "Stats;Resistance" of custom nbt of player's tool
-			set {_mobility} to int tag "Stats;Mobility" of custom nbt of player's tool
-			set {_utility} to int tag "Stats;Utility" of custom nbt of player's tool
-			set {_crowdcontrol} to int tag "Stats;Crowd Control" of custom nbt of player's tool
-			set {_versatility} to int tag "Stats;Versatility" of custom nbt of player's tool
-			set {_mastery} to int tag "Stats;Mastery" of custom nbt of player's tool
-			set {_criticalhit} to int tag "Stats;Critical Hit" of custom nbt of player's tool
-			set {_element} to int tag "Stats;Element" of custom nbt of player's tool
-			set {_haste} to int tag "Stats;Haste" of custom nbt of player's tool
-			set {_avoidance} to int tag "Stats;Avoidance" of custom nbt of player's tool
-
-			set {_total} to {_primarystat} + {_health} + {_damage} + {_resistance} + {_mobility} + {_utility} + {_crowdcontrol} + {_versatility} + {_mastery} + {_criticalhit} + {_element} + {_haste} + {_avoidance}
-
-			set int tag "Stats;Total" of custom nbt of player's tool to {_total}
+				set {kartaname::%player%} to uncolored name of player's tool
+				set {kartacolor::%player%} to last string color code of player's tool's name
 				
-			
-			UpdateScoreboard(player)
+				set {_cardLevel} to yaml value "Card.Level" in "karty-%player%"
 
-			loop 12 times:
-				if {trait::%{_id}%::%loop-number%} is set:
-					set {hearttrait::%player%::%loop-number%} to {trait::%{_id}%::%loop-number%}
+				set {karta::%{_id}%} to {kartaname::%player%}
+				set string tag "Owner" of custom nbt of player's tool to "%player%"
 
-			if name of player's tool contains "Brother Therold":
-				set string tag "CardIcon" of custom nbt of player's tool to ""
-			else if name of player's tool contains "Glaceon":
-				set string tag "CardIcon" of custom nbt of player's tool to ""
-				set metadata value "Fingers of Frost" of player to 0
-			else if name of player's tool contains "Umbreon":
-				set string tag "CardIcon" of custom nbt of player's tool to ""
-			else if name of player's tool contains "Delphox":
-				set string tag "CardIcon" of custom nbt of player's tool to ""
-			else if name of player's tool contains "Buckshot":
-				set string tag "CardIcon" of custom nbt of player's tool to ""
-			else if name of player's tool contains "Drogoz":
-				set string tag "CardIcon" of custom nbt of player's tool to ""
-			else if name of player's tool contains "Cresselia":
-				set string tag "CardIcon" of custom nbt of player's tool to ""
-			else if name of player's tool contains "Shenhe":
-				set string tag "CardIcon" of custom nbt of player's tool to ""
-			else if name of player's tool contains "Vaporeon":
-				set string tag "CardIcon" of custom nbt of player's tool to ""
-			else if name of player's tool contains "Espeon":
-				set string tag "CardIcon" of custom nbt of player's tool to ""
+				set {_elementText} to string tag "Element" of custom nbt of player's tool
+				set string tag "ECElement" of custom nbt of player to {_elementText} #Card's Element when receiving damage
 
-			SetCardIcon(player)
+				
+				set {_primaryStatType} to string tag "PrimaryStat" of custom nbt of player's tool
+				set metadata value "PrimaryStatType" of player to {_primaryStatType}
 
-			if {damage::dealt::%{_id}%} is not set:
-				set {damage::dealt::%{_id}%} to 0
-			if {damage::taken::%{_id}%} is not set:
-				set {damage::taken::%{_id}%} to 0
+				if string tag "OriginalOwner" of custom nbt of player's tool is not set:
+					set string tag "OriginalOwner" of custom nbt of player's tool to player's name
 
-			if {kartaname::%player%} = "Umbreon":
-				if boolean tag "Constellation;Featherfoot" of custom nbt of {karta::%player%} is set:
-					if (time in world "world") is between 10:00 PM and 4:00 AM:
-						set metadata value "UmbreonFeatherfoot" of player to 150
-					else:
-						set metadata value "UmbreonFeatherfoot" of player to 100
-			else:
-				clear metadata value "UmbreonFeatherfoot" of player
+				set {_primarystat} to int tag "Stats;%{_primaryStatType}%" of custom nbt of player's tool
+				set {_health} to int tag "Stats;Health" of custom nbt of player's tool
+				set {_damage} to int tag "Stats;Damage" of custom nbt of player's tool
+				set {_resistance} to int tag "Stats;Resistance" of custom nbt of player's tool
+				set {_mobility} to int tag "Stats;Mobility" of custom nbt of player's tool
+				set {_utility} to int tag "Stats;Utility" of custom nbt of player's tool
+				set {_crowdcontrol} to int tag "Stats;Crowd Control" of custom nbt of player's tool
+				set {_versatility} to int tag "Stats;Versatility" of custom nbt of player's tool
+				set {_mastery} to int tag "Stats;Mastery" of custom nbt of player's tool
+				set {_criticalhit} to int tag "Stats;Critical Hit" of custom nbt of player's tool
+				set {_element} to int tag "Stats;Element" of custom nbt of player's tool
+				set {_haste} to int tag "Stats;Haste" of custom nbt of player's tool
+				set {_avoidance} to int tag "Stats;Avoidance" of custom nbt of player's tool
 
-			set max health of player to 25 + ({health::%player%}/5)
-			set scaled health of player to 20
-			heal the player
-			playerMoveSpeedUpdate(player)
-			updateAzeriteArmorLore(player)
+				set {_total} to {_primarystat} + {_health} + {_damage} + {_resistance} + {_mobility} + {_utility} + {_crowdcontrol} + {_versatility} + {_mastery} + {_criticalhit} + {_element} + {_haste} + {_avoidance}
 
-			if {mobskilled::%{kartaname::%player%}%::%{_id}%} is not set:
-				set {mobskilled::%{kartaname::%player%}%::%{_id}%} to 0
-			if {deaths::%{kartaname::%player%}%::%{_id}%} is not set:
-				set {deaths::%{kartaname::%player%}%::%{_id}%} to 0
+				set int tag "Stats;Total" of custom nbt of player's tool to {_total}
+					
+				
+				UpdateScoreboard(player)
 
-			set {_mobsK} to {mobskilled::%{kartaname::%player%}%::%{_id}%}
-			set {_deaths} to {deaths::%{kartaname::%player%}%::%{_id}%}
-			set {_damagedealt} to {damage::dealt::%{kartaname::%player%}%::%{_id}%}
-			set {_damagetaken} to {damage::taken::%{kartaname::%player%}%::%{_id}%}
-			
-			
-			if yaml "kartyPh-%player%" is loaded:
-				unload yaml "kartyPh-%player%"
-				load yaml "plugins/Skript/playerdata/karty/%uncolored name of player's tool%/%{_id}%.yml" as "kartyPh-%player%"
-			else:
-				load yaml "plugins/Skript/playerdata/karty/%uncolored name of player's tool%/%{_id}%.yml" as "kartyPh-%player%"
+				loop 12 times:
+					if {trait::%{_id}%::%loop-number%} is set:
+						set {hearttrait::%player%::%loop-number%} to {trait::%{_id}%::%loop-number%}
 
-			set {_k} to {kartacolor::%player%}
-			set metadata tag "kartagui" of player to chest inventory with 3 rows named "%uncolored name of player's tool% - Select Category"
-			set {_gui} to (metadata tag "kartagui" of player)
-			set slot integers between 0 and 26 of {_gui} to black stained glass pane named " "
-			set slot 4 of {_gui} to player's tool with lore (lore of player's tool) and "&7&oYour current card"
-			if line 19 of lore of player's tool contains "Id: ":
-				set {_id} to line 19 of lore of player's tool
-				set {_idRaw} to uncolored {_id}
-				replace all "Id: " in {_idRaw} with ""
-				load yaml "plugins/Skript/playerdata/karty/%uncolored name of player's tool%/%{_idRaw}%.yml" as "card-%player%-Menu"
+				if name of player's tool contains "Brother Therold":
+					set string tag "CardIcon" of custom nbt of player's tool to ""
+				else if name of player's tool contains "Glaceon":
+					set string tag "CardIcon" of custom nbt of player's tool to ""
+					set metadata value "Fingers of Frost" of player to 0
+				else if name of player's tool contains "Umbreon":
+					set string tag "CardIcon" of custom nbt of player's tool to ""
+				else if name of player's tool contains "Delphox":
+					set string tag "CardIcon" of custom nbt of player's tool to ""
+				else if name of player's tool contains "Buckshot":
+					set string tag "CardIcon" of custom nbt of player's tool to ""
+				else if name of player's tool contains "Drogoz":
+					set string tag "CardIcon" of custom nbt of player's tool to ""
+				else if name of player's tool contains "Cresselia":
+					set string tag "CardIcon" of custom nbt of player's tool to ""
+				else if name of player's tool contains "Shenhe":
+					set string tag "CardIcon" of custom nbt of player's tool to ""
+				else if name of player's tool contains "Vaporeon":
+					set string tag "CardIcon" of custom nbt of player's tool to ""
+				else if name of player's tool contains "Espeon":
+					set string tag "CardIcon" of custom nbt of player's tool to ""
 
-			loop 5 times:
-				if yaml value "Card.Talents.Row %loop-number%" in "card-%player%-Menu" is not set:
-					if loop-number <= 2:
-						if (int tag "Level" of custom nbt of player's tool) >= 15*loop-number:
-							add 1 to {_talentPointsAvailable}
-					else if loop-number = 3:
-						if (int tag "Level" of custom nbt of player's tool) >= 40:
-							add 1 to {_talentPointsAvailable}
-					else if loop-number = 4:
-						if (int tag "Level" of custom nbt of player's tool) >= 45:
-							add 1 to {_talentPointsAvailable}
-					else:
-						if (int tag "Level" of custom nbt of player's tool) >= 50:
-							add 1 to {_talentPointsAvailable}
+				SetCardIcon(player)
 
-			save yaml "card-%player%-Menu"
-			unload yaml "card-%player%-Menu"
-			set slot 9 of {_gui} to blue stained glass pane named "&9Cards Explained" with lore "&7Cards are &fcollectible playable characters &7that%nl%&7can be used in combat by the player.%nl% %nl%&7Cards can be &fleveled &7and may have their &fpower%nl%&fincreased &7through features including:%nl%&f- &6Talents &9(unlocked at certain levels)%nl%&f- &cConstellations &9(unlocked by collecting copies)%nl%&f- &eGear &9(dropped from mobs and endgame content)%nl%&f- &5Ability Levels &9(unlocked by expending materials)%nl%&f- &bAzerite Powers &9(found on Azerite Gear)%nl%&f- &aSpecializations &9(capstones unlocked at level caps)%nl% %nl%&6&nThe current max Card Level is&r &f60&7."
-			set slot 11 of {_gui} to fire charge named "&eAbilities" with lore "&7Click here to view your Card's%nl%&7abilities and mastery bonus.%nl% %nl%&eAbilities%nl%&7Sets of skills that can be used in both%nl%&7PVE and PVP combat. Abilities can be%nl%&7further upgraded by spending materials."
-			set slot 12 of {_gui} to {odlamekgwiazdyEN} named "&cConstellation" with lore "&7Click here to check your Card's%nl%&7constellation and constellation bonuses.%nl% %nl%&cConstellations%nl%&7Powerful sequential bonuses unlocked%nl%&7by collecting multiple copies of a Card."
-			set slot 13 of {_gui} to golden helmet named "&eGear" with lore "&7Click here to manage your Card's gear.%nl% %nl%&eGear%nl%&7Armour that can be equipped by your Card.%nl%&7Gear provides stats and can come with%nl%&7additional unique effects or set bonuses." with nbt from "{""minecraft:attribute_modifiers"":{modifiers:[],show_in_tooltip:0}}"
-			set {_specPoints} to 0
-			set slot 14 of {_gui} to diamond named "&cSpecializations" with lore "&7Click here to view or select your%nl%&7Card's specialization.%nl% %nl%&cSpecializations%nl%&7Special &fcapstones &7unlocked with each new &fmax%nl%&flevel &7reached by your Card. Specializations%nl%&7are impactful powers capable of elevating%nl%&7and adding uniqueness to your very own playstyle.%nl% %nl%&f%{_specPoints}% Available Specialization Points" with nbt from "{""minecraft:custom_model_data"":{floats:[4.0f]}}"
-			set slot 15 of {_gui} to brush named "&6Talents" with lore "&7Click here to view and learn%nl%&7your Card's talents.%nl% %nl%&6Talents%nl%&7Powerful bonuses learned at set Card Levels.%nl%&7Talents are designed to create unique playstyles,%nl%&7anlock new abilities and add versatility and extra%nl%&7fun to the combat prowess of a Card.%nl% %nl%&f- &7Left Click to see &flearned &7Talent rows%nl%&f- &7Shift Click to see &fall &7Card Talents%nl% %nl%&f%{_talentPointsAvailable}% Available Talent Points"
-			set {_loreStats2} to "&7shielding and supportive buffs.%nl%<##58c3f5> Crowd Control&7: Improves most CC (stuns, knockups, etc.)%nl%&7and increases the range of most abilities.%nl%<##e3ebff> Versatility&7: Damage, Resistance and Utility all%nl%&7in one stat at 33%% effectiveness each.%nl%<##f53b98> Mastery&7: Differs per card and provides an additional%nl%&7passive effect.%nl%<##fca417> Critical Hit&7: Chance to deal increased damage.%nl%<##d5ff57> Element&7: Increases damage dealt and reduces damage%nl%&7taken by supereffective and ineffective attacks.%nl%<##19943e> Haste&7: Decreases most cooldowns and tick times of abilities.%nl%<##2154ad> Avoidance&7: Increases the chance to avoid an attack."
-			set {_loreStats} to "<#f74428> Damage&7: Increases the damage of most abilities.%nl%<##ffef45> Resistance&7: Reduces the damage taken by attacks.%nl%&f Mobility&7: Increases movement and flying speed.%nl%<##ae78d0> Utility&7: Increases the effectiveness of most healing,%nl%%{_loreStats2}%"
-			set slot 17 of {_gui} to blue stained glass pane named "&9Stats Explained" with lore "&fPrimary Stats:%nl%<#5ee359> Agility&7, <#59c1e3>  Intellect &7and <#e35959> Strength &7are main stats%nl%&7and all greatly increase the damage and healing.%nl%<#5ee359> Agility &7is the stat of most ranged users,%nl%<#59c1e3> Intellect &7is the stat of most magic users, while%nl%<#e35959> Strength &7is the stat of most melee Cards.%nl% %nl%&fSecondary Stats:%nl%<#c0ff02> Health&7: Increases the amount of HP (hearts).%nl%%{_loreStats}%"
-			set slot 22 of {_gui} to glow berries named "&6Variants" with lore "&7Click here to view and manage%nl%&7this Card's variants.%nl% %nl%&6Variants%nl%&7Cosmetic appearances enriching or changing%nl%&7the theme, visual appearance and sound%nl%&7effects of Card abilities."
-			open {_gui} to player
+				if {damage::dealt::%{_id}%} is not set:
+					set {damage::dealt::%{_id}%} to 0
+				if {damage::taken::%{_id}%} is not set:
+					set {damage::taken::%{_id}%} to 0
 
-			loop {gem::%{_id}%::*}:
-				set {_r} to "%loop-value%"
-				loop lore of loop-value:
-					if loop-value-2 contains "Quality" or "Jakość":
-						set {_x} to uncolored loop-value-2
-						replace all "Jakość: ★★★" and "Quality: ★★★" in {_x} with "(R3)"
-						replace all "Jakość: ★★" and "Quality: ★★" in {_x} with "(R2)"
-						replace all "Jakość: ★" and "Quality: ★" in {_x} with "(R1)"
-						replace all "★" in {_x} with ""
-				replace all "diamond named " in {_r} with ""
-				set {_r} to uncolored {_r}
-				add "%{_r}% %{_x}%" to {_gemy::*}
-			set {_agStats::*} to {_primarystat}, {_health}, {_damage}, {_resistance}, {_mobility}, {_utility}, {_crowdcontrol}, {_versatility}, {_mastery}, {_criticalhit}, {_element}, {_haste}, {_avoidance} and {_total}
-			set {_ag::*} to "%{_primaryStatType}%", "Health", "Damage", "Resistance", "Mobility", "Utility", "Crowd Ctrl", "Versatility", "Mastery", "Critical Hit", "Element", "Haste", "Avoidance", "Total"
-			loop 12 times:
-				if {trait::%{_id}%::%loop-number%} is set:
-					set {_ce::%loop-number%} to uncolored {trait::%{_id}%::%loop-number%}
+				if {kartaname::%player%} = "Umbreon":
+					if boolean tag "Constellation;Featherfoot" of custom nbt of {karta::%player%} is set:
+						if (time in world "world") is between 10:00 PM and 4:00 AM:
+							set metadata value "UmbreonFeatherfoot" of player to 150
+						else:
+							set metadata value "UmbreonFeatherfoot" of player to 100
 				else:
-					set {_ce::%loop-number%} to "Not set"
-			set {_dr} to uncolored line 20 of lore of player's tool
-			set {_cardname} to uncolored name of player's tool
-			set {_color} to raw (name of player's tool)
-			loop 5 times:
-				if string tag "Talents;Row %loop-number%" of nbt compound of player's tool is set:
-					add string tag "Talents;Row %loop-number%" of nbt compound of player's tool to {_talents::*}
-			#replace all """", "{" and "}" in {_talents} with ""
-			#replace all ":" in {_talents} with " ("
-			#set {_talents::*} to {_talents} split at ","
-			#set {_numBer} to 1
-			#loop {_talents::*}:
-			#	set {_talents::%{_num}%} to "%loop-value%)"
-			#	add 1 to {_numBer}
-			replace all (uncolored name of player's tool) in {_color} with ""
-			replace all "<" and ">" in {_color} with ""
-			replace all "Dropped: " and "Wydropiono: " in {_dr} with ""
-			if {_id} contains "&8":
-				set {_id} to uncolored {_id}
-				replace all "Id: " in {_id} with ""
+					clear metadata value "UmbreonFeatherfoot" of player
+
+				set max health of player to 25 + ({health::%player%}/5)
+				set scaled health of player to 20
+				heal the player
+				playerMoveSpeedUpdate(player)
+				updateAzeriteArmorLore(player)
+
+				if {mobskilled::%{kartaname::%player%}%::%{_id}%} is not set:
+					set {mobskilled::%{kartaname::%player%}%::%{_id}%} to 0
+				if {deaths::%{kartaname::%player%}%::%{_id}%} is not set:
+					set {deaths::%{kartaname::%player%}%::%{_id}%} to 0
+
+				set {_mobsK} to {mobskilled::%{kartaname::%player%}%::%{_id}%}
+				set {_deaths} to {deaths::%{kartaname::%player%}%::%{_id}%}
+				set {_damagedealt} to {damage::dealt::%{kartaname::%player%}%::%{_id}%}
+				set {_damagetaken} to {damage::taken::%{kartaname::%player%}%::%{_id}%}
+				
+				
+				if yaml "kartyPh-%player%" is loaded:
+					unload yaml "kartyPh-%player%"
+					load yaml "plugins/Skript/playerdata/karty/%uncolored name of player's tool%/%{_id}%.yml" as "kartyPh-%player%"
+				else:
+					load yaml "plugins/Skript/playerdata/karty/%uncolored name of player's tool%/%{_id}%.yml" as "kartyPh-%player%"
+
+				set {_k} to {kartacolor::%player%}
+				set metadata tag "kartagui" of player to chest inventory with 3 rows named "%uncolored name of player's tool% - Select Category"
+				set {_gui} to (metadata tag "kartagui" of player)
+				set slot integers between 0 and 26 of {_gui} to black stained glass pane named " "
+				set slot 4 of {_gui} to player's tool with lore (lore of player's tool) and "&7&oYour current card"
+				if line 19 of lore of player's tool contains "Id: ":
+					set {_id} to line 19 of lore of player's tool
+					set {_idRaw} to uncolored {_id}
+					replace all "Id: " in {_idRaw} with ""
+					load yaml "plugins/Skript/playerdata/karty/%uncolored name of player's tool%/%{_idRaw}%.yml" as "card-%player%-Menu"
+
+				loop 5 times:
+					if yaml value "Card.Talents.Row %loop-number%" in "card-%player%-Menu" is not set:
+						if loop-number <= 2:
+							if (int tag "Level" of custom nbt of player's tool) >= 15*loop-number:
+								add 1 to {_talentPointsAvailable}
+						else if loop-number = 3:
+							if (int tag "Level" of custom nbt of player's tool) >= 40:
+								add 1 to {_talentPointsAvailable}
+						else if loop-number = 4:
+							if (int tag "Level" of custom nbt of player's tool) >= 45:
+								add 1 to {_talentPointsAvailable}
+						else:
+							if (int tag "Level" of custom nbt of player's tool) >= 50:
+								add 1 to {_talentPointsAvailable}
+
+				save yaml "card-%player%-Menu"
+				unload yaml "card-%player%-Menu"
+				set slot 9 of {_gui} to blue stained glass pane named "&9Cards Explained" with lore "&7Cards are &fcollectible playable characters &7that%nl%&7can be used in combat by the player.%nl% %nl%&7Cards can be &fleveled &7and may have their &fpower%nl%&fincreased &7through features including:%nl%&f- &6Talents &9(unlocked at certain levels)%nl%&f- &cConstellations &9(unlocked by collecting copies)%nl%&f- &eGear &9(dropped from mobs and endgame content)%nl%&f- &5Ability Levels &9(unlocked by expending materials)%nl%&f- &bAzerite Powers &9(found on Azerite Gear)%nl%&f- &aSpecializations &9(capstones unlocked at level caps)%nl% %nl%&6&nThe current max Card Level is&r &f60&7."
+				set slot 11 of {_gui} to fire charge named "&eAbilities" with lore "&7Click here to view your Card's%nl%&7abilities and mastery bonus.%nl% %nl%&eAbilities%nl%&7Sets of skills that can be used in both%nl%&7PVE and PVP combat. Abilities can be%nl%&7further upgraded by spending materials."
+				set slot 12 of {_gui} to {odlamekgwiazdyEN} named "&cConstellation" with lore "&7Click here to check your Card's%nl%&7constellation and constellation bonuses.%nl% %nl%&cConstellations%nl%&7Powerful sequential bonuses unlocked%nl%&7by collecting multiple copies of a Card."
+				set slot 13 of {_gui} to golden helmet named "&eGear" with lore "&7Click here to manage your Card's gear.%nl% %nl%&eGear%nl%&7Armour that can be equipped by your Card.%nl%&7Gear provides stats and can come with%nl%&7additional unique effects or set bonuses." with nbt from "{""minecraft:attribute_modifiers"":{modifiers:[],show_in_tooltip:0}}"
+				set {_specPoints} to 0
+				set slot 14 of {_gui} to diamond named "&cSpecializations" with lore "&7Click here to view or select your%nl%&7Card's specialization.%nl% %nl%&cSpecializations%nl%&7Special &fcapstones &7unlocked with each new &fmax%nl%&flevel &7reached by your Card. Specializations%nl%&7are impactful powers capable of elevating%nl%&7and adding uniqueness to your very own playstyle.%nl% %nl%&f%{_specPoints}% Available Specialization Points" with nbt from "{""minecraft:custom_model_data"":{floats:[4.0f]}}"
+				set slot 15 of {_gui} to brush named "&6Talents" with lore "&7Click here to view and learn%nl%&7your Card's talents.%nl% %nl%&6Talents%nl%&7Powerful bonuses learned at set Card Levels.%nl%&7Talents are designed to create unique playstyles,%nl%&7anlock new abilities and add versatility and extra%nl%&7fun to the combat prowess of a Card.%nl% %nl%&f- &7Left Click to see &flearned &7Talent rows%nl%&f- &7Shift Click to see &fall &7Card Talents%nl% %nl%&f%{_talentPointsAvailable}% Available Talent Points"
+				set {_loreStats2} to "&7shielding and supportive buffs.%nl%<##58c3f5> Crowd Control&7: Improves most CC (stuns, knockups, etc.)%nl%&7and increases the range of most abilities.%nl%<##e3ebff> Versatility&7: Damage, Resistance and Utility all%nl%&7in one stat at 33%% effectiveness each.%nl%<##f53b98> Mastery&7: Differs per card and provides an additional%nl%&7passive effect.%nl%<##fca417> Critical Hit&7: Chance to deal increased damage.%nl%<##d5ff57> Element&7: Increases damage dealt and reduces damage%nl%&7taken by supereffective and ineffective attacks.%nl%<##19943e> Haste&7: Decreases most cooldowns and tick times of abilities.%nl%<##2154ad> Avoidance&7: Increases the chance to avoid an attack."
+				set {_loreStats} to "<#f74428> Damage&7: Increases the damage of most abilities.%nl%<##ffef45> Resistance&7: Reduces the damage taken by attacks.%nl%&f Mobility&7: Increases movement and flying speed.%nl%<##ae78d0> Utility&7: Increases the effectiveness of most healing,%nl%%{_loreStats2}%"
+				set slot 17 of {_gui} to blue stained glass pane named "&9Stats Explained" with lore "&fPrimary Stats:%nl%<#5ee359> Agility&7, <#59c1e3>  Intellect &7and <#e35959> Strength &7are main stats%nl%&7and all greatly increase the damage and healing.%nl%<#5ee359> Agility &7is the stat of most ranged users,%nl%<#59c1e3> Intellect &7is the stat of most magic users, while%nl%<#e35959> Strength &7is the stat of most melee Cards.%nl% %nl%&fSecondary Stats:%nl%<#c0ff02> Health&7: Increases the amount of HP (hearts).%nl%%{_loreStats}%"
+				set slot 22 of {_gui} to glow berries named "&6Variants" with lore "&7Click here to view and manage%nl%&7this Card's variants.%nl% %nl%&6Variants%nl%&7Cosmetic appearances enriching or changing%nl%&7the theme, visual appearance and sound%nl%&7effects of Card abilities."
+				open {_gui} to player
+
+				loop {gem::%{_id}%::*}:
+					set {_r} to "%loop-value%"
+					loop lore of loop-value:
+						if loop-value-2 contains "Quality" or "Jakość":
+							set {_x} to uncolored loop-value-2
+							replace all "Jakość: ★★★" and "Quality: ★★★" in {_x} with "(R3)"
+							replace all "Jakość: ★★" and "Quality: ★★" in {_x} with "(R2)"
+							replace all "Jakość: ★" and "Quality: ★" in {_x} with "(R1)"
+							replace all "★" in {_x} with ""
+					replace all "diamond named " in {_r} with ""
+					set {_r} to uncolored {_r}
+					add "%{_r}% %{_x}%" to {_gemy::*}
+				set {_agStats::*} to {_primarystat}, {_health}, {_damage}, {_resistance}, {_mobility}, {_utility}, {_crowdcontrol}, {_versatility}, {_mastery}, {_criticalhit}, {_element}, {_haste}, {_avoidance} and {_total}
+				set {_ag::*} to "%{_primaryStatType}%", "Health", "Damage", "Resistance", "Mobility", "Utility", "Crowd Ctrl", "Versatility", "Mastery", "Critical Hit", "Element", "Haste", "Avoidance", "Total"
+				loop 12 times:
+					if {trait::%{_id}%::%loop-number%} is set:
+						set {_ce::%loop-number%} to uncolored {trait::%{_id}%::%loop-number%}
+					else:
+						set {_ce::%loop-number%} to "Not set"
+				set {_dr} to uncolored line 20 of lore of player's tool
+				set {_cardname} to uncolored name of player's tool
+				set {_color} to raw (name of player's tool)
+				loop 5 times:
+					if string tag "Talents;Row %loop-number%" of nbt compound of player's tool is set:
+						add string tag "Talents;Row %loop-number%" of nbt compound of player's tool to {_talents::*}
+				#replace all """", "{" and "}" in {_talents} with ""
+				#replace all ":" in {_talents} with " ("
+				#set {_talents::*} to {_talents} split at ","
+				#set {_numBer} to 1
+				#loop {_talents::*}:
+				#	set {_talents::%{_num}%} to "%loop-value%)"
+				#	add 1 to {_numBer}
+				replace all (uncolored name of player's tool) in {_color} with ""
+				replace all "<" and ">" in {_color} with ""
+				replace all "Dropped: " and "Wydropiono: " in {_dr} with ""
+				if {_id} contains "&8":
+					set {_id} to uncolored {_id}
+					replace all "Id: " in {_id} with ""
 
 
-			set yaml value "Card.Card" in "karty-%player%" to {_cardname}
-			set yaml value "Card.Owner" in "karty-%player%" to player
-			set yaml value "Card.Dropped" in "karty-%player%" to {_dr}
-			set yaml value "Card.Colour" in "karty-%player%" to {_color}
-			set yaml value "Card.Level" in "karty-%player%" to {_cardLevel}
-			#set yaml value "Card.Exp" in "karty-%player%" to round({expkarta::%{_id}%}, 2)
-			set yaml value "Card.Element" in "karty-%player%" to {_elementText}
-			#set yaml value "Card.Ascension" in "karty-%player%" to {wyniesienie::%{_id}%}
-			if yaml value "Card.Constellation" in "karty-%player%" is not set:
-				set yaml value "Card.Constellation" in "karty-%player%" to 0
-			if yaml value "Card.Gear Score" in "karty-%player%" is not set:
-				set yaml value "Card.Gear Score" in "karty-%player%" to 0
-			if yaml value "Card.Variant" in "karty-%player%" is not set:
-				set yaml value "Card.Variant" in "karty-%player%" to "Classic"
-			set {_agIndex} to 1
-			loop {_ag::*}:
-				set yaml value "Card.Stats.%loop-value%" in "karty-%player%" to {_agStats::%{_agIndex}%}
-				add 1 to {_agIndex}
-			set yaml list "Card.Talents" in "karty-%player%" to {_talents::*}
-			set yaml list "Card.Gems" in "karty-%player%" to {_gemy::*}
-			set yaml list "Card.Traits" in "karty-%player%" to {_ce::*}
+				set yaml value "Card.Card" in "karty-%player%" to {_cardname}
+				set yaml value "Card.Owner" in "karty-%player%" to player
+				set yaml value "Card.Dropped" in "karty-%player%" to {_dr}
+				set yaml value "Card.Colour" in "karty-%player%" to {_color}
+				set yaml value "Card.Level" in "karty-%player%" to {_cardLevel}
+				#set yaml value "Card.Exp" in "karty-%player%" to round({expkarta::%{_id}%}, 2)
+				set yaml value "Card.Element" in "karty-%player%" to {_elementText}
+				#set yaml value "Card.Ascension" in "karty-%player%" to {wyniesienie::%{_id}%}
+				if yaml value "Card.Constellation" in "karty-%player%" is not set:
+					set yaml value "Card.Constellation" in "karty-%player%" to 0
+				if yaml value "Card.Gear Score" in "karty-%player%" is not set:
+					set yaml value "Card.Gear Score" in "karty-%player%" to 0
+				if yaml value "Card.Variant" in "karty-%player%" is not set:
+					set yaml value "Card.Variant" in "karty-%player%" to "Classic"
+				set {_agIndex} to 1
+				loop {_ag::*}:
+					set yaml value "Card.Stats.%loop-value%" in "karty-%player%" to {_agStats::%{_agIndex}%}
+					add 1 to {_agIndex}
+				set yaml list "Card.Talents" in "karty-%player%" to {_talents::*}
+				set yaml list "Card.Gems" in "karty-%player%" to {_gemy::*}
+				set yaml list "Card.Traits" in "karty-%player%" to {_ce::*}
 
-			if yaml list "Card.Gear.Artifacts" in "karty-%player%" is set:
-				set {_gear::*} to yaml list "Card.Gear.Artifacts" in "karty-%player%"
-				set yaml list "Card.Gear.Artifacts" in "karty-%player%" to {_gear::*}
-			if {_gear::*} is set:
-				loop {_gear::*}:
-					set yaml value "Card.Gear.Artifacts.%loop-value%.Item Level" in "karty-%player%" to 50
-					set yaml list "Card.Gear.Artifacts.%loop-value%.Stats" in "karty-%player%" to "25 Damage", "7 Utility", "25 Haste" and "31 Critical Hit"
-					set yaml value "Card.Gear.Artifacts.%loop-value%.Upgrade Level" in "karty-%player%" to 25
-			save yaml "karty-%player%"
-			unload yaml "karty-%player%" #remove if problems in the future
-			CardBackup(player, uncolored name of player's tool, {_id})
+				if yaml list "Card.Gear.Artifacts" in "karty-%player%" is set:
+					set {_gear::*} to yaml list "Card.Gear.Artifacts" in "karty-%player%"
+					set yaml list "Card.Gear.Artifacts" in "karty-%player%" to {_gear::*}
+				if {_gear::*} is set:
+					loop {_gear::*}:
+						set yaml value "Card.Gear.Artifacts.%loop-value%.Item Level" in "karty-%player%" to 50
+						set yaml list "Card.Gear.Artifacts.%loop-value%.Stats" in "karty-%player%" to "25 Damage", "7 Utility", "25 Haste" and "31 Critical Hit"
+						set yaml value "Card.Gear.Artifacts.%loop-value%.Upgrade Level" in "karty-%player%" to 25
+				save yaml "karty-%player%"
+				unload yaml "karty-%player%" #remove if problems in the future
+				CardBackup(player, uncolored name of player's tool, {_id})
 	
 function CardBackup(p: player, name: string, id: string):
 	load yaml "plugins/Skript/backups/cards/%{_name}%/%{_id}%.yml" as "cardbackup-%{_id}%"
