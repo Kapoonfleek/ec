@@ -237,33 +237,28 @@ function entityTitle(e: entity, title: string, offset: number = 0):
 	set uuid tag "ECEntityTitle" of custom nbt of {_e} to last spawned armor stand
 	set double tag "ECEntityTitleHeight" of custom nbt of {_e} to -0.4 + {_offset}
 
-function GiveTalentPoint(name: text, id: string):
-	load yaml "plugins/Skript/playerdata/karty/%{_name}%/%{_id}%.yml" as "%{_id}%"
-	set {_availableTalentPoints} to yaml value "Card.Available Talent Points" in "%{_id}%"
+function GiveTalentPoint(p: player, name: text, id: string):
+	set {_availableTalentPoints} to yaml value "Card.Available Talent Points" in "card-%{_id}%-%{_p}%"
 	if {_availableTalentPoints} is set:
 		set {_availableTalentPoints} to {_availableTalentPoints} + 1
 	else:
 		set {_availableTalentPoints} to 1
-	set yaml value "Card.Available Talent Points" in "%{_id}%" to {_availableTalentPoints}
-	save yaml "%{_id}%"
+	set yaml value "Card.Available Talent Points" in "card-%{_id}%-%{_p}%" to {_availableTalentPoints}
+	save yaml "card-%{_id}%-%{_p}%"
 	
 function AssignTalentPoint(p: player, id: string) :: string:
-	if CheckEnoughTalentPoints({_id}) is true:
-		set {_availableTalentPoints} to yaml value "Card.Available Talent Points" in "%{_id}%"
+	if CheckEnoughTalentPoints({_p}, {_id}) is true:
+		set {_availableTalentPoints} to yaml value "Card.Available Talent Points" in "card-%{_id}%-%{_p}%"
 		set {_availableTalentPoints} to {_availableTalentPoints} - 1
-		set yaml value "Card.Available Talent Points" in "%{_id}%" to {_availableTalentPoints}
+		set yaml value "Card.Available Talent Points" in "card-%{_id}%-%{_p}%" to {_availableTalentPoints}
 		set {_returnMessage} to ""
 	else:
-		if {language::%{_p}%} = "English":
-			set {_returnMessage} to "&cInsufficient available Talent Points. Level up your Card to unlock new Talents."
-		else:
-			set {_returnMessage} to "&cNiewystarczająco dostępnych Punktów Talentu. Awansuj swoją kartę na wyższy poziom by odblokować nowe talenty."
-	save yaml "%{_id}%"
+		set {_returnMessage} to "&cInsufficient available Talent Points. Level up your Card to unlock new Talents."
+	save yaml "card-%{_id}%-%{_p}%"
 	return {_returnMessage}
 
-function CheckEnoughTalentPoints(id: string) :: boolean:
-	load yaml "plugins/Skript/playerdata/karty/%{_id}%.yml" as "%{_id}%"
-	set {_availableTalentPoints} to yaml value "Card.Available Talent Points" in "%{_id}%"
+function CheckEnoughTalentPoints(p: player, id: string) :: boolean:
+	set {_availableTalentPoints} to yaml value "Card.Available Talent Points" in "card-%{_id}%-%{_p}%"
 	if {_availableTalentPoints} is set:
 		if {_availableTalentPoints} > 0:
 			set {_bool} to true
@@ -271,10 +266,9 @@ function CheckEnoughTalentPoints(id: string) :: boolean:
 			set {_bool} to false
 	return {_bool}
 
-function ReturnAmountTalentPoints(id: string) :: number:
-	load yaml "plugins/Skript/playerdata/karty/%{_id}%.yml" as "%{_id}%"
-	set {_availableTalentPoints} to yaml value "Card.Available Talent Points" in "%{_id}%"
-	if CheckEnoughTalentPoints({_id}) is not true:
+function ReturnAmountTalentPoints(p: player, id: string) :: number:
+	set {_availableTalentPoints} to yaml value "Card.Available Talent Points" in "card-%{_id}%-%{_p}%"
+	if CheckEnoughTalentPoints({_p}, {_id}) is not true:
 		set {_availableTalentPoints} to 0
 	return {_availableTalentPoints}
 
@@ -370,6 +364,7 @@ function hasEnoughItem(p: player, i: item, i2: item, a: integer) :: boolean:
 		return true
 	else:
 		return false
+
 function cardLevelup(p: player, xp: number, e: entity):
 	set {_modifier} to 1
 	set {_exp} to {_xp}
@@ -378,13 +373,14 @@ function cardLevelup(p: player, xp: number, e: entity):
 	if {doubleXPFriday} is true:
 		set {_modifier} to {_modifier}*2
 	set {_exp} to {_exp}*{_modifier}
-	set {_id} to uncolored line 19 of lore of {karta::%{_p}%}
-	replace all "Id: " in {_id} with ""
+
+	set {_id} to string tag "Id" of custom nbt of {karta::%{_p}%}
 	set {_card} to {karta::%{_p}%}
-	load yaml "plugins/Skript/playerdata/karty/%uncolored name of {_card}%/%{_id}%.yml" as "cardLvlup-%{_p}%"
-	set {_cardLevel} to yaml value "Card.Level" in "cardLvlup-%{_p}%"
-	set {_cardXp} to yaml value "Card.Exp" in "cardLvlup-%{_p}%"
-	set {_cardXpAboveLimit} to yaml value "Card.XP Above Limit" in "cardLvlup-%{_p}%"
+
+	set {_cardLevel} to yaml value "Card.Level" in "card-%{_id}%-%{_p}%"
+	set {_cardXp} to yaml value "Card.Exp" in "card-%{_id}%-%{_p}%"
+	set {_cardXpAboveLimit} to yaml value "Card.XP Above Limit" in "card-%{_id}%-%{_p}%"
+
 	set {_maxLevel} to 50
 	if {_cardLevel} = 0:
 		set {_cardLevel} to 1
@@ -445,31 +441,23 @@ function cardLevelup(p: player, xp: number, e: entity):
 			send {_talentMessage} to {_p}
 			set {_idRaw} to uncolored {_id}
 			replace all "Id: " in {_idRaw} with ""
-	set yaml value "Card.Level" in "cardLvlup-%{_p}%" to {_cardLevel}
-	set yaml value "Card.Exp" in "cardLvlup-%{_p}%" to {_cardXP}
-	set yaml value "Card.XP Above Limit" in "cardLvlup-%{_p}%" to {_cardXpAboveLimit}
-	save yaml "cardLvlup-%{_p}%"
-	unload yaml "cardLvlup-%{_p}%"
-	if {language::%{_p}%} = "English":
-		set {_from} to "from"
-	else:
-		set {_from} to "z"
+
+	set yaml value "Card.Level" in "card-%{_id}%-%{_p}%" to {_cardLevel}
+	set yaml value "Card.Exp" in "card-%{_id}%-%{_p}%" to {_cardXP}
+	set yaml value "Card.XP Above Limit" in "card-%{_id}%-%{_p}%" to {_cardXpAboveLimit}
+	save yaml "card-%{_id}%-%{_p}%"
+
 	if {_modifier} > 1:
-		send "&e+%{_exp}% XP %{_from}% %name of {_e}% &e(&fx%{_modifier}%&e)" to {_p}
+		send "&e+%{_exp}% XP from %name of {_e}% &e(&fx%{_modifier}%&e)" to {_p}
 	else:
-		send "&e+%{_exp}% XP %{_from}% %name of {_e}%" to {_p}
+		send "&e+%{_exp}% XP from %name of {_e}%" to {_p}
+
 	loop all items in the inventory of {_p}:
-		if line 19 of lore of loop-item = line 19 of lore of {karta::%{_p}%}:
-			if {language::%{_p}%} = "English":
-				if {_cardLevel} = int tag "MaxLevel" of custom nbt of {_card}:
-					set line 2 of lore of loop-item to "&7Level: %{kartacolor::%{_p}%}%%{_cardLevel}% &7| &7Exp: %{kartacolor::%{_p}%}%MAX"
-				else:
-					set line 2 of lore of loop-item to "&7Level: %{kartacolor::%{_p}%}%%{_cardLevel}% &7| &7Exp: %{kartacolor::%{_p}%}%%{_cardXp}%"
+		if string tag "Id" of custom nbt of loop-item = string tag "Id" of custom nbt of {karta::%{_p}%}:
+			if {_cardLevel} = int tag "MaxLevel" of custom nbt of {_card}:
+				set line 2 of lore of loop-item to "&7Level: %{kartacolor::%{_p}%}%%{_cardLevel}% &7| &7Exp: %{kartacolor::%{_p}%}%MAX"
 			else:
-				if {_cardLevel} = int tag "MaxLevel" of custom nbt of {_card}:
-					set line 2 of lore of loop-item to "&7Poziom: %{kartacolor::%{_p}%}%%{_cardLevel}% &7| &7Exp: %{kartacolor::%{_p}%}%MAX"
-				else:
-					set line 2 of lore of loop-item to "&7Poziom: %{kartacolor::%{_p}%}%%{_cardLevel}% &7| &7Exp: %{kartacolor::%{_p}%}%%{_cardXp}%"
+				set line 2 of lore of loop-item to "&7Level: %{kartacolor::%{_p}%}%%{_cardLevel}% &7| &7Exp: %{kartacolor::%{_p}%}%%{_cardXp}%"
 			set int tag "Level" of custom nbt of loop-item to {_cardLevel}
 			set {karta::%{_p}%} to loop-item
 			stop loop

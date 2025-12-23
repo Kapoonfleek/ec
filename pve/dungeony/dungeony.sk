@@ -167,7 +167,8 @@ on inventory click:
                         set {affixes%{_instance}%::*} to {_affixes::*}
                         broadcast {affixes%{_instance}%::*}
                         loop {_partymembers::*}:
-                            if metadata value "dungeon" of loop-value is not set:
+                            if metadata value "InsideInstance" of loop-value is not set:
+                                set metadata value "InsideInstance" of loop-value to true
                                 set metadata value "dungeon" of loop-value to true
                                 set metadata value "spawnpointDungeon" of loop-value to {_loc}
                                 set metadata value "KeystoneName" of loop-value to {_keystonename}
@@ -197,7 +198,7 @@ on inventory click:
                                 else:
                                     DungeonCountdown(loop-value, {_loc}, {_instance})
                             else:
-                                send "&c&o%loop-value% is already in a Dungeon. The instance will start without the player." to player
+                                send "&c&o%loop-value% is already in an instance. The Dungeon will start without the player." to player
                         SOSSpawnInstance({_keystoneId}, (size of {dungeonInstance%{_instance}%::*}), {_instance})
                         broadcast "Tutaj"
                         clear metadata value "KeystoneHolderLocation" of player
@@ -245,7 +246,7 @@ function DungeonCountdown(p: player, loc: location, instance: number, keyowner: 
             remove 1 from {_am}
             play sound "block.note_block.pling" with volume 3 and pitch 0.2 at {_p}
         else:
-            clear {stun::%{_p}%}
+            clear metadata value "Stun" of {_p}
             loop 2 times:
                 broadcast "Spawn" #bring this back when done testing
                 #execute {_p} command "spawn"
@@ -388,23 +389,22 @@ function LogDungeonStart(p: player, partymembers: players, keystoneId: text, key
         set yaml value "Dungeon.Players.%loop-value%.Card" in "keystone-%{_keystoneId}%" to uncolored {kartaname::%loop-value%}
         set yaml value "Dungeon.Players.%loop-value%.Card.Name" in "keystone-%{_keystoneId}%" to uncolored name of {karta::%loop-value%}
         set yaml value "Dungeon.Players.%loop-value%.Card.Card Icon" in "keystone-%{_keystoneId}%" to {ikonkakarta::%loop-value%}
-        set {_id} to uncolored line 19 of lore of {karta::%loop-value%}
-        replace all "Id: " in {_id} with ""
-        load yaml "plugins/Skript/playerdata/karty/%uncolored name of {karta::%loop-value%}%/%{_id}%.yml" as "kartyDg-%loop-value%"
-        set {_colour} to yaml value "Card.Colour" in "kartyDg-%loop-value%"
+        set {_id} to string tag "Id" of custom nbt of {karta::%loop-value%}
+        set {_colour} to yaml value "Card.Colour" in "card-%{_id}%-%loop-value%"
         set yaml value "Dungeon.Players.%loop-value%.Card.Card Colour" in "keystone-%{_keystoneId}%" to {_colour}
         set yaml value "Dungeon.Players.%loop-value%.Card.Card ID" in "keystone-%{_keystoneId}%" to {_id}
-        set {_cardLevel} to yaml value "Card.Level" in "kartyDg-%loop-value%"
-        set {_constellation} to yaml value "Card.Constellation" in "kartyDg-%loop-value%"
-        set {_gearscore} to yaml value "Card.Gear Score" in "kartyDg-%loop-value%"
+        set {_cardLevel} to yaml value "Card.Level" in "card-%{_id}%-%loop-value%"
+        set {_constellation} to yaml value "Card.Constellation" in "card-%{_id}%-%loop-value%"
+        set {_gearscore} to yaml value "Card.Gear Score" in "card-%{_id}%-%loop-value%"
         if {_constellation} is not set:
             set {_constellation} to 0
         if {_gearscore} is not set:
             set {_gearscore} to 0
-        unload yaml "kartyDg-%loop-value%"
+
         set yaml value "Dungeon.Players.%loop-value%.Card.Level" in "keystone-%{_keystoneId}%" to {_cardLevel}
         set yaml value "Dungeon.Players.%loop-value%.Card.Constellation" in "keystone-%{_keystoneId}%" to {_constellation}
         set yaml value "Dungeon.Players.%loop-value%.Card.Gear Score" in "keystone-%{_keystoneId}%" to {_gearscore}
+        
         loop 5 times:
             set {_talent} to string tag "Talents;Row %loop-number%" of custom nbt of {karta::%loop-value-1%}
             if string tag "Talents;Row %loop-number%" of custom nbt of {karta::%loop-value-1%} is set:
@@ -630,6 +630,7 @@ function KeystoneCompleted(p: player, instance: number):
                 GiveKeystone(loop-value, {_newKeystone}, {_newKeystoneLevel}, {_keystoneData})
 
             clear metadata value "dungeon" of loop-value
+            clear metadata value "InsideInstance" of loop-value
         
             remove loop-value from {dungeonInstance%{_instance}%::*}
             remove poison from potion effects of loop-value
@@ -942,6 +943,7 @@ function KeystoneAffixesReduce(p: player, keystoneItem: item) :: item:
 function DungeonLeave(p: player):
     if metadata value "dungeon" of {_p} is set:
         clear metadata value "dungeon" of {_p}
+        clear metadata value "InsideInstance" of {_p}
         if {language::%{_p}%} = "English":
             send "&aYou left the dungeon." to {_p}
         else:

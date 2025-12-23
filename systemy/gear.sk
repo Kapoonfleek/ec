@@ -691,19 +691,17 @@ on inventory click:
                                 else:
                                     set int tag "Artifact Sets;%{_artifactSet}%" of custom nbt of player's tool to {_artifactSetCount}
 
-                            if line 19 of lore of {karta::%player%} contains "Id: ":
-                                set {_id} to uncolored line 19 of lore of {karta::%player%}
-                                replace all "Id: " in {_id} with ""
+                            if string tag "Id" of custom nbt of {karta::%player%} is set:
+                                set {_id} to string tag "Id" of custom nbt of {karta::%player%}
                                 if line 2 of lore of {_gearItem} contains "Binds when equipped":
                                     set line 2 of lore of {_gearItem} to "&fCardbound: %{_id}%"
                                     set string tag "Cardbound" of custom nbt of {_gearItem} to {_id}
-                                set {_card} to {kartaname::%player%}
-                                load yaml "plugins/Skript/playerdata/karty/%{_card}%/%{_id}%.yml" as "cardGearUnequip-%player%"		
+                                set {_card} to {kartaname::%player%}	
                                 if {_gearSlot} = "Ring":
                                     set {_gearSlot} to "%{_gearSlot}% %metadata value "RingSlot" of player%"
                                 giveItem(player, event-slot)
-                                loop yaml nodes with keys "Card.Gear.%{_gearSlot}%.Stats" from "cardGearUnequip-%player%":
-                                    set {_loopStatAmount} to yaml value "Card.Gear.%{_gearSlot}%.Stats.%loop-value%" in "cardGearUnequip-%player%"
+                                loop yaml nodes with keys "Card.Gear.%{_gearSlot}%.Stats" from "card-%{_id}%-%player%":
+                                    set {_loopStatAmount} to yaml value "Card.Gear.%{_gearSlot}%.Stats.%loop-value%" in "card-%{_id}%-%player%"
                                     set {_statNbt} to int tag "Stats;%loop-value%" of custom nbt of player's tool
                                     set {_statNbt} to {_statNbt} - {_loopStatAmount}
                                     set int tag "Stats;%loop-value%" of custom nbt of player's tool to {_statNbt}
@@ -713,8 +711,8 @@ on inventory click:
                                     set {_statNbtTotalGear} to int tag "Stats;GearTotal" of custom nbt of player's tool
                                     set {_statNbtTotalGear} to {_statNbtTotalGear} - {_loopStatAmount}
                                     set int tag "Stats;GearTotal" of custom nbt of player's tool to {_statNbtTotalGear}
-                                loop yaml nodes with keys "Card.Gear.%{_gearSlot}%.Socket.Stats" from "cardGearUnequip-%player%":
-                                    set {_loopStatAmount} to yaml value "Card.Gear.%{_gearSlot}%.Socket.Stats.%loop-value%" in "cardGearUnequip-%player%"
+                                loop yaml nodes with keys "Card.Gear.%{_gearSlot}%.Socket.Stats" from "card-%{_id}%-%player%":
+                                    set {_loopStatAmount} to yaml value "Card.Gear.%{_gearSlot}%.Socket.Stats.%loop-value%" in "card-%{_id}%-%player%"
                                     set {_statNbt} to int tag "Stats;%loop-value%" of custom nbt of player's tool
                                     set {_statNbt} to {_statNbt} - {_loopStatAmount}
                                     set int tag "Stats;%loop-value%" of custom nbt of player's tool to {_statNbt}
@@ -724,8 +722,8 @@ on inventory click:
                                     set {_statNbtTotalGear} to int tag "Stats;GearTotal" of custom nbt of player's tool
                                     set {_statNbtTotalGear} to {_statNbtTotalGear} - {_loopStatAmount}
                                     set int tag "Stats;GearTotal" of custom nbt of player's tool to {_statNbtTotalGear}
-                                loop yaml nodes with keys "Card.Gear.%{_gearSlot}%.Socket.Socket Bonus" from "cardGearUnequip-%player%":
-                                    set {_loopStatAmount} to yaml value "Card.Gear.%{_gearSlot}%.Socket.Socket Bonus.%loop-value%" in "cardGearUnequip-%player%"
+                                loop yaml nodes with keys "Card.Gear.%{_gearSlot}%.Socket.Socket Bonus" from "card-%{_id}%-%player%":
+                                    set {_loopStatAmount} to yaml value "Card.Gear.%{_gearSlot}%.Socket.Socket Bonus.%loop-value%" in "card-%{_id}%-%player%"
                                     set {_statNbt} to int tag "Stats;%loop-value%" of custom nbt of player's tool
                                     set {_statNbt} to {_statNbt} - {_loopStatAmount}
                                     set int tag "Stats;%loop-value%" of custom nbt of player's tool to {_statNbt}
@@ -735,10 +733,9 @@ on inventory click:
                                     set {_statNbtTotalGear} to int tag "Stats;GearTotal" of custom nbt of player's tool
                                     set {_statNbtTotalGear} to {_statNbtTotalGear} - {_loopStatAmount}
                                     set int tag "Stats;GearTotal" of custom nbt of player's tool to {_statNbtTotalGear}
-                                clear yaml value "Card.Gear.%{_gearSlot}%" in "cardGearUnequip-%player%"
-                                clear yaml value "Gear.%{_gearSlot}%" in "cardGearUnequip-%player%"
-                save yaml "cardGearUnequip-%player%"
-                unload yaml "cardGearUnequip-%player%"
+                                clear yaml value "Card.Gear.%{_gearSlot}%" in "card-%{_id}%-%player%"
+                                clear yaml value "Gear.%{_gearSlot}%" in "card-%{_id}%-%player%"
+                save yaml "card-%{_id}%-%player%"
                 UpdateCard(player)
                 CardStatUpdate(player)
                 set max health of player to 25 + ({health::%player%}/5)
@@ -753,9 +750,8 @@ on inventory click:
 
                 set {_id} to string tag "Id" of {karta::%player%}
                 set {_card} to {kartaname::%player%}
-                load yaml "plugins/Skript/playerdata/karty/%{_card}%/%{_id}%.yml" as "cardGear-%player%"
 
-                set {_cardLevel} to yaml value "Card.Level" in "cardGear-%player%"
+                set {_cardLevel} to yaml value "Card.Level" in "card-%{_id}%-%player%"
                 set metadata value "gearEquip" of player to chest inventory with 6 rows named "Equip Gear"
                 play sound "block.chest.close" with volume 2 and pitch 1.1 to player
                 loop all items in the player's inventory:
@@ -800,7 +796,6 @@ on inventory click:
                 else:
                     play sound "entity.villager.no" with volume 5 and pitch 0.62 to player
                     send "&c&oThere are no Gear items in your inventory." to player
-            unload yaml "cardGear-%player%"
     else if player's current inventory = (metadata value "gearEquip" of player):
         if event-slot is between 0 and 26:
             cancel event
@@ -842,15 +837,12 @@ on inventory click:
                 set {_gearSlot} to string tag "GearSlot" of custom nbt of {_gearItem}
             else if boolean tag "Artifact" of custom nbt of {_gearItem} is set:
                 set {_gearSlot} to string tag "ArtifactType" of custom nbt of {_gearItem}
-            if line 19 of lore of {karta::%player%} contains "Id: ":
-                set {_id} to uncolored line 19 of lore of {karta::%player%}
-                replace all "Id: " in {_id} with ""
+            if string tag "Id" of custom nbt of {karta::%player%} is set:
+                set {_id} to string tag "Id" of custom nbt of {karta::%player%}
                 if line 2 of lore of {_gearItem} contains "Binds when equipped":
                     set line 2 of lore of {_gearItem} to "&fCardbound: %{_id}%"
                     set string tag "Cardbound" of custom nbt of {_gearItem} to {_id}
                 set {_card} to {kartaname::%player%}
-                if yaml "cardGear-%player%" is not loaded:
-                    load yaml "plugins/Skript/playerdata/karty/%{_card}%/%{_id}%.yml" as "cardGear-%player%"
                 if {_gearSlot} = "Helmet":
                     set {_checkSlot} to slot 10 of metadata tag "gearcard" of player		
                 else if {_gearSlot} = "Ring":
@@ -912,8 +904,8 @@ on inventory click:
                             clear int tag "Artifact Sets;%{_artifactSet}%" of custom nbt of player's tool
                         else:
                             set int tag "Artifact Sets;%{_artifactSet}%" of custom nbt of player's tool to {_artifactSetCount}
-                loop yaml nodes with keys "Card.Gear.%{_gearSlot}%.Stats" from "cardGear-%player%":
-                    set {_loopStatAmount} to yaml value "Card.Gear.%{_gearSlot}%.Stats.%loop-value%" in "cardGear-%player%"
+                loop yaml nodes with keys "Card.Gear.%{_gearSlot}%.Stats" from "card-%{_id}%-%player%":
+                    set {_loopStatAmount} to yaml value "Card.Gear.%{_gearSlot}%.Stats.%loop-value%" in "card-%{_id}%-%player%"
                     set {_statNbt} to int tag "Stats;%loop-value%" of custom nbt of player's tool
                     if {_statNbt} - {_loopStatAmount} > 0:
                         set {_statNbt} to {_statNbt} - {_loopStatAmount}
@@ -932,8 +924,8 @@ on inventory click:
                         set int tag "Stats;GearTotal" of custom nbt of player's tool to {_statNbtTotalGear}
                     else:
                         set int tag "Stats;GearTotal" of custom nbt of player's tool to 0
-                loop yaml nodes with keys "Card.Gear.%{_gearSlot}%.Socket.Stats" from "cardGear-%player%":
-                    set {_loopStatAmount} to yaml value "Card.Gear.%{_gearSlot}%.Socket.Stats.%loop-value%" in "cardGear-%player%"
+                loop yaml nodes with keys "Card.Gear.%{_gearSlot}%.Socket.Stats" from "card-%{_id}%-%player%":
+                    set {_loopStatAmount} to yaml value "Card.Gear.%{_gearSlot}%.Socket.Stats.%loop-value%" in "card-%{_id}%-%player%"
                     set {_statNbt} to int tag "Stats;%loop-value%" of custom nbt of player's tool
                     if {_statNbt} - {_loopStatAmount} > 0:
                         set {_statNbt} to {_statNbt} - {_loopStatAmount}
@@ -952,8 +944,8 @@ on inventory click:
                         set int tag "Stats;GearTotal" of custom nbt of player's tool to {_statNbtTotalGear}
                     else:
                         set int tag "Stats;GearTotal" of custom nbt of player's tool to 0
-                loop yaml nodes with keys "Card.Gear.%{_gearSlot}%.Socket.Socket Bonus" from "cardGear-%player%":
-                    set {_loopStatAmount} to yaml value "Card.Gear.%{_gearSlot}%.Socket.Socket Bonus.%loop-value%" in "cardGear-%player%"
+                loop yaml nodes with keys "Card.Gear.%{_gearSlot}%.Socket.Socket Bonus" from "card-%{_id}%-%player%":
+                    set {_loopStatAmount} to yaml value "Card.Gear.%{_gearSlot}%.Socket.Socket Bonus.%loop-value%" in "card-%{_id}%-%player%"
                     set {_statNbt} to int tag "Stats;%loop-value%" of custom nbt of player's tool
                     if {_statNbt} - {_loopStatAmount} > 0:
                         set {_statNbt} to {_statNbt} - {_loopStatAmount}
@@ -973,10 +965,10 @@ on inventory click:
                     else:
                         set int tag "Stats;GearTotal" of custom nbt of player's tool to 0
 
-                if yaml value "Card.Gear.%{_gearSlot}%" in "cardGear-%player%" is set:
-                    clear yaml value "Card.Gear.%{_gearSlot}%" in "cardGear-%player%"
-                if yaml value "Gear.%{_gearSlot}%" in "cardGear-%player%" is set:
-                    clear yaml value "Gear.%{_gearSlot}%" in "cardGear-%player%"
+                if yaml value "Card.Gear.%{_gearSlot}%" in "card-%{_id}%-%player%" is set:
+                    clear yaml value "Card.Gear.%{_gearSlot}%" in "card-%{_id}%-%player%"
+                if yaml value "Gear.%{_gearSlot}%" in "card-%{_id}%-%player%" is set:
+                    clear yaml value "Gear.%{_gearSlot}%" in "card-%{_id}%-%player%"
                     
                 set {_statsGear} to compound tag "Stats" of custom nbt of {_gearItem}
                 set {_statsType::*} to nbt tags of {_statsGear}
@@ -984,11 +976,11 @@ on inventory click:
                     set {_value} to int tag "Stats;%loop-value%" of custom nbt of {_gearItem}
                     add {_value} to {_statsValue::*}
 
-                set yaml value "Card.Gear.%{_gearSlot}%.Name" in "cardGear-%player%" to uncolored name of {_gearItem}
-                set yaml value "Card.Gear.%{_gearSlot}%.Item Level" in "cardGear-%player%" to int tag "ItemLevel" of custom nbt of {_gearItem}
+                set yaml value "Card.Gear.%{_gearSlot}%.Name" in "card-%{_id}%-%player%" to uncolored name of {_gearItem}
+                set yaml value "Card.Gear.%{_gearSlot}%.Item Level" in "card-%{_id}%-%player%" to int tag "ItemLevel" of custom nbt of {_gearItem}
 
                 loop {_statsType::*}:
-                    set yaml value "Card.Gear.%{_gearSlot}%.Stats.%loop-value%" in "cardGear-%player%" to {_statsValue::%loop-index%}
+                    set yaml value "Card.Gear.%{_gearSlot}%.Stats.%loop-value%" in "card-%{_id}%-%player%" to {_statsValue::%loop-index%}
                     set {_statNbt} to int tag "Stats;%loop-value%" of custom nbt of player's tool
                     set {_statNbt} to {_statNbt} + {_statsValue::%loop-index%}
                     set int tag "Stats;%loop-value%" of custom nbt of player's tool to {_statNbt}
@@ -1009,10 +1001,10 @@ on inventory click:
                             set {_value} to int tag "SocketStats;%loop-value%" of custom nbt of {_gearItem}
                             add {_value} to {_statsValue::*}
 
-                        set yaml value "Card.Gear.%{_gearSlot}%.Socket.Gem" in "cardGear-%player%" to {_socketedGem}
+                        set yaml value "Card.Gear.%{_gearSlot}%.Socket.Gem" in "card-%{_id}%-%player%" to {_socketedGem}
 
                         loop {_statsType::*}:
-                            set yaml value "Card.Gear.%{_gearSlot}%.Socket.Stats.%loop-value%" in "cardGear-%player%" to {_statsValue::%loop-index%}
+                            set yaml value "Card.Gear.%{_gearSlot}%.Socket.Stats.%loop-value%" in "card-%{_id}%-%player%" to {_statsValue::%loop-index%}
                             set {_statNbt} to int tag "Stats;%loop-value%" of custom nbt of player's tool
                             set {_statNbt} to {_statNbt} + {_statsValue::%loop-index%}
                             set int tag "Stats;%loop-value%" of custom nbt of player's tool to {_statNbt}
@@ -1023,7 +1015,7 @@ on inventory click:
                             set {_statNbtTotalGear} to {_statNbtTotalGear} + {_statsValue::%loop-index%}
                             set int tag "Stats;GearTotal" of custom nbt of player's tool to {_statNbtTotalGear}
                         set {_quality} to string tag "GemQuality" of custom nbt of {_gearItem}
-                        set yaml value "Card.Gear.%{_gearSlot}%.Socket.Gem Quality" in "cardGear-%player%" to {_quality}
+                        set yaml value "Card.Gear.%{_gearSlot}%.Socket.Gem Quality" in "card-%{_id}%-%player%" to {_quality}
 
                         if boolean tag "SocketBonusActive" of custom nbt of {_gearItem} is set:
                             set {_socketedGemBonusStats::*} to string tag "SocketBonus" of custom nbt of {_gearItem}
@@ -1034,7 +1026,7 @@ on inventory click:
                                     set {_statTypeBonus} to join {_socketBonusStatValue::2} and {_socketBonusStatValue::3} by " "
                                 else:
                                     set {_statTypeBonus} to {_socketBonusStatValue::2}
-                                set yaml value "Card.Gear.%{_gearSlot}%.Socket.Socket Bonus.%{_statTypeBonus}%" in "cardGear-%player%" to {_socketBonusValue}
+                                set yaml value "Card.Gear.%{_gearSlot}%.Socket.Socket Bonus.%{_statTypeBonus}%" in "card-%{_id}%-%player%" to {_socketBonusValue}
                                 set {_statNbt} to int tag "Stats;%{_statTypeBonus}%" of custom nbt of player's tool
                                 set {_statNbt} to {_statNbt} + {_socketBonusValue}
                                 set int tag "Stats;%{_statTypeBonus}%" of custom nbt of player's tool to {_statNbt}
@@ -1045,15 +1037,14 @@ on inventory click:
                                 set {_statNbtTotalGear} to {_statNbtTotalGear} + {_statsValue::%loop-index%}
                                 set int tag "Stats;GearTotal" of custom nbt of player's tool to {_statNbtTotalGear}
                     else:
-                        set yaml value "Card.Gear.%{_gearSlot}%.Socket.Gem" in "cardGear-%player%" to "Empty"
+                        set yaml value "Card.Gear.%{_gearSlot}%.Socket.Gem" in "card-%{_id}%-%player%" to "Empty"
 
                 if string list tag "Enchants" of custom nbt of {_gearItem} is set:
                     set {_enchants::*} to string list tag "Enchants" of custom nbt of {_gearItem}
-                    set yaml list "Card.Gear.%{_gearSlot}%.Enchants" in "cardGear-%player%" to {_enchants::*}
-                set yaml value "Gear.%{_gearSlot}%" in "cardGear-%player%" to {_gearItem}
+                    set yaml list "Card.Gear.%{_gearSlot}%.Enchants" in "card-%{_id}%-%player%" to {_enchants::*}
+                set yaml value "Gear.%{_gearSlot}%" in "card-%{_id}%-%player%" to {_gearItem}
 
-            save yaml "cardGear-%player%"
-            unload yaml "cardGear-%player%"
+            save yaml "card-%{_id}%-%player%"
             UpdateCard(player)
             CardStatUpdate(player)
             set max health of player to 25 + ({health::%player%}/5)
@@ -1067,8 +1058,8 @@ on inventory click:
             #Shift click = unequip
 
 function Marksmanship4Set(p: player) :: boolean:
-    if int tag "Marksmanship Set" of custom nbt of {karta::%{_p}%} is set:
-        set {_setCount} to int tag "Marksmanship Set" of custom nbt of {karta::%{_p}%}
+    if int tag "Marksmanship" of custom nbt of {karta::%{_p}%} is set:
+        set {_setCount} to int tag "Marksmanship" of custom nbt of {karta::%{_p}%}
         if {_setCount} >= 4:
             set {_bool} to true
     return {_bool}
