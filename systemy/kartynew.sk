@@ -86,12 +86,16 @@ on rightclick:
 					play sound "block.glass.break" with volume 3 and pitch 1 to player
 					stop
 
+				set {_id} to string tag "Id" of custom nbt of player's tool
+
 				if {karta::%player%} is set:
 					set {_idPreviousCard} to string tag "Id" of custom nbt of {karta::%player%}
-					unload yaml "card-%{_idPreviousCard}%-%player%"
-
-				set {_id} to string tag "Id" of custom nbt of player's tool
-				load yaml "plugins/Skript/playerdata/karty/%uncolored name of player's tool%/%{_id}%.yml" as "card-%{_id}%-%player%"
+					if {_id} != {_idPreviousCard}:
+						save yaml "activeCard-%player%"
+						unload yaml "activeCard-%player%"
+						load yaml "plugins/Skript/playerdata/karty/%uncolored name of player's tool%/%{_id}%.yml" as "activeCard-%player%"
+				else:
+					load yaml "plugins/Skript/playerdata/karty/%uncolored name of player's tool%/%{_id}%.yml" as "activeCard-%player%"
 
 				UpdateCard(player)
 				SetPlayerStats(player) #Sets player stats to current selected card's stats (funkcje.sk)
@@ -99,7 +103,7 @@ on rightclick:
 				set {kartaname::%player%} to uncolored name of player's tool
 				set {kartacolor::%player%} to last string color code of player's tool's name
 				
-				set {_cardLevel} to yaml value "Card.Level" in "card-%{_id}%-%player%"
+				set {_cardLevel} to yaml value "Card.Level" in "activeCard-%player%"
 
 				set {karta::%{_id}%} to {kartaname::%player%}
 				set string tag "Owner" of custom nbt of player's tool to "%player%"
@@ -200,7 +204,7 @@ on rightclick:
 				set slot 4 of {_gui} to player's tool with lore (lore of player's tool) and "&7&oYour current card"
 
 				loop 5 times:
-					if yaml value "Card.Talents.Row %loop-number%" in "card-%{_id}%-%player%" is not set:
+					if yaml value "Card.Talents.Row %loop-number%" in "activeCard-%player%" is not set:
 						if loop-number <= 2:
 							if (int tag "Level" of custom nbt of player's tool) >= 15*loop-number:
 								add 1 to {_talentPointsAvailable}
@@ -262,42 +266,41 @@ on rightclick:
 				replace all (uncolored name of player's tool) in {_color} with ""
 				replace all "<" and ">" in {_color} with ""
 				replace all "Dropped: " and "Wydropiono: " in {_dr} with ""
-				if {_id} contains "&8":
-					set {_id} to uncolored {_id}
-					replace all "Id: " in {_id} with ""
 
 
-				set yaml value "Card.Card" in "card-%{_id}%-%player%" to {_cardname}
-				set yaml value "Card.Owner" in "card-%{_id}%-%player%" to player
-				set yaml value "Card.Dropped" in "card-%{_id}%-%player%" to {_dr}
-				set yaml value "Card.Colour" in "card-%{_id}%-%player%" to {_color}
-				set yaml value "Card.Level" in "card-%{_id}%-%player%" to {_cardLevel}
-				#set yaml value "Card.Exp" in "card-%{_id}%-%player%" to round({expkarta::%{_id}%}, 2)
-				set yaml value "Card.Element" in "card-%{_id}%-%player%" to {_elementText}
-				#set yaml value "Card.Ascension" in "card-%{_id}%-%player%" to {wyniesienie::%{_id}%}
-				if yaml value "Card.Constellation" in "card-%{_id}%-%player%" is not set:
-					set yaml value "Card.Constellation" in "card-%{_id}%-%player%" to 0
-				if yaml value "Card.Gear Score" in "card-%{_id}%-%player%" is not set:
-					set yaml value "Card.Gear Score" in "card-%{_id}%-%player%" to 0
-				if yaml value "Card.Variant" in "card-%{_id}%-%player%" is not set:
-					set yaml value "Card.Variant" in "card-%{_id}%-%player%" to "Classic"
+				set yaml value "Card.Card" in "activeCard-%player%" to {_cardname}
+				set yaml value "Card.Owner" in "activeCard-%player%" to player
+				set yaml value "Card.Dropped" in "activeCard-%player%" to {_dr}
+				set yaml value "Card.Colour" in "activeCard-%player%" to {_color}
+				set yaml value "Card.Level" in "activeCard-%player%" to {_cardLevel}
+				set yaml value "Card.Id" in "activeCard-%player%" to {_id}
+				#set yaml value "Card.Exp" in "activeCard-%player%" to round({expkarta::%{_id}%}, 2)
+				set yaml value "Card.Element" in "activeCard-%player%" to {_elementText}
+				#set yaml value "Card.Ascension" in "activeCard-%player%" to {wyniesienie::%{_id}%}
+				if yaml value "Card.Constellation" in "activeCard-%player%" is not set:
+					set yaml value "Card.Constellation" in "activeCard-%player%" to 0
+				if yaml value "Card.Gear Score" in "activeCard-%player%" is not set:
+					set yaml value "Card.Gear Score" in "activeCard-%player%" to 0
+				if yaml value "Card.Variant" in "activeCard-%player%" is not set:
+					set yaml value "Card.Variant" in "activeCard-%player%" to "Classic"
 				set {_agIndex} to 1
 				loop {_ag::*}:
-					set yaml value "Card.Stats.%loop-value%" in "card-%{_id}%-%player%" to {_agStats::%{_agIndex}%}
+					set yaml value "Card.Stats.%loop-value%" in "activeCard-%player%" to {_agStats::%{_agIndex}%}
 					add 1 to {_agIndex}
-				set yaml list "Card.Talents" in "card-%{_id}%-%player%" to {_talents::*}
-				set yaml list "Card.Gems" in "card-%{_id}%-%player%" to {_gemy::*}
-				set yaml list "Card.Traits" in "card-%{_id}%-%player%" to {_ce::*}
+				set yaml list "Card.Talents" in "activeCard-%player%" to {_talents::*}
+				set yaml list "Card.Gems" in "activeCard-%player%" to {_gemy::*}
+				set yaml list "Card.Traits" in "activeCard-%player%" to {_ce::*}
 
-				if yaml list "Card.Gear.Artifacts" in "card-%{_id}%-%player%" is set:
-					set {_gear::*} to yaml list "Card.Gear.Artifacts" in "card-%{_id}%-%player%"
-					set yaml list "Card.Gear.Artifacts" in "card-%{_id}%-%player%" to {_gear::*}
+				if yaml list "Card.Gear.Artifacts" in "activeCard-%player%" is set:
+					set {_gear::*} to yaml list "Card.Gear.Artifacts" in "activeCard-%player%"
+					set yaml list "Card.Gear.Artifacts" in "activeCard-%player%" to {_gear::*}
 				if {_gear::*} is set:
 					loop {_gear::*}:
-						set yaml value "Card.Gear.Artifacts.%loop-value%.Item Level" in "card-%{_id}%-%player%" to 50
-						set yaml list "Card.Gear.Artifacts.%loop-value%.Stats" in "card-%{_id}%-%player%" to "25 Damage", "7 Utility", "25 Haste" and "31 Critical Hit"
-						set yaml value "Card.Gear.Artifacts.%loop-value%.Upgrade Level" in "card-%{_id}%-%player%" to 25
-				save yaml "karty-%player%"
+						set yaml value "Card.Gear.Artifacts.%loop-value%.Item Level" in "activeCard-%player%" to 50
+						set yaml list "Card.Gear.Artifacts.%loop-value%.Stats" in "activeCard-%player%" to "25 Damage", "7 Utility", "25 Haste" and "31 Critical Hit"
+						set yaml value "Card.Gear.Artifacts.%loop-value%.Upgrade Level" in "activeCard-%player%" to 25
+
+				save yaml "activeCard-%player%"
 				CardBackup(player, uncolored name of player's tool, {_id})
 	
 function CardBackup(p: player, name: string, id: string):
@@ -983,22 +986,22 @@ on inventory click:
 					set {_id} to uncolored line 19 of lore of {karta::%player%}
 					replace all "Id: " in {_id} with ""
 					set {_card} to {kartaname::%player%}
-					set slot 10 of metadata tag "gearcard" of player to yaml value "Gear.Helmet" in "card-%{_id}%-%player%"
-					set slot 11 of metadata tag "gearcard" of player to yaml value "Gear.Necklace" in "card-%{_id}%-%player%"
-					set slot 12 of metadata tag "gearcard" of player to yaml value "Gear.Cloak" in "card-%{_id}%-%player%"
-					set slot 19 of metadata tag "gearcard" of player to yaml value "Gear.Chestplate" in "card-%{_id}%-%player%"
-					set slot 20 of metadata tag "gearcard" of player to yaml value "Gear.Shoulders" in "card-%{_id}%-%player%"
-					set slot 21 of metadata tag "gearcard" of player to yaml value "Gear.Bracers" in "card-%{_id}%-%player%"
-					set slot 28 of metadata tag "gearcard" of player to yaml value "Gear.Leggings" in "card-%{_id}%-%player%"
-					set slot 29 of metadata tag "gearcard" of player to yaml value "Gear.Belt" in "card-%{_id}%-%player%"
-					set slot 30 of metadata tag "gearcard" of player to yaml value "Gear.Gloves" in "card-%{_id}%-%player%"
-					set slot 37 of metadata tag "gearcard" of player to yaml value "Gear.Boots" in "card-%{_id}%-%player%"
-					set slot 38 of metadata tag "gearcard" of player to yaml value "Gear.Ring 1" in "card-%{_id}%-%player%"
-					set slot 39 of metadata tag "gearcard" of player to yaml value "Gear.Ring 2" in "card-%{_id}%-%player%"
-					set slot 14 of metadata tag "gearcard" of player to yaml value "Gear.Flower Artifact" in "card-%{_id}%-%player%"
-					set slot 23 of metadata tag "gearcard" of player to yaml value "Gear.Orb Artifact" in "card-%{_id}%-%player%"
-					set slot 32 of metadata tag "gearcard" of player to yaml value "Gear.Phial Artifact" in "card-%{_id}%-%player%"
-					set slot 41 of metadata tag "gearcard" of player to yaml value "Gear.Scroll Artifact" in "card-%{_id}%-%player%"
+					set slot 10 of metadata tag "gearcard" of player to yaml value "Gear.Helmet" in "activeCard-%player%"
+					set slot 11 of metadata tag "gearcard" of player to yaml value "Gear.Necklace" in "activeCard-%player%"
+					set slot 12 of metadata tag "gearcard" of player to yaml value "Gear.Cloak" in "activeCard-%player%"
+					set slot 19 of metadata tag "gearcard" of player to yaml value "Gear.Chestplate" in "activeCard-%player%"
+					set slot 20 of metadata tag "gearcard" of player to yaml value "Gear.Shoulders" in "activeCard-%player%"
+					set slot 21 of metadata tag "gearcard" of player to yaml value "Gear.Bracers" in "activeCard-%player%"
+					set slot 28 of metadata tag "gearcard" of player to yaml value "Gear.Leggings" in "activeCard-%player%"
+					set slot 29 of metadata tag "gearcard" of player to yaml value "Gear.Belt" in "activeCard-%player%"
+					set slot 30 of metadata tag "gearcard" of player to yaml value "Gear.Gloves" in "activeCard-%player%"
+					set slot 37 of metadata tag "gearcard" of player to yaml value "Gear.Boots" in "activeCard-%player%"
+					set slot 38 of metadata tag "gearcard" of player to yaml value "Gear.Ring 1" in "activeCard-%player%"
+					set slot 39 of metadata tag "gearcard" of player to yaml value "Gear.Ring 2" in "activeCard-%player%"
+					set slot 14 of metadata tag "gearcard" of player to yaml value "Gear.Flower Artifact" in "activeCard-%player%"
+					set slot 23 of metadata tag "gearcard" of player to yaml value "Gear.Orb Artifact" in "activeCard-%player%"
+					set slot 32 of metadata tag "gearcard" of player to yaml value "Gear.Phial Artifact" in "activeCard-%player%"
+					set slot 41 of metadata tag "gearcard" of player to yaml value "Gear.Scroll Artifact" in "activeCard-%player%"
 				open (metadata tag "gearcard" of player) to player
 				play sound "block.anvil.use" with volume 2 and pitch 1.65 to player
 
