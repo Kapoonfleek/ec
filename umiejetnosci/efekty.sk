@@ -42,10 +42,22 @@ function CriticalHit(p: player, scaling: number = 10) :: number:
     
     return {_crit}
 
-function MasteryStat(p: player) :: number:
+function Mastery(p: player, scaling: number = 1) :: number:
+    set {_mastery} to MasteryStat({_p})
+    
+    set {_mastery} to {_mastery}*{_scaling}
+
+    return {_mastery}
+
+function MasteryStat(p: player, check: boolean = false) :: number:
     set {_mastery} to ({mastery::%{_p}%} + {bonusMastery::%{_p}%})
     if metadata value "MoltenBlast" of {_p} is set:
         add metadata value "MoltenBlast" of {_p} to {_mastery}
+
+    if {_check} != true:
+        if getArtifactSetCount({_p}, "Arcane Mysteries", 2, "yaml") = true:
+            if getHighestStat({_p}) contains "Mastery":
+                set {_mastery} to {_mastery} + 40
     
     return {_mastery}
 
@@ -100,20 +112,20 @@ function CriticalHitStat(p: player) :: number:
 
     return {_crit}
 
-function getHighestStat(p: player) :: number:
-    set {_stats::*} to HealthStat({_p}), DamageStat({_p}), ResistanceStat({_p}), MobilityStat({_p}), UtilityStat({_p}), CrowdControlStat({_p}), VersatilityStat({_p}), MasteryStat({_p}), CriticalHitStat({_p}), ElementStat({_p}), HasteStat({_p}) and AvoidanceStat({_p})
+function getHighestStat(p: player) :: texts:
     set {_statNames::*} to "Health", "Damage", "Resistance", "Mobility", "Utility", "CrowdControl", "Versatility", "Mastery", "CriticalHit", "Element", "Haste" and "Avoidance"
+    set {_maxValue} to 0
     loop {_statNames::*}:
-        set {_stat} to "%loop-value%Stat"
-        set {_function} to function named loop-value
-        set {_value} to the result of {_function} with arguments {_p}
-        set {_stats::%loop-value%} to {_value}
-        broadcast "%loop-value%: %{_value}%"
-        
-    sort {_stats::*} in descending order
-    broadcast {_stats::*}
+        set {_function} to function named "%loop-value%Stat"
+        set {_value} to the result of {_function} with arguments {_p} and true
+        if {_value} > {_maxValue}:
+            clear {_highestStat::*}
+            add loop-value to {_highestStat::*}
+            set {_maxValue} to {_value}
+        else if {_value} = {_maxValue}:
+            add loop-value to {_highestStat::*}
 
-    return {_stats::1}
+    return {_highestStat::*}
 
 function damageScalingSpell(p: player, base: number, scaling: number) :: number:
     set {_damage} to {_base} + ({damage::%{_p}%}/({_scaling}*2) + ({versatility::%{_p}%}/({_scaling}*6)) + ({primarystat::%{_p}%})/{_scaling})
