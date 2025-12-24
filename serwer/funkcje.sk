@@ -11,6 +11,7 @@
 #		log "%{_data}% Gracz %{_p}% właśnie zdobył osiągnięcie [Znawca Kamieni]" to "logi/osiagniecia.log"
 #		loop all players:
 #			send formatted "&fGracz %{_p}% właśnie zdobył osiągnięcie <tooltip:&aWykop 1000 kamieni szlachetnych>&a[Znawca Kamieni]" to loop-player
+using script reflection
 
 effect change client side equipment %string% of %entity% to %itemstack% for %players%:
     trigger:
@@ -607,11 +608,18 @@ function returnStats() :: strings:
 
 function retrieveTopStats(p: player, type: string) :: strings:
 	loop returnStats():
-		set {_stat} to loop-value in lowercase
+		set {_stat} to loop-value
 		replace all " " in {_stat} with ""
-		set {_stats::%loop-value%} to {%{_stat}%::%{_p}%}
-		set {_bonus} to bonusStat({_p}, loop-value)
-		add {_bonus} to {_stats::%loop-value%}
+		set {_statFunction} to {_stat}
+		set {_stat} to {_stat} in lowercase
+
+		if {_statFunction} != "Mastery":
+			set {_function} to function named "%{_statFunction}%Stat"
+		else:
+			set {_function} to function named "%{_statFunction}%StatTotal"
+		set {_value} to the result of {_function} with arguments {_p}
+		set {_stats::%loop-value%} to {_value}
+		
 	if {kartaname::%{_p}%} = "Brother Therold":
 		add {hasteVoidform::%{_p}%} to {_stats::Haste}
 		add {lingeringInsanityHaste::%{_p}%} to {_stats::Haste}
