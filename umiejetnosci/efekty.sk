@@ -1,3 +1,5 @@
+using script reflection
+
 function AbilityUse(p: player, spell: text):
     #send "Ability Used" to {_p}
     set metadata value "lastspell" of {_p} to {_spell}
@@ -7,10 +9,7 @@ function AbilityUse(p: player, spell: text):
 function CanUseAbility(p: player) :: boolean:
     if metadata value "CannotUseAbilities" of {_p} is true:
         set {_canUse} to false
-        if {language::%{_p}%} = "English":
-            send "&c&oYou can not use any abilities right now." to {_p}
-        else:
-            send "&c&oNie możesz teraz używać umiejętności." to {_p}
+        send "&c&oYou can not use any abilities right now." to {_p}
         play sound "block.glass.break" with volume 3 and pitch 0 to {_p}
     return {_canUse}
 
@@ -33,18 +32,65 @@ function LoreUpdate(p: player, nbt: text, lore: text):
             set lore of loop-item to {_lore}
 
 function Haste(p: player, scaling: number = 4) :: number:
-    set {_haste} to 1 + (({haste::%{_p}%}/{_scaling}))/100
-
-    if {bonusHaste::%{_p}%} is set:
-        add (({bonusHaste::%{_p}%}/4))/100 to {_haste}
-    
+    set {_haste} to 1 + ((HasteStat({_p})/{_scaling}))/100
     return {_haste}
 
 function CriticalHit(p: player, scaling: number = 10) :: number:
-    set {_crit} to 0 + {criticalhit::%{_p}%}
+    set {_crit} to 0 + CriticalHitStat({_p})
 
-    if {bonusCriticalHit::%{_p}%} is set:
-        add {bonusCriticalHit::%{_p}%} to {_crit}
+    set {_crit} to {_crit}/{_scaling}
+    
+    return {_crit}
+
+function MasteryStat(p: player) :: number:
+    set {_mastery} to ({mastery::%{_p}%} + {bonusMastery::%{_p}%})
+    if metadata value "MoltenBlast" of {_p} is set:
+        add metadata value "MoltenBlast" of {_p} to {_mastery}
+    
+    return {_mastery}
+
+function CrowdControlStat(p: player) :: number:
+    set {_crowdcontrol} to {crowdcontrol::%{_p}%} + {bonusCrowdControl::%{_p}%}
+    return {_crowdcontrol}
+
+function ResistanceStat(p: player) :: number:
+    set {_resistance} to {resistance::%{_p}%} + {bonusResistance::%{_p}%}
+    return {_resistance}
+
+function MobilityStat(p: player) :: number:
+    set {_mobility} to {mobility::%{_p}%} + {bonusMobility::%{_p}%}
+    return {_mobility}
+
+function DamageStat(p: player) :: number:
+    set {_damage} to {damage::%{_p}%} + {bonusDamage::%{_p}%}
+    return {_damage}
+
+function UtilityStat(p: player) :: number:
+    set {_utility} to {utility::%{_p}%} + {bonusUtility::%{_p}%}
+    return {_utility}
+
+function HealthStat(p: player) :: number:
+    set {_health} to {health::%{_p}%} + {bonusHealth::%{_p}%}
+    return {_health}
+
+function ElementStat(p: player) :: number:
+    set {_element} to {element::%{_p}%} + {bonusElement::%{_p}%}
+    return {_element}
+
+function AvoidanceStat(p: player) :: number:
+    set {_avoidance} to {avoidance::%{_p}%} + {bonusAvoidance::%{_p}%}
+    return {_avoidance}
+
+function VersatilityStat(p: player) :: number:
+    set {_versatility} to {versatility::%{_p}%} + {bonusVersatility::%{_p}%}
+    return {_versatility}
+
+function HasteStat(p: player) :: number:
+    set {_haste} to {haste::%{_p}%} + {bonusHaste::%{_p}%}
+    return {_haste}
+
+function CriticalHitStat(p: player) :: number:
+    set {_crit} to {criticalhit::%{_p}%} + {bonusCriticalHit::%{_p}%}
 
     if metadata value "ChorusOfInsanityCrit" of {_p} is set:
         add metadata value "ChorusOfInsanityCrit" of {_p} to {_crit}
@@ -52,24 +98,22 @@ function CriticalHit(p: player, scaling: number = 10) :: number:
     if metadata value "BonusCritDelphox" of {_p} is set:
         add metadata value "BonusCritDelphox" of {_p} to {_crit}
 
-    set {_crit} to {_crit}/{_scaling}
-    
     return {_crit}
 
-function Mastery(p: player) :: number:
-    set {_mastery} to ({mastery::%{_p}%} + {bonusMastery::%{_p}%})
-    if metadata value "MoltenBlast" of {_p} is set:
-        add metadata value "MoltenBlast" of {_p} to {_mastery}
-    
-    return {_mastery}
+function getHighestStat(p: player) :: number:
+    set {_stats::*} to HealthStat({_p}), DamageStat({_p}), ResistanceStat({_p}), MobilityStat({_p}), UtilityStat({_p}), CrowdControlStat({_p}), VersatilityStat({_p}), MasteryStat({_p}), CriticalHitStat({_p}), ElementStat({_p}), HasteStat({_p}) and AvoidanceStat({_p})
+    set {_statNames::*} to "Health", "Damage", "Resistance", "Mobility", "Utility", "CrowdControl", "Versatility", "Mastery", "CriticalHit", "Element", "Haste" and "Avoidance"
+    loop {_statNames::*}:
+        set {_stat} to "%loop-value%Stat"
+        set {_function} to function named loop-value
+        set {_value} to the result of {_function} with arguments {_p}
+        set {_stats::%loop-value%} to {_value}
+        broadcast "%loop-value%: %{_value}%"
+        
+    sort {_stats::*} in descending order
+    broadcast {_stats::*}
 
-function CrowdControl(p: player) :: number:
-    set {_crowdcontrol} to {crowdcontrol::%{_p}%}
-
-    if {bonusCrowdControl::%{_p}%} is set:
-        add {bonusCrowdControl::%{_p}%} to {_crowdcontrol}
-    
-    return {_crowdcontrol}
+    return {_stats::1}
 
 function damageScalingSpell(p: player, base: number, scaling: number) :: number:
     set {_damage} to {_base} + ({damage::%{_p}%}/({_scaling}*2) + ({versatility::%{_p}%}/({_scaling}*6)) + ({primarystat::%{_p}%})/{_scaling})
@@ -379,7 +423,7 @@ on inventory click:
             if {_name} = "<##4bbfe2>Glacial Spike":
                 if uncolored name of {karta::%player%} = "Glaceon":
                     set {_id} to string tag "Id" of custom nbt of {karta::%player%}
-                    set {_constellation} to yaml value "Card.Constellation" in "card-%{_id}%-%player%"
+                    set {_constellation} to yaml value "Card.Constellation" in "activeCard-%player%"
                 if last element of lore of {_slot} contains "expand":
                     if {_constellation} >= 2:
                         set lore of event-slot to "                   &eLevel 50 Talent%nl%                   &8&m------✤------&%nl%&f2.75 second cast%nl%&7No cooldown%nl%&7Use: &fRMB%nl%&7Talent Ability%nl%<##4bbfe2>Conjures a massive spike of ice, and merges%nl%<##4bbfe2>your current Icicles into it. It impales your%nl%<##4bbfe2>target, dealing &f5 <##4bbfe2>+ (<##f74428>+9%% <##4bbfe2>) + (<##e3ebff>+3%% <##4bbfe2>)%nl%<##4bbfe2>+ (<##58c3f5>+10%%<##4bbfe2>) = &f3 <##add8e6>Ice <##4bbfe2>damage plus all of the%nl%<##4bbfe2>damage stored in your Icicles.%nl% %nl%<##4bbfe2>Requires 5 Icicles to cast.%nl% %nl%<##4bbfe2>Passive: Ice Lance no longer launches Icicles.%nl% %nl%&8&oPress [SHIFT + MOUSE] to collapse tooltip."
