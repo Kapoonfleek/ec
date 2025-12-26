@@ -92,3 +92,62 @@ function getArtifactSetCount(p: player, setName: string, setCompleteCount: integ
 				set {_bool} to true
 				
 	return {_bool}
+
+function ArcaneMysteries4Set(p: player):
+	set metadata value "ArcaneMysteries" of {_p} to 0
+	set {_interval} to yaml value "Values.Arcane Mysteries.4SETINTERVAL" in "ArtifactList"
+	set {_interval} to ("%{_interval}% seconds" parsed as timespan)
+	
+	set metadata value "ArcaneMysteriesCurrentBonusDuration" of {_p} to {_interval}
+	set {_durationPersist} to yaml value "Values.Arcane Mysteries.4SETDURATIONPERSIST" in "ArtifactList"
+	set {_declineRate} to yaml value "Values.Arcane Mysteries.4SETDECLINERATE" in "ArtifactList"
+
+	set {_durationPersist} to ("%{_durationPersist}% seconds" parsed as timespan)
+	set {_declineRate} to ("%{_declineRate}% seconds" parsed as timespan)
+
+	set {_buffIncrease} to yaml value "Values.Arcane Mysteries.4SETBONUS" in "ArtifactList"
+	set {_buffMax} to yaml value "Values.Arcane Mysteries.4SETPEAK" in "ArtifactList"
+
+	set {_element} to string tag "ECElement" of custom nbt of {_p}
+	if ("Magic", "Ghost", "Dark") does not contain {_element}:
+		set {_buffIncrease} to {_buffIncrease}/2
+		set {_buffMax} to {_buffMax}/2
+
+	while metadata value "ECEngaged" of {_p} is set:
+		while metadata value "ArcaneMysteriesCurrentBonusDuration" of {_p} > 0 seconds:
+			set {_duration} to durationShort("%metadata value "ArcaneMysteriesCurrentBonusDuration" of {_p}%")
+			buffRegister({_p}, "Ams", 1, "", "Value", "&f%metadata value "ArcaneMysteries" of {_p}%%% &7| &f%{_duration}%", "-")
+			wait 1 second
+			remove 1 second from metadata value "ArcaneMysteriesCurrentBonusDuration" of {_p}
+			stop if metadata value "ECEngaged" of {_p} is not set
+		add {_buffIncrease} to metadata value "ArcaneMysteries" of {_p}
+
+		if metadata value "ArcaneMysteries" of {_p} >= {_buffMax}:
+			set metadata value "ArcaneMysteriesCurrentBonusDuration" of {_p} to {_durationPersist}
+			
+			while metadata value "ArcaneMysteriesCurrentBonusDuration" of {_p} > 0 seconds:
+				set {_duration} to durationShort("%metadata value "ArcaneMysteriesCurrentBonusDuration" of {_p}%")
+				buffRegister({_p}, "Ams", 1, "", "Value", "&f%metadata value "ArcaneMysteries" of {_p}%%% &7| &f%{_duration}%", "-")
+				wait 1 second
+				remove 1 second from metadata value "ArcaneMysteriesCurrentBonusDuration" of {_p}
+				stop if metadata value "ECEngaged" of {_p} is not set
+			set metadata value "ArcaneMysteriesCurrentBonusDuration" of {_p} to {_declineRate}
+
+			while metadata value "ArcaneMysteries" of {_p} > 0:
+				while metadata value "ArcaneMysteriesCurrentBonusDuration" of {_p} > 0 seconds:
+					set {_duration} to durationShort("%metadata value "ArcaneMysteriesCurrentBonusDuration" of {_p}%")
+					buffRegister({_p}, "Ams", 1, "", "Value", "&f%metadata value "ArcaneMysteries" of {_p}%%% &7| &f%{_duration}%", "-")
+					wait 1 second
+					remove 1 second from metadata value "ArcaneMysteriesCurrentBonusDuration" of {_p}
+					stop if metadata value "ECEngaged" of {_p} is not set
+				set metadata value "ArcaneMysteriesCurrentBonusDuration" of {_p} to {_declineRate}
+
+				remove 1 from metadata value "ArcaneMysteries" of {_p}
+				set {_duration} to durationShort("%metadata value "ArcaneMysteriesCurrentBonusDuration" of {_p}%")
+				buffRegister({_p}, "Ams", 1, "", "Value", "&f%metadata value "ArcaneMysteries" of {_p}%%% &7| &f%{_duration}%", "-")
+		else:
+			set metadata value "ArcaneMysteriesCurrentBonusDuration" of {_p} to {_interval}
+
+	clear metadata value "ArcaneMysteries" of {_p}
+	clear metadata value "ArcaneMysteriesCurrentBonusDuration" of {_p}
+	buffClear({_p}, "Ams")
