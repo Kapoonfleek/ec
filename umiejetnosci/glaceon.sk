@@ -13,9 +13,9 @@ function IcicleForm(p: player, icicle: integer):
 		set {_icicle} to {_max}
 
 	spawn 1 armor stand at {_p}
-	add nbt from "{Invisible:1b,Marker:1b,NoGravity:1b,Invulnerable:1b,Silent:1b}" to nbt of last spawned armor stand
+	set boolean tag "Invisible" of nbt of last spawned armor stand to true
 	set {_icicleModel} to last spawned armor stand
-	add nbt from "{Invisible:0b}" to nbt of {_icicleModel}
+	IcicleAssignments({_icicleModel})
 	
 	if string tag "Talents;Row 3" of custom nbt of {karta::%{_p}%} = "Black Ice":
 		chance of 30%:
@@ -150,12 +150,14 @@ function IcicleFormIcicleStorm(p: player, icicle: integer, blackIce: boolean = f
 	if {_blackIce} = true:
 		set {_modelName} to "icicle_blackfrost"
 	else:
-		set {_modelName} to "blackfrost"
+		set {_modelName} to "icicle"
 
-	spawn 1 armor stand at {_loc} with nbt from "{Invisible:1b,Marker:1b,NoGravity:1b,Invulnerable:1b,Silent:1b}"
+	spawn 1 armor stand at {_loc}
 	set {_icicleModel} to last spawned armor stand
-	add nbt from "{Invisible:0b}" to nbt of {_icicleModel}
-	set {_model} to BetterModel.model("icicle").get().getOrCreate({_icicleModel})
+	set boolean tag "Invisible" of nbt of last spawned armor stand to true
+	IcicleAssignments({_icicleModel})
+
+	set {_model} to BetterModel.model({_modelName}).get().getOrCreate({_icicleModel})
 	{_model}.scaler({_model}.scaler().multiply(1.0))
 	{_model}.registry().reload()
 
@@ -165,14 +167,23 @@ function GlacialSpike(p: player) :: entity:
 	set {_loc} to {_p}'s location
 	increase {_loc}'s y-coordinate by 1/2
 
-	spawn 1 armor stand at {_p} with nbt from "{Invisible:1b,Marker:1b,NoGravity:1b,Invulnerable:1b,Silent:1b}"
+	spawn 1 armor stand at {_p}
 	set {_glacialSpikeModel} to last spawned armor stand
-	add nbt from "{Invisible:0b}" to nbt of {_glacialSpikeModel}
+	set boolean tag "Invisible" of nbt of last spawned armor stand to true
+	IcicleAssignments({_glacialSpikeModel})
+
 	set {_model} to BetterModel.model("icicle").get().getOrCreate({_glacialSpikeModel})
 	{_model}.scaler({_model}.scaler().multiply(3.0))
 	{_model}.registry().reload()
 
 	return {_glacialSpikeModel}
+
+function IcicleAssignments(e: entity):
+	set boolean tag "Marker" of nbt of {_e} to true
+	set boolean tag "NoGravity" of nbt of {_e} to true
+	set boolean tag "Invulnerable" of nbt of {_e} to true
+	set boolean tag "Silent" of nbt of {_e} to true
+	set boolean tag "Invisible" of nbt of {_e} to false
 
 function GlacialSpikeMove(p: player, x: entity):
 	while metadata value "GlacialSpike" of {_p} is set:
@@ -1302,9 +1313,10 @@ function HurlIcicleIceLance(p: player, target: entity, frozen: boolean):
 
 function IcicleStorm(p: player, target: entity):
 	set {_damageicicles} to 0.5*(0.4 + {damage::%{_p}%}/75 + {damage::%{_p}%}/225 + {primarystat::%{_p}%}/37.5) * (1 + ({mastery::%{_p}%}/3.75/100))
-	set {_loops} to 10
+	set {_loops} to 20
 
 	loop {_loops} times:
+		set {_crit} to 25 + ({criticalhit::%{_p}%}/10)
 		set {_damageicicles} to 0.5*(0.4 + {damage::%{_p}%}/75 + {damage::%{_p}%}/225 + {primarystat::%{_p}%}/37.5) * (1 + ({mastery::%{_p}%}/3.75/100))
 		set {_randomIcicle} to a random integer between 1 and {_iciclesCap}
 		set {_rgb} to (rgb 106, 184, 230)
