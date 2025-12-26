@@ -155,7 +155,6 @@ function ArcaneMysteries4Set(p: player):
 function Scorched4Set(p: player):
 	set {_duration} to yaml value "Values.Scorched.4SETDURATION" in "ArtifactList"
 	set {_duration} to "%{_duration}% seconds" parsed as timespan
-	broadcast "S"
 	if metadata value "ScorchedSet4SetBonus" of {_p} is not set:
 		set metadata value "ScorchedSet4SetBonus" of {_p} to {_duration}
 		while metadata value "ScorchedSet4SetBonus" of {_p} > 0 seconds:
@@ -163,8 +162,37 @@ function Scorched4Set(p: player):
 			buffRegister({_p}, "Sco", 1, "", "Value", "&f%{_durationShort}%", "-")
 			wait 1 second
 			remove 1 second from metadata value "ScorchedSet4SetBonus" of {_p}
+			stop loop if metadata value "ECEngaged" of {_p} is not set
 		clear metadata value "ScorchedSet4SetBonus" of {_p}
 		buffClear({_p}, "Sco")
 	else:
-		set metadata value "ScorchedSet4SetBonus" of {_p} to {_duration} 
+		set metadata value "ScorchedSet4SetBonus" of {_p} to {_duration}
+
+function Deepfrost4Set(p: player):
+	set {_duration} to yaml value "Values.Deepfrost.4SETDURATION" in "ArtifactList"
+	set {_duration} to "%{_duration}% seconds" parsed as timespan
+	set {_beginningValue} to yaml value "Values.Deepfrost.4SETCRITDAMAGE" in "ArtifactList"
 	
+	if metadata value "DeepfrostSet4SetBonus" of {_p} is not set:
+		set metadata value "DeepfrostSet4SetBonus" of {_p} to {_beginningValue}
+		set metadata value "DeepfrostSet4SetBonusDuration" of {_p} to {_duration}
+		
+		while metadata value "DeepfrostSet4SetBonusDuration" of {_p} > 0 seconds:
+			set {_critDamage} to "<##fca417>%metadata value "DeepfrostSet4SetBonus" of {_p}%%%"
+			set {_durationShort} to durationShort("%metadata value "DeepfrostSet4SetBonusDuration" of {_p}%")
+			buffRegister({_p}, "Dpf", 1, "", "Value", "%{_critDamage}% &7| &f%{_durationShort}%", "-")
+			wait 1 second
+			remove 1 second from metadata value "DeepfrostSet4SetBonusDuration" of {_p}
+			stop loop if metadata value "ECEngaged" of {_p} is not set
+		clear metadata value "DeepfrostSet4SetBonus" of {_p}
+		clear metadata value "DeepfrostSet4SetBonusDuration" of {_p}
+		buffClear({_p}, "Dpf")
+
+	else:
+		set metadata value "DeepfrostSet4SetBonusDuration" of {_p} to {_duration}
+		set {_maxStacks} to yaml value "Values.Deepfrost.4SETMAXSTACKS" in "ArtifactList"
+		set {_increase} to yaml value "Values.Deepfrost.4SETCRITDAMAGEINCREASE" in "ArtifactList"
+
+		set {_maxValue} to {_beginningValue} + ({_maxStacks}-1)*{_increase}
+		if {_maxValue} > metadata value "DeepfrostSet4SetBonus" of {_p}:
+			add {_increase} to metadata value "DeepfrostSet4SetBonus" of {_p}
