@@ -67,7 +67,12 @@ command /ly:
         else:
             load yaml "plugins/Skript/lists/WorldQuestList" as "WorldQuestList"
             broadcast "&bloaded yaml"
-
+#on place of player head:
+#    if name of player's tool = "Glass":
+ #       cancel event
+ #       add event-location to yaml list "Collect Things.Tidying Up.Locations" in "WorldQuestLocations"
+ #       save yaml "WorldQuestLocations"
+ #       broadcast size of yaml list "Collect Things.Tidying Up.Locations" in "WorldQuestLocations"
 command /wq [<text>]:
     trigger:
         if arg-1 = "task":
@@ -92,59 +97,65 @@ command /wq [<text>]:
         save yaml "WorldQuestLocations"
 
 #1. Every friday, 10 random World Quests are randomized.
-#2. On init, load chunks around the locations of the world quests.
+#//2. On init, load chunks around the locations of the world quests.
 #3. Spawn mobs, make players see x as y and place things for pick up.
 #4. Always 1 "rarer, more difficult world ques, usually slay a boss"
 #5. Mobs etc. respawns after some time
 #6. Place markers on the map.
+#7. Create regions or bounds from min to max. On enter of this area, send a dialogue to player.
+#8. Include icon of npc in world marker
+#9. Player stats: Completed world quests, completed world quests per category, xp from world quests
+#10. On WQ complete, hide all the blocks again
         
 function WorldQuestSpawn(wq: string):
     set {_wqType} to yaml value "World Quests.%{_wq}%.Type" in "WorldQuestList"
     if {_wqType} = "Slay Mobs":
-        set {_mobType} to yaml value "Tasks.%{_wqType}%.%{_wq}%.Mob" in "WorldQuestList"
-        set {_entity} to (yaml value "Mobs.%{_mobType}%.Entity" in "WorldQuestList")
-        set {_entity} to "adult %{_entity}%" parsed as entity type
+        set {_mobTypes::*} to yaml node keys "Tasks.%{_wqType}%.%{_wq}%" in "WorldQuestList"
+        loop {_mobTypes::*}:
+            set {_mobType} to loop-value
+            set {_entity} to (yaml value "Mobs.%{_mobType}%.Entity" in "WorldQuestList")
+            set {_entity} to "adult %{_entity}%" parsed as entity type
 
-        set {_health} to yaml value "Mobs.%{_mobType}%.Health" in "WorldQuestList"
-        set {_level} to yaml value "Mobs.%{_mobType}%.Level" in "WorldQuestList"
-        set {_element} to yaml value "Mobs.%{_mobType}%.Element" in "WorldQuestList"
-        set {_modelHeight} to yaml value "Mobs.%{_mobType}%.Model Height" in "WorldQuestList"
-        set {_item} to yaml value "Mobs.%{_mobType}%.Item" in "WorldQuestList"
+            set {_health} to yaml value "Mobs.%{_mobType}%.Health" in "WorldQuestList"
+            set {_level} to yaml value "Mobs.%{_mobType}%.Level" in "WorldQuestList"
+            set {_element} to yaml value "Mobs.%{_mobType}%.Element" in "WorldQuestList"
+            set {_modelHeight} to yaml value "Mobs.%{_mobType}%.Model Height" in "WorldQuestList"
+            set {_item} to yaml value "Mobs.%{_mobType}%.Item" in "WorldQuestList"
 
-        set {_spawnLocations::*} to yaml list "%{_wqType}%.%{_wq}%.Locations" in "WorldQuestLocations"
-        loop {_spawnLocations::*}:
-            set {_loc} to loop-value
-            spawn {_entity} at {_loc}
-            set {_mob} to last spawned entity
-            set display name of {_mob} to "&f%{_mobType}%"
+            set {_spawnLocations::*} to yaml list "%{_wqType}%.%{_wq}%.Locations" in "WorldQuestLocations"
+            loop {_spawnLocations::*}:
+                set {_loc} to loop-value-2
+                spawn {_entity} at {_loc}
+                set {_mob} to last spawned entity
+                set display name of {_mob} to "&f%{_mobType}%"
 
-            set {_mob}'s max health to {_health} * Math.pow(1.072, ({_level}))
-            heal {_mob}
+                set {_mob}'s max health to {_health} * Math.pow(1.072, {_level})
+                heal {_mob}
 
-            set boolean tag "ECMob" of custom nbt of {_mob} to true
-            set int tag "ECLvl" of custom nbt of {_mob} to {_level}
-            set boolean tag "RemoveOnReset" of custom nbt of {_mob} to true
-            set string tag "ECElement" of custom nbt of {_mob} to {_element}
-            set long tag "ECModelHeight" of custom nbt of {_mob} to {_modelHeight}
-            set boolean tag "ECWorldQuestMob" of custom nbt of {_mob} to true
-            set boolean tag "Silent" of nbt of {_mob} to true
+                set boolean tag "ECMob" of custom nbt of {_mob} to true
+                set int tag "ECLvl" of custom nbt of {_mob} to {_level}
+                set boolean tag "RemoveOnReset" of custom nbt of {_mob} to true
+                set string tag "ECElement" of custom nbt of {_mob} to {_element}
+                set long tag "ECModelHeight" of custom nbt of {_mob} to {_modelHeight}
+                set boolean tag "ECWorldQuestMob" of custom nbt of {_mob} to true
+                set boolean tag "Silent" of nbt of {_mob} to true
 
-            set metadata value "ECSpawnLocation" of {_mob} to loop-value
-            if {_item} is set:
-                set {_mob}'s held item to {_item}
-            if yaml list "Mobs.%{_mobType}%.Sounds" in "WorldQuestList" is set:
-                set {_sounds::*} to yaml list "Mobs.%{_mobType}%.Sounds" in "WorldQuestList"
-                WorldQuestMobSounds({_mob}, {_sounds::*})
+                set metadata value "ECSpawnLocation" of {_mob} to loop-value-2
+                if {_item} is set:
+                    set {_mob}'s held item to {_item}
+                if yaml list "Mobs.%{_mobType}%.Sounds" in "WorldQuestList" is set:
+                    set {_sounds::*} to yaml list "Mobs.%{_mobType}%.Sounds" in "WorldQuestList"
+                    WorldQuestMobSounds({_mob}, {_sounds::*})
 
-            set {_scale} to yaml value "Mobs.%{_mobType}%.Scale" in "WorldQuestList"
-            set scale attribute of {_mob} to {_scale}
+                set {_scale} to yaml value "Mobs.%{_mobType}%.Scale" in "WorldQuestList"
+                set scale attribute of {_mob} to {_scale}
 
-            if yaml value "Mobs.%{_mobType}%.Model" in "WorldQuestList" != "none":
-                set {_modelName} to yaml value "Mobs.%{_mobType}%.Model" in "WorldQuestList"
-                set {_model} to BetterModel.model({_modelName}).get().getOrCreate({_mob})
-                {_model}.registry().reload()
+                if yaml value "Mobs.%{_mobType}%.Model" in "WorldQuestList" != "none":
+                    set {_modelName} to yaml value "Mobs.%{_mobType}%.Model" in "WorldQuestList"
+                    set {_model} to BetterModel.model({_modelName}).get().getOrCreate({_mob})
+                    {_model}.registry().reload()
 
-            MobInfoAssignments({_mob}, {_loc})
+                MobInfoAssignments({_mob}, {_loc})
 
 function WorldQuestRespawnMob(mob: entity):
     broadcast metadata value "ECSpawnLocation" of {_mob}
@@ -179,13 +190,31 @@ function MobInfoAssignments(mob: entity, loc: location):
 
         push {_mob} upwards with velocity 0.01
 
+function getActiveWorldQuests() :: strings:
+    return {activeWorldQuests::*}
+
+on join:
+    loop {activeWorldQuests::*}:
+        if yaml value "World Quests.%loop-value%.Type" in "WorldQuestList" = "Collect Things":
+            make player see block at location(0, 0, 0,world "world") as stone
+
+
+function DeleteWorldQuestMarkers():
+    loop {worldQuestCount} times:
+        execute console command "dmarker delete set:WorldQuests id:%loop-counter%"
+    set {worldQuestCount} to 0
+
 function CreateWorldQuest(worldQuests: integer):
+    #Remove last week's World Quests
+    DeleteWorldQuestMarkers()
+    clear {activeWorldQuests::*}
+
     set {_worldQuestList::*} to yaml node keys "World Quests" in "WorldQuestList"
-    remove "Helping the Test" from {_worldQuestList::*}
     loop {_worldQuests} times:
         stop loop if size of {_worldQuestList::*} = 0
         set {_randomWorldQuest} to a random element of {_worldQuestList::*}
         remove {_randomWorldQuest} from {_worldQuestList::*}
+        add {_randomWorldQuest} to {activeWorldQuests::*}
 
         set {_WQLocation} to yaml value "World Quests.%{_randomWorldQuest}%.Location" in "WorldQuestList"
         set {_WQLocationMin} and {_WQLocationMax} to {_WQLocation}
@@ -206,7 +235,17 @@ function CreateWorldQuest(worldQuests: integer):
         set {_worldQuestRarity} to yaml value "World Quests.%{_randomWorldQuest}%.Rarity" in "WorldQuestList"
         set {_worldQuestGiver} to yaml value "World Quests.%{_randomWorldQuest}%.Quest Giver" in "WorldQuestList"
         set {_worldQuestType} to yaml value "World Quests.%{_randomWorldQuest}%.Type" in "WorldQuestList"
-        set {_worldQuestFaction} to yaml value "Quest Givers.%{_randomWorldQuest}%.Faction" in "WorldQuestList"
+        set {_worldQuestFaction} to yaml value "Quest Givers.%{_worldQuestGiver}%.Faction" in "WorldQuestList"
+        set {_npcIcon} to yaml value "Quest Givers.%{_worldQuestGiver}%.Quest Icon" in "WorldQuestList"
+        set {_questText} to yaml value "Quest Text.%{_randomWorldQuest}%.Dialogue" in "WorldQuestList"
+        set {_rewards::*} to yaml list "World Quests.%{_randomWorldQuest}%.Rewards" in "WorldQuestList"
+        set {_reward} to a random element of {_rewards::*}
+        set {_rewardImage} to yaml value "Rewards.%{_reward}%.Image link" in "WorldQuestList"
+        set {_rewardDescription} to yaml value "Rewards.%{_reward}%.Description" in "WorldQuestList"
+        set {_EXP} to yaml value "World Quests.%{_randomWorldQuest}%.EXP" in "WorldQuestList"
+        set {_reputation} to yaml value "World Quests.%{_randomWorldQuest}%.Reputation" in "WorldQuestList"
+
+        WorldQuestSpawn({_randomWorldQuest})
 
         if {_worldQuestRarity} = "Normal":
             set {_colour} to "#00ff00"
@@ -221,40 +260,65 @@ function CreateWorldQuest(worldQuests: integer):
             set {_objective} to yaml value "Tasks.%{_worldQuestType}%.Objective" in "WorldQuestList"
             replace all "{COMPLETED}" in {_objective} with "0"
             replace all "{MOBNAME}" in {_objective} with loop-value-2
-            replace all "{REQUIREMENT}" in {_objective} with {_requirement}
+            replace all "{REQUIREMENT}" in {_objective} with "%{_requirement}%"
+            replace all "{REQUIREMENT}" in {_questText} with "%{_requirement}%"
+            replace all "{ITEMNAME}" in {_objective} with "%loop-value-2% retrieved"
             add "- %{_objective}%" to {_objectives::*}
 
-        set {_x} to x-coordinate of {_WQLocation}
-        set {_y} to y-coordinate of {_WQLocation}
-        set {_z} to z-coordinate of {_WQLocation}
-
-        set {_htmlWQName} to "<p style=color:%{_colour}%;>%{_randomWorldQuest}%</p>"
-        set {_worldQuestFaction} to "<p style=color:#fdd002;>%{_worldQuestFaction}%</p>"
-
-        set {_rewards} to "<p style=color:#fdd002;>Rewards</p>"
-        set {_objectives} to join {_objectives::*} by "<br>"
-
-        set {_imageLink} to "https://wow.zamimg.com/images/wow/icons/large/inv_radientazeritefragment.jpg"
-        set {_reward} to "<div style=display:flex; width:200px><p><img src=%{_imageLink}% alt=Radiant Azerite Fragment  style=background:transparent;float:left;width:32px;height:32px/>"
-        set {_reward} to "%{_reward}%<div style=background:transparent;><p style=color:%{_colour}%;>Radiant Azerite Fragment</p>"
-        set {_reward} to "%{_reward}%<p style=color:#fdd002;>Grants 650 Artifact Power to your<br>Heart of Earthcraft.</p></div></div>"
-
-        set {_description} to "%{_worldQuestFaction}%%{_objectives}%"
-        set {_worldQuestText} to "%{_htmlWQName}%%{_description}%%{_rewards}%%{_reward}%%{_test}%"
+        set {_html} to join (yaml list "HTML" in "WorldQuestHTML") by ""
+        replace all "{WORLDQUEST}" in {_html} with {_randomWorldQuest}
+        replace all "{FACTION}" in {_html} with {_worldQuestFaction}
+        replace all "{NPCNAME}" in {_html} with {_worldQuestGiver}
+        replace all "{COLOUR}" in {_html} with {_colour}
+        replace all "{OBJECTIVE}" in {_html} with (join {_objectives::*} by "<br>")
+        replace all "{QUESTTEXT}" in {_html} with {_questText}
+        replace all "{NPCICON}" in {_html} with {_npcIcon}
+        replace all "{REWARDNAME}" in {_html} with {_reward}
+        replace all "{REWARDIMAGE}" in {_html} with {_rewardImage}
+        replace all "{REWARDDESCRIPTION}" in {_html} with {_rewardDescription}
+        replace all "{EXP}" in {_html} with "%{_EXP}%"
+        replace all "{REPUTATION}" in {_html} with "%{_reputation}%"
         
         set {_y} to y-coordinate of {_WQLocation}
-        
+
         add 1 to {worldQuestCount}
+        addDynmapWorldQuestMarker({_html}, {worldQuestCount}, {_WQLocation})
+        clear {_objectives::*}
 
-        execute console command "dmarker add set:WorldQuests x:%{_x}% y:%{_y}% z:%{_z}% world:world icon:questmarker label:""%{_worldQuestText}%"" markup:true id:%{worldQuestCount}%"
+function addDynmapWorldQuestMarker(label: text, id: integer, WQLocation: location):
+    set {_x} to x-coordinate of {_WQLocation}
+    set {_y} to y-coordinate of {_WQLocation}
+    set {_z} to z-coordinate of {_WQLocation}
 
+    set {_world} to "%world of {_WQLocation}%"
+
+    set {_dynmap} to Bukkit.getPluginManager().getPlugin("dynmap")
+    set {_markerApi} to {_dynmap}.getMarkerAPI()
+
+    set {_markerSet} to {_markerApi}.getMarkerSet("WorldQuests")
+    set {_icon} to {_markerApi}.getMarkerIcon("questmarker")
+
+    set {_marker} to {_markerSet}.createMarker("%{_id}%", " ", {_world}, {_x}, {_y}, {_z}, {_icon}, true)
+    broadcast {_marker}.setLabel({_label}, true)
+    
+command /ly2:
+    trigger:
+        if yaml "WorldQuestHTML" is loaded:
+            save yaml "WorldQuestHTML"
+            unload yaml "WorldQuestHTML"
+            broadcast "&cunloaded yaml"
+        else:
+            load yaml "plugins/Skript/worldquests/WorldQuestHTML" as "WorldQuestHTML"
+            broadcast "&bloaded yaml"
 command /wqtest:
     trigger:
         #loop all loaded chunks in player's world:
         #    if loop-value.getPluginChunkTickets() is set:
         #        unload loop-value
+        
+            
         if player's name = "Pehrek":
-            CreateWorldQuest(1)
+            CreateWorldQuest(2)
            
 
             #Magni
