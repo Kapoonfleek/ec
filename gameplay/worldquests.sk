@@ -10,6 +10,10 @@ import:
     java.lang.Math
     kr.toxicity.model.api.BetterModel
     kr.toxicity.model.api.tracker.EntityTrackerRegistry
+    com.sk89q.worldguard.WorldGuard
+    com.sk89q.worldguard.protection.regions.ProtectedCuboidRegion
+    com.sk89q.worldedit.math.BlockVector3
+    com.sk89q.worldedit.bukkit.BukkitAdapter
 
 variables:
     {worldQuestCount} = 0
@@ -67,6 +71,16 @@ command /ly:
         else:
             load yaml "plugins/Skript/lists/WorldQuestList" as "WorldQuestList"
             broadcast "&bloaded yaml"
+command /ly3:
+    trigger:
+        if yaml "WorldQuestLocations" is loaded:
+            save yaml "WorldQuestLocations"
+            unload yaml "WorldQuestLocations"
+            broadcast "&dunloaded yaml"
+        else:
+            load yaml "plugins/Skript/worldquests/locations" as "WorldQuestLocations"
+            broadcast "&aloaded yaml"
+
 #on place of player head:
 #    if name of player's tool = "Glass":
  #       cancel event
@@ -77,6 +91,9 @@ command /wq [<text>]:
     trigger:
         if arg-1 = "task":
             set yaml value "Mobs.Drowned.Item" in "WorldQuestList" to player's tool
+        if arg-1 = "loc":
+            add player's location to yaml list "Interact With.The Big Dig.Locations" in "WorldQuestLocations"
+            broadcast size of yaml list "Interact With.The Big Dig.Locations" in "WorldQuestLocations"
         if arg-1 = "register":
             set yaml value "World Quests.The Narrow Passage.Location" in "WorldQuestList" to player's location
             set yaml value "World Quests.The Narrow Passage.Location Name" in "WorldQuestList" to "Riptide Reach"
@@ -98,7 +115,7 @@ command /wq [<text>]:
 
 #1. Every friday, 10 random World Quests are randomized.
 #//2. On init, load chunks around the locations of the world quests.
-#3. Spawn mobs, make players see x as y and place things for pick up.
+#//3. Spawn mobs, make players see x as y and place things for pick up.
 #4. Always 1 "rarer, more difficult world ques, usually slay a boss"
 #5. Mobs etc. respawns after some time
 #6. Place markers on the map.
@@ -106,6 +123,7 @@ command /wq [<text>]:
 #8. Include icon of npc in world marker
 #9. Player stats: Completed world quests, completed world quests per category, xp from world quests
 #10. On WQ complete, hide all the blocks again
+#11. Emissary quests
         
 function WorldQuestSpawn(wq: string):
     set {_wqType} to yaml value "World Quests.%{_wq}%.Type" in "WorldQuestList"
@@ -193,22 +211,63 @@ function MobInfoAssignments(mob: entity, loc: location):
 function getActiveWorldQuests() :: strings:
     return {activeWorldQuests::*}
 
-on join:
+on rightclick:
+    wait 1 second
     loop {activeWorldQuests::*}:
-        if yaml value "World Quests.%loop-value%.Type" in "WorldQuestList" = "Collect Things":
-            make player see block at location(0, 0, 0,world "world") as stone
+        set {_worldQuest} to loop-value
+        if yaml value "World Quests.%{_worldQuest}%.Type" in "WorldQuestList" = "Collect Things":
+            set {_elements::*} to yaml node keys "Tasks.Collect Things.%{_worldQuest}%" in "WorldQuestList"
+            loop {_elements::*}:
+                set {_block} to yaml value "Tasks.Collect Things.%{_worldQuest}%.Block" in "WorldQuestList"
+                set {_locations::*} to (yaml list "Collect Things.%{_worldQuest}%.Locations" in "WorldQuestLocations")
+                loop {_locations::*}:
+                    make player see block at loop-value-3 as sponge
 
+function defineWGRegion(id: string, loc1: location, loc2: location):
+    set {_regionContainer} to WorldGuard.getInstance().getPlatform().getRegionContainer()
+    set {_adapter} to {_regionContainer}.get(BukkitAdapter.adapt({_loc1}.getWorld()))
+
+    stop if {_adapter} is not set
+
+    set {_minV} to BlockVector3.at({_loc1}.getX(), {_loc1}.getY(), {_loc1}.getZ())
+    set {_maxV} to BlockVector3.at({_loc2}.getX(), {_loc2}.getY(), {_loc2}.getZ())
+
+    set {_region} to new ProtectedCuboidRegion({_id}, {_minV}, {_maxV})
+    {_adapter}.addRegion({_region})
+
+function undefineWGRegion(id: string, world: world):
+    set {_regionContainer} to WorldGuard.getInstance().getPlatform().getRegionContainer()
+    set {_adapter} to {_regionContainer}.get(BukkitAdapter.adapt({_world}))
+
+    stop if {_adapter} is not set
+
+    {_adapter}.removeRegion({_id})
 
 function DeleteWorldQuestMarkers():
+    set {_dynmap} to Bukkit.getPluginManager().getPlugin("dynmap")
+    set {_markerApi} to {_dynmap}.getMarkerAPI()
+    set {_markerSet} to {_markerApi}.getMarkerSet("WorldQuests")
+    
     loop {worldQuestCount} times:
-        execute console command "dmarker delete set:WorldQuests id:%loop-counter%"
+        set {_existingMarker} to {_markerSet}.findMarker("%loop-counter%")
+        {_existingMarker}.deleteMarker()
+    
+    loop {activeWorldQuests::*}:
+        set {_WGName} to loop-value
+        replace all " " in {_WGName} with ""
+        set {_WGRegion} to "WorldQuest_%{_WGName}%"
+
+        set {_loc} to yaml value "World Quests.%loop-value%.Location" in "WorldQuestList"
+        set {_world} to world of {_loc}
+        undefineWGRegion({_WGRegion}, {_world})
+
     set {worldQuestCount} to 0
 
 function CreateWorldQuest(worldQuests: integer):
     #Remove last week's World Quests
     DeleteWorldQuestMarkers()
     clear {activeWorldQuests::*}
-
+    
     set {_worldQuestList::*} to yaml node keys "World Quests" in "WorldQuestList"
     loop {_worldQuests} times:
         stop loop if size of {_worldQuestList::*} = 0
@@ -216,7 +275,11 @@ function CreateWorldQuest(worldQuests: integer):
         remove {_randomWorldQuest} from {_worldQuestList::*}
         add {_randomWorldQuest} to {activeWorldQuests::*}
 
+        set {_worldQuestType} to yaml value "World Quests.%{_randomWorldQuest}%.Type" in "WorldQuestList"
         set {_WQLocation} to yaml value "World Quests.%{_randomWorldQuest}%.Location" in "WorldQuestList"
+
+        if {_WQLocation} = "random":
+            set {_WQLocation} to a random element of (yaml list "%{_worldQuestType}%.%{_randomWorldQuest}%.Locations" in "WorldQuestLocations")
         set {_WQLocationMin} and {_WQLocationMax} to {_WQLocation}
 
         increase x-coordinate of {_WQLocationMin} by -100
@@ -224,18 +287,24 @@ function CreateWorldQuest(worldQuests: integer):
         increase x-coordinate of {_WQLocationMax} by 100
         increase z-coordinate of {_WQLocationMax} by 100
 
+        set {_WGName} to {_randomWorldQuest}
+        replace all " " in {_WGName} with ""
+        set {_WGRegion} to "WorldQuest_%{_WGName}%"
+        defineWGRegion({_WGRegion}, {_WQLocationMin}, {_WQLocationMax})
+
         set {_plugin} to instance of plugin "Skript"
         loop all chunks within {_WQLocationMin} and {_WQLocationMax}:
             set {_chunk} to loop-chunk
             set {_chunkLoc} to block at 0,0,0 in {_chunk}
             {_chunk}.addPluginChunkTicket({_plugin})
-            {_chunk}.getWorld().getChunkAtAsync({_chunkLoc})
+            set {_chunk} to {_chunk}.getWorld().getChunkAtAsync({_chunkLoc})
+            set {_actualChunk} to {_chunk}.join()
             wait 1 tick if loop-counter-2 is divisible by 20
 
         set {_worldQuestRarity} to yaml value "World Quests.%{_randomWorldQuest}%.Rarity" in "WorldQuestList"
         set {_worldQuestGiver} to yaml value "World Quests.%{_randomWorldQuest}%.Quest Giver" in "WorldQuestList"
-        set {_worldQuestType} to yaml value "World Quests.%{_randomWorldQuest}%.Type" in "WorldQuestList"
         set {_worldQuestFaction} to yaml value "Quest Givers.%{_worldQuestGiver}%.Faction" in "WorldQuestList"
+        set {_worldQuestLocation} to yaml value "World Quests.%{_randomWorldQuest}%.Location Name" in "WorldQuestList"
         set {_npcIcon} to yaml value "Quest Givers.%{_worldQuestGiver}%.Quest Icon" in "WorldQuestList"
         set {_questText} to yaml value "Quest Text.%{_randomWorldQuest}%.Dialogue" in "WorldQuestList"
         set {_rewards::*} to yaml list "World Quests.%{_randomWorldQuest}%.Rewards" in "WorldQuestList"
@@ -258,6 +327,7 @@ function CreateWorldQuest(worldQuests: integer):
         loop {_objectiveItems::*}:
             set {_requirement} to yaml value "Tasks.%{_worldQuestType}%.%{_randomWorldQuest}%.%loop-value-2%.Requirement" in "WorldQuestList"
             set {_objective} to yaml value "Tasks.%{_worldQuestType}%.Objective" in "WorldQuestList"
+            set {_requirementName} to loop-value-2
             replace all "{COMPLETED}" in {_objective} with "0"
             replace all "{MOBNAME}" in {_objective} with loop-value-2
             replace all "{REQUIREMENT}" in {_objective} with "%{_requirement}%"
@@ -278,6 +348,8 @@ function CreateWorldQuest(worldQuests: integer):
         replace all "{REWARDDESCRIPTION}" in {_html} with {_rewardDescription}
         replace all "{EXP}" in {_html} with "%{_EXP}%"
         replace all "{REPUTATION}" in {_html} with "%{_reputation}%"
+        replace all "{NAME}" in {_html} with {_requirementName}
+        replace all "{LOCATION}" in {_html} with {_worldQuestLocation}
         
         set {_y} to y-coordinate of {_WQLocation}
 
@@ -299,7 +371,7 @@ function addDynmapWorldQuestMarker(label: text, id: integer, WQLocation: locatio
     set {_icon} to {_markerApi}.getMarkerIcon("questmarker")
 
     set {_marker} to {_markerSet}.createMarker("%{_id}%", " ", {_world}, {_x}, {_y}, {_z}, {_icon}, true)
-    broadcast {_marker}.setLabel({_label}, true)
+    {_marker}.setLabel({_label}, true)
     
 command /ly2:
     trigger:
@@ -318,20 +390,8 @@ command /wqtest:
         
             
         if player's name = "Pehrek":
-            CreateWorldQuest(2)
+            CreateWorldQuest(10)
            
-
-            #Magni
-
-            #Replace band aid execute command with API hook later
-            #Functional code below - fix .createMarker() later down the line
-            #set {_api} to Bukkit.getPluginManager().getPlugin("dynmap")
-            #set {_icon} to {_api}.getMarkerAPI().getMarkerIcon("questmarker")
-
-            #set {_markerSet} to {_api}.getMarkerAPI().createMarkerSet("WorldQuests", "World Quests", null, true)
-            #set {_randomId} to random 8 char string from charset `0-9` `a-z`
-
-            #{_markerSet}.createMarker({_randomId}, {_randomQuest}, {_x}, {_y}, {_z}, {_icon}, true)
 
 on shoot:
     if shooter is a drowned:
