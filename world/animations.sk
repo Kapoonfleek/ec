@@ -1,0 +1,51 @@
+import:
+    java.lang.Runnable
+    java.util.function.Consumer
+    kr.toxicity.model.api.tracker.EntityHideOption
+    kr.toxicity.model.api.animation.AnimationIterator
+    kr.toxicity.model.api.animation.RunningAnimation
+    kr.toxicity.model.api.BetterModel
+    kr.toxicity.model.api.tracker.EntityTrackerRegistry
+    kr.toxicity.model.api.tracker.Tracker
+    kr.toxicity.model.api.tracker.TrackerModifier
+    kr.toxicity.model.api.animation.AnimationModifier
+
+function hideOptionCallback(tracker: object):
+    {_tracker}.hideOption(EntityHideOption.DEFAULT)
+
+function isPlayingAnimation(e: entity) :: boolean:
+    if metadata value "InAnimation" of {_e} != true:
+        set {_bool} to false
+    return {_bool}
+
+function playAnimation(e: entity, animation: string, duration: number, haste: number):
+    if isPlayingAnimation({_e}) = false:
+        set {_limb} to BetterModel.limbOrNull("steve")
+        set {_animation} to {_limb}.animation({_animation}).orElse(null)
+
+        # lambda reference
+        set {_functions::accept} to function reference "hideOptionCallback"
+        set {_callback} to new proxy instance of Consumer using {_functions::*}
+        set {_tracker} to {_limb}.getOrCreate({_e}, TrackerModifier.DEFAULT, {_callback})
+
+        # section reference
+        create new section with {_tracker} stored in {_runnable::accept}:
+            {_tracker}.close()
+        set {_callback} to new proxy instance of Runnable using {_runnable::*}
+        {_tracker}.animate({_animation}, new AnimationModifier(0,0,{_haste}), {_callback})
+
+        set metadata value "InAnimation" of {_e} to true
+
+        set {_duration} to "%{_duration}/{_haste}% seconds" parsed as timespan
+        broadcast {_duration}
+
+        wait {_duration}
+        clear metadata value "InAnimation" of {_e}
+        {_tracker}.close()
+        {_tracker}.clearAnimations()
+
+on rightclick:
+    if player's tool is stone sword:
+        set velocity of player to vector(0,0.0,0)
+        #push player horizontally forward with speed 2.25
+        playAnimation(player, "voideruption", 2.4, 1)
