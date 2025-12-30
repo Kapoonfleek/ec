@@ -81,39 +81,43 @@ function chamberOfHeartAmbience():
 on chestplate change:
 	if boolean tag "HeartOfEarthcraft" of custom nbt of future event-item stack is set:
 		if metadata value "ECEngaged" of player is not set:
-			set {_soulbound} to uuid tag "Soulbound" of custom nbt of event-item
-			set {_soulbound} to {_soulbound} parsed as player
-			if {_soulbound} != player:
-				send "&cThis item is soulbound to &f%{_soulbound}%&c." to player
-				play sound "block.glass.break" with volume 1 and pitch 2 to player
+			if player's gamemode != creative:
+				set {_Soulbound} to uuid tag "Soulbound" of custom nbt of event-item
+				set {_Soulbound} to {_Soulbound} parsed as player
+				if {_Soulbound} = player:
+					SetPlayerStats(player)
+					updateAzeriteArmorLore(player)
+					play sound "azerite.trait_select" with volume 5 and pitch 1 to player
+					if {azeriteStash::%uuid of player%} > 0:
+						addAzerite(player, {azeriteStash::%uuid of player%})
+						clear {azeriteStash::%uuid of player%}
 			else:
-				SetPlayerStats(player)
-				play sound "azerite.trait_select" with volume 5 and pitch 1 to player
-		else:
-			play sound "block.glass.break" with volume 1 and pitch 2 to player
-			send "&c&oYou cannot equip the Heart of Earthcraft in combat." to player
+				send "&cEquipped Heart of Earthcraft has no effect. (Ensure that you are in survival mode when equipping the Heart of Earthcraft due to an existing bug with Paper.)" to player
+
 	else if boolean tag "HeartOfEarthcraft" of custom nbt of past event-item stack is set:
 		if metadata value "ECEngaged" of player is not set:
-			SetPlayerStats(player)
-			play sound "azerite.trait_select" with volume 5 and pitch 0.8 to player
-		else:
-			send "&cYou can not take off the Heart of Earthcraft while in cmbat." to player
-			play sound "block.glass.break" with volume 1 and pitch 2 to player
-	
+			if player's gamemode != creative:
+				SetPlayerStats(player)
+				updateAzeriteArmorLore(player)
+				play sound "azerite.trait_select" with volume 5 and pitch 0.8 to player
+
 on region exit:
 	if "%region%" contains "ChamberofHeart":
 		stop sound "ambient.chamber_of_heart" for player
 
 on region enter:
 	if "%region%" contains "Spawn":
-		if {poziom::%player%} >= 50:
-			if player's name = "Pehrek" or "nishikoru":
-				magniDialogueVoiced(player, "ahthere", 1 second)
+		if yaml value "Player.OwnsHeart" in "dataAdmin-%player%" != true:
+			if {poziom::%player%} >= 50:
+				if player's name = "Pehrek":
+					magniDialogueVoiced(player, "ahthere", 1 second)
 	if "%region%" contains "ChamberOfHeart":
 		wait 1 tick
 		play sound "ambient.chamber_of_heart" with volume 5 and pitch 1 to player
-		if player's name = "Pehrek" or "nishikoru":
-			magniDialogueVoiced(player, "introduction", 1 second)
+		if player's name = "Pehrek":
+			if yaml value "Player.OwnsHeart" in "dataAdmin-%player%" != true:
+				if {poziom::%player%} >= 50:
+					magniDialogueVoiced(player, "introduction", 1 second)
 		set {_loc} to location(9112.5, -41, 1643.5, world "world")
 		load chunk at location(9105, -42, 1627, world "world")
 		load chunk at location(9120, -42, 1660, world "world")
@@ -132,32 +136,36 @@ on region enter:
 			if {_seconds} is divisible by 143:
 				play sound "ambient.chamber_of_heart" with volume 5 and pitch 1 to player
 	else if "%region%" contains "MineLower":
-		if {poziom::%player%} >= 50:
-			if cooldown "MagniEntranceDialogue%player%" is finished:
-				create cooldown "MagniEntranceDialogue%player%" for 1 minute
-				spawn 1 pig at player with nbt from "{Silent:1b,Invulnerable:1b}"
-				set {_magni} to last spawned pig
-				disguise {_magni} as saved disguise "Magni"
-				magniPathfind(player, {_magni})
-				set generic movement speed attribute of {_magni} to 0.4
-				set boolean tag "RemoveOnReset" of custom nbt of {_magni} to true
-				if player's name = "Pehrek" or "nishikoru":
-					magniDialogueVoiced(player, "entrance", 1 second)
-				wait 1 tick
-				entityTitle({_magni}, "the Speaker", -0.35)
+		if yaml value "Player.OwnsHeart" in "dataAdmin-%player%" != true:
+			if {poziom::%player%} >= 50:
+				if cooldown "MagniEntranceDialogue%player%" is finished:
+					create cooldown "MagniEntranceDialogue%player%" for 1 minute
+					spawn 1 pig at player with nbt from "{Silent:1b,Invulnerable:1b}"
+					set {_magni} to last spawned pig
+					set metadata value "FollowerNPC" of player to uuid of {_magni}
+					disguise {_magni} as saved disguise "Magni"
+					magniPathfind(player, {_magni})
+					set generic movement speed attribute of {_magni} to 0.4
+					set boolean tag "RemoveOnReset" of custom nbt of {_magni} to true
+					if player's name = "Pehrek":
+						magniDialogueVoiced(player, "entrance", 1 second)
+					wait 1 tick
+					entityTitle({_magni}, "the Speaker", -0.35)
 				
 
 function magniPathfind(p: player, magni: entity):
-    while "%regions at {_p}%" contains "SpawnArea":
-        if "%regions at {_p}%" contains "ChamberofHeart":
-            stop loop
-        stop loop if {_magni} is not alive
-        stop loop if {_p} is not alive
-        if distance between {_magni} and {_p} > 30:
-            teleport {_magni} to {_p}
-        make {_magni} pathfind to {_p}       
-        wait 1 second
-    kill {_magni} 
+	while "%regions at {_p}%" contains "SpawnArea":
+		if "%regions at {_p}%" contains "ChamberofHeart":
+			stop loop
+		stop loop if {_magni} is not alive
+		stop loop if {_p} is not alive
+		if distance between {_magni} and {_p} > 30:
+			teleport {_magni} to {_p}
+		make {_magni} pathfind to {_p}       
+		wait 1 second
+	set {_uuid} to uuid of {_magni}
+	kill {_magni}
+	clear metadata value "FollowerNPC" of {_p} if metadata value "FollowerNPC" of {_p} = {_uuid}
 
 function magniDialogueVoiced(p: player, text: string, wait: timespan = 0 seconds):
 	wait {_wait}
@@ -232,10 +240,10 @@ function grantPlayerHeartOfEC(p: player):
 	set tooltip style of {_heart} to "azerite"
 	set boolean tag "HeartOfEarthcraft" of custom nbt of {_heart} to true
 	set uuid tag "Soulbound" of custom nbt of {_heart} to {_p}'s uuid
-	set double tag "Stats;Health" of custom nbt of {_heart} to {_health}
-	set double tag "Stats;Critical Hit" of custom nbt of {_heart} to {_stat}
-	set double tag "Stats;Haste" of custom nbt of {_heart} to {_stat}
-	set double tag "Stats;Mastery" of custom nbt of {_heart} to {_stat}
+	set int tag "Stats;Health" of custom nbt of {_heart} to {_health}
+	set int tag "Stats;Critical Hit" of custom nbt of {_heart} to {_stat}
+	set int tag "Stats;Haste" of custom nbt of {_heart} to {_stat}
+	set int tag "Stats;Mastery" of custom nbt of {_heart} to {_stat}
 	set int tag "ItemLevel" of custom nbt of {_heart} to {_itemLevel}
 	set int tag "HeartLevel" of custom nbt of {_heart} to 1
 	set int tag "Azerite" of custom nbt of {_heart} to 0
@@ -251,6 +259,7 @@ function grantPlayerHeartOfEC(p: player):
 		damage_on_hurt: false
 
 	give {_p} {_heart}
+	setHeartOfEarthcraft({_p}, {_heart})
 	heartBackup({_p}, {_heart})
 	heartContentUnlocked({_p})
 	send formatted "<##fdd002>You receive: <tooltip:%name of {_heart}%%nl%%join lore of {_heart} by nl%>&f <##e8ce81>[Heart of Earthcraft]" to {_p}
@@ -260,17 +269,17 @@ function grantPlayerHeartOfEC(p: player):
 	save yaml "dataAdmin-%{_p}%"
 
 function heartOfECUpdate(p: player):
-	set {_previousStat} to double tag "Stats;Haste" of custom nbt of {_p}'s chestplate
-	set {_previousHealth} to double tag "Stats;Health" of custom nbt of {_p}'s chestplate
+	set {_previousStat} to int tag "Stats;Haste" of custom nbt of {_p}'s chestplate
+	set {_previousHealth} to int tag "Stats;Health" of custom nbt of {_p}'s chestplate
 	
 	set {_itemLevel} to int tag "ItemLevel" of custom nbt of {_p}'s chestplate
 	set {_stat} to round(accessoryGearFormula({_itemLevel})/3, 0)
 	set {_multiplier} to statMultiplierGear("accessory")
 	set {_health} to round(healthFormula({_itemLevel})*{_multiplier}, 0)
-	set double tag "Stats;Health" of custom nbt of {_p}'s chestplate to {_health}
-	set double tag "Stats;Critical Hit" of custom nbt of {_p}'s chestplate to {_stat}
-	set double tag "Stats;Haste" of custom nbt of {_p}'s chestplate to {_stat}
-	set double tag "Stats;Mastery" of custom nbt of {_p}'s chestplate to {_stat}
+	set int tag "Stats;Health" of custom nbt of {_p}'s chestplate to {_health}
+	set int tag "Stats;Critical Hit" of custom nbt of {_p}'s chestplate to {_stat}
+	set int tag "Stats;Haste" of custom nbt of {_p}'s chestplate to {_stat}
+	set int tag "Stats;Mastery" of custom nbt of {_p}'s chestplate to {_stat}
 	set lore of {_p}'s chestplate to "<##fdd002>Item Level %{_itemLevel}%%nl%&fSoulbound to %{_p}%%nl%&f+%{_health}% Health%nl%<##00ff00>+%{_stat}% Critical Hit%nl%<##00ff00>+%{_stat}% Haste%nl%<##00ff00>+%{_stat}% Mastery%nl% %nl%<##00ff00>Equip: Harnesses the energy of raw%nl%<##00ff00>Azerite, awakening exceptional pieces%nl%<##00ff00>of armor that possess latent powers.%nl% %nl%<##fdd002>''A living symbol of hope, borne by the%nl%<##fdd002>champions of a dying planet. The fate%nl%<##fdd002>of Earthcraft will be shared by all its%nl%<##fdd002>children.''"
 
 	if {_stat} != {_previousStat}:
@@ -290,6 +299,23 @@ function heartOfECUpdate(p: player):
 			send "<##fdd002>- +%{_statIncrease}% <##e8ce81> <##fdd002>Haste" to {_p}
 			send "<##fdd002>- +%{_statIncrease}% <##e8ce81> <##fdd002>Mastery" to {_p}
 
+	setHeartOfEarthcraft({_p}, {_p}'s chestplate)
+	updateAzeriteArmorLore({_p})
+
+function getHeartOfEarthcraft(p: player) :: item:
+	set {_id} to random 8 char string from charset `0-9` `a-z`
+	load yaml "plugins/Skript/playerdata/heart/%uuid of {_p}%" as "%{_id}%"
+	set {_heart} to yaml value "Heart of Earthcraft" in "%{_id}%"
+	unload yaml "%{_id}%"
+	return {_heart}
+
+function setHeartOfEarthcraft(p: player, item: item) :: item:
+	set {_id} to random 8 char string from charset `0-9` `a-z`
+	load yaml "plugins/Skript/playerdata/heart/%uuid of {_p}%" as "%{_id}%"
+	set yaml value "Heart of Earthcraft" in "%{_id}%" to {_item}
+	save yaml "%{_id}%"
+	unload {_id}
+
 function addAzerite(p: player, azerite: integer):
 	if boolean tag "HeartOfEarthcraft" of custom nbt of {_p}'s chestplate is set:
 		set {_heart} to {_p}'s chestplate
@@ -301,7 +327,7 @@ function addAzerite(p: player, azerite: integer):
 		if {_azerite} is between 1 and 50:
 			send formatted "<##fdd002>You receive item: &f <##00ff00>[Tiny Azerite Splinter]<##fdd002>." to {_p}
 		else if {_azerite} < 150:
-			send formatted "<##fdd002>You receive item: &f<##00ff00>[Small Azerite Shard]<##fdd002>." to {_p}
+			send formatted "<##fdd002>You receive item: &f <##00ff00>[Small Azerite Shard]<##fdd002>." to {_p}
 		else if {_azerite} < 200:
 			send formatted "<##fdd002>You receive item: &f <##00ff00>[Small Azerite Cluster]<##fdd002>." to {_p}
 		else if {_azerite} < 300:
@@ -347,6 +373,8 @@ function addAzerite(p: player, azerite: integer):
 			broadcast " "
 			broadcast formatted "<##fdd002>%{_p}% reached Level %{_heartLevel}% on their &f <tooltip:%name of {_heart}%%nl%%join lore of {_heart} by nl%><##e8ce81>[Heart of Earthcraft]<##fdd002>!"
 		heartBackup({_p}, {_p}'s chestplate)
+	else:
+		add {_azerite} to {azeriteStash::%uuid of {_p}%}
 
 function azeriteRequirement(heartLevel: integer) :: integer:
 	if 14 >= {_heartLevel}:
