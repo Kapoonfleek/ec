@@ -30,36 +30,50 @@ command /testdialogue:
         broadcast {_magni}
         
 
-function portraitDialogue(p: player, icon: string, name: string, text: string):
-    if length of {_text} > 32:
-        set {_length} to (length of {_text})/32
-        set {_length} to rounded down {_length}
-        set {_counter} to 1
-        loop {_length} times:
-            set {_min} to 1 + (({_counter}-1)*32)
-            if loop-counter = {_length}:
-                set {_max} to length of {_text}
+function portraitDialogue(p: player, icon: string, name: string, text: string, faction: string = ""):
+    set {_words::*} to {_text} split at " "
+    set {_currentLine} to ""
+    set {_lineCount} to 1
+
+    if {_faction} != "":
+        set {_name} to "<##fdd002>%{_name}%, &7&o%{_faction}%"
+    
+    loop {_words::*}:
+        if length of ("%{_currentLine}% %loop-value%") <= 40:
+            if {_currentLine} is "":
+                set {_currentLine} to loop-value
             else:
-                set {_max} to {_counter}*32
-            if {_counter} < 3:
-                set {_textAligned::*} to {_textAligned::*} and (subtext of {_text} from character {_min} to character {_max})
-            else:
-                set {_text::*} to {_text::*} and (subtext of {_text} from character {_min} to character {_max})
-            add 1 to {_counter}
-    else:
-        set {_textAligned::*} to {_text}
+                set {_currentLine} to "%{_currentLine}% %loop-value%"
+        else:
+            set {_allLines::%{_lineCount}%} to {_currentLine}
+            add 1 to {_lineCount}
+            set {_currentLine} to loop-value
+    
+    set {_allLines::%{_lineCount}%} to {_currentLine}
+
+    loop {_allLines::*}:
+        if loop-index parsed as integer <= 2:
+            set {_textAligned::*} to {_textAligned::*} and loop-value
+        else:
+            set {_textExtra::*} to {_textExtra::*} and loop-value
     send "" to {_p}
-    send "          <##fdd002>%{_name}%" to {_p}
+    send "          %{_name}%" to {_p}
+    
     loop {_textAligned::*}:
         send "          %loop-value%" to {_p}
-    if {_text::*} is set:
-        loop {_text::*}:
-            if loop-counter = (size of {_text::*}):
+    
+    if size of {_textAligned::*} is 1:
+        send "          " to {_p}
+
+    if {_textExtra::*} is set:
+        loop {_textExtra::*}:
+            if loop-counter = 1:
                 send "%{_icon}% %loop-value%" to {_p}
             else:
                 send "          %loop-value%" to {_p}
     else:
         send "%{_icon}%" to {_p}
+        
     send " " to {_p}
 
 command /ly:
@@ -90,7 +104,13 @@ command /ly3:
 command /wq [<text>]:
     trigger:
         if arg-1 = "task":
-            set yaml value "Mobs.Drowned.Item" in "WorldQuestList" to player's tool
+            set yaml value "Tasks.Collect Things.Tidying Up.Glassware.Block" in "WorldQuestList" to flower pot
+           # set yaml value "Tasks.Collect Things.Tidying Up.Glassware.Extra Data" in "WorldQuestList" to "%nbt compound of {_t}%"
+        if arg-1 = "yaml":
+            load yaml "plugins/Skript/playerdata/worldquests/%uuid of player%" as "WorldQuests%player%"
+            set yaml value "Collect Things.Tidying Up.Completed" in "WorldQuests%player%" to 0
+            clear yaml list "Collect Things.Tidying Up.Completed Locations" in "WorldQuests%player%"
+            save yaml "WorldQuests%player%"
         if arg-1 = "loc":
             add player's location to yaml list "Interact With.The Big Dig.Locations" in "WorldQuestLocations"
             broadcast size of yaml list "Interact With.The Big Dig.Locations" in "WorldQuestLocations"
@@ -118,13 +138,14 @@ command /wq [<text>]:
 #//3. Spawn mobs, make players see x as y and place things for pick up.
 #4. Always 1 "rarer, more difficult world ques, usually slay a boss"
 #5. Mobs etc. respawns after some time
-#6. Place markers on the map.
-#7. Create regions or bounds from min to max. On enter of this area, send a dialogue to player.
+#//6. Place markers on the map.
+#//7. Create regions or bounds from min to max. On enter of this area, send a dialogue to player.
 #8. Include icon of npc in world marker
 #9. Player stats: Completed world quests, completed world quests per category, xp from world quests
-#10. On WQ complete, hide all the blocks again
+#//10. On WQ complete, hide all the blocks again
 #11. Emissary quests
-        
+#12. WQ completion function
+
 function WorldQuestSpawn(wq: string):
     set {_wqType} to yaml value "World Quests.%{_wq}%.Type" in "WorldQuestList"
     if {_wqType} = "Slay Mobs":
@@ -211,17 +232,283 @@ function MobInfoAssignments(mob: entity, loc: location):
 function getActiveWorldQuests() :: strings:
     return {activeWorldQuests::*}
 
-on rightclick:
-    wait 1 second
+#Collect things world quests
+on region enter:
     loop {activeWorldQuests::*}:
         set {_worldQuest} to loop-value
-        if yaml value "World Quests.%{_worldQuest}%.Type" in "WorldQuestList" = "Collect Things":
-            set {_elements::*} to yaml node keys "Tasks.Collect Things.%{_worldQuest}%" in "WorldQuestList"
-            loop {_elements::*}:
-                set {_block} to yaml value "Tasks.Collect Things.%{_worldQuest}%.Block" in "WorldQuestList"
-                set {_locations::*} to (yaml list "Collect Things.%{_worldQuest}%.Locations" in "WorldQuestLocations")
-                loop {_locations::*}:
-                    make player see block at loop-value-3 as sponge
+        set {_WQRegion} to {_worldQuest}
+        replace all " " in {_WQRegion} with ""
+        if "%event-region%" contains "WorldQuest_%{_WQRegion}%":
+            set {_worldQuestType} to yaml value "World Quests.%{_worldQuest}%.Type" in "WorldQuestList"
+            if metadata value "WorldQuestStarted_%{_WQRegion}%" of player is not set:
+                set metadata value "WorldQuestStarted_%{_WQRegion}%" of player to true
+                set {_questGiver} to yaml value "World Quests.%{_worldQuest}%.Quest Giver" in "WorldQuestList"
+                set {_dialogueIcon} to yaml value "Quest Givers.%{_questGiver}%.Dialogue Icon" in "WorldQuestList"
+                set {_dialogue} to yaml value "Quest Text.%{_worldQuest}%.Dialogue" in "WorldQuestList"
+                set {_faction} to yaml value "Quest Givers.%{_questGiver}%.Faction" in "WorldQuestList"
+
+                send " " to player
+                send "&e(&6&l!&e) &6Started World Quest: &l%{_worldQuest}%" to player
+
+                set {_objectives::*} to getObjectives({_worldQuest}, {_worldQusetType})
+
+                if size of {_objectives::*} > 1:
+                    set {_objString} to "Objectives"
+                else:
+                    set {_objString} to "Objective"
+
+                send "&e%{_objString}%:" to player
+                send {_objectives::*} to player
+
+                portraitDialogue(player, {_dialogueIcon}, {_questGiver}, {_dialogue}, {_faction})
+                WorldQuestDialogueSound(player)
+
+            if {_worldQuestType} = "Collect Things":
+                set {_elements::*} to yaml node keys "Tasks.Collect Things.%{_worldQuest}%" in "WorldQuestList"
+
+                loop {_elements::*}:
+                    set {_requirement} to yaml value "Tasks.Collect Things.%{_worldQuest}%.%loop-value-2%.Requirement" in "WorldQuestList"
+                    set {_collected} to yaml value "Collect Things.%{_worldQuest}%.Completed" in "WorldQuests%player%"
+                    if {_collected} < {_requirement}:
+                        set {_block} to yaml value "Tasks.Collect Things.%{_worldQuest}%.%loop-value-2%.Block" in "WorldQuestList"
+                        set {_locations::*} to (yaml list "Collect Things.%{_worldQuest}%.%loop-value-2%.Locations" in "WorldQuestLocations")
+                        set {_extraData} to yaml value "Tasks.Collect Things.%{_worldQuest}%.%loop-value-2%.Extra Data" in "WorldQuestList"
+                        if {_extraData} is set:
+                            set {_nbt} to nbt compound from {_extraData}
+                        wait 5 ticks
+                        loop {_locations::*}:
+                            if yaml list "Collect Things.%{_worldQuest}%.Completed Locations" in "WorldQuests%player%" does not contain loop-value-3:
+                                make player see block at loop-value-3 as {_block}
+                                updateFakeBlock(player, "WorldQuest_%{_WQRegion}%", {_worldQuest}, loop-value-2, loop-value-3, {_block})
+
+function sendObjectiveProgressionPacket(p: player, loc: location, text: string):
+    set {_id} to random integer between 100000 and 999999
+    set {_partyMembers::*} to all players in world "%{_p}'s world%"
+    
+    loop blocks in radius 2 around {_loc}:
+        if loop-block is air:
+            if block above loop-block is air:
+                set {_loc} to location of loop-block
+                stop loop
+    spawn fake text display entity at location 0.5 above {_loc} for {_partyMembers::*} with id {_id}
+    
+    set {_packet} to raw metadata packet with id {_id}
+    set {_text} to mini message from {_text}
+    add data from "display text %{_text}%" to packet {_packet}
+    add data from "display billboard center" to packet {_packet}
+    add data from "display brightness 15 15" to packet {_packet}
+    add data from "display see_through true" to packet {_packet}
+    send packet {_packet} to {_partyMembers::*}
+    
+    loop 80 times:
+        set {_scale} to 1.0 - (loop-value / 120)
+        
+        send move entity packet with id {_id} by 0, 51, 0 for {_partyMembers::*}
+        
+        set {_meta} to raw metadata packet with id {_id}
+        add data from "display scale %{_scale}% %{_scale}% %{_scale}%" to packet {_meta}
+        send packet {_meta} to {_partyMembers::*}
+        
+        wait 1 tick if loop-counter is divisible by 5
+        
+    remove fake entity with id {_id} for {_partyMembers::*}
+
+on rightclick:
+    if clicked block exists:
+        if "%regions at clicked block%" contains "WorldQuest_":
+            set {_loc} to location of clicked block
+            loop {activeWorldQuests::*}:
+                set {_worldQuest} to loop-value
+                set {_worldQuestType} to yaml value "World Quests.%{_worldQuest}%.Type" in "WorldQuestList"
+                if {_worldQuestType} = "Collect Things":
+                    set {_elements::*} to yaml node keys "Tasks.Collect Things.%{_worldQuest}%" in "WorldQuestList"
+                    loop {_elements::*}:
+                        set {_element} to loop-value-2
+                        if yaml list "Collect Things.%{_worldQuest}%.%{_element}%.Locations" in "WorldQuestLocations" contains {_loc}:
+                            set {_requirement} to yaml value "Tasks.Collect Things.%{_worldQuest}%.%{_element}%.Requirement" in "WorldQuestList"
+                            set {_collected} to yaml value "Collect Things.%{_worldQuest}%.Completed" in "WorldQuests%player%"
+                            if {_collected} < {_requirement}:
+                                if yaml list "Collect Things.%{_worldQuest}%.Completed Locations" in "WorldQuests%player%" does not contain {_loc}:
+                                    make player see block at {_loc} as (type of block at {_loc})
+                                    add 1 to {_collected}
+                                    set yaml value "Collect Things.%{_worldQuest}%.Completed" in "WorldQuests%player%" to {_collected}
+                                    add {_loc} to yaml list "Collect Things.%{_worldQuest}%.Completed Locations" in "WorldQuests%player%"
+                                    set {_objectives::*} to getObjectives({_worldQuest}, {_worldQuestType})
+                                    loop {_objectives::*}:
+                                        if loop-value-3 contains "%{_element}% retrieved":
+                                            set {_objective} to loop-value-3
+                                            stop loop
+                                    replace all "- 0/%{_requirement}% " in {_objective} with ""
+                                    set {_objective} to "<color:yellow>%{_collected}%/%{_requirement}%%nl%<color:white>%{_objective}%"
+                                    sendObjectiveProgressionPacket(player, {_loc}, {_objective})
+                                    WorldQuestCollectItemVisual(player, {_loc})
+                                    set {_sounds::*} to yaml list "Tasks.Collect Things.%{_worldQuest}%.%{_element}%.Sounds" in "WorldQuestList"
+                                    loop {_sounds::*}:
+                                        play sound loop-value-3 with volume 3 and pitch 1.2 to player
+                                    save yaml "WorldQuests%player%"
+                            if {_collected} = {_requirement}:
+                                set {_rarity} to yaml value "World Quests.%{_worldQuest}%.Rarity" in "WorldQuestList"
+                                completeWorldQuest(player, {_worldQuest}, {_rarity})
+
+function getObjectives(worldQuest: string, worldQuestType: string) :: strings:
+    set {_worldQuestType} to yaml value "World Quests.%{_worldQuest}%.Type" in "WorldQuestList"
+    set {_objectiveItems::*} to yaml node keys "Tasks.%{_worldQuestType}%.%{_worldQuest}%" in "WorldQuestList"
+    loop {_objectiveItems::*}:
+        set {_requirement} to yaml value "Tasks.%{_worldQuestType}%.%{_worldQuest}%.%loop-value%.Requirement" in "WorldQuestList"
+        set {_objective} to yaml value "Tasks.%{_worldQuestType}%.Objective" in "WorldQuestList"
+        set {_requirementName} to loop-value-2
+        replace all "{COMPLETED}" in {_objective} with "0"
+        replace all "{MOBNAME}" in {_objective} with loop-value
+        replace all "{REQUIREMENT}" in {_objective} with "%{_requirement}%"
+        replace all "{REQUIREMENT}" in {_questText} with "%{_requirement}%"
+        replace all "{ITEMNAME}" in {_objective} with "%loop-value% retrieved"
+        add "- %{_objective}%" to {_objectives::*}
+    return {_objectives::*}
+
+function updateFakeBlock(p: player, region: string, worldQuest: string, element: string, loc: location, block: itemtype):
+    while "%regions at {_p}%" contains {_region}:
+        make {_p} see block at {_loc} as {_block}
+        wait 2 seconds
+        set {_requirement} to yaml value "Tasks.Collect Things.%{_worldQuest}%.%{_element}%.Requirement" in "WorldQuestList"
+        set {_collected} to yaml value "Collect Things.%{_worldQuest}%.Completed" in "WorldQuests%{_p}%"
+        if any:
+            yaml list "Collect Things.%{_worldQuest}%.Completed Locations" in "WorldQuests%{_p}%" contains {_loc}
+            {_collected} = {_requirement}
+        then:
+            stop
+
+function completeWorldQuest(p: player, worldQuest: string, rarity: string):
+    if {_rarity} = "Rare":
+        rareWorldQuestCompletionVisual({_p})
+    else if {_rarity} = "Epic":
+        epicWorldQuestCompletionVisual({_p})
+
+    WorldQuestCompleteSound({_p})
+
+    set {_questGiver} to yaml value "World Quests.%{_worldQuest}%.Quest Giver" in "WorldQuestList"
+    set {_dialogueIcon} to yaml value "Quest Givers.%{_questGiver}%.Dialogue Icon" in "WorldQuestList"
+    set {_dialogue} to a random element of yaml list "Quest Text.%{_worldQuest}%.Completion" in "WorldQuestList"
+    set {_faction} to yaml value "Quest Givers.%{_questGiver}%.Faction" in "WorldQuestList"
+    portraitDialogue({_p}, {_dialogueIcon}, {_questGiver}, {_dialogue}, {_faction})
+
+    loop {activeWorldQuests::*}:
+        if loop-value = {_worldQuest}:
+            set {_index} to loop-counter
+            stop loop
+
+    set {_rewardName} to {activeWorldQuestsRewards::%{_index}%}
+    set {_rewardType} to yaml value "Rewards.%{_rewardName}%.Type" in "WorldQuestList"
+    set {_rewardAmount} to yaml value "Rewards.%{_rewardName}%.Amount" in "WorldQuestList"
+
+    if {_rewardType} = "Item":
+        set {_reward} to yaml value "Rewards.%{_rewardName}%.Item" in "WorldQuestList"
+    else if {_rewardType} = "Azerite":
+        addAzerite({_p}, {_rewardAmount})
+
+function WorldQuestCollectItemVisual(p: player, loc: location):
+    draw 20 of dust using dustOption(blue, 1.2) at {_loc} with extra 0.5
+    set {_y} to 0
+    loop 20 times:
+        add 0.012 to {_y}
+        set {_angle} to loop-value * 32
+
+        add 0.24 * sin({_angle}) to x-coord of {_loc}
+        add 0.24 * cos({_angle}) to z-coord of {_loc}
+        
+        add {_y} to y-coord of {_loc}
+        
+        if loop-counter is divisible by 2:
+            draw 1 of copper_fire_flame at {_loc} with extra 0.02
+        else:
+            draw 1 of soul_fire_flame at {_loc} with extra 0.02
+        if loop-counter is divisible by 3:
+            draw 2 of dust using dustOption(cyan, 0.7) at {_loc} with extra 0
+            
+        wait 1 tick
+
+function WorldQuestDialogueSound(p: player):
+    play sound "block.trial_spawner.detect_player" with volume 1.2 and pitch 1.8 to {_p}
+    wait 1 tick
+    play sound "block.note_block.chime" with volume 1.0 and pitch 2.0 to {_p}
+    wait 1 tick
+    play sound "block.vault.open_shutter" with volume 0.7 and pitch 1.4 to {_p}
+
+    loop 3 times:
+        play sound "ui.button.click" with volume 0.5 and pitch 2.0 to {_p}
+        wait 1 tick
+
+    play sound "entity.villager.yes" with volume 2 and pitch 0.7 to {_p}
+
+function WorldQuestCompleteSound(p: player):
+    loop 4 times:
+        set {_pitch} to 1.2 + (loop-value * 0.2)
+        play sound "block.note_block.chime" with volume 1.0 and pitch {_pitch} at {_p}
+        play sound "ui.button.click" with volume 0.3 and pitch ({_pitch} + 0.5) at {_p}
+        wait 1 tick
+
+    wait 1 tick
+    play sound "block.trial_spawner.spawn_item" with volume 1.5 and pitch 1.2 at {_p}
+    play sound "block.vault.insert_item" with volume 1.2 and pitch 0.8 at {_p}
+    play sound "block.amethyst_block.chime" with volume 0.5 and pitch 1.0 at {_p}
+
+    play sound "entity.villager.yes" with volume 2 and pitch 1 to {_p}
+
+function epicWorldQuestCompletionVisual(p: player):
+    set {_loc} to location of {_p}
+    
+    play sound "block.respawn_anchor.ambience" with volume 1.0 and pitch 0.5 at {_p}
+    
+    loop 15 times:
+        set {_pitch} to 0.4 + (loop-value * 0.1)
+        play sound "block.amethyst_block.chime" with volume 1.2 and pitch {_pitch} at {_p}
+        play sound "entity.warden.heartbeat" with volume 0.5 and pitch ({_pitch} + 0.5) at {_p}
+
+        set {_y} to (loop-value * 0.4)
+        set {_angle} to (loop-value * 40)
+        set {_radius} to 0.5 + (loop-value * 0.2)
+        
+        set {_v1} to vector(cos({_angle}) * {_radius}, {_y}, sin({_angle}) * {_radius})
+        set {_v2} to vector(cos({_angle} + 180) * {_radius}, {_y}, sin({_angle} + 180) * {_radius})
+
+        draw 5 witch particle at {_loc} ~ {_v1} with offset vector(0.1, 0.1, 0.1) with extra 0.05
+        draw 3 of dust_color_transition using dustTransition(rgb(255, 105, 180), rgb(255, 255, 255), 1.5) at {_loc} ~ {_v2} with offset vector(0.1, 0.1, 0.1) with extra 0.02
+        
+        if loop-counter is divisible by 3:
+            draw 1 flash particle at {_loc} ~ vector(0, {_y}, 0) with offset vector(0, 0, 0) with extra 0
+            play sound "block.amethyst_block.place" with volume 0.4 and pitch 2.0 at {_loc} ~ vector(0, {_y}, 0)
+
+        wait 1 tick
+    set {_top} to {_loc} ~ vector(0, 6, 0)
+    play sound "entity.warden.sonic_boom" with volume 1.5 and pitch 2 at {_p}
+    play sound "entity.player.levelup" with volume 2.0 and pitch 0 at {_p}
+
+    draw 100 soul particle at {_top} with offset vector(3, 3, 3) with extra 0.2
+    draw 100 dragon_breath particle at {_top} with offset vector(2, 2, 2) with extra 0.1
+    draw 50 trial_spawner_detection_ominous particle at {_top} with offset vector(1, 1, 1) with extra 0.15
+    draw 30 flash particle at {_top} with offset vector(0.5, 0.5, 0.5) with extra 0.1
+
+function rareWorldQuestCompletionVisual(p: player):
+    set {_loc} to location of {_p}
+    set {_blueGlass} to Bukkit.createBlockData("blue_stained_glass")
+
+    play sound "block.respawn_anchor.charge" with volume 0.5 and pitch 1.5 at {_p}
+    loop 6 times:
+        set {_pitch} to 0.8 + (loop-value * 0.2)
+        play sound "block.amethyst_block.chime" with volume 1.0 and pitch {_pitch} at {_p}
+        play sound "entity.allay.item_thrown" with volume 0.7 and pitch ({_pitch} + 0.3) at {_p}
+        
+        set {_angle} to (loop-value * 60)
+        set {_v} to vector(cos({_angle}) * 1.8, 1.5, sin({_angle}) * 1.8)
+        draw 5 soul_fire_flame particle at {_loc} ~ {_v} with offset vector(0.2, 0.2, 0.2) with extra 0.05
+        draw 3 of dust_color_transition using dustTransition(rgb(95, 218, 237), rgb(255, 255, 255), 1.5) at {_loc} ~ {_v} with offset vector(0.1, 0.1, 0.1) with extra 0.02
+        wait 3 ticks
+
+    play sound "block.vault.insert_item" with volume 1.5 and pitch 0.6 at {_p}
+    play sound "entity.firework_rocket.large_blast" with volume 1.0 and pitch 1.2 at {_p}
+    
+    draw 40 soul_fire_flame particle at {_p} ~ vector(0, 2, 0) with offset vector(1.5, 2, 1.5) with extra 0.1
+    draw 20 of dust_color_transition using dustTransition(rgb(95, 218, 237), rgb(255, 255, 255), 1.5) at {_p} ~ vector(0, 2, 0) with offset vector(1.5, 2, 1.5) with extra 0.1
+    make 20 of block using {_blueGlass} at {_p} ~ vector(0, 3, 0) with offset vector(1, 1, 1) with extra 0.2
 
 function defineWGRegion(id: string, loc1: location, loc2: location):
     set {_regionContainer} to WorldGuard.getInstance().getPlatform().getRegionContainer()
@@ -231,6 +518,7 @@ function defineWGRegion(id: string, loc1: location, loc2: location):
 
     set {_minV} to BlockVector3.at({_loc1}.getX(), {_loc1}.getY(), {_loc1}.getZ())
     set {_maxV} to BlockVector3.at({_loc2}.getX(), {_loc2}.getY(), {_loc2}.getZ())
+    broadcast {_minV} and {_maxV}
 
     set {_region} to new ProtectedCuboidRegion({_id}, {_minV}, {_maxV})
     {_adapter}.addRegion({_region})
@@ -267,6 +555,7 @@ function CreateWorldQuest(worldQuests: integer):
     #Remove last week's World Quests
     DeleteWorldQuestMarkers()
     clear {activeWorldQuests::*}
+    clear {activeWorldQuestsRewards::*}
     
     set {_worldQuestList::*} to yaml node keys "World Quests" in "WorldQuestList"
     loop {_worldQuests} times:
@@ -280,12 +569,18 @@ function CreateWorldQuest(worldQuests: integer):
 
         if {_WQLocation} = "random":
             set {_WQLocation} to a random element of (yaml list "%{_worldQuestType}%.%{_randomWorldQuest}%.Locations" in "WorldQuestLocations")
-        set {_WQLocationMin} and {_WQLocationMax} to {_WQLocation}
+        
+        set {_WQLocationMin} to {_WQLocation}
+        set {_WQLocationMax} to {_WQLocation}
 
-        increase x-coordinate of {_WQLocationMin} by -100
-        increase z-coordinate of {_WQLocationMin} by -100
-        increase x-coordinate of {_WQLocationMax} by 100
-        increase z-coordinate of {_WQLocationMax} by 100
+        set {_regionExpand} to yaml value "World Quests.%{_randomWorldQuest}%.Region Expand" in "WorldQuestList"
+
+        increase x-coordinate of {_WQLocationMin} by -1*{_regionExpand}
+        increase y-coordinate of {_WQLocationMin} by -30
+        increase z-coordinate of {_WQLocationMin} by -1*{_regionExpand}
+        increase x-coordinate of {_WQLocationMax} by {_regionExpand}
+        increase y-coordinate of {_WQLocationMax} by 50
+        increase z-coordinate of {_WQLocationMax} by {_regionExpand}
 
         set {_WGName} to {_randomWorldQuest}
         replace all " " in {_WGName} with ""
@@ -309,6 +604,7 @@ function CreateWorldQuest(worldQuests: integer):
         set {_questText} to yaml value "Quest Text.%{_randomWorldQuest}%.Dialogue" in "WorldQuestList"
         set {_rewards::*} to yaml list "World Quests.%{_randomWorldQuest}%.Rewards" in "WorldQuestList"
         set {_reward} to a random element of {_rewards::*}
+        set {activeWorldQuestsRewards::%loop-counter%} to {_reward}
         set {_rewardImage} to yaml value "Rewards.%{_reward}%.Image link" in "WorldQuestList"
         set {_rewardDescription} to yaml value "Rewards.%{_reward}%.Description" in "WorldQuestList"
         set {_EXP} to yaml value "World Quests.%{_randomWorldQuest}%.EXP" in "WorldQuestList"
@@ -323,17 +619,7 @@ function CreateWorldQuest(worldQuests: integer):
         else if {_worldQuestRarity} = "Epic":
             set {_colour} to "#a335ee"
 
-        set {_objectiveItems::*} to yaml node keys "Tasks.%{_worldQuestType}%.%{_randomWorldQuest}%" in "WorldQuestList"
-        loop {_objectiveItems::*}:
-            set {_requirement} to yaml value "Tasks.%{_worldQuestType}%.%{_randomWorldQuest}%.%loop-value-2%.Requirement" in "WorldQuestList"
-            set {_objective} to yaml value "Tasks.%{_worldQuestType}%.Objective" in "WorldQuestList"
-            set {_requirementName} to loop-value-2
-            replace all "{COMPLETED}" in {_objective} with "0"
-            replace all "{MOBNAME}" in {_objective} with loop-value-2
-            replace all "{REQUIREMENT}" in {_objective} with "%{_requirement}%"
-            replace all "{REQUIREMENT}" in {_questText} with "%{_requirement}%"
-            replace all "{ITEMNAME}" in {_objective} with "%loop-value-2% retrieved"
-            add "- %{_objective}%" to {_objectives::*}
+        set {_objectives::*} to getObjectives({_randomWorldQuest}, {_worldQuestType})
 
         set {_html} to join (yaml list "HTML" in "WorldQuestHTML") by ""
         replace all "{WORLDQUEST}" in {_html} with {_randomWorldQuest}
