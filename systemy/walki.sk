@@ -250,6 +250,10 @@ on projectile hit:
 	if shooter is a skeleton:
 		if boolean tag "ECMob" of custom nbt of shooter is not set:
 			delete event-projectile
+	if event-projectile is a trident:
+		wait 10 seconds
+		kill event-projectile
+
 on join:
 	set scaled health of player to 20
 	if player's last damage cause is not set:
@@ -696,7 +700,7 @@ on damage:
 				if metadata value "ShadowMark%attacker%" of victim is set:
 					add damage to metadata value "ShadowMark%attacker%" of victim
 
-			if boolean tag "TargetableByAllies" of custom nbt victim is true:
+			if boolean tag "TargetableByAllies" of custom nbt of victim is true:
 				cancel event
 
 		if victim is a player:
@@ -731,6 +735,24 @@ on damage:
 								set {_instanceVictim} to int tag "ECDungeonInstance" of custom nbt of victim
 								if {_instanceAttacker} = {_instanceVictim}:
 									DungeonPullDamage(attacker, victim, damage, {_damageCause})
+							if yaml "activeCard-%attacker%" is loaded:
+								set {_totalDamageDealt} to yaml value "Combat Data.Total Damage Dealt" in "activeCard-%attacker%"
+								add damage to {_totalDamageDealt}
+								set yaml value "Combat Data.Total Damage Dealt" in "activeCard-%attacker%" to {_totalDamageDealt}
+
+								set {_damageDealtSource} to yaml value "Combat Data.By Source.%{_damageCause}%.Damage Dealt" in "activeCard-%attacker%"
+								add damage to {_damageDealtSource}
+								set yaml value "Combat Data.By Source.%{_damageCause}%.Damage Dealt" in "activeCard-%attacker%" to {_damageDealtSource}
+								if {_crit} = true:
+									set {_totalCrits} to yaml value "Combat Data.Total Critical Hits" in "activeCard-%attacker%"
+									add 1 to {_totalCrits}
+									set yaml value "Combat Data.Total Critical Hits" in "activeCard-%attacker%" to {_totalCrits}
+
+									set {_critsSource} to yaml value "Combat Data.By Source.%{_damageCause}%.Critical Hits" in "activeCard-%attacker%"
+									add 1 to {_critsSource}
+									set yaml value "Combat Data.By Source.%{_damageCause}%.Critical Hits" in "activeCard-%attacker%" to {_critsSource}
+								save yaml "activeCard-%attacker%"
+								
 							if string tag "ECTextAbove" of custom nbt of victim is set:
 								if int tag "ECDungeonInstance" of custom nbt of victim is not set:
 									UpdateMobHealthBar(victim)
