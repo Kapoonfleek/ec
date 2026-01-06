@@ -14,6 +14,8 @@ import:
     com.sk89q.worldguard.protection.regions.ProtectedCuboidRegion
     com.sk89q.worldedit.math.BlockVector3
     com.sk89q.worldedit.bukkit.BukkitAdapter
+    java.io.PrintWriter
+    java.io.File
 
 variables:
     {worldQuestCount} = 0
@@ -114,8 +116,7 @@ command /wq [<text>]:
             set yaml value "Tasks.Collect Things.Tidying Up.Glassware.Block" in "WorldQuestList" to flower pot
            # set yaml value "Tasks.Collect Things.Tidying Up.Glassware.Extra Data" in "WorldQuestList" to "%nbt compound of {_t}%"
         if arg-1 = "yaml":
-            clear yaml value "Collect Things" in "WorldQuests%player%"
-            save yaml "WorldQuests%player%"
+            clearAllYamlKeys("plugins/Skript/playerdata/worldquests")
         if arg-1 = "loc":
             add player's location to yaml list "Interact With.The Big Dig.Locations" in "WorldQuestLocations"
             broadcast size of yaml list "Interact With.The Big Dig.Locations" in "WorldQuestLocations"
@@ -136,9 +137,7 @@ command /wq [<text>]:
                     kill loop-entity
 
         save yaml "WorldQuestList"
-        save yaml "WorldQuestLocations"
 
-#1. Every friday, 10 random World Quests are randomized. When this happens, delete all player yaml (WorldQuests%player%)!
 #2. Always 1 "rarer, more difficult world ques, usually slay a boss"
 #3. Player stats: Completed world quests, completed world quests per category, xp from world quests
 #4. Emissary quests
@@ -162,9 +161,15 @@ function WorldQuestSpawn(wq: string):
             set {_modelHeight} to yaml value "Mobs.%{_mobType}%.Model Height" in "WorldQuestList"
             set {_item} to yaml value "Mobs.%{_mobType}%.Item" in "WorldQuestList"
 
-            set {_spawnLocations::*} to yaml list "%{_wqType}%.%{_wq}%.Locations" in "WorldQuestLocations"
+            set {_spawnLocations::*} to yaml list "Locations.%{_mobType}%" in "WorldQuestLocations%{_wq}%"
             loop {_spawnLocations::*}:
                 WorldQuestSpawnMob(loop-value-2, {_wq}, {_mobType}, {_entity}, {_health}, {_level}, {_element}, {_modelHeight}, {_item})
+    else if {_wqType} = "Interact With":
+        set {_types::*} to yaml node keys "Tasks.%{_wqType}%.%{_wq}%" in "WorldQuestList"
+        loop {_types::*}:
+            set {_entity} to yaml value "Tasks.%{_wqType}%.%{_wq}%.%loop-value%.Entity" in "WorldQuestList"
+            set {_baseEntity} to yaml value "Tasks.%{_wqType}%.%{_wq}%.%loop-value%.Base Entity" in "WorldQuestList"
+            #loop locations, spawn baseentity etc.
 
 function WorldQuestSpawnMob(loc: location, wq: string, mobType: string, entity: entity type, health: number, level: number, element: string, modelHeight: number, item: item):
     spawn {_entity} at {_loc}
@@ -275,6 +280,9 @@ function MobInfoAssignments(mob: entity, loc: location):
             set string tag "ECTextAboveLevel" of custom nbt of {_mob} to uuid of last spawned armor stand
 
         push {_mob} upwards with velocity 0.01
+    
+    wait 1 tick
+    set boolean tag "NoAI" of nbt of {_mob} to true
 
 function getActiveWorldQuests() :: strings:
     return {activeWorldQuests::*}
@@ -285,58 +293,140 @@ on region enter:
         set {_WQRegion} to {_worldQuest}
         replace all " " in {_WQRegion} with ""
         if "%event-region%" contains "WorldQuest_%{_WQRegion}%":
+            if yaml list "Completed World Quests" in "WorldQuests%player%" does not contain {_worldQuest}:
+                set {_worldQuestType} to yaml value "World Quests.%{_worldQuest}%.Type" in "WorldQuestList"
+                if metadata value "WorldQuestStarted_%{_WQRegion}%" of player is not set:
+                    set metadata value "WorldQuestStarted_%{_WQRegion}%" of player to true
+                    set {_questGiver} to yaml value "World Quests.%{_worldQuest}%.Quest Giver" in "WorldQuestList"
+                    set {_dialogueIcon} to yaml value "Quest Givers.%{_questGiver}%.Dialogue Icon" in "WorldQuestList"
+                    set {_dialogue} to yaml value "Quest Text.%{_worldQuest}%.Dialogue" in "WorldQuestList"
+                    set {_faction} to yaml value "Quest Givers.%{_questGiver}%.Faction" in "WorldQuestList"
+
+                    send " " to player
+                    send "&e(&6&l!&e) &6Started World Quest: &l%{_worldQuest}%" to player
+
+                    set {_objectives::*} to getObjectives({_worldQuest}, {_worldQuestType})
+
+                    if size of {_objectives::*} > 1:
+                        set {_objString} to "Objectives"
+                    else:
+                        set {_objString} to "Objective"
+
+                    send "&e%{_objString}%:" to player
+                    send {_objectives::*} to player
+
+                    portraitDialogue(player, {_dialogueIcon}, {_questGiver}, {_dialogue}, {_faction})
+                    WorldQuestDialogueSound(player)
+
+                if {_worldQuestType} = "Collect Things":
+                    set {_elements::*} to yaml node keys "Tasks.Collect Things.%{_worldQuest}%" in "WorldQuestList"
+
+                    loop {_elements::*}:
+                        set {_requirement} to yaml value "Tasks.Collect Things.%{_worldQuest}%.%loop-value-2%.Requirement" in "WorldQuestList"
+                        set {_collected} to yaml value "Collect Things.%{_worldQuest}%.%loop-value-2%.Completed" in "WorldQuests%player%"
+                        if {_collected} < {_requirement}:
+                            set {_block} to yaml value "Tasks.Collect Things.%{_worldQuest}%.%loop-value-2%.Block" in "WorldQuestList"
+                            set {_locations::*} to (yaml list "Locations.%loop-value-2%" in "WorldQuestLocations%{_worldQuest}%")
+                            set {_extraData} to yaml value "Tasks.Collect Things.%{_worldQuest}%.%loop-value-2%.Extra Data" in "WorldQuestList"
+                            if {_extraData} is set:
+                                set {_nbt} to nbt compound from {_extraData}
+                            wait 5 ticks
+                            loop {_locations::*}:
+                                if yaml list "Collect Things.%{_worldQuest}%.%{_element}%.Completed Locations" in "WorldQuests%player%" does not contain loop-value-3:
+                                    make player see block at loop-value-3 as {_block}
+                                    updateFakeBlock(player, "WorldQuest_%{_WQRegion}%", {_worldQuest}, loop-value-2, loop-value-3, {_block})
+
+                else if {_worldQuestType} = "Slay Mobs":
+                    set {_regionPoints::*} to getRegionCenterPoint("%event-region%", player's world)
+
+                    set {_centerPoint} to {_regionPoints::1}
+                    set {_radius} to {_regionPoints::2}
+
+                    loop all entities in radius {_radius} around {_centerPoint}:
+                        if boolean tag "ECMob" of custom nbt of loop-entity is set:
+                            clear boolean tag "NoAI" of nbt of loop-entity
+
+on region leave:
+    FreezeWorldQuestMobsInRegion(player, "%event-region%")
+
+function FreezeWorldQuestMobsInRegion(p: player, region: string):
+    loop {activeWorldQuests::*}:
+        set {_worldQuest} to loop-value
+        set {_WQRegion} to {_worldQuest}
+        replace all " " in {_WQRegion} with ""
+        if {_region} contains "WorldQuest_%{_WQRegion}%":
             set {_worldQuestType} to yaml value "World Quests.%{_worldQuest}%.Type" in "WorldQuestList"
-            if metadata value "WorldQuestStarted_%{_WQRegion}%" of player is not set:
-                set metadata value "WorldQuestStarted_%{_WQRegion}%" of player to true
-                set {_questGiver} to yaml value "World Quests.%{_worldQuest}%.Quest Giver" in "WorldQuestList"
-                set {_dialogueIcon} to yaml value "Quest Givers.%{_questGiver}%.Dialogue Icon" in "WorldQuestList"
-                set {_dialogue} to yaml value "Quest Text.%{_worldQuest}%.Dialogue" in "WorldQuestList"
-                set {_faction} to yaml value "Quest Givers.%{_questGiver}%.Faction" in "WorldQuestList"
+            if {_worldQuestType} = "Slay Mobs":
+                set {_regionPoints::*} to getRegionCenterPoint({_region}, {_p}'s world)
 
-                send " " to player
-                send "&e(&6&l!&e) &6Started World Quest: &l%{_worldQuest}%" to player
+                set {_centerPoint} to {_regionPoints::1}
+                set {_radius} to {_regionPoints::2}
+                set {_playerCount} to 0
 
-                set {_objectives::*} to getObjectives({_worldQuest}, {_worldQuestType})
+                loop all players in radius {_radius} around {_centerPoint}:
+                    if loop-entity is a player:
+                        set {_playerCount} to {_playerCount} + 1
 
-                if size of {_objectives::*} > 1:
-                    set {_objString} to "Objectives"
-                else:
-                    set {_objString} to "Objective"
+                if {_playerCount} = 1:
+                    loop all entities in radius {_radius} around {_centerPoint}:
+                        if boolean tag "ECMob" of custom nbt of loop-entity is set:
+                            set boolean tag "NoAI" of nbt of loop-entity to true
 
-                send "&e%{_objString}%:" to player
-                send {_objectives::*} to player
+function UnfreezeWorldQuestMobsInRegion(p: player, region: string):
+    loop {activeWorldQuests::*}:
+        set {_worldQuest} to loop-value
+        set {_WQRegion} to {_worldQuest}
+        replace all " " in {_WQRegion} with ""
+        if {_region} contains "WorldQuest_%{_WQRegion}%":
+            set {_worldQuestType} to yaml value "World Quests.%{_worldQuest}%.Type" in "WorldQuestList"
+            if {_worldQuestType} = "Slay Mobs":
+                set {_regionPoints::*} to getRegionCenterPoint({_region}, {_p}'s world)
 
-                portraitDialogue(player, {_dialogueIcon}, {_questGiver}, {_dialogue}, {_faction})
-                WorldQuestDialogueSound(player)
+                set {_centerPoint} to {_regionPoints::1}
+                set {_radius} to {_regionPoints::2}
 
-            if {_worldQuestType} = "Collect Things":
-                set {_elements::*} to yaml node keys "Tasks.Collect Things.%{_worldQuest}%" in "WorldQuestList"
+                loop all entities in radius {_radius} around {_centerPoint}:
+                    if boolean tag "ECMob" of custom nbt of loop-entity is set:
+                        clear boolean tag "NoAI" of nbt of loop-entity
 
-                loop {_elements::*}:
-                    set {_requirement} to yaml value "Tasks.Collect Things.%{_worldQuest}%.%loop-value-2%.Requirement" in "WorldQuestList"
-                    set {_collected} to yaml value "Collect Things.%{_worldQuest}%.%loop-value-2%.Completed" in "WorldQuests%player%"
-                    if {_collected} < {_requirement}:
-                        set {_block} to yaml value "Tasks.Collect Things.%{_worldQuest}%.%loop-value-2%.Block" in "WorldQuestList"
-                        set {_locations::*} to (yaml list "Collect Things.%{_worldQuest}%.%loop-value-2%.Locations" in "WorldQuestLocations")
-                        set {_extraData} to yaml value "Tasks.Collect Things.%{_worldQuest}%.%loop-value-2%.Extra Data" in "WorldQuestList"
-                        if {_extraData} is set:
-                            set {_nbt} to nbt compound from {_extraData}
-                        wait 5 ticks
-                        loop {_locations::*}:
-                            if yaml list "Collect Things.%{_worldQuest}%.Completed Locations" in "WorldQuests%player%" does not contain loop-value-3:
-                                make player see block at loop-value-3 as {_block}
-                                updateFakeBlock(player, "WorldQuest_%{_WQRegion}%", {_worldQuest}, loop-value-2, loop-value-3, {_block})
+    loop all entities in radius {_radius} around {_centerPoint}:
+        if boolean tag "ECMob" of custom nbt of loop-entity is set:
+            clear boolean tag "NoAI" of nbt of loop-entity
+
+function getRegionCenterPoint(region: string, playerWorld: world) :: objects:
+    set {_world} to BukkitAdapter.adapt({_playerWorld})
+    set {_manager} to WorldGuard.getInstance().getPlatform().getRegionContainer().get({_world})
+
+    replace all " in world %{_playerWorld}%" in {_region} with ""
+    set {_region} to {_manager}.getRegion({_region})
+
+    set {_min} to {_region}.getMinimumPoint()
+    set {_max} to {_region}.getMaximumPoint()
+    
+    set {_minLoc} to location({_min}.getX(), {_min}.getY(), {_min}.getZ(), {_playerWorld})
+    set {_maxLoc} to location({_max}.getX(), {_max}.getY(), {_max}.getZ(), {_playerWorld})
+
+    set {_radius} to distance between {_minLoc} and {_maxLoc} / 2
+
+    set {_x} to ({_min}.getX() + {_max}.getX()) / 2
+    set {_y} to ({_min}.getY() + {_max}.getY()) / 2
+    set {_z} to ({_min}.getZ() + {_max}.getZ()) / 2
+    set {_centerPoint} to location({_x}, {_y}, {_z}, {_playerWorld})
+
+    set {_return::*} to {_centerPoint} and {_radius}
+
+    return {_return::*}
 
 function sendObjectiveProgressionPacket(p: player, loc: location, text: string):
     set {_id} to random integer between 100000 and 999999
-    set {_partyMembers::*} to all players in world "%{_p}'s world%"
+    set {_players::*} to all players in world "%{_p}'s world%"
     
     loop blocks in radius 2 around {_loc}:
         if loop-block is air:
             if block above loop-block is air:
                 set {_loc} to location of loop-block
                 stop loop
-    spawn fake text display entity at location 0.5 above {_loc} for {_partyMembers::*} with id {_id}
+    spawn fake text display entity at location 0.5 above {_loc} for {_players::*} with id {_id}
     
     set {_packet} to raw metadata packet with id {_id}
     set {_text} to mini message from {_text}
@@ -344,20 +434,20 @@ function sendObjectiveProgressionPacket(p: player, loc: location, text: string):
     add data from "display billboard center" to packet {_packet}
     add data from "display brightness 15 15" to packet {_packet}
     add data from "display see_through true" to packet {_packet}
-    send packet {_packet} to {_partyMembers::*}
+    send packet {_packet} to {_players::*}
     
     loop 80 times:
         set {_scale} to 1.0 - (loop-value / 120)
         
-        send move entity packet with id {_id} by 0, 51, 0 for {_partyMembers::*}
+        send move entity packet with id {_id} by 0, 51, 0 for {_players::*}
         
         set {_meta} to raw metadata packet with id {_id}
         add data from "display scale %{_scale}% %{_scale}% %{_scale}%" to packet {_meta}
-        send packet {_meta} to {_partyMembers::*}
+        send packet {_meta} to {_players::*}
         
         wait 1 tick if loop-counter is divisible by 5
         
-    remove fake entity with id {_id} for {_partyMembers::*}
+    remove fake entity with id {_id} for {_players::*}
 
 on rightclick:
     if clicked block exists:
@@ -371,7 +461,7 @@ on rightclick:
                         set {_elements::*} to yaml node keys "Tasks.Collect Things.%{_worldQuest}%" in "WorldQuestList"
                         loop {_elements::*}:
                             set {_element} to loop-value-2
-                            if yaml list "Collect Things.%{_worldQuest}%.%{_element}%.Locations" in "WorldQuestLocations" contains {_loc}:
+                            if yaml list "Locations.%{_element}%" in "WorldQuestLocations%{_worldQuest}%" contains {_loc}:
                                 set {_requirement} to yaml value "Tasks.Collect Things.%{_worldQuest}%.%{_element}%.Requirement" in "WorldQuestList"
                                 set {_collected} to yaml value "Collect Things.%{_worldQuest}%.%{_element}%.Completed" in "WorldQuests%player%"
                                 if {_collected} < {_requirement}:
@@ -426,7 +516,7 @@ function updateFakeBlock(p: player, region: string, worldQuest: string, element:
         make {_p} see block at {_loc} as {_block}
         wait 2 seconds
         if any:
-            yaml list "Collect Things.%{_worldQuest}%.Completed Locations" in "WorldQuests%{_p}%" contains {_loc}
+            yaml list "Collect Things.%{_worldQuest}%.%{_element}%.Completed Locations" in "WorldQuests%{_p}%" contains {_loc}
             {_collected} = {_requirement}
             {_p} is not online
         then:
@@ -628,12 +718,11 @@ function rareWorldQuestCompletionVisual(p: player):
 function defineWGRegion(id: string, loc1: location, loc2: location):
     set {_regionContainer} to WorldGuard.getInstance().getPlatform().getRegionContainer()
     set {_adapter} to {_regionContainer}.get(BukkitAdapter.adapt({_loc1}.getWorld()))
-
+    
     stop if {_adapter} is not set
 
     set {_minV} to BlockVector3.at({_loc1}.getX(), {_loc1}.getY(), {_loc1}.getZ())
     set {_maxV} to BlockVector3.at({_loc2}.getX(), {_loc2}.getY(), {_loc2}.getZ())
-    broadcast {_minV} and {_maxV}
 
     set {_region} to new ProtectedCuboidRegion({_id}, {_minV}, {_maxV})
     {_adapter}.addRegion({_region})
@@ -681,9 +770,10 @@ function CreateWorldQuest(worldQuests: integer):
 
         set {_worldQuestType} to yaml value "World Quests.%{_randomWorldQuest}%.Type" in "WorldQuestList"
         set {_WQLocation} to yaml value "World Quests.%{_randomWorldQuest}%.Location" in "WorldQuestList"
+        load yaml "plugins/Skript/worldquests/%{_randomWorldQuest}%" as "WorldQuestLocations%{_randomWorldQuest}%"
 
         if {_WQLocation} = "random":
-            set {_WQLocation} to a random element of (yaml list "%{_worldQuestType}%.%{_randomWorldQuest}%.Locations" in "WorldQuestLocations")
+            set {_WQLocation} to a random element of (yaml list "Locations" in "WorldQuestLocations%{_randomWorldQuest}%")
         
         set {_WQLocationMin} to {_WQLocation}
         set {_WQLocationMax} to {_WQLocation}
@@ -760,6 +850,7 @@ function CreateWorldQuest(worldQuests: integer):
         add 1 to {worldQuestCount}
         addDynmapWorldQuestMarker({_html}, {worldQuestCount}, {_WQLocation})
         clear {_objectives::*}
+    broadcast "Done!"
     
 function addDynmapWorldQuestMarker(label: text, id: integer, WQLocation: location):
     set {_x} to x-coordinate of {_WQLocation}
@@ -788,21 +879,30 @@ command /ly2:
             broadcast "&bloaded yaml"
 command /wqtest:
     trigger:
-        #loop all loaded chunks in player's world:
-        #    if loop-value.getPluginChunkTickets() is set:
-        #        unload loop-value
-        
         loop getActiveWorldQuests():
             set {_l} to loop-value
             replace all " " in {_l} with ""
             clear metadata value "WorldQuestStarted_%{_l}%" of player
         if player's name = "Pehrek":
             CreateWorldQuest(10)
-           
 
-on shoot:
-    if shooter is a drowned:
-        if cooldown "ShootTrident%uuid of shooter%" is finished:
-            create cooldown "ShootTrident%uuid of shooter%" for 5 seconds
-        else:
-            cancel event
+function clearAllYamlKeys(path: string):
+    set {_dir} to new File({_path})
+    
+    if {_dir}.isDirectory() is false:
+        broadcast "&c[Error] The path '%{_path}%' is not a valid directory."
+        stop
+
+    set {_files::*} to ...{_dir}.listFiles()
+    set {_count} to 0
+    
+    loop {_files::*}:
+        set {_file} to loop-value
+        set {_name} to {_file}.getName()
+        
+        set {_writer} to new PrintWriter({_file})
+        {_writer}.print("")
+        {_writer}.close()
+        add 1 to {_count}
+            
+    broadcast "&a[Success] Wiped all keys from %{_count}% YAML files in %{_path}%."

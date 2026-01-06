@@ -9,7 +9,7 @@ on join:
 	load yaml "plugins/Skript/playerdata/reputation/%uuid of player%" as "Reputation%player%"
 	loop {@maxEcs} times:
 		load yaml "plugins/Skript/playerdata/enderchesty/contents/%uuid of player%/%loop-number%.yml" as "Enderchest%loop-number%%player%"
-	
+
 	if metadata value "ECEngaged" of player is not set:
 		SetPlayerStats(player) #Sets player stats to current selected card's stats (funkcje.sk)
 		
@@ -19,21 +19,31 @@ on join:
 		set {_idCard} to string tag "Id" of custom nbt of {karta::%player%}
 		set {_cardName} to uncolored name of {karta::%player%}
 		load yaml "plugins/Skript/playerdata/karty/%{_cardName}%/%{_idCard}%.yml" as "activeCard-%player%"
-	
+
 	if {kolorek1::%player%} is set:
 		set {_color} to raw {kolorek1::%player%}
 		replace all "<" and ">" in {_color} with ""
 	else:
 		set {_color} to "ffffff"
+
+	loop getActiveWorldQuests():
+		set {_worldQuest} to loop-value
+		set {_wqType} to yaml value "World Quests.%{_worldQuest}%.Type" in "WorldQuestList"
+		loop yaml node keys "Tasks.%{_wqType}%.%{_worldQuest}%" in "WorldQuestList":
+			set {_element} to loop-value-2
+			if yaml value "%{_wqType}%.%{_worldQuest}%.%{_element}%.Completed" in "WorldQuests%player%" is not set:
+				set yaml value "%{_wqType}%.%{_worldQuest}%.%{_element}%.Completed" in "WorldQuests%player%" to 0
+
 	set yaml value "Player.Name" in "data-%player%" to name of player
 	set yaml value "Player.Last Login" in "data-%player%" to data()
 	set yaml value "Player.Colour" in "data-%player%" to {_color}
 	set yaml value "Player.Level" in "data-%player%" to {poziom::%player%}
 	set yaml value "Player.Exp" in "data-%player%" to round({exp::%player%}, 2)
-	
+
 	set yaml value "Player.Name" in "dataAdmin-%player%" to name of player
 	set yaml value "Player.UUID" in "dataAdmin-%player%" to "%uuid of player%"
 	set yaml value "Player.Location" in "dataAdmin-%player%" to location of player
+
 	if yaml list "Player.Name History" in "dataAdmin-%player%" does not contain player's name:
 		add player's name to yaml list "Player.Name History" in "dataAdmin-%player%" 
 	if yaml value "Unlocked Content" in "dataAdmin-%player%" is not set:
@@ -42,13 +52,20 @@ on join:
 		set {_contentList::*} to yaml list "Content List" in "ContentList"
 		loop {_contentList::*}:
 			set yaml value "Unlocked Content.%loop-value%" in "dataAdmin-%player%" to false
+
 	save yaml "data-%player%"
 	save yaml "dataAdmin-%player%"
+	save yaml "WorldQuests%player%"
+
+	set {_region} to (join "%regions at player%" by "")
+    UnfreezeWorldQuestMobsInRegion(player, {_region})
+	
 	set {_size} to size of (yaml list "Player.Item Claim" in "dataAdmin-%player%")
 	if {_size} > 0:
 		wait 6 seconds
 		play sound "block.note_block.harp" with volume 3 and pitch 1.2 to player
 		send "&eYou have &f%{_size}% &eunclaimed items. Type /itemclaim to claim the items." to player
+
 	if party of player is set:
 		set {_partymembers::*} to party members of party of player
 		loop {_partymembers::*}:
@@ -58,6 +75,7 @@ on join:
 	
 on quit:
 	set yaml value "Player.Last Login" in "data-%player%" to now
+
 	save yaml "data-%player%"
 	save yaml "dataAdmin-%player%"
 	unload yaml "data-%player%"
@@ -69,12 +87,16 @@ on quit:
 	unload yaml "WorldQuests%player%"
 	save yaml "Reputation%player%"
 	unload yaml "Reputation%player%"
+
 	loop {@maxEcs} times:
 		save yaml "Enderchest%loop-number%%player%"
 		unload yaml "Enderchest%loop-number%%player%"
 	if {karta::%player%} is set:
 		set {_idCard} to string tag "Id" of custom nbt of {karta::%player%}
 		unload yaml "activeCard-%player%"
+
+	set {_region} to (join "%regions at player%" by "")
+    FreezeWorldQuestMobsInRegion(player, {_region})
 	
 every 1 minute:
 	loop all loaded yaml:
