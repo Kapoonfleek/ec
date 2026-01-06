@@ -113,8 +113,8 @@ function SpreadShotFire(p: player, modifier: number):
 			set {_shotweaving} to 1 + ({_shotweavingPercentModifier} * {_shotweavingCount})/100
 			set {_modifier} to {_modifier} * {_shotweaving}
 	
-	if metadata value "G.O.A.T" of {_p} is set:
-		if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Main Attraction":
+	if string tag "Talents;Row 5" of custom nbt of {karta::%{_p}%} = "Main Attraction":
+		if metadata value "G.O.A.T" of {_p} is set:
 			set {_totalShots} to 20
 			if {_etherealArrow} is set:
 				set {_etherealArrow} to a random integer between 1 and {_totalShots}
@@ -140,6 +140,20 @@ function SpreadShotFire(p: player, modifier: number):
 					SpreadShotArrow({_p}, {_loc}, false, {_modifier}, "Ethereal")
 				else:
 					SpreadShotArrow({_p}, {_loc}, false, {_modifier}, "Magic Volley")
+
+		else:
+			set {_middlePoint} to (rounded up {_shotCount}/2)
+			set {_startingPoint} to location 1 above (location 0 in front of {_p})
+			set {_startingLeft} to location 0 - (({_middlePoint}-1)*{_change}) left of {_startingPoint}
+
+			loop {_shotCount} times:
+				set {_loc} to {_startingLeft}
+				set {_startingLeft} to location {_change} left of {_startingLeft}
+
+				if loop-number = {_etherealArrow}:
+					SpreadShotArrow({_p}, {_loc}, false, {_modifier}, "Ethereal")
+				else:
+					SpreadShotArrow({_p}, {_loc}, false, {_modifier}, "Multi")	
 
 	else:
 		set {_middlePoint} to (rounded up {_shotCount}/2)
@@ -223,6 +237,7 @@ function SpreadShotArrow(p: player, x: location, nocharge: boolean, modifier: nu
 	set metadata value "ProjectileShooter" of {_arrow} to {_p}
 	set boolean tag "BuckshotArrow" of custom nbt of {_arrow} to true
 	set float tag "DamageModifier" of custom nbt of {_arrow} to {_modifier}
+	set float tag "ArrowSpeed" of custom nbt of {_arrow} to {_arrowSpeed}
 
 	KillArrow({_arrow})
 	{_arrow}.setPierceLevel(127)
@@ -250,9 +265,10 @@ function EtherealArrow(e: entity):
 		wait 16 ticks
 
 function TrailSingleParticleBuckshot(e: entity, particle: particle = electric spark particle):
-	while block at {_e} is air:
+	while block at {_e} is not solid:
 		if {_e} is alive:
 			draw 1 of {_particle} at {_e} with offset vector(1, 0.125, 1) with extra 1
+			set vector length of {_e}'s velocity to (float tag "ArrowSpeed" of custom nbt of {_e})
 			wait 1 tick
 		else:
 			stop loop
@@ -265,9 +281,10 @@ function TrailMultiParticleBuckshot(e: entity):
 		data: dustTransition(blue, magenta, 0.55)
 	set {_particle} to last created particle
 	
-	while block at {_e} is air:
+	while block at {_e} is not solid: 
 		if {_e} is alive:
 			draw {_particle} particle at {_e}
+			set vector length of {_e}'s velocity to (float tag "ArrowSpeed" of custom nbt of {_e})
 			wait 1 tick
 		else:
 			stop loop
@@ -809,6 +826,10 @@ on projectile collide:
 											SupernovaBuckshot({_shooter}, location of loop-value, event-entity)
 		cancel event
 
+	else:
+		if boolean tag "BuckshotPortal" of custom nbt of event-entity is set:
+			cancel event
+			
 	if boolean tag "Invisible" of nbt of event-projectile is true:
 		cancel event
 		
