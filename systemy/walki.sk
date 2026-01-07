@@ -26,6 +26,20 @@ on death:
 		set {_entityTitle} to (uuid tag "ECEntityTitle" of custom nbt of victim) parsed as entity
 		kill {_entityTitle}
 
+	if boolean tag "ECWorldQuestMob" of custom nbt of victim is set:
+		WorldQuestRespawnMob(victim)
+		if attacker is a player:
+			set {_worldQuest} to string tag "WorldQuest" of custom nbt of victim
+			if yaml list "Completed World Quests" in "WorldQuests%attacker%" does not contain {_worldQuest}:
+				WorldQuestMobDefeat(attacker, victim)
+
+			remove uuid of attacker from {asyst::%uuid of victim%::*}
+			if size of {asyst::%uuid of victim%::*} > 0:
+				loop {asyst::%uuid of victim%::*}:
+					set {_player} to loop-value parsed as player
+					if yaml list "Completed World Quests" in "WorldQuests%{_player}%" does not contain {_worldQuest}:
+						WorldQuestMobDefeat({_player}, victim)
+
 	if victim is not a player:
 		if boolean tag "ECExpAreaMayanMob" of custom nbt of victim is set:
 			if attacker is a player:
@@ -58,6 +72,10 @@ on death:
 						if boolean tag "ECBoss" of custom nbt of victim is set:
 							set {_xp} to {_xp}*6
 						cardLevelup({_p}, {_xp}, victim)
+						set {_assistsCard} to yaml value "Combat Data.Total Assists" in "activeCard-%{_p}%"
+						add 1 to {_assistsCard}
+						set yaml value "Combat Data.Total Assists" in "activeCard-%{_p}%" to {_assistsCard}
+						save yaml "activeCard-%{_p}%"
 			if {expAreaMayanMobs} - 1 >= 0:
 				set {expAreaMayanMobs} to {expAreaMayanMobs} - 1
 				if boolean tag "ECBoss" of custom nbt of victim is set:
@@ -109,10 +127,15 @@ on death:
 
 	if attacker is a player:
 		if boolean tag "ECMob" of custom nbt of victim is set:
-			set {_id} to line 19 of lore of {karta::%attacker%}
-			replace all "&8Id: " in {_id} with ""
+			set {_id} to string tag "Id" of custom nbt of {karta::%attacker%}
 			add 1 to {mobskilled::%attacker%}
+			add 1 to {mobkills::%attacker%}
 			add 1 to {mobskilled::%{kartaname::%attacker%}%::%{_id}%}
+
+			set {_mobKillsCard} to yaml value "Combat Data.Total Killing Blows" in "activeCard-%attacker%"
+			add 1 to {_mobKillsCard}
+			set yaml value "Combat Data.Total Killing Blows" in "activeCard-%attacker%" to {_mobKillsCard}
+			save yaml "activeCard-%attacker%"
 
 	if boolean tag "TowerDefenceMob" of custom nbt of victim is not set:
 		if boolean tag "ECAbility" of custom nbt of victim is not set:
@@ -263,6 +286,12 @@ on spawn:
 on respawn:
 	if player's last damage cause is not set:
 		set player's last damage cause to attack
+on shoot:
+    if shooter is a drowned:
+        if cooldown "ShootTrident%uuid of shooter%" is finished:
+            create cooldown "ShootTrident%uuid of shooter%" for 5 seconds
+        else:
+            cancel event
 import:
 	org.bukkit.entity.LivingEntity
 	java.time.ZonedDateTime
@@ -404,6 +433,10 @@ on damage:
 			if boolean tag "ECDungeonMob" of custom nbt of victim is not set:
 				set metadata value "ECPulled" of victim to 1
 				UpdateTarget(victim, attacker, "dynamic")
+		else:
+			if "%region at victim%" contains "WorldQuest_":
+				if attacker's gamemode is not creative:
+					cancel event
 
 		if victim's last damage cause is attack:
 			if projectile does not exist:
