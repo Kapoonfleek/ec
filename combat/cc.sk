@@ -24,30 +24,41 @@ on player walk:
 			set {_y} to (y-coordinate of {_locNow}) - (y-coordinate of {_locThen})
 			set {_z} to (z-coordinate of {_locNow}) - (z-coordinate of {_locThen})
 			move entity with id loop-value by {_x}*4096 {_y}*4096 {_z}*4096 for all players
-			
+on rightclick:
+	set yaml value "Model Types.Short.Level" in "ModelHeights" to 0.5
+	set yaml value "Model Types.Short.HP" in "ModelHeights" to -0.15
+	save yaml "ModelHeights"
+
 on entity move:
 	if metadata value "Stun" of event-entity is set:
 		cancel event
 	set {_entity} to string tag "ECTextAbove" of custom nbt of event-entity parsed as entity
 	if {_entity} is set:
 		set {_loc} to location of event-entity
-		if long tag "ECModelHeight" of custom nbt of event-entity is set:
-			increase {_loc}'s y-coordinate by (long tag "ECModelHeight" of custom nbt of event-entity) + 0.75
-		else:
-			increase {_loc}'s y-coordinate by 1.55
-		teleport {_entity} to {_loc}
+		set {_eyeLoc} to event-entity.getEyeLocation()
+
+		set {_entityType} to "%type of event-entity%"
+		
+		loop yaml node keys "Model Types" in "ModelHeights":
+			if yaml list "Model Types.%loop-value%.List" in "ModelHeights" contains {_entityType}:
+				set {_hpBarOffset} to yaml value "Model Types.%loop-value%.HP" in "ModelHeights"
+				set {_levelOffset} to yaml value "Model Types.%loop-value%.Level" in "ModelHeights"
+				stop loop
+
+		increase {_eyeLoc}'s y-coordinate by {_hpBarOffset}
+		teleport {_entity} to {_eyeLoc}
+
 		if boolean tag "ECMob" of custom nbt of event-entity is set:
 			if boolean tag "ECDungeonMob" of custom nbt of event-entity is set:
 				if metadata value "ECPulled" of event-entity is not set:
 					cancel event
+
 		if string tag "ECTextAboveLevel" of custom nbt of event-entity is set:
-			set {_loc} to location of event-entity
 			set {_entity} to string tag "ECTextAboveLevel" of custom nbt of event-entity parsed as entity
-			if long tag "ECModelHeight" of custom nbt of event-entity is set:
-				increase {_loc}'s y-coordinate by (long tag "ECModelHeight" of custom nbt of event-entity) + 1.2
-			else:
-				increase {_loc}'s y-coordinate by 2.05
-			teleport {_entity} to {_loc}
+			
+			increase {_eyeLoc}'s y-coordinate by {_levelOffset}
+			teleport {_entity} to {_eyeLoc}
+			
 		if string tag "ECTextAboveCastBar" of custom nbt of event-entity is set:
 			wait 1 tick
 			set {_loc} to location of event-entity
@@ -60,9 +71,15 @@ on entity move:
 			else:
 				increase {_loc}'s y-coordinate by 2.05
 			teleport {_entity} to {_loc}
-	if uuid tag "ECEntityTitle" of custom nbt of event-entity is set:
+	if any:
+		uuid tag "ECEntityTitle" of custom nbt of event-entity is set
+		{ECEntityTitle::%uuid of event-entity%} is set
+	then:
 		set {_title} to (uuid tag "ECEntityTitle" of custom nbt of event-entity) parsed as entity
-		set {_y} to (double tag "ECEntityTitleHeight" of custom nbt of event-entity) + y-coordinate of event-entity
+		set {_y} to (double tag "ECEntityTitleHeight" of custom nbt of event-entity) + y-coordinate of event-entity + 2.35
+		if {_title} is not set:
+			set {_title} to {ECEntityTitle::%uuid of event-entity%} parsed as entity
+			set {_y} to {_y}-1.25
 		set {_loc} to location((x-coordinate of event-entity), {_y}, (z-coordinate of event-entity), world "%event-entity's world%")
 		teleport {_title} to {_loc}
 	if metadata value "Rider" of event-entity is set:
