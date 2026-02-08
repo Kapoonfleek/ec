@@ -22,12 +22,20 @@ on death:
 
 			clear metadata value "From the Shadows%attacker%" of victim
 
+		if string tag "ECTextAbove" of custom nbt of victim is set:
+			kill (string tag "ECTextAbove" of custom nbt of victim parsed as entity)
+			if (string tag "ECTextAboveLevel" of custom nbt of victim) is set:
+				kill (string tag "ECTextAboveLevel" of custom nbt of victim parsed as entity)
+		if (string tag "ECCustomName" of custom nbt of victim is set):
+			kill (string tag "ECCustomName" of custom nbt of victim parsed as entity)
+
 	if uuid tag "ECEntityTitle" of custom nbt of victim is set:
 		set {_entityTitle} to (uuid tag "ECEntityTitle" of custom nbt of victim) parsed as entity
 		kill {_entityTitle}
 
 	if boolean tag "ECWorldQuestMob" of custom nbt of victim is set:
-		WorldQuestRespawnMob(victim)
+		set {_respawnLoc} to metadata value "ECSpawnLocation" of victim
+		WorldQuestRespawnMob(victim, {_respawnLoc})
 		if attacker is a player:
 			set {_worldQuest} to string tag "WorldQuest" of custom nbt of victim
 			if yaml list "Completed World Quests" in "WorldQuests%attacker%" does not contain {_worldQuest}:
@@ -40,6 +48,17 @@ on death:
 					if yaml list "Completed World Quests" in "WorldQuests%{_player}%" does not contain {_worldQuest}:
 						WorldQuestMobDefeat({_player}, victim)
 
+			if string list tag "ECSummons" of custom nbt of victim is set:
+				set {_summonUuids::*} to string list tag "ECSummons" of custom nbt of victim
+				loop {_summonUuids::*}:
+					set {_summon} to loop-value parsed as entity
+					kill {_summon}
+
+	#///Animation section
+	if string tag "ECModelName" of custom nbt of victim is set:
+		setAIState(victim, "death")
+		playEntitySound(victim, "Death")
+
 	if victim is not a player:
 		if boolean tag "ECExpAreaMayanMob" of custom nbt of victim is set:
 			if attacker is a player:
@@ -47,8 +66,8 @@ on death:
 				#	getMission(attacker, "Sleighing the Mobs", "Pokonywanie Potworów", 1)
 				set {_id} to string tag "Id" of custom nbt of {karta::%attacker%}
 				set {_cardLevel} to yaml value "Card.Level" in "activeCard-%attacker%"
-				set {_maxLevel} to 60
-				set {_xp} to 0.4/1.171 ^ ((({_cardLevel}/{_maxLevel}))+sqrt({_cardLevel}*10))
+				set {_maxLevel} to {maxCardLevel}
+				set {_xp} to 0.4/1.171 ^ ((({_cardLevel}/{_maxLevel}))+sqrt({_cardLevel}*10)) * sqrt({maxCardLevel} / {baseMaxCardLevel})
 				if boolean tag "ECSuperMob" of custom nbt of victim is set:
 					set {_xp} to {_xp}*2.5
 				if boolean tag "ECBoss" of custom nbt of victim is set:
@@ -64,8 +83,8 @@ on death:
 						set {_p} to loop-value parsed as a player
 						set {_id} to string tag "Id" of custom nbt of {karta::%{_p}%}
 						set {_cardLevel} to yaml value "Card.Level" in "activeCard-%{_p}%"
-						set {_maxLevel} to 50
-						set {_xp} to 0.4/1.171 ^ ((({_cardLevel}/{_maxLevel}))+sqrt({_cardLevel}*10))
+						set {_maxLevel} to {maxCardLevel}
+						set {_xp} to 0.4/1.171 ^ ((({_cardLevel}/{_maxLevel}))+sqrt({_cardLevel}*10)) * sqrt({maxCardLevel} / {baseMaxCardLevel})
 						set {_xp} to {_xp}*0.5
 						if boolean tag "ECSuperMob" of custom nbt of victim is set:
 							set {_xp} to {_xp}*2.5
@@ -287,11 +306,14 @@ on respawn:
 	if player's last damage cause is not set:
 		set player's last damage cause to attack
 on shoot:
-    if shooter is a drowned:
-        if cooldown "ShootTrident%uuid of shooter%" is finished:
-            create cooldown "ShootTrident%uuid of shooter%" for 5 seconds
-        else:
-            cancel event
+	if shooter is a drowned:
+		if cooldown "ShootTrident%uuid of shooter%" is finished:
+			create cooldown "ShootTrident%uuid of shooter%" for 5 seconds
+		else:
+			cancel event
+	else if shooter is a blaze:
+		if string tag "MobType" of custom nbt of shooter = "Gosha Imitation":
+			cancel event
 import:
 	org.bukkit.entity.LivingEntity
 	java.time.ZonedDateTime
@@ -388,7 +410,9 @@ on damage:
 					if name of attacker is "Balthazar" or "Destruction Mage":
 						set damage to 0
 						cancel event	
-
+	else if attacker is a goat:
+		if "%regions at attacker%" contains "spawn":
+			cancel event
 	if victim is a player:
 		set scaled health of victim to 20
 	else:
@@ -412,14 +436,23 @@ on damage:
 				if int tag "ECDungeonInstance" of custom nbt of attacker is set:
 					if (int tag "ECDungeonInstance" of custom nbt of attacker) = (metadata value "DungeonInstance" of victim):
 						set {_meleeDamage} to long tag "MeleeDamage" of custom nbt of attacker
-						DamageProperties(victim, attacker, "&7Melee", "&7Melee", "Podstawowy cios.", "Basic melee attack.", {_meleeDamage})
+						DamageProperties(victim, attacker, "&7Melee", "Basic melee attack.", {_meleeDamage})
 				if damage cause is projectile:
 					if projectile is arrow:
 						if boolean tag "ECMob" of custom nbt of attacker is set:
 							set damage to damage*0.7
 				if victim is a player:
 					if cooldown "attack%uuid of attacker%" is finished:
-						create cooldown "attack%uuid of attacker%" for 0.75 seconds
+						set {_attackCooldown} to 0.75 seconds
+						if string tag "WorldQuest" of custom nbt of attacker is set:
+
+							set {_WQMobType} to string tag "MobType" of custom nbt of attacker
+							set {_WQMobAttackCooldown} to yaml value "Mobs.%{_WQMobType}%.Melee Attack Cooldown" in "WorldQuestList"
+							if {_WQMobAttackCooldown} is set:
+								set {_attackCooldown} to "%{_WQMobAttackCooldown}% seconds" parsed as timespan
+
+						create cooldown "attack%uuid of attacker%" for {_attackCooldown}
+
 						if projectile exists:
 							if name of attacker's tool is set:
 								set metadata value "LastDamageCause" of victim to name of attacker's tool
@@ -428,6 +461,14 @@ on damage:
 					else:
 						set damage to 0
 						cancel event
+			#Remove if problematic
+			if damage = 0:
+				stop
+
+			#///Animation section
+			if string tag "ECModelName" of custom nbt of attacker is set:
+				setAIState(attacker, "attack")
+				playEntitySound(attacker, "Attack")
 	else:
 		if boolean tag "ECMob" of custom nbt of victim is set:
 			if boolean tag "ECDungeonMob" of custom nbt of victim is not set:
@@ -503,10 +544,8 @@ on damage:
 	if long tag "MobDamageModifier" of custom nbt of attacker is set:
 		set damage to (damage * (long tag "MobDamageModifier" of custom nbt of attacker))
 
-	set {_idV} to line 19 of lore of {karta::%victim%}
-	set {_idA} to line 19 of lore of {karta::%attacker%}
-	replace all "&8Id: " in {_idV} with ""
-	replace all "&8Id: " in {_idA} with ""
+	set {_idV} to string tag "Id" of custom nbt of {karta::%victim%}
+	set {_idA} to string tag "Id" of custom nbt of {karta::%attacker%}
 	
 	set {_elementModifier} to 1
 
