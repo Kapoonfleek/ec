@@ -194,6 +194,7 @@ function GearLoreUpdate(item: item) :: string:
     set {_rarityColour} to yaml value "Rarity Colours.%{_rarity}%" in "GearList"
     set {_rarityString} to formatted "%{_rarityColour}%%{_rarity}% %{_gearSlot}%"
     set {_itemLevel} to int tag "ItemLevel" of custom nbt of {_item}
+    set {_source} to string tag "Source" of custom nbt of {_item}
     set {_gearItem} to unformatted name of {_item}
 
     if string tag "Cardbound" of custom nbt of {_item} is set:
@@ -213,7 +214,7 @@ function GearLoreUpdate(item: item) :: string:
         set {_lore} to "%{_lore}%%nl%%{_primaryStatFormatted}%"
     set {_lore} to "%{_lore}%%nl%<##c0ff02> +%{_health}% Health"
 
-    set {_statList::*} to yaml node keys "Gear.%{_gearItem}%.Stats" in "GearList"
+    set {_statList::*} to yaml node keys "Gear.%{_source}%.%{_gearItem}%.Stats" in "GearList"
     loop {_statList::*}:
         set {_statAmount} to int tag "Stats;%loop-value%" of custom nbt of {_item}
 
@@ -250,11 +251,11 @@ function GearLoreUpdate(item: item) :: string:
         if string tag "Sockets.%loop-counter%.Gem.Name" of custom nbt of {_item} is set:
             add 1 to {_socketsFilled}
     
-    if yaml value "Gear.%{_gearItem}%.Socket Bonus.SocketBonusStatDivisor" in "GearList" is set:
+    if yaml value "Gear.%{_source}%.%{_gearItem}%.Socket Bonus.SocketBonusStatDivisor" in "GearList" is set:
         if {_socketsFilled} = {_socketAmount}:
             set {_socketBonusUnlocked} to true
 
-        set {_socketBonuses::*} to yaml node keys "Gear.%{_gearItem}%.Socket Bonus.Stats" in "GearList"
+        set {_socketBonuses::*} to yaml node keys "Gear.%{_source}%.%{_gearItem}%.Socket Bonus.Stats" in "GearList"
         loop {_socketBonuses::*}:
             set {_socketBonusValue} to int tag "SocketBonus;%loop-value%" of custom nbt of {_item}
             set {_formattedStat} to getFormattedStat(loop-value)
@@ -265,14 +266,14 @@ function GearLoreUpdate(item: item) :: string:
                 set {_formattedStat} to unformatted {_formattedStat}
                 set {_lore} to "%{_lore}%%nl%&7Socket Bonus: %{_formattedStat}%"
 
-    if yaml value "Gear.%{_gearItem}%.2Set.Name" in "GearList" is set:
-        set {_2setItemBonus} to yaml value "Gear.%{_gearItem}%.2Set.Name" in "GearList"
-        set {_2setDescription} to yaml value "Gear.%{_gearItem}%.2Set.Description" in "GearList"
+    if yaml value "Gear.%{_source}%.%{_gearItem}%.2Set.Name" in "GearList" is set:
+        set {_2setItemBonus} to yaml value "Gear.%{_source}%.%{_gearItem}%.2Set.Name" in "GearList"
+        set {_2setDescription} to yaml value "Gear.%{_source}%.%{_gearItem}%.2Set.Description" in "GearList"
 
         set {_lore} to "%{_lore}%%nl% %nl%&7%{_2setItemBonus}% Set%nl%&72 Set Bonus: %{_2setDescription}%"
 
-    if yaml value "Gear.%{_gearItem}%.Flavour Text" in "GearList" is set:
-        set {_flavourText} to yaml value "Gear.%{_gearItem}%.Flavour Text" in "GearList"
+    if yaml value "Gear.%{_source}%.%{_gearItem}%.Flavour Text" in "GearList" is set:
+        set {_flavourText} to yaml value "Gear.%{_source}%.%{_gearItem}%.Flavour Text" in "GearList"
         replace all "{NL}" in {_flavourText} with nl
         set {_lore} to "%{_lore}%%nl% %nl%%{_flavourText}%"
 
@@ -281,7 +282,7 @@ function GearLoreUpdate(item: item) :: string:
 
     return {_lore}
 
-function Gear(gearItem: string, itemType: string, itemLevel: integer, rarity: string, gearType: string) :: item:
+function Gear(gearItem: string, itemType: string, itemLevel: integer, rarity: string, gearType: string, source: string) :: item:
     #"<##ffc830> &7Yellow Socket"
     #Siege of Spawn
     set {_primaryStatFormula} to primaryStatFormula({_itemLevel})
@@ -311,201 +312,110 @@ function Gear(gearItem: string, itemType: string, itemLevel: integer, rarity: st
 
     set {_socketBonusFormula} to 1 + 0.0275*{_itemLevel}
     set {_rarityColour} to formatted (yaml value "Rarity Colours.%{_rarity}%" in "GearList")
-    #DUNGEONS
-    #Siege of Spawn
-    if {_gearItem} = "Ring of Forbidden Techniques":
-        set {_item} to gold nugget named "<##632c99>Ring of Forbidden Techniques" with lore "%{_rarity}% %{_itemType}%%nl%&fBinds when equipped%nl%<##fdd002>Item Level %{_itemLevel}%" with nbt from "{""minecraft:custom_model_data"":{floats:[11.0f]}}"
-        set {_stats} to "<##c0ff02> +%round({_health}, 0)% Health%nl%<##f53b98> +%round((19/24)*{_secondaryStatBudget}, 0)% Mastery%nl%<##19943e> +%round((5/24*{_secondaryStatBudget}), 0)% Haste"
-        set {_lore} to "&6'A dragon soul once encaged in this signet%nl%&6provides its wielder with unstable powers.'"        
-        set {_randomColour} to a random element of {_socketColours::*}
-        set {_socket} to "%{_randomColour}%%nl%&7Socket Bonus:  +%round({_socketBonusFormula}, 0)% Mastery"
-        set {_socketBonus::*} to "%round({_socketBonusFormula}, 0)% Mastery"
-    else if {_gearItem} = "Volcanic Treads":
-        set {_item} to leather named "<##a83232>Volcanic Treads" with lore "%{_rarity}% %{_itemType}%%nl%&fBinds when equipped%nl%<##fdd002>Item Level %{_itemLevel}%" with nbt from "{HideFlags:127,CustomModelData:2}"
-        set {_stats} to "%{_primaryIcon}% +%round({_primaryStat}, 0)% %{_gearType}%%nl%<##c0ff02> +%round({_health}, 0)% Health%nl%<##fca417> +%round((7/13)*{_secondaryStatBudget}, 0)% Critical Hit%nl%<##f74428> +%round((6/13)*{_secondaryStatBudget}, 0)% Damage"
-        set {_lore} to "&6'These volcanic stone boots allow their%nl%&6wearer to safely walk across hot surfaces.'"
 
-    #Exp Areas
-    else if {_gearItem} = "Spirit of the Woods" or "Vision of the Serpent":
-        broadcast "Prim: %{_primaryStat}%"
-        set {_item} to (yaml value "Gear.%{_gearItem}%.Base Item" in "GearList") parsed as item type
-        set {_colour} to yaml value "Gear.%{_gearItem}%.Colour" in "GearList"
-        set {_itemType} to yaml value "Gear.%{_gearItem}%.Type" in "GearList"
-        set {_itemName} to formatted "%{_colour}%%{_gearItem}%"
-        set {_rarityString} to formatted "%{_rarityColour}%%{_rarity}% %{_itemType}%"
+    set {_item} to (yaml value "Gear.%{_source}%.%{_gearItem}%.Base Item" in "GearList") parsed as item type
+    set {_colour} to yaml value "Gear.%{_source}%.%{_gearItem}%.Colour" in "GearList"
+    set {_itemType} to yaml value "Gear.%{_source}%.%{_gearItem}%.Type" in "GearList"
+    set {_CMD} to yaml value "Gear.%{_source}%.%{_gearItem}%.CustomModelData" in "GearList"
+    set {_itemName} to formatted "%{_colour}%%{_gearItem}%"
+    set {_rarityString} to formatted "%{_rarityColour}%%{_rarity}% %{_itemType}%"
 
-        set {_item} to {_item} named {_itemName} with lore "%{_rarityString}%%nl%&fBinds when equipped%nl%<##fdd002>Item Level %{_itemLevel}%" with nbt from "{""minecraft:custom_model_data"":{floats:[12.0f]}}"
+    set {_item} to {_item} named {_itemName} with lore "%{_rarityString}%%nl%&fBinds when equipped%nl%<##fdd002>Item Level %{_itemLevel}%" with nbt from "{""minecraft:custom_model_data"":{floats:[%{_CMD}%.0f]}}"
+    
+    set int tag "Stats;Health" of custom nbt of {_item} to round({_health}, 0)
+    set {_stats} to ""
+
+    if yaml value "Gear.%{_source}%.%{_gearItem}%.Primary Stat" in "GearList" = true:
+        set {_stats} to "%{_primaryIcon}% +%round({_primaryStat}, 0)% %{_gearType}%%nl%"
+        set int tag "Stats;%{_gearType}%" of custom nbt of {_item} to round({_primaryStat}, 0)
+        set string tag "PrimaryStat" of custom nbt of {_item} to {_gearType}
+
+    set {_stats} to "%{_stats}%<##c0ff02> +%round({_health}, 0)% Health"
+    set {_statDivisor} to yaml value "Gear.%{_source}%.%{_gearItem}%.StatDivisor" in "GearList"
+    set {_socketStatDivisor} to yaml value "Gear.%{_source}%.%{_gearItem}%.Socket Bonus.SocketBonusStatDivisor" in "GearList"
+
+    loop yaml node keys "Gear.%{_source}%.%{_gearItem}%.Stats" in "GearList":
+        set {_statValue} to yaml value "Gear.%{_source}%.%{_gearItem}%.Stats.%loop-value%" in "GearList"
+        set {_statValue} to {_statValue}/{_statDivisor}
+        set {_statAmount} to round(({_statValue})*{_secondaryStatBudget}, 0)
+        set int tag "Stats;%loop-value%" of custom nbt of {_item} to {_statAmount}
         
-        set int tag "Stats;Health" of custom nbt of {_item} to round({_health}, 0)
+        set {_formattedStat} to getFormattedStat(loop-value)
+        replace "{VALUE}" in {_formattedStat} with "+%{_statAmount}%"
+        set {_stats} to "%{_stats}%%nl%%{_formattedStat}%"
 
-        set {_stats} to ""
-        if yaml value "Gear.%{_gearItem}%.Primary Stat" in "GearList" = true:
-            set {_stats} to "%{_primaryIcon}% +%round({_primaryStat}, 0)% %{_gearType}%%nl%"
-            set int tag "Stats;%{_gearType}%" of custom nbt of {_item} to round({_primaryStat}, 0)
-            set string tag "PrimaryStat" of custom nbt of {_item} to {_gearType}
+    set {_maxSockets} to yaml value "Gear.%{_source}%.%{_gearItem}%.Max Sockets" in "GearList"
 
-        set {_stats} to "%{_stats}%<##c0ff02> +%round({_health}, 0)% Health"
-        set {_statDivisor} to yaml value "Gear.%{_gearItem}%.StatDivisor" in "GearList"
-        set {_socketStatDivisor} to yaml value "Gear.%{_gearItem}%.Socket Bonus.SocketBonusStatDivisor" in "GearList"
+    set {_socketColours::*} to yaml node keys "Sockets" in "GearList"
+    remove "Uncommon" and "Rare" from {_socketColours::*}
 
-        loop yaml node keys "Gear.%{_gearItem}%.Stats" in "GearList":
-            set {_statValue} to yaml value "Gear.%{_gearItem}%.Stats.%loop-value%" in "GearList"
-            set {_statValue} to {_statValue}/{_statDivisor}
-            set {_statAmount} to round(({_statValue})*{_secondaryStatBudget}, 0)
-            set int tag "Stats;%loop-value%" of custom nbt of {_item} to {_statAmount}
-            
-            set {_formattedStat} to getFormattedStat(loop-value)
-            replace "{VALUE}" in {_formattedStat} with "+%{_statAmount}%"
-            set {_stats} to "%{_stats}%%nl%%{_formattedStat}%"
-
-        set {_maxSockets} to yaml value "Gear.%{_gearItem}%.Max Sockets" in "GearList"
-
-        set {_socketColours::*} to yaml node keys "Sockets" in "GearList"
-        remove "Uncommon" and "Rare" from {_socketColours::*}
-
-        if yaml value "Gear.%{_gearItem}%.Sockets" in "GearList" = 0:
-            loop {_maxSockets} times:
-                chance of 10%:
-                    set int tag "Sockets" of custom nbt of {_item} to (int tag "Sockets" of custom nbt of {_item}) + 1
-                    if {_rarity} != "Epic":
-                        set {_randomSocketInt} to a random integer between 1 and 2
-                        if {_randomSocketInt} = 1:
-                            set {_randomSocket} to a random element of {_socketColours::*}
-                            set {_socketHexColour} to formatted (yaml value "Sockets.%{_randomSocket}%.Colour" in "GearList")
-                        else:
-                            if {_rarity} = "Common" or "Uncommon":
-                                set {_socketHexColour} to formatted (yaml value "Sockets.Uncommon.Colour" in "GearList")
-                                set {_randomSocket} to "Uncommon"
-
-                            else if {_rarity} = "Rare":
-                                set {_socketHexColour} to formatted (yaml value "Sockets.Rare.Colour" in "GearList")
-                                set {_randomSocket} to "Rare"
-                    else:
-                        set {_randomSocket} to a random element of {_socketColours::*} 
+    if yaml value "Gear.%{_source}%.%{_gearItem}%.Sockets" in "GearList" = 0:
+        loop {_maxSockets} times:
+            chance of 10%:
+                set int tag "Sockets" of custom nbt of {_item} to (int tag "Sockets" of custom nbt of {_item}) + 1
+                if {_rarity} != "Epic":
+                    set {_randomSocketInt} to a random integer between 1 and 2
+                    if {_randomSocketInt} = 1:
+                        set {_randomSocket} to a random element of {_socketColours::*}
                         set {_socketHexColour} to formatted (yaml value "Sockets.%{_randomSocket}%.Colour" in "GearList")
-
-                    set {_socket} to "%{_socketHexColour}% &7%{_randomSocket}% Socket"
-                    set string tag "Socket;%loop-counter%;Type" of custom nbt of {_item} to {_randomSocket}
-
-                    if loop-counter = 1:
-                        set {_stats} to "%{_stats}%%nl% %nl%%{_socket}%"
                     else:
-                        set {_stats} to "%{_stats}%%nl%%{_socket}%"
-        
-        if int tag "Sockets" of custom nbt of {_item} > 0:
-            if yaml value "Gear.%{_gearItem}%.Socket Bonus.SocketBonusStatDivisor" in "GearList" is set:
-                loop yaml node keys "Gear.%{_gearItem}%.Socket Bonus.Stats" in "GearList":
-                    set {_socketStatValue} to yaml value "Gear.%{_gearItem}%.Socket Bonus.Stats.%loop-value%" in "GearList"
-                    set {_socketStatValue} to {_socketStatValue}/{_socketStatDivisor}
-                    set {_statAmount} to round(({_socketStatValue})* {_socketBonusFormula}, 0)
-                    
-                    set {_formattedStat} to uncoloured getFormattedStat(loop-value)
-                    replace "{VALUE}" in {_formattedStat} with "+%{_statAmount}%"
-                    set {_formattedStat} to "&7Socket Bonus: %{_formattedStat}%"
-                    set {_socketBonusString::*} to {_socketBonusString::*} and {_formattedStat}
+                        if {_rarity} = "Common" or "Uncommon":
+                            set {_socketHexColour} to formatted (yaml value "Sockets.Uncommon.Colour" in "GearList")
+                            set {_randomSocket} to "Uncommon"
 
-                    set int tag "SocketBonus;%loop-value%" of custom nbt of {_item} to {_statAmount}
-                    set {_stats} to "%{_stats}%%nl%%{_formattedStat}%"
+                        else if {_rarity} = "Rare":
+                            set {_socketHexColour} to formatted (yaml value "Sockets.Rare.Colour" in "GearList")
+                            set {_randomSocket} to "Rare"
+                else:
+                    set {_randomSocket} to a random element of {_socketColours::*} 
+                    set {_socketHexColour} to formatted (yaml value "Sockets.%{_randomSocket}%.Colour" in "GearList")
 
-        if yaml value "Gear.%{_gearItem}%.2Set.Name" in "GearList" is set:
-            set {_2setItemBonus} to yaml value "Gear.%{_gearItem}%.2Set.Name" in "GearList"
-            set {_2setDescription} to yaml value "Gear.%{_gearItem}%.2Set.Description" in "GearList"
+                set {_socket} to "%{_socketHexColour}% &7%{_randomSocket}% Socket"
+                set string tag "Socket;%loop-counter%;Type" of custom nbt of {_item} to {_randomSocket}
 
-            set {_stats} to "%{_stats}%%nl% %nl%&7%{_2setItemBonus}% Set%nl%&72 Set Bonus: %{_2setDescription}%"
-        
-        if yaml value "Gear.%{_gearItem}%.Flavour Text" in "GearList" is set:
-            set {_flavourText} to yaml value "Gear.%{_gearItem}%.Flavour Text" in "GearList"
-            replace all "{NL}" in {_flavourText} with nl
-            set {_stats} to "%{_stats}%%nl% %nl%%{_flavourText}%"
+                if loop-counter = 1:
+                    set {_stats} to "%{_stats}%%nl% %nl%%{_socket}%"
+                else:
+                    set {_stats} to "%{_stats}%%nl%%{_socket}%"
+    
+    if int tag "Sockets" of custom nbt of {_item} > 0:
+        if yaml value "Gear.%{_source}%.%{_gearItem}%.Socket Bonus.SocketBonusStatDivisor" in "GearList" is set:
+            loop yaml node keys "Gear.%{_source}%.%{_gearItem}%.Socket Bonus.Stats" in "GearList":
+                set {_socketStatValue} to yaml value "Gear.%{_source}%.%{_gearItem}%.Socket Bonus.Stats.%loop-value%" in "GearList"
+                set {_socketStatValue} to {_socketStatValue}/{_socketStatDivisor}
+                set {_statAmount} to round(({_socketStatValue})* {_socketBonusFormula}, 0)
+                
+                set {_formattedStat} to uncoloured getFormattedStat(loop-value)
+                replace "{VALUE}" in {_formattedStat} with "+%{_statAmount}%"
+                set {_formattedStat} to "&7Socket Bonus: %{_formattedStat}%"
+                set {_socketBonusString::*} to {_socketBonusString::*} and {_formattedStat}
 
-        set {_-} to "-" repeated 36 times
-        set {_stats} to "%{_stats}%%nl%&8&m%{_-}%%nl%&8(!) This item can be equipped in the %{_itemType}%%nl%&8slot and becomes Cardbound when equipped."
-        add {_stats} to lore of {_item}
-        
-    else if {_gearItem} = "Cizin's Curse":
-        set {_item} to gold nugget named "<##e08b22>Cizin's Curse" with lore "%{_rarity}% %{_itemType}%%nl%&fBinds when equipped%nl%<##fdd002>Item Level %{_itemLevel}%"
-        set {_stats} to "<##c0ff02> +%round({_health}, 0)% Health%nl%<##fca417> +%round((1/2)*{_secondaryStatBudget}, 0)% Critical Hit%nl%&f +%round((1/2*{_secondaryStatBudget}), 0)% Mobility"      
-        set {_lore} to "&6'Feared, yet respected deeply; No soul could%nl%&6ever dream of resting peacefully under the%nl%&6death deity's curse.'"
-        set {_randomColour} to a random element of {_socketColours::*}
-        set {_socket} to "%{_randomColour}%%nl%&7Socket Bonus:  +%round({_socketBonusFormula}*0.5, 0)% Critical Hit%nl%&7Socket Bonus:  +%round({_socketBonusFormula}*0.5, 0)% Mobility"
-        set {_socketBonus::*} to "%round({_socketBonusFormula}, 0)% Critical Hit" and "%round({_socketBonusFormula}, 0)% Mobility"
-        set int tag "Stats;Critical Hit" of custom nbt of {_item} to round((1/2)*{_secondaryStatBudget}, 0)
-        set int tag "Stats;Mobility" of custom nbt of {_item} to round((1/2)*{_secondaryStatBudget}, 0) 
-        set int tag "Stats;Health" of custom nbt of {_item} to round({_health}, 0)
-    else if {_gearItem} = "Tangled Boots":
-        set {_item} to leather boots named "<##488741>Tangled Boots" with lore "%{_rarity}% %{_itemType}%%nl%&fBinds when equipped%nl%<##fdd002>Item Level %{_itemLevel}%" with nbt from "{HideFlags:127}"
-        set {_stats} to "%{_primaryIcon}% +%round({_primaryStat}, 0)% %{_gearType}%%nl%<##c0ff02> +%round({_health}, 0)% Health%nl%<##58c3f5> +%round((6/10)*{_secondaryStatBudget}, 0)% Crowd Control%nl%<##ae78d0> +%round((4/10)*{_secondaryStatBudget}, 0)% Utility"
-        set {_lore} to " "
-        set int tag "Stats;Crowd Control" of custom nbt of {_item} to round((6/10)*{_secondaryStatBudget}, 0)
-        set int tag "Stats;Utility" of custom nbt of {_item} to round((4/10)*{_secondaryStatBudget}, 0)
-        set int tag "Stats;Health" of custom nbt of {_item} to round({_health}, 0)
-        set int tag "Stats;%{_gearType}%" of custom nbt of {_item} to round({_primaryStat}, 0)
-    else if {_gearItem} = "Quetzalcoatl's Creation":
-        set {_item} to leather helmet named "<##c98c12>Quetzalcoatl's Creation" with lore "%{_rarity}% %{_itemType}%%nl%&fBinds when equipped%nl%<##fdd002>Item Level %{_itemLevel}%" with nbt from "{HideFlags:127}"
-        set {_stats} to "%{_primaryIcon}% +%round({_primaryStat}, 0)% %{_gearType}%%nl%<##c0ff02> +%round({_health}, 0)% Health%nl%<##ffef45> +%round((3/4)*{_secondaryStatBudget}, 0)% Resistance%nl%<##fca417> +%round((1/4)*{_secondaryStatBudget}, 0)% Critical Hit%nl% %nl%&7Quetzalcoatl's Guardianship Set%nl%&72 Set Bonus: Increases  Resistance by 5."
-        set {_lore} to " "
-        set {_2setBonus} to "5 Resistance"
-        set {_setName} to "Quetzalcoatl's Guardianship Set"
-        set int tag "Stats;Resistance" of custom nbt of {_item} to round((3/4)*{_secondaryStatBudget}, 0)
-        set int tag "Stats;Critical Hit" of custom nbt of {_item} to round((1/4)*{_secondaryStatBudget}, 0)
-        set int tag "Stats;Health" of custom nbt of {_item} to round({_health}, 0)
-        set int tag "Stats;%{_gearType}%" of custom nbt of {_item} to round({_primaryStat}, 0)
-    else if {_gearItem} = "Grasp of the Foregone Tribe":
-        set {_item} to leather named "<##419623>Grasp of the Foregone Tribe" with lore "%{_rarity}% %{_itemType}%%nl%&fBinds when equipped%nl%<##fdd002>Item Level %{_itemLevel}%"
-        set {_stats} to "%{_primaryIcon}% +%round({_primaryStat}, 0)% %{_gearType}%%nl%<##c0ff02> +%round({_health}, 0)% Health%nl%<##2154ad> +%round((9/10)*{_secondaryStatBudget}, 0)% Avoidance%nl%<##e3ebff> +%round((1/10)*{_secondaryStatBudget}, 0)% Versatility%nl% %nl%&7Serpent Follower Set%nl%&72 Set Bonus: Increases  Mobility by 5."
-        set {_lore} to " "
-        set {_2setBonus} to "5 Mobility"
-        set {_setName} to "Serpent Follower Set"
-        set int tag "Stats;Avoidance" of custom nbt of {_item} to round((9/10)*{_secondaryStatBudget}, 0)
-        set int tag "Stats;Versatility" of custom nbt of {_item} to round((1/10)*{_secondaryStatBudget}, 0)
-        set int tag "Stats;Health" of custom nbt of {_item} to round({_health}, 0)
-        set int tag "Stats;%{_gearType}%" of custom nbt of {_item} to round({_primaryStat}, 0)
-    else if {_gearItem} = "Guardianship of the Deities":
-        set {_item} to leather chestplate named "<##c98c12>Guardianship of the Deities" with lore "%{_rarity}% %{_itemType}%%nl%&fBinds when equipped%nl%<##fdd002>Item Level %{_itemLevel}%" with nbt from "{HideFlags:127}"
-        set {_stats} to "%{_primaryIcon}% +%round({_primaryStat}, 0)% %{_gearType}%%nl%<##c0ff02> +%round({_health}, 0)% Health%nl%<##ffef45> +%round((5/10)*{_secondaryStatBudget}, 0)% Resistance%nl%<##f74428> +%round((3/10)*{_secondaryStatBudget}, 0)% Damage%nl%<##e3ebff> +%round((2/10)*{_secondaryStatBudget}, 0)% Versatility%nl% %nl%&7Quetzalcoatl's Guardianship Set%nl%&72 Set Bonus: Increases  Resistance by 5."
-        set {_lore} to " "
-        set {_2setBonus} to "5 Resistance"
-        set {_setName} to "Quetzalcoatl's Guardianship Set"
-        set int tag "Stats;Resistance" of custom nbt of {_item} to round((5/10)*{_secondaryStatBudget}, 0)
-        set int tag "Stats;Damage" of custom nbt of {_item} to round((3/10)*{_secondaryStatBudget}, 0)
-        set int tag "Stats;Versatility" of custom nbt of {_item} to round((2/10)*{_secondaryStatBudget}, 0)
-        set int tag "Stats;Health" of custom nbt of {_item} to round({_health}, 0)
-        set int tag "Stats;%{_gearType}%" of custom nbt of {_item} to round({_primaryStat}, 0)
-    else if {_gearItem} = "Nature's Curtain":
-        set {_item} to rabbit hide named "<##488741>Nature's Curtain" with lore "%{_rarity}% %{_itemType}%%nl%&fBinds when equipped%nl%<##fdd002>Item Level %{_itemLevel}%"
-        set {_stats} to "%{_primaryIcon}% +%round({_primaryStat}, 0)% %{_gearType}%%nl%<##c0ff02> +%round({_health}, 0)% Health%nl%<##2154ad> +%round((2/6)*{_secondaryStatBudget}, 0)% Avoidance%nl%<##d5ff57> +%round((2/6)*{_secondaryStatBudget}, 0)% Element%nl%<##ae78d0> +%round((2/6)*{_secondaryStatBudget}, 0)% Utility"
-        set {_lore} to " "
-        set int tag "Stats;Avoidance" of custom nbt of {_item} to round((2/6)*{_secondaryStatBudget}, 0)
-        set int tag "Stats;Element" of custom nbt of {_item} to round((2/6)*{_secondaryStatBudget}, 0)
-        set int tag "Stats;Utility" of custom nbt of {_item} to round((2/6)*{_secondaryStatBudget}, 0)
-        set int tag "Stats;Health" of custom nbt of {_item} to round({_health}, 0)
-        set int tag "Stats;%{_gearType}%" of custom nbt of {_item} to round({_primaryStat}, 0)
-    else if {_gearItem} = "Old Hunter's Handiwork":
-        set {_item} to rabbit foot named "<##488741>Old Hunter's Handiwork" with lore "%{_rarity}% %{_itemType}%%nl%&fBinds when equipped%nl%<##fdd002>Item Level %{_itemLevel}%"
-        set {_stats} to "%{_primaryIcon}% +%round({_primaryStat}, 0)% %{_gearType}%%nl%<##c0ff02> +%round({_health}, 0)% Health%nl%<##f53b98> +%round((3/5)*{_secondaryStatBudget}, 0)% Mastery%nl%<##58c3f5> +%round((2/5)*{_secondaryStatBudget}, 0)% Crowd Control"
-        set {_lore} to " "  
-        set int tag "Stats;Mastery" of custom nbt of {_item} to round((3/5)*{_secondaryStatBudget}, 0)
-        set int tag "Stats;Crowd Control" of custom nbt of {_item} to round((2/5)*{_secondaryStatBudget}, 0)
-        set int tag "Stats;Health" of custom nbt of {_item} to round({_health}, 0)
-        set int tag "Stats;%{_gearType}%" of custom nbt of {_item} to round({_primaryStat}, 0)
-    else if {_gearItem} = "Outworn Gauntlets":
-        set {_item} to feather named "<##488741>Outworn Gauntlets" with lore "%{_rarity}% %{_itemType}%%nl%&fBinds when equipped%nl%<##fdd002>Item Level %{_itemLevel}%"
-        set {_stats} to "%{_primaryIcon}% +%round({_primaryStat}, 0)% %{_gearType}%%nl%<##c0ff02> +%round({_health}, 0)% Health%nl%<##fca417> +%round((3/6)*{_secondaryStatBudget}, 0)% Critical Hit%nl%<##ffef45> +%round((2/6)*{_secondaryStatBudget}, 0)% Resistance%nl%<##e3ebff> +%round((1/6)*{_secondaryStatBudget}, 0)% Versatility"
-        set {_lore} to " "
-        set int tag "Stats;Critical Hit" of custom nbt of {_item} to round((3/6)*{_secondaryStatBudget}, 0)
-        set int tag "Stats;Resistance" of custom nbt of {_item} to round((2/6)*{_secondaryStatBudget}, 0)
-        set int tag "Stats;Versatility" of custom nbt of {_item} to round((1/6)*{_secondaryStatBudget}, 0)
-        set int tag "Stats;Health" of custom nbt of {_item} to round({_health}, 0)
-        set int tag "Stats;%{_gearType}%" of custom nbt of {_item} to round({_primaryStat}, 0)
+                set int tag "SocketBonus;%loop-value%" of custom nbt of {_item} to {_statAmount}
+                set {_stats} to "%{_stats}%%nl%%{_formattedStat}%"
+
+    if yaml value "Gear.%{_source}%.%{_gearItem}%.2Set.Name" in "GearList" is set:
+        set {_2setItemBonus} to yaml value "Gear.%{_source}%.%{_gearItem}%.2Set.Name" in "GearList"
+        set {_2setDescription} to yaml value "Gear.%{_source}%.%{_gearItem}%.2Set.Description" in "GearList"
+        set string tag "2Set;Name" of custom nbt of {_item} to {_2setItemBonus}
+        loop yaml node keys "Gear.%{_source}%.%{_gearItem}%.2Set.Stats" in "GearList":
+            set {_2SetStat} to yaml value "Gear.%{_source}%.%{_gearItem}%.2Set.Stats.%loop-value%" in "GearList"
+            set string tag "2Set;Stats;%loop-value%" of custom nbt of {_item} to {_2SetStat}
+
+        set {_stats} to "%{_stats}%%nl% %nl%&7%{_2setItemBonus}% Set%nl%&72 Set Bonus: %{_2setDescription}%"
+    
+    if yaml value "Gear.%{_source}%.%{_gearItem}%.Flavour Text" in "GearList" is set:
+        set {_flavourText} to yaml value "Gear.%{_source}%.%{_gearItem}%.Flavour Text" in "GearList"
+        replace all "{NL}" in {_flavourText} with nl
+        set {_stats} to "%{_stats}%%nl% %nl%%{_flavourText}%"
+
+    set {_-} to "-" repeated 36 times
+    set {_stats} to "%{_stats}%%nl%&8&m%{_-}%%nl%&8(!) This item can be equipped in the %{_itemType}%%nl%&8slot and becomes Cardbound when equipped."
+    add {_stats} to lore of {_item}
 
     set string tag "GearSlot" of custom nbt of {_item} to {_itemType}
     set int tag "ItemLevel" of custom nbt of {_item} to {_itemLevel}
     set string tag "Rarity" of custom nbt of {_item} to uncolored {_rarity}
-
-    if {_2setBonus} is set:
-        set string tag "2SetBonus" of custom nbt of {_item} to {_2setBonus}
-    if {_setName} is set:
-        set string tag "SetName" of custom nbt of {_item} to {_setName}
+    set string tag "Source" of custom nbt of {_item} to {_source}
 
     set {_item} to {_item} with item flag hide attributes
 
@@ -561,17 +471,6 @@ function GearItemLevel(mobLevel: integer, type: string, keystoneLevel: integer) 
             set {_itemLevel} to 92
     return {_itemLevel}
 
-command /givegear [<text>]:
-    trigger:
-        if arg-1 = "forbiddentechniques":
-            set {_-} to ""
-            loop 36 times:
-                set {_-} to "%{_-}%&8&m-"
-            set {_item} to gold nugget named "<##a335ee>Ring of Forbidden Techniques" with lore "<##a335ee>Epic Ring%nl%<##fdd002>Item Level 53%nl%<##c0ff02> +7 Health%nl%<##f53b98> +19 Mastery%nl%<##19943e> +5 Haste%nl% %nl%&6'A dragon soul once encaged in this signet%nl%&6provides its wielder with unstable powers.'" with nbt from "{""minecraft:custom_model_data"":{floats:[11.0f]}}"
-            set {_itemType} to "Ring"
-        if arg-1 = "volcanictreads":
-            give player leather boots named "<##a335ee>Volcanic Treads" with lore "<##a335ee>Epic Boots%nl%<##fdd002>Item Level 53%nl%<##e35959> +6 Strength%nl%<##c0ff02> +10 Health%nl%<##fca417> +7 Critical Hit%nl%<##d5ff57> +6 Element%nl% %nl%&6'A dragon soul once encaged in this signet%nl%&6provides its wielder with unstable powers.'%nl% %nl%&8(!) This item can be equipped in the Boots slot." with nbt from "{""minecraft:custom_model_data"":{floats:[1.0f]}}"
-        add "&m&8%{_-}%%nl%&8(!) This item can be equipped in the %{_itemType}%%nl%&8slot and becomes Cardbound when equipped." to lore of {_item}
 command /giverelic [<text>]:
     trigger:
         if player's name = "Pehrek":
