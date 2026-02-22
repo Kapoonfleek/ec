@@ -1,3 +1,5 @@
+
+
 function minenew(p: player, t: text, b: block):
 	if {_t} = "deepslate":
 		set {_blok} to 2
@@ -518,7 +520,6 @@ on death:
 				add {_xp} to {%type of victim%::%attacker%}
 				UpdateScoreboard(victim)
 on block place:
-		
 	if event-block is tagged with block tag "glass_panes":
 		if name of player's tool is set:
 			cancel event
@@ -537,7 +538,7 @@ on block place:
 				stop
 			else:
 				create cooldown "place%player%" for 0.25 seconds
-				set {_xp} to addPlayerXP(player, 1)
+				set {_xp} to addPlayerXP(player, 1, 1, "Building")
 				add {_xp} to {expbudowanie::%player%}
 				UpdateScoreboard(player)
 				#if {winterDelightPassLEVEL::%player%} >= 0:
@@ -1587,6 +1588,40 @@ command /levelreset:
 		#clear {poziom::%player%}
 		#clear {exp::%player%}
 
+function addPlayerXP(p: player, xp: number, modifier: number = 1, source: string = "General") :: number:
+	if {doubleXPFriday} is true:
+		set {_xp} to {_xp}*2
+
+	set {_xp} to {_xp}*{_modifier}
+
+	set {_source} to {_source} in strict proper case
+
+	if {_source} = "Mining":
+		if metadata value "SapphireDice" of {_p} is set:
+			set {_xp} to {_xp}*3
+		if {poziomgornictwo::%{_p}%} < 50:
+			add {_xp} to {expgornictwo::%{_p}%}
+			miningProfession({_p})
+
+	set {exp::%{_p}%} to {exp::%{_p}%} + {_xp}
+
+	playerCheckLevelUp({_p})
+
+	if {event} = "Winter Delight":
+		winterDelightPassAddXP({_p}, {_xp})
+		if {winterDelightPassLEVEL::%{_p}%} >= 0:
+			getMission({_p}, "Gaining Experience", "Zdobywanie Doświadczenia", {_xp})
+
+	return {_xp}
+
+function addMiningXP(p: player, xp: number, modifier: number = 1):
+	if {poziomgornictwo::%{_p}%} < 50:
+		if {doubleXPFriday} is true:
+			set {_xp} to {_xp}*2
+		set {_xp} to {_xp}*{_modifier}
+		add {_xp} to {expgornictwo::%{_p}%}
+		miningProfession({_p})
+
 function playerCheckLevelUp(p: player):
 	if {exp::%{_p}%} >= (100*{poziom::%{_p}%}):
 		remove (100*{poziom::%{_p}%}) from {exp::%{_p}%}
@@ -1625,10 +1660,12 @@ function playerCheckLevelUp(p: player):
 			set {_colour} to "#00AAAA"
 		if {poziom::%{_p}%} = 90:
 			set {_colour} to "#aa0000"
-		if {poziom::%{_p}%} < 100:
-			set {kolorek1::%{_p}%} to "<%{_colour}%>"
-		else:
-			set {kolorek1::%{_p}%} to "<#ffffff>"
+			
+		if {kolorek1::%{_p}%} is not set:
+			if {poziom::%{_p}%} < 100:
+				set {kolorek1::%{_p}%} to {_colour}
+			else:
+				set {kolorek1::%{_p}%} to "<#ffffff>"
 			
 		if {poziom::%{_p}%} is divisible by 50:
 			add 1 to {nagrodalvl::karta::%{_p}%}
