@@ -55,18 +55,36 @@ function getDayMonth(input: string) :: number:
 		set {_return} to {_yearMonthDay::2}
 	return {_return}
 
-function giveItem(p: player, item: item):
-	if {_p} is alive:
-		set {_give::*} to give or return {_item} to {_p}
-		if {_give::*} is set:
-			if "data-%{_p}%" is not loaded:
-				load yaml "plugins/Skript/playerdata/admin/player/%uuid of {_p}%" as "data-%{_p}%"
-			add {_item} to yaml list "Player.Item Claim" in "data-%{_p}%"
-	else:
-		if "data-%{_p}%" is not loaded:
-			load yaml "plugins/Skript/playerdata/admin/player/%uuid of {_p}%" as "data-%{_p}%"
-		add {_item} to yaml list "Player.Item Claim" in "data-%{_p}%"
-	save "data-%{_p}%"
+function ItemClaimCount(p: player, items: strings) :: integer:
+	set {_totalCount} to 0
+	loop {_items::*}:
+		set {_itemAmount} to yaml value "Player.Item Claim.%loop-value%.Amount" in "ItemClaim-%{_p}%"
+		set {_totalCount} to ({_totalCount} + {_itemAmount})
+
+	return {_totalCount}
+
+function giveItem(p: player, item: item, new: boolean = true):
+	set {_itemAmount} to (item amount of {_item})
+
+	set {_give::*} to give or return {_item} to {_p}
+	if {_give::*} is set:
+		if "ItemClaim-%{_p}%" is not loaded:
+			load yaml "plugins/Skript/playerdata/ItemClaim/%uuid of {_p}%" as "ItemClaim-%{_p}%"
+		
+		set {_items::*} to yaml node keys "Player.Item Claim" in "ItemClaim-%{_p}%"
+		set {_nextItem} to ((size of ({_items::*}) + 1))
+		
+		set {_totalCount} to ItemClaimCount({_p}, {_items::*})
+		set {_overflowAmount} to (item amount of {_give::1})
+
+		set yaml value "Player.Item Claim.%{_nextItem}%.Item" in "ItemClaim-%{_p}%" to (1 of {_item})
+		set yaml value "Player.Item Claim.%{_nextItem}%.Amount" in "ItemClaim-%{_p}%" to {_overflowAmount}
+
+		if {_new} = true:
+			send "&f%{_give::1}% %uncolored (name of {_item})% &ahas been added to ItemClaim!" to {_p}
+		send "&aYou have &f%({_totalCount} + {_overflowAmount})% &aunclaimed items." to {_p}
+
+	save yaml "ItemClaim-%{_p}%"
 
 import:
 	org.bukkit.map.MinecraftFont

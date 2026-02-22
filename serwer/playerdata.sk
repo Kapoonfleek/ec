@@ -2,11 +2,12 @@ options:
 	maxEcs: 6
 on join:
 	load yaml "plugins/Skript/playerdata/%uuid of player%.yml" as "data-%player%"
-	load yaml "plugins/Skript/playerdata/admin/player/%uuid of player%Admin" as "dataAdmin-%player%"
 	load yaml "plugins/Skript/playerdata/enderchesty/Enderchest-%uuid of player%.yml" as "Enderchest%player%"
 	load yaml "plugins/Skript/playerdata/variants/%uuid of player%" as "Variants%player%"
 	load yaml "plugins/Skript/playerdata/worldquests/%uuid of player%" as "WorldQuests%player%"
 	load yaml "plugins/Skript/playerdata/reputation/%uuid of player%" as "Reputation%player%"
+	load yaml "plugins/Skript/playerdata/ItemClaim/%uuid of player%" as "ItemClaim-%player%"
+
 	loop {@maxEcs} times:
 		load yaml "plugins/Skript/playerdata/enderchesty/contents/%uuid of player%/%loop-number%.yml" as "Enderchest%loop-number%%player%"
 
@@ -40,27 +41,28 @@ on join:
 	set yaml value "Player.Level" in "data-%player%" to {poziom::%player%}
 	set yaml value "Player.Exp" in "data-%player%" to round({exp::%player%}, 2)
 
-	set yaml value "Player.Name" in "dataAdmin-%player%" to name of player
-	set yaml value "Player.UUID" in "dataAdmin-%player%" to "%uuid of player%"
-	set yaml value "Player.Location" in "dataAdmin-%player%" to location of player
+	set yaml value "Player.Name" in "data-%player%" to name of player
+	set yaml value "Player.UUID" in "data-%player%" to "%uuid of player%"
+	set yaml value "Player.Location" in "data-%player%" to location of player
 
-	if yaml list "Player.Name History" in "dataAdmin-%player%" does not contain player's name:
-		add player's name to yaml list "Player.Name History" in "dataAdmin-%player%" 
-	if yaml value "Unlocked Content" in "dataAdmin-%player%" is not set:
+	if yaml list "Player.Name History" in "data-%player%" does not contain player's name:
+		add player's name to yaml list "Player.Name History" in "data-%player%" 
+
+	if yaml value "Unlocked Content" in "data-%player%" is not set:
 		broadcast "b"
 		load yaml "plugins/Skript/lists/ContentList.yml" as "ContentList"
 		set {_contentList::*} to yaml list "Content List" in "ContentList"
 		loop {_contentList::*}:
-			set yaml value "Unlocked Content.%loop-value%" in "dataAdmin-%player%" to false
+			set yaml value "Unlocked Content.%loop-value%" in "data-%player%" to false
 
 	save yaml "data-%player%"
-	save yaml "dataAdmin-%player%"
 	save yaml "WorldQuests%player%"
+	save yaml "ItemClaim-%player%"
 
 	set {_region} to (join "%regions at player%" by "")
-    UnfreezeWorldQuestMobsInRegion(player, {_region})
+	UnfreezeWorldQuestMobsInRegion(player, {_region})
 	
-	set {_size} to size of (yaml list "Player.Item Claim" in "dataAdmin-%player%")
+	set {_size} to size of (yaml list "Player.Item Claim" in "data-%player%")
 	if {_size} > 0:
 		wait 6 seconds
 		play sound "block.note_block.harp" with volume 3 and pitch 1.2 to player
@@ -77,9 +79,7 @@ on quit:
 	set yaml value "Player.Last Login" in "data-%player%" to now
 
 	save yaml "data-%player%"
-	save yaml "dataAdmin-%player%"
 	unload yaml "data-%player%"
-	unload yaml "dataAdmin-%player%"
 	save yaml "Enderchest%player%"
 	unload yaml "Enderchest%player%"
 	unload yaml "Variants%player%"
@@ -87,6 +87,9 @@ on quit:
 	unload yaml "WorldQuests%player%"
 	save yaml "Reputation%player%"
 	unload yaml "Reputation%player%"
+
+	save yaml "ItemClaim-%player%"
+	unload yaml "ItemClaim-%player%"
 
 	loop {@maxEcs} times:
 		save yaml "Enderchest%loop-number%%player%"
@@ -96,7 +99,7 @@ on quit:
 		unload yaml "activeCard-%player%"
 
 	set {_region} to (join "%regions at player%" by "")
-    FreezeWorldQuestMobsInRegion(player, {_region})
+	FreezeWorldQuestMobsInRegion(player, {_region})
 	
 every 1 minute:
 	loop all loaded yaml:

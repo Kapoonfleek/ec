@@ -1,3 +1,5 @@
+
+
 command /spawn:
 	trigger:
 		teleport the player to location(9270, 69.5, 1587.5, world "world")
@@ -11,31 +13,44 @@ command /nbt [<text>]:
 			send {_nbt} to console
 		else:
 			send {_nbt} to player
+
 command /itemclaim [<text>]:
 	trigger:
-		load yaml "plugins/Skript/playerdata/admin/player/%uuid of player%Admin" as "dataAdmin-%player%"
-		set {_amount} to size of yaml list "Player.Item Claim" in "dataAdmin-%player%"
+		set {_items::*} to yaml node keys "Player.Item Claim" in "ItemClaim-%player%"
+		set {_totalCount} to ItemClaimCount(player, {_items::*})
+
+		set {_uniqueItems} to size of {_items::*}
+
 		if arg-1 is not set:
-			send "&aYou have &f%{_amount}% &aunclaimed items." to player
-			if {_amount} > 0:
+			send "&aYou have &f%{_totalCount}% &aunclaimed items." to player
+			if {_totalCount} > 0:
 				send formatted "&aClaim items? <command:/itemclaim claim><tooltip:&fClick here to claim items.>&f[YES]"
+			else:
+				play sound "block.chest.close" with volume 5 and pitch 1 to player
+
 		if arg-1 = "claim":
-			set {_items::*} to yaml list "Player.Item Claim" in "dataAdmin-%player%"
 			loop {_items::*}:
-				set {_i::*} to give or return loop-value to player
+				set {_item} to yaml value "Player.Item Claim.%loop-value%.Item" in "ItemClaim-%player%"
+				set {_itemAmount} to yaml value "Player.Item Claim.%loop-value%.Amount" in "ItemClaim-%player%"
+
+				set {_i::*} to give or return ({_itemAmount} of {_item}) to player
 				if {_i::*} is set:
-					drop {_i} at player
+					drop ((item amount of {_i::1}) of {_item}) at player
 				clear {_i::*}
-				remove loop-value from yaml list "Player.Item Claim" in "dataAdmin-%player%"
-				if name of loop-value is set:
-					send "&aYou claimed %name of loop-value%&a!" to player
+
+				clear yaml value "Player.Item Claim.%loop-value%" in "ItemClaim-%player%"
+
+				if (name of {_item}) is set:
+					send "&aYou claimed &f%{_itemAmount}% %name of {_item}%&a!" to player
 				else:
-					send "&aYou claimed %loop-value%&a!" to player
+					send "&aYou claimed &f%{_itemAmount}% %{_item}%&a!" to player
+
 			if {_amount} = 0:
 				play sound "block.chest.close" with volume 5 and pitch 1 to player
-			send "&aYou claimed &f%{_amount}% &aitems!" to player
-			save yaml "dataAdmin-%player%"
-			loop {_amount} times:
+				
+			send "&aYou claimed &f%{_totalCount}% &aitems!" to player
+			save yaml "ItemClaim-%player%"
+			loop {_uniqueItems} times:
 				play sound "entity.item.pickup" with volume 5 and pitch 0.7 at player
 				wait 3 ticks
 
@@ -311,8 +326,7 @@ command /convertcard:
 				else if {_primaryStatType} = "Agility":
 					set lore of player's tool to "%(join {_lore1::*} by nl)%%nl%&7%{_primaryStatType}%: &7■■■■■■■■■■ &7(<##5ee359>0&7)%nl%%(join {_lore::*} by nl)%"
 				if {gem::%{_id}%::*} is set:
-					load yaml "plugins/Skript/playerdata/admin/player/%uuid of player%Admin" as "dataAdmin-%player%"
-					set {_list::*} to yaml list "Player.Item Claim" in "dataAdmin-%player%"
+					set {_list::*} to yaml list "Player.Item Claim" in "data-%player%"
 					set {_oldrank1MainRare} to 25
 					set {_oldrank2MainRare} to 34
 					set {_oldrank3MainRare} to 48
@@ -376,8 +390,8 @@ command /convertcard:
 						add nbt from "{""minecraft:custom_data"":{""Gem"":1b}}" to nbt of {_gem}
 						set {_list::*} to {_list::*} and {_gem}
 					clear {gem::%{_id}%::*}
-					set yaml list "Player.Item Claim" in "dataAdmin-%player%" to {_list::*}
-					save yaml "dataAdmin-%player%"
+					set yaml list "Player.Item Claim" in "data-%player%" to {_list::*}
+					save yaml "data-%player%"
 					if {language::%player%} = "English":
 						send "&6>> Successfully converted old card data to the new system." to player
 						send "&6>> It is advised to relog once after this process." to player
