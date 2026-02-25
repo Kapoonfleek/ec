@@ -71,6 +71,9 @@ command /en4:
 
 function learnEnchantingRecipe(p: player, recipeName: string):
     set yaml value "Professions.Enchanting.Unlocked Recipes.%{_recipeName}%.Purchased" in "data-%{_p}%" to true
+    set {_recipesLearned} to "Statistics.Professions.Recipes Learned"
+    addToYaml(1, "data-%{_p}%", "%{_recipesLearned}%.Enchanting")
+    addToYaml(1, "data-%{_p}%", "%{_recipesLearned}%.Total")
     save yaml "data-%{_p}%"
 
 function playLearnEnchantingRecipe(p: player, items: items):
@@ -176,14 +179,21 @@ function openEnchantingLevelMenu(p: player):
     set {_level} to getEnchantingLevel({_p})
     set {_maxLevel} to 75
     set {_experience} to getEnchantingExp({_p})
-    set {_recipes} to 0
-    set {_maxRecipes} to 45
+    set {_recipes} to (size of (yaml node keys "Professions.Enchanting.Unlocked Recipes" in "data-%{_p}%"))
+    set {_maxRecipes} to (size of (yaml node keys "Recipes" in "EnchantingProfessionList"))
 
-    set {_totalCrafts} to 0
-    set {_itemsDisenchanted} to 0
-    set {_playerExpEarned} to 0
+    set {_paths::totalCrafts} to "Statistics.Crafting.Professions.Enchanting.Total"
+    set {_paths::itemsEnchanted} to "Statistics.Professions.Enchanting.Enchanting.Enchanted Items.Total"
+    set {_paths::itemsDisenchanted} to "Statistics.Professions.Enchanting.Disenchanting.Disenchanted Items.Total"
+    set {_paths::playerExpEarned} to "Statistics.Experience.Professions.Enchanting.Total"
+
+    loop {_paths::*}:
+        set {_%loop-index%} to yaml value loop-value in "data-%{_p}%"
+        if {_%loop-index%} is not set:
+            set {_%loop-index%} to 0
     
-    set {_lore} to "&7Level: &f%{_level}%%nl%&7Experience: &f%{_experience}%%nl%&7Unlocked Recipes: &f%{_recipes}%&7/&f%{_maxRecipes}%%nl% %nl%&7Total Crafts: &f%{_totalCrafts}%%nl%&7Items Disenchanted: &f%{_itemsDisenchanted}%%nl%&7Player Experience Earned: &f%{_playerExpEarned}%"
+    set {_lore} to "&7Level: &f%{_level}%%nl%&7Experience: &f%{_experience}% XP%nl%&7Unlocked Recipes: &f%{_recipes}%&7/&f%{_maxRecipes}%%nl% %nl%&7Total Crafts: &f%{_totalCrafts}%"
+    set {_lore} to "%{_lore}%%nl%&7Items Disenchanted: &f%{_itemsDisenchanted}%%nl%%nl%&7Items Enchanted: &f%{_itemsEnchanted}%%nl%&7Player Experience Earned: &f%{_playerExpEarned}% XP"
     set (slot 4 of {_enchantingMenu}) to (book named {_enchanting}) with lore {_lore} with nbt from ("{""minecraft:custom_model_data"":{floats:[4.0f]}}")
 
     play sound "item.book.page_turn" with volume 0.8 and pitch 0.9 at {_p} for {_p}
@@ -251,7 +261,15 @@ function enchantingMenuPage(p: player, enchantingMenu: inventory):
 
         if yaml value "Enchanting.Rewards.Level %{_slotLevel}%" in "EnchantingProfessionList" is set:
             set {_reward} to formatted (yaml value "Enchanting.Rewards.Level %{_slotLevel}%.Description" in "EnchantingProfessionList")
-            set {_value} to (yaml value "Enchanting.Rewards.Level %{_slotLevel}%.Value" in "EnchantingProfessionList")
+
+            if yaml value "Enchanting.Rewards.Level %{_slotLevel}%.Reward.Item Type" in "EnchantingProfessionList" is set:
+                set {_itemType} to yaml value "Enchanting.Rewards.Level %{_slotLevel}%.Reward.Item Type" in "EnchantingProfessionList"
+                set {_enchantName} to yaml value "Enchanting.Rewards.Level %{_slotLevel}%.Reward.Reward Name" in "EnchantingProfessionList"
+                set {_enchantRank} to yaml value "Enchanting.Rewards.Level %{_slotLevel}%.Reward.Tier" in "EnchantingProfessionList"
+                set {_value} to yaml value "Enchants.%{_itemType}%.%{_enchantName}%.Tiers.%{_enchantRank}%.Value" in "EnchantingProfessionList"
+            else:
+                set {_value} to (yaml value "Enchanting.Rewards.Level %{_slotLevel}%.Value" in "EnchantingProfessionList")
+                
             replace all "{NL}" in {_reward} with nl
 
             if {_reward} contains "{GRADIENT}":
@@ -327,25 +345,15 @@ function disenchantMenu(p: player):
 on rightclick:
     if player's tool is rabbit hide:
         set {_p} to player
+        clear yaml value "Professions.Enchanting" in "data-%{_p}%"
         set yaml value "Professions.Enchanting.Level" in "data-%{_p}%" to 0
         set yaml value "Professions.Enchanting.Exp" in "data-%{_p}%" to 0
 
         save yaml "data-%{_p}%"
     if player's tool is gold nugget:
-        set {_f} to yaml value "Residual Spark.Item" in "ItemList"
-        set boolean tag "Residual Spark" of custom nbt of {_f} to true
-        set boolean tag "Disenchanting Material" of custom nbt of {_f} to true
-        set yaml value "Residual Spark.Item" in "ItemList" to {_f}
-
-
-        set {_k} to {ametyst}
-        set max stack size component of {_k} to 99
-        set boolean tag "Currency" of custom nbt of {_k} to true
-        set boolean tag "Klejnot" of custom nbt of {_k} to true
-        set yaml value "Amethyst.Item" in "ItemList" to {_k}
-
-        save yaml "ItemList"
-        addEnchantingExp(player, 80, 1)
+        save yaml "data-%player%"
+        if yaml "EnchantingProfessionList" is loaded:
+            addEnchantingExp(player, 400, 1)
         stop
         #set {_item} to Gear("Ring of Forbidden Techniques", "Ring", 120, "Epic", "Intellect", "Siege of Spawn")
        # give {_item} to player
@@ -382,7 +390,8 @@ on inventory click:
     else if event-inventory = (metadata tag "EnchantingMenu" of player):
         cancel event
         if event-slot != air:
-            close player's inventory
+            if event-slot != black stained glass pane:
+                close player's inventory
 
         if (boolean tag "EnchantingLevel" of (custom nbt of clicked slot)):
             set (metadata tag "EnchantingMenuCurrentPage" of player) to 1
@@ -428,8 +437,10 @@ on inventory click:
     else if event-inventory = (metadata tag "EnchantingMenu-Recipes" of player):
         cancel event
         set {_recipeName} to uncoloured name of event-slot
+        replace all "★ " and "★" in {_recipeName} with ""
         if yaml value "Professions.Enchanting.Unlocked Recipes.%{_recipeName}%.Purchased" in "data-%player%" != true:
             set {_items::*} to nbt tags of (compound tag "Price" of (custom nbt of event-slot))
+            broadcast custom nbt of nbt of event-slot
             loop {_items::*}:
                 set {_amountReq} to int tag "Price;%loop-value%" of (custom nbt of event-slot)
                 set {_item} to yaml value "%loop-value%.Item" in "ItemList"
@@ -526,6 +537,12 @@ function sliderShopDialog(p: player):
                             play sound "entity.experience_orb.pickup" with volume 1 and pitch 1 to {_p}
                             play sound "entity.chicken.egg" with volume 1 and pitch 1.21 to {_p}
 
+                            set {_itemsPurchased} to "Statistics.Professions.Enchanting.Purchased Items"
+                            addToYaml({_amount}, "data-%{_p}%", "%{_recipesLearned}%.Total")
+                            addToYaml({_amount}, "data-%{_p}%", "%{_recipesLearned}%.%{_itemName}%")
+
+                            save yaml "data-%{_p}%"
+
                         else:
                             set {_message} to yaml value "Messages.Not Enough Currency" in "EnchantingProfessionList"
                             send mini message from "<gradient:#9921de:#d35de8:#f536cb:#bf8cfa>Enchanting</gradient> <#555555>>> <red>%{_message}%" to {_p}
@@ -553,13 +570,82 @@ function openEnchantingRecipeMenu(p: player):
 
     loop (size of {_recipes::*}) times:
         set {_itemName} to {_recipes::%loop-counter%}
-        set {_item} to yaml value "%{_itemName}%.Item" in "ItemList"
+        
+        set {_recipeType} to yaml value "Recipes.%{_itemName}%.Type" in "EnchantingProfessionList"
+
+        if {_itemName} does not contain " | ":
+            set {_item} to yaml value "%{_itemName}%.Item" in "ItemList"
+        else:
+            set {_itemName::*} to {_itemName} split at " | "
+            set {_itemNameFormatted} to {_itemName::1}
+
+            set {_enchantTier} to {_itemName::2}
+            set {_numeralEnchantTier} to roman numeral {_enchantTier} as number
+
+            set {_tierColour} to yaml value "Rank Colours.%{_numeralEnchantTier}%" in "GearList"
+
+            set {_enchantRank} to yaml value "Professions.Enchanting.Unlocked Recipes.%{_itemName}%.Rank" in "data-%{_p}%"
+            set {_maxRanks} to yaml value "Max Values.Ranks" in "EnchantingProfessionList"
+            set {_starString} to ""
+
+            if {_enchantRank} is not set:
+                set {_enchantRank} to 1
+            
+            set {_starsRank} to ("&e★" repeated {_enchantRank} times)
+            set {_starString} to "%{_starString}%%{_starsRank}%"
+            
+            if ({_maxRanks}-{_enchantRank}) > 0:
+                set {_starsRankGrey} to ("&8★" repeated ({_maxRanks}-{_enchantRank}) times)
+                set {_starString} to "%{_starString}%%{_starsRankGrey}%"
+
+            set {_enchantColour} to yaml value "Enchants.%{_recipeType}% Colour" in "EnchantingProfessionList"
+            set {_enchantName} to formatted "%{_starString}% %{_enchantColour}%%{_itemName}%"
+            set {_enchantValue} to yaml value "Enchants.%{_recipeType}%.%{_itemNameFormatted}%.Tiers.%{_enchantTier}%.Value" in "EnchantingProfessionList"
+            set {_enchantDesc} to yaml value "Enchants.%{_recipeType}%.%{_itemNameFormatted}%.Description" in "EnchantingProfessionList"
+            
+            replace all "{VALUE}" in {_enchantDesc} with "%{_enchantValue}%"
+            replace all "{NL}" in {_enchantDesc} with nl
+
+            set {_starsTier} to ("★" repeated {_numeralEnchantTier} times)
+            set {_enchantDesc} to formatted ("%{_enchantDesc}%%nl% %nl%&7Quality: %{_tierColour}%%{_starsTier}%")
+
+            loop {_maxRanks} times:
+                set {_rank} to loop-number-2
+                set {_starsTooltip} to "&e★" repeated {_rank} times
+
+                set {_remainingRanks} to ({_maxRanks}-{_rank})
+                if {_remainingRanks} > 0:
+                    set {_remainingStars} to "&8★" repeated {_remainingRanks} times
+                    set {_starsTooltip} to "%{_starsTooltip}%%{_remainingStars}%"
+
+                set {_rankName} to "<#00FFFF>Rank %{_rank}%: %{_starsTooltip}%"
+                set {_rankTooltip} to formatted (yaml value "Enchants.Rank Tooltip.%{_rank}%" in "EnchantingProfessionList")
+
+                replace all "{NL}" in {_rankTooltip} with nl
+
+                set {_rankSource} to yaml value "Enchants.%{_recipeType}%.%{_itemNameFormatted}%.Ranks.%{_rank}%.Source" in "EnchantingProfessionList"
+                set {_rankSource} to "  &fSource: %{_rankSource}%"
+
+                if {_rank} > {_enchantRank}:
+                    replace all "<#fdd002>" in {_rankTooltip} with "&8"
+                    replace all "<#00FFFF>" in {_rankName} with "&8"
+                    replace all "&f" in {_rankSource} with "&8"
+
+                set {_enchantDesc} to "%{_enchantDesc}%%nl% %nl%%{_rankName}%%nl%%{_rankTooltip}%%nl%%{_rankSource}%"
+
+            set {_item} to enchanted book named {_enchantName} with lore {_enchantDesc}
+
         add "%nl%&7Materials Required:%nl%" to lore of {_item}
 
         set {_materialAmount} to size of (yaml node keys "Recipes.%{_itemName}%.Items" in "EnchantingProfessionList")
         loop {_materialAmount} times:
             set {_materialName} to yaml value "Recipes.%{_itemName}%.Items.%loop-counter-2%.Name" in "EnchantingProfessionList"
             set {_materialAmount} to yaml value "Recipes.%{_itemName}%.Items.%loop-counter-2%.Amount" in "EnchantingProfessionList"
+            
+            if {_enchantRank} > 1:
+                if {_itemName} contains " | ": 
+                    set {_costReduction} to yaml value "Enchants.Rank Cost Reduction.%{_enchantRank}%" in "EnchantingProfessionList"
+                    set {_materialAmount} to (rounded up ({_materialAmount}*(1-({_costReduction}/100))))
 
             set {_materialItem} to (yaml value "%{_materialName}%.Item" in "ItemList")
             set {_materialNameColoured} to name of {_materialItem}
@@ -579,14 +665,17 @@ function openEnchantingRecipeMenu(p: player):
                     set {_currencyItemName} to name of {_currencyItem}
 
                     add "&f- %{_currencyAmount}%x %{_currencyItemName}%" to lore of {_item}
-
-                    set int tag "Price;%{_currency}%" of custom nbt of {_item} to {_currencyAmount}
-
-                add "%nl%&eClick here to purchase recipe." to lore of {_item}
+                    
+                    set int tag "Price;%{_currency}%" of (custom nbt of {_item}) to {_currencyAmount}
+                
+                if yaml value "Professions.Enchanting.Unlocked Recipes.%{_itemName}%" in "data-%{_p}%" is set:
+                    add "%nl%&eClick here to purchase recipe." to lore of {_item}
+                else:
+                    add "%nl%&c✘ Not unlocked." to lore of {_item}
                 
         else:
             add "%nl%&a✔ Unlocked" to lore of {_item}
-        
+
         set slot (loop-counter - 1) of {_enchantingMenu} to {_item}
 
     set slots (integers between 45 and 53) of {_enchantingMenu} to (black stained glass pane named " ")
@@ -695,7 +784,9 @@ function disenchantItem(p: player, item: item):
     send {_string} to {_p}
     send mini message from "<gradient:#9921de:#d35de8:#f536cb:#bf8cfa>Enchanting</gradient> <#555555>>> <white>You receive <#bf8cfa>%{_expAmount}% <white>EXP." to {_p}
 
-    
+    addToYaml({_expAmount}, "data-%{_p}%", "Statistics.Experience.Total")
+    addToYaml({_expAmount}, "data-%{_p}%", "Statistics.Experience.Professions.Enchanting.Total")
+
     addToYaml({_expAmount}, "data-%{_p}%", "%{_disenchantingExp}%.Total")
     addToYaml({_itemAmount}, "data-%{_p}%", "%{_disenchantedItems}%.Total")
 
@@ -754,7 +845,10 @@ function addEnchantingExp(p: player, exp: number, modifier: number = 1):
         
         send mini message from "<gradient:#9921de:#d35de8:#f536cb:#bf8cfa>Enchanting</gradient> <#555555>>> <white>%{_expMessage}%<white>. (Total: +%{_totalIncrease}%%%)" to {_p}
 
+        set yaml value "Professions.Enchanting.Exp Modifier" in "data-%{_p}%" to {_totalIncrease}
+
         set {_rewardType} to yaml value "Enchanting.Rewards.Level %{_enchantingLevel}%.Reward.Type" in "EnchantingProfessionList"
+        set {_rewardItemType} to  yaml value "Enchanting.Rewards.Level %{_enchantingLevel}%.Reward.Item Type" in "EnchantingProfessionList"
 
         if {_rewardType} is set:
             set {_rewardName} to yaml value "Enchanting.Rewards.Level %{_enchantingLevel}%.Reward.Name" in "EnchantingProfessionList"
@@ -763,10 +857,45 @@ function addEnchantingExp(p: player, exp: number, modifier: number = 1):
             set {_rewardDescription} to yaml value "Enchanting.Rewards.Level %{_enchantingLevel}%.Description" in "EnchantingProfessionList"
             replace all "{NL}" in {_rewardDescription} with nl
 
+            if (yaml value "Enchanting.Rewards.Level %{_enchantingLevel}%.Gradient" in "EnchantingProfessionList") is set:
+                set {_gradient} to yaml value "Enchanting.Rewards.Level %{_enchantingLevel}%.Gradient" in "EnchantingProfessionList"
+
+                replace all "{GRADIENT}" in {_rewardName} with {_gradient}
+                replace all "{/GRADIENT}" in {_rewardName} with "</gradient>"
+
+                replace all "{GRADIENT}" in {_rewardDescription} with {_gradient}
+                replace all "{/GRADIENT}" in {_rewardDescription} with "</gradient>"
+
+                set {_rewardName} to mini message from {_rewardName}
+                set {_rewardDescription} to mini message from {_rewardDescription}
+
+            if yaml value "Enchanting.Rewards.Level %{_enchantingLevel}%.Reward.Rank" in "EnchantingProfessionList" is set:
+                set {_rewardUnformattedName} to yaml value "Enchanting.Rewards.Level %{_enchantingLevel}%.Reward.Reward Name" in "EnchantingProfessionList"
+
+                set {_tier} to yaml value "Enchanting.Rewards.Level %{_enchantingLevel}%.Reward.Tier" in "EnchantingProfessionList"
+                set {_value} to yaml value "Enchants.%{_rewardItemType}%.%{_rewardUnformattedName}%.Tiers.%{_tier}%.Value" in "EnchantingProfessionList"
+
+                set yaml value "Professions.Enchanting.Unlocked Recipes.%{_rewardUnformattedName}% | %{_tier}%.Rank" in "data-%{_p}%" to 1
+                set yaml value "Professions.Enchanting.Unlocked Recipes.%{_rewardUnformattedName}% | %{_tier}%.Purchased" in "data-%{_p}%" to false
+
+                replace all "{VALUE}" in {_rewardDescription} with "%{_value}%"
+
+            else:
+                if {_rewardType} = "Recipe":
+                    set yaml value "Professions.Enchanting.Unlocked Recipes.%(unformatted {_rewardName})%.Purchased" in "data-%{_p}%" to false
+
+                else if {_rewardType} = "Enchant Knowledge":
+                    set {_knowledge} to yaml value "Enchanting.Rewards.Level %{_enchantingLevel}%.Reward.Knowledge" in "EnchantingProfessionList"
+                    add {_knowledge} to (yaml list "Professions.Enchanting.Enchant Knowledge" in "data-%{_p}%")
+
+                else if {_rewardType} = "Disenchant Knowledge":
+                    set {_dknowledge} to yaml value "Enchanting.Rewards.Level %{_enchantingLevel}%.Reward.Knowledge" in "EnchantingProfessionList"
+                    add {_dknowledge} to (yaml list "Professions.Enchanting.Disenchant Knowledge" in "data-%{_p}%")
+            
             replace all "{REWARD}" in {_rewardMessage} with "<tooltip:%{_rewardDescription}%>%{_rewardName}%&f"
 
             set {_rewardString} to mini message from "<gradient:#9921de:#d35de8:#f536cb:#bf8cfa>Enchanting</gradient> <#555555>>>"
-            send formatted "%{_rewardString}% &f%{_rewardMessage}%" to {_p}
+            send formatted "%{_rewardString}% &f%{_rewardMessage}%" to {_p} 
         
         learnEnchantingEffect({_p})
 
