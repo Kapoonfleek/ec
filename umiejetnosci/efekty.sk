@@ -1,5 +1,7 @@
 using script reflection
 
+
+
 function AbilityUse(p: player, spell: text):
     set metadata value "lastspell" of {_p} to {_spell}
     set {_card} to unformatted (name of {karta::%{_p}%})
@@ -36,10 +38,17 @@ function AbilityUse(p: player, spell: text):
         getMission({_p}, "Mastering the Art", "Opanowywanie Umiejętności", 1)
         
 function CanUseAbility(p: player) :: boolean:
-    if metadata value "CannotUseAbilities" of {_p} is true:
-        set {_canUse} to false
-        send "&c&oYou can not use any abilities right now." to {_p}
-        play sound "block.glass.break" with volume 3 and pitch 0 to {_p}
+    if boolean tag "Ability" of (custom nbt of ({_p}'s tool)):
+        if any:
+            {_p} does not have {karta::%{_p}%}
+            metadata value "CannotUseAbilities" of {_p} = true
+        then:
+            set {_canUse} to false
+            if {_p} does not have {karta::%{_p}%}:
+                send "&c&oYou must have your active Card in your inventory to use abilities." to {_p}
+            else:
+                send "&c&oYou can not use any abilities right now." to {_p}
+            play sound "block.glass.break" with volume 3 and pitch 0 to {_p}
     return {_canUse}
 
 function CanUseAbilityMob(e: entity) :: boolean:
@@ -57,7 +66,7 @@ function PermanentBuff(p: player):
 
 function LoreUpdate(p: player, nbt: text, lore: text):
     loop all items in the inventory of {_p}:
-        if boolean tag {_nbt} of custom nbt of loop-item is set:
+        if boolean tag {_nbt} of (custom nbt of loop-item) is set:
             set lore of loop-item to {_lore}
 
 function Haste(p: player, scaling: number = 4) :: number:
@@ -104,6 +113,10 @@ function ResistanceStat(p: player) :: number:
 
 function MobilityStat(p: player) :: number:
     set {_mobility} to {mobility::%{_p}%} + {bonusMobility::%{_p}%}
+
+    if metadata value "UmbreonFeatherfoot" of {_p} is set:
+        set {_mobility} to {_mobility} + metadata value "UmbreonFeatherfoot" of {_p}
+        
     return {_mobility}
 
 function DamageStat(p: player) :: number:
@@ -184,7 +197,7 @@ function GlobalCooldown(p: player, name: text, item: item, cd: timespan):
 
 function cooldownSpell(p: player, spell: text, cd: timespan):
     loop all items in the inventory of {_p}:
-        if boolean tag {_spell} of custom nbt of loop-item is set:
+        if boolean tag {_spell} of (custom nbt of loop-item) is set:
             set the cooldown of loop-item for {_p} to {_cd}
 
 function Stun(e: entity, duration: timespan):
@@ -225,6 +238,32 @@ function Target(p: player, length: number, passThrough: boolean) :: entity:
                     stop
     return {_entity}
 
+function TargetLocation(e: entity, length: number, passThrough: boolean, entity: string = "players") :: location:
+    set {_x} to 0
+    set {_l} to 0
+    set {_rg} to eye location of {_e}
+    set {_dir} to vector in direction of {_e}
+
+    loop {_length} times:
+        add 1 to {_x}
+        set {_rg} to {_rg} offset by {_dir}
+
+        loop all entities in radius 0.75 around {_rg}:
+            if loop-entity is alive:
+                if {_entity} = "players":
+                    if loop-entity is a player:
+                        set {_return} to loop-entity's location
+                        stop loop
+
+        if {_passThrough} is not true:
+            if block at {_rg} is solid:
+                stop loop
+
+    if {_return} is not set:
+        set {_return} to {_rg}  
+
+    return {_return}
+
 function LoopEntitiesAroundTarget(target: entity, radius: number, includeTarget: boolean = true) :: entities:
     loop entities in radius {_radius} around {_target}:
         if loop-entity is not a player:
@@ -252,6 +291,12 @@ function loopAlliesAroundTarget(target: entity, radius: number, includeTarget: b
                             else:
                                 if {_includeTarget} != false:
                                     add loop-entity to {_entities::*}
+    return {_entities::*}
+
+function loopPlayersAroundLocation(loc: location, radius: number) :: entities:
+    loop all entities in radius {_radius} around {_loc}:
+        if loop-entity is a player:
+            add loop-entity to {_entities::*}
     return {_entities::*}
 
 function FriendlyTarget(p: player, length: number, passThrough: boolean, mustBePlayer: boolean = false) :: entity:
@@ -400,7 +445,13 @@ function amountOfDots(p: player, e: entity) :: number:
         set {_x} to 0
     else:
         set {_x} to metadata value "AmountOfDots%{_p}%" of {_e}
-    set {_return} to 0.25 + {_x}*0.25
+
+    set {_levelEntity} to (string tag "ECTextAboveLevel" of custom nbt of {_e}) parsed as entity
+    set {_maxLoc} to y-coordinate of (location of {_levelEntity})
+    set {_entityLocation} to y-coordinate of (location of {_e}'s head)
+
+    set {_baseLoc} to 0.25 + ({_maxLoc}-{_entityLocation})
+    set {_return} to {_baseLoc} + {_x}*0.25
     return {_return}
 
 function amountOfDotsGet(p: player, e: entity) :: integer:
@@ -428,7 +479,7 @@ function amountOfDotsSubtract(p: player, e: entity):
 #function StatCalc(p: player, id: string):
 #    load yaml "plugins/Skript/playerdata/karty/%uncolored name of {karta::%{_p}%}%/%{_i}%.yml" as "karty-%player%"
  #   set {_haste} to yaml value "Card.Stats.Haste" in "karty-%player%"
- #   if string tag "Talents;Row 1" of custom nbt of {karta::%player%} = "Winter's Blessing":
+ #   if string tag "Talents;Row 1" of (custom nbt of {karta::%player%}) = "Winter's Blessing":
  #       set {_haste} to 
  #   unload yaml "karty-%player%"
 
@@ -473,7 +524,7 @@ on inventory click:
             # <---------- Check if player has constellation 2 and add CC scaling if yes
             if {_name} = "<##4bbfe2>Glacial Spike":
                 if uncolored name of {karta::%player%} = "Glaceon":
-                    set {_id} to string tag "Id" of custom nbt of {karta::%player%}
+                    set {_id} to string tag "Id" of (custom nbt of {karta::%player%})
                     set {_constellation} to yaml value "Card.Constellation" in "activeCard-%player%"
                 if last element of lore of {_slot} contains "expand":
                     if {_constellation} >= 2:
