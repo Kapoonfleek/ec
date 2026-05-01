@@ -1,10 +1,19 @@
 variables:
 	{dmgdealt::%player%} = 0
-	
+
+
 function CombatRefresh(v: entity, a: entity):
 	if boolean tag "ECMob" of custom nbt of {_v} is set:
 		if metadata value "ECEngaged" of {_v} is not set:
 			set metadata value "ECEngaged" of {_v} to 60
+
+			if string tag "WorldQuest" of custom nbt of {_v} is set:
+				WorldQuestCombatEngage({_v})
+				#///Animation section
+				if string tag "ECModelName" of custom nbt of {_v} is set:
+					setAIState({_v}, "rage")
+					playEntitySound({_v}, "Rage")
+
 			while metadata value "ECEngaged" of {_v} > -1:
 				if metadata value "ECEngaged" of {_v} > 0:
 					wait 1 second
@@ -198,7 +207,7 @@ function HealRefresh(p: player, h: number):
 		set {_id} to line 19 of lore of {karta::%{_p}%}
 		set {healed::%{_p}%} to 0
 		set {hps::%{_p}%} to 0
-		add {_h} to {healed::%{_p}%}
+		set {healed::%{_p}%} to {healed::%{_p}%} + {_h}
 		if {seconds::%{_p}%} is not set:
 			set {seconds::%{_p}%} to 0
 		if metadata value "DungeonInstance" of {_p} is not set:
@@ -221,7 +230,7 @@ function HealRefresh(p: player, h: number):
 						clearCombat({_p})
 	else:
 		set metadata value "ECEngaged" of {_p} to 59
-		add {_h} to {healed::%{_p}%}
+		set {healed::%{_p}%} to {healed::%{_p}%} + {_h}
 	if {seconds::%{_p}%} > 0:
 		set {hps::%{_p}%} to {healed::%{_p}%}/{seconds::%{_p}%}
 	else:
@@ -266,6 +275,10 @@ function combatInitiate(att: entity, vict: entity):
 				set metadata value "Heir to the Darkness" of {_att} to 0
 			else if {kartaname::%{_att}%} = "Delphox":
 				set metadata value "BonusCritDelphox" of {_att} to 0
+
+			if getArtifactSetCount({_att}, "Arcane Mysteries", 4) = true:
+				ArcaneMysteries4Set({_att})
+
 		while metadata value "ECEngaged" of {_att} > -1:
 			if metadata value "ECEngaged" of {_att} > 0:
 				inCombat({_att})
@@ -404,6 +417,7 @@ function LogDmgBreakdown(p: player):
 	loop {_size} times:
 		set {_1} to ({_r::%loop-number%} in strict proper case)
 		log "%{_data}% %{_1}%: %{dmgbreak::%{_k}%::%{_id}%::%{_1}%}% (%({dmgbreak::%{_k}%::%{_id}%::%{_1}%}/{dmgdealt::%{_p}%})*100%%%)" to "logi/combat/combatdetails %{datatydzien}%-%{datatydzien2}%.log"
+
 function LogHealBreakdown(p: player):
 	set {_data} to data()
 	log "%{_data}% Healing breakdown of %{_p}%:" to "logi/combat/combatdetails %{datatydzien}%-%{datatydzien2}%.log"	
@@ -421,6 +435,7 @@ function LogHealBreakdown(p: player):
 		loop {_size} times:
 			set {_1} to ({_r::%loop-number%} in strict proper case)
 			log "%{_data}% %{_1}%: %{healcard::%{_k}%::%{_id}%::%{_1}%}% (%({healcard::%{_k}%::%{_id}%::%{_1}%}/{healed::%{_p}%})*100%%%)" to "logi/combat/combatdetails %{datatydzien}%-%{datatydzien2}%.log"
+
 command /damagebreakdown:
 	aliases: /dmgbreakdown, /breakdown
 	trigger:
@@ -432,7 +447,7 @@ command /healingbreakdown:
 		CombatBreakdown(player, "Healing")
 		
 function CombatBreakdown(p: player, type: text):
-	set {_id} to string tag "Id" of custom nbt of {karta::%{_p}%}
+	set {_id} to string tag "Id" of (custom nbt of {karta::%{_p}%})
 	set {_k} to {kartaname::%{_p}%}
 
 	
@@ -468,7 +483,7 @@ function CombatBreakdown(p: player, type: text):
 				set {_breakdown} to join {_breakdown::*} by nl
 				set {_message} to mini message from "<gradient:##03fc41:##69faff:##2faabd:##303f96>%{_breakdown}%"
 			else:
-				set {_message} to "<##03fc41>%{_breakdown::1}%"
+				set {_message} to "<#03fc41>%{_breakdown::1}%"
 
 	send "Coming soon (TM)" to {_p}
 	send "%{_type}% breakdown:" to {_p}
@@ -524,23 +539,24 @@ command /kill [<player>]:
 			kill arg-1
 
 function DamageBreakdown(p: player, e: entity, v: number):
-	set {_id} to string tag "Id" of custom nbt of {karta::%{_p}%}
+	set {_id} to string tag "Id" of (custom nbt of {karta::%{_p}%})
 	if metadata value "LastDamageCause" of {_e} is set:
 		set {_lastDmgCause} to uncolored metadata value "LastDamageCause" of {_e}
-		add {_v} to {dmgbreak::%{kartaname::%{_p}%}%::%{_id}%::%{_lastDmgCause}%}
+		set {dmgbreak::%{kartaname::%{_p}%}%::%{_id}%::%{_lastDmgCause}%} to ({dmgbreak::%{kartaname::%{_p}%}%::%{_id}%::%{_lastDmgCause}%} + {_v})
 
-		set {_dmg} to yaml value "Combat Details.%{_lastDmgCause}%.Damage" in "CombatDetails-%{_p}%"
-		add {_v} to {_dmg}
-		set yaml value "Combat Details.%{_lastDmgCause}%.Damage" in "CombatDetails-%{_p}%" to {_dmg}
+		if yaml "CombatDetails-%{_p}%" is loaded:
+			set {_dmg} to yaml value "Combat Details.%{_lastDmgCause}%.Damage" in "CombatDetails-%{_p}%"
+			set {_dmg} to {_dmg} + {_v}
+			set yaml value "Combat Details.%{_lastDmgCause}%.Damage" in "CombatDetails-%{_p}%" to {_dmg}
 
-		set {_total} to yaml value "Total" in "CombatDetails-%{_p}%"
-		add {_v} to {_total}
-		set yaml value "Total" in "CombatDetails-%{_p}%" to {_total}
+			set {_total} to yaml value "Total" in "CombatDetails-%{_p}%"
+			set {_total} to {_total} + {_v} 
+			set yaml value "Total" in "CombatDetails-%{_p}%" to {_total}
 
-		set {_hits} to yaml value "Combat Details.%{_lastDmgCause}%.Hits" in "CombatDetails-%{_p}%"
-		add 1 to {_hits}
-		set yaml value "Combat Details.%{_lastDmgCause}%.Hits" in "CombatDetails-%{_p}%" to {_hits}
-		save yaml "CombatDetails-%{_p}%"
+			set {_hits} to yaml value "Combat Details.%{_lastDmgCause}%.Hits" in "CombatDetails-%{_p}%"
+			set {_hits} to {_hits} + 1
+			set yaml value "Combat Details.%{_lastDmgCause}%.Hits" in "CombatDetails-%{_p}%" to {_hits}
+			save yaml "CombatDetails-%{_p}%"
 
 		damageMeterUpdate({_p})
 
