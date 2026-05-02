@@ -281,10 +281,7 @@ on rightclick:
 							send "<#7cafbf>You must wait &f%{_cdd}% <#7cafbf>to use this ability." to player
 					stop
 			else:
-				if {language::%player%} = "English":
-					send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to player
-				else:
-					send "&8[&6Earthcraft&8] &6Nie masz wybranej wymaganej karty, by móc użyć tej umiejętności." to player
+				send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to player
 				play sound "block.glass.break" with volume 3 and pitch 0 to player
 	else if boolean tag "Explosive Bubble" of (custom nbt of player's tool) is set:
 		cancel event
@@ -295,8 +292,10 @@ on rightclick:
 				set {_pospiech} to Haste(player)
 				set {_cd} to "%1.5/{_pospiech}%"
 				set {_cdtarget} to "%20/{_pospiech}%"
-				set {_cdLore} to "%{_cd}% seconds" parsed as timespan
-				set {_cdtargetLore} to "%{_cdtarget}% seconds" parsed as timespan
+
+				set {_cdLore} to "%{_cd}% sec" parsed as timespan
+				set {_cdtargetLore} to "%{_cdtarget}% sec" parsed as timespan
+
 				set {_wait} to 8/{_pospiech}
 
 				set {_versatility} to Versatility(player)
@@ -382,6 +381,8 @@ on rightclick:
 										set metadata value "LastDamageCauseLore" of loop-entity to {_lore}
 										set metadata value "Element" of player to "Water"
 										make player damage loop-entity by {_dmg}
+
+										play sound "entity.player.hurt" with volume 3 and pitch 1 at loop-entity
 								shieldExpire({_i}, {_shieldNumber})
 								send action bar " " to {_i}
 								
@@ -418,6 +419,57 @@ on rightclick:
 		else:
 			send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to player
 			play sound "block.glass.break" with volume 3 and pitch 0 to player
+
+	else if boolean tag "Undertow" of (custom nbt of player's tool) is set:
+		if {kartaname::%player%} = "Vaporeon":
+			set {_target} to Target(player, 100, false)
+			if {_target} is set:
+				if CanUseAbility(player) != false:
+					if cooldown "Global Cooldown Interrupted Cast%player%" is finished:
+						set {_pospiech} to Haste(player)
+						set {_baseCastTime} to 1.5
+						set {_casttime} to "%round(({_baseCastTime}/{_pospiech}), 1)% seconds" parsed as timespan
+						if metadata value "cast" of player is not set:
+							set metadata value "casttimemax" of player to {_casttime}
+							play sound "skill.vaporeon_precast" with volume 3 and pitch 1 at player
+							set metadata value "casting" of player to true
+							if metadata value "channeling" of player is set:
+								clear metadata value "channeling" of player
+							set metadata value "cast" of player to {_casttime}
+							while metadata value "casting" of player = true:
+								if metadata value "cast" of player is not set:
+									clear metadata value "casting" of player
+									stop
+								if {_casttime} > 0 seconds:
+									set {_cst} to "%{_casttime}%"
+									set metadata value "casttimeleft" of player to {_casttime}
+									set {_message} to "Casting... %{_cst}% | &f <##6a5e9e>%rounded down {astralpower::%player%}%"
+									if metadata value "CelestialAlignment" of player is set:
+										set {_remainingCADuration} to durationShort("%metadata value "CelestialAlignment" of player%")
+										set {_message} to "%{_message}% &f|  <##6a5e9e>CA: &f%{_remainingCADuration}%"
+									send action bar {_message} to player
+									wait 0.1 seconds
+									remove 0.1 seconds from {_casttime}
+								else:
+									clear metadata value "casting" of player
+									send action bar "" to player
+						else:
+							stop
+						clear metadata value "casting" of player
+						clear metadata value "cast" of player
+						clear metadata value "casttimeleft" of player
+						clear metadata value "casttimemax" of player
+						stop sound "skill.vaporeon_precast" for all players in radius 2 around the player
+						if {_casttime} > 0 seconds:
+							send action bar "&cInterrupted" to player
+							stop
+						AbilityUse(player, "Undertow")
+						play sound "skill.vaporeon_cast" with volume 3 and pitch 1 at player
+					else:
+						if {tekstcd::%player%} = true:
+							set {_cdd} to cooldown "Global Cooldown Interrupted Cast%player%"
+							send "<##6a5e9e>You must wait &f%{_cdd}%<##6a5e9e> to use this ability." to player
+						stop
 	if name of player's tool = "<#7cafbf>Reversal":
 		cancel event
 		if {kartaname::%player%} = "Vaporeon":
@@ -937,113 +989,3 @@ function tidalWavesSound(loc: location):
 	play sound "block.amethyst_block.resonate" with volume 2 and pitch 2 at {_loc}
 	wait 1 tick
 	play sound "block.amethyst_block.resonate" with volume 2 and pitch 1.65 at {_loc}
-#KONCEPT PASYWKI (LECZENIE PO TARCZY)
-#HEALING WATERS
-#if {tarcza::%{_uuid}%} > 0:
-#	if {_i} is alive:
-#		set {_heal} to {tarcza::%{_uuid}%}*0.1
-#		#MASTERY
-#		if health of {_i} < (0.5*max health of {_i}):
-#			set {_heal} to {_heal}*1.1
-#		draw 15 of dust_color_transition using dustTransition(lime, lime, 1) at location of {_i} with offset vector(0.6, 0.9, 0.6)
-#function FirstClickHS(p: player):
-#	wait 3 seconds
-#	clear {fsclck::%{_p}%} 
-
-#loop round(distance between {_l} and {_x}) / 0.1 times:
-#	set {_v} to vector between {_l} and {_x}'s head
-#	set vector length of {_v} to loop-value * 0.1
-#	drawDot count 6, particle "redstone", RGB 47, 147, 235, center {_l} ~ {_v}, rainbowMode false, visibleRange 32, pulseDelay 0, keepFor 5 ticks
-#	#drawDot count 1, particle "redstone", RGB 150, 206, 255, center {_l} ~ {_v}, rainbowMode false, visibleRange 32, pulseDelay 0, keepFor 5 ticks
-#	drawDot count 1, particle "redstone", RGB 47, 69, 235, center {_l} ~ {_v}, rainbowMode false, visibleRange 32, pulseDelay 0, keepFor 5 ticks
-#	wait 1 tick
-#heal {_x} by 2
-
-#Katara (możemy pobrać wodę ze źródła, orbituje dopóki nie wystrzelimy)
-#function HealingOrbit(p: player):
-#	set {_y} to 0
-#	loop 45 times:
-#		set {_x} to {_p}'s location
-#		increase {_x}'s y-coordinate by 1
-#		set {_v} to vector 1, 0, 1
-#		rotate {_v} around y-axis by {_y}
-#		add 8 to {_y}
-#		draw 1 of dust using dustOption(blue, 1) at location of {_x} ~ {_v}
-#		wait 1 tick	
-
-#button hold	
-#on rightclick:
-#	if name of player's tool = "Healing Stream":
-#		set {_x} to target of player
-#		if {mob::%{_x}%} is not true:
-#			if {fsclck::%player%} is not set:
-#				play sound "block.water.ambient" with volume 5 and pitch 1 at (location of player)
-#				set {fsclck::%player%} to true
-#				FirstClickHS(player)
-#			if {healingstreamcount::%player%} is not set:
-#				set {healingstreamcount::%player%} to 50
-#			if {healingstreamcount::%player%} > 0:
-#				loop blocks between player and {_x}:
-#					drawDot count 1, particle "redstone", RGB 47, 69, 235, center location of loop-block, rainbowMode false, visibleRange 32, pulseDelay 0, keepFor 5 ticks
-#					wait 1 tick
-#				heal {_x} by 0.1
-#				remove 1 from {healingstreamcount::%player%}
-#				if {healingstreamcount::%player%} = 0:
-#					clear {healingstreamcount::%player%}
-#					broadcast "done"
-			#loop round(distance between {_l} and {_x}) / 0.1 times:
-			#	set {_v} to vector between {_l} and {_x}'s head
-			#	set vector length of {_v} to loop-value * 0.1
-			#	drawDot count 6, particle "redstone", RGB 47, 147, 235, center {_l} ~ {_v}, rainbowMode false, visibleRange 32, pulseDelay 0, keepFor 5 ticks
-			#	#drawDot count 1, particle "redstone", RGB 150, 206, 255, center {_l} ~ {_v}, rainbowMode false, visibleRange 32, pulseDelay 0, keepFor 5 ticks
-			#	drawDot count 1, particle "redstone", RGB 47, 69, 235, center {_l} ~ {_v}, rainbowMode false, visibleRange 32, pulseDelay 0, keepFor 5 ticks
-			#	wait 1 tick
-			#heal {_x} by 2
-			
-#first version
-#on rightclick:
-#	if name of player's tool = "Healing Stream":
-#		set {_x} to target of player
-#		if {mob::%{_x}%} is not true:
-#			set {_cd} to "%8/{_pospiech}% seconds" parsed as timespan
-#			if cooldown "Healing Stream%player%" is finished:
-#				set {_id} to line 19 of lore of {karta::%player%}
-#				set {_pospiech} to 1 + (({haste::%player%}/4) + ({pospiech::%{_id}%}/4))/100
-#				set {_cd} to "%6/{_pospiech}% seconds" parsed as timespan
-#				set the cooldown of player's held item for player to {_cd}
-#				create cooldown "Healing Stream%player%" for {_cd}
-#				play sound "block.water.ambient" with volume 5 and pitch 1 at (location of player)
-#				loop blocks between player and {_x}:
-#					drawDot count 1, particle "redstone", RGB 47, 69, 235, center location of loop-block, rainbowMode false, visibleRange 32, pulseDelay 0, keepFor 5 ticks
-#					wait 1 tick
-#				if {_x} is alive:
-#					set {_heal} to 2
-#					chance of {_crit}%:
-#						set {_heal} to {_heal}*2
-#					heal {_x} by {_heal}
-#					#heal sound effect/particle
-#					draw 15 of dust_color_transition using dustTransition(lime, lime, 2) at location of {_x} with offset vector(0.6, 0.9, 0.6)
-#			else: 
-#				cancel event
-#				if {tekstcd::%player%} = true:
-#					set {_cdd} to cooldown "Healing Stream%player%"
-#					if {language::%player%} = "English":
-#						send "<#7cafbf>You must wait &f%{_cdd}%<#7cafbf> to use this ability." to player
-#					else:
-#						send "<#7cafbf>Musisz odczekać &f%{_cdd}%<#7cafbf>, aby użyć tej umiejętności." to player
-#				stop
-				
-						
-#FALA					
-#set {_length} to distance between player and {_target}
-#loop {_length}*5 times:   #loops as many times as long as the length from the function input
-#	add 1 to {_x}
-#	add 0.25 to {_l}
-#	set {_rg%{_x}%} to location {_l} meters infront of player
-#	set {_rg%{_x}%} to location 1.25 meters above {_rg%{_x}%} #aligns with where player is looking better
-#set {_x} to 0
-#loop {_length}*5 times:
-#	add 1 to {_x}
-#	create a wave effect at {_rg%{_x}%} with id "wave"
-#	wait 1 tick
-#	stop effect "wave"
