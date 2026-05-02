@@ -95,11 +95,11 @@ function Overhealing(p: player, target: entity, overheal: number, ability: text)
 			set {_targets::*} to sorted indices of {_maxhealth::*} in ascending order
 			set {_entity} to {_targets::1} parsed as entity
 
-			set {_crit} to ({criticalhit::%{_p}%}/10)
+			set {_crit} to CriticalHit({_p})
 			set {_masteryScaling} to 370
 			if string tag "Talents;Row 3" of (custom nbt of {karta::%{_p}%}) = "Overflow":
 				set {_masteryScaling} to {_masteryScaling}/1.2
-			set {_mastery} to 1.1 + ({mastery::%{_p}%}/{_masteryScaling})
+			set {_mastery} to 1.1 + (Mastery({_p})/{_masteryScaling})
 			
 			if string tag "Talents;Row 5" of (custom nbt of {karta::%{_p}%}) = "Hydrodance":
 				set {_overheal} to 0.3*{_overheal}
@@ -137,8 +137,8 @@ on rightclick:
 					if CanUseAbility(player) != false:
 						if cooldown "Healing StreamDoublePrevent%player%" is finished:
 							create cooldown "Healing StreamDoublePrevent%player%" for 1 tick
-							set {_id} to line 19 of lore of {karta::%player%}
-							set {_crit} to ({criticalhit::%player%}/10)
+							set {_id} to cardId(player)
+							set {_crit} to CriticalHit(player)
 							set {_pospiech} to Haste(player)
 							set {_cd} to "%8/{_pospiech}% seconds" parsed as timespan
 
@@ -148,7 +148,7 @@ on rightclick:
 							set {_masteryScaling} to 370
 							if string tag "Talents;Row 3" of (custom nbt of {karta::%player%}) = "Overflow":
 								set {_masteryScaling} to {_masteryScaling}/1.2
-							set {_mastery} to 1.1 + ({mastery::%player%}/{_masteryScaling})
+							set {_mastery} to 1.1 + (Mastery(player)/{_masteryScaling})
 							AbilityUse(player, "Healing Stream")
 							set {_am} to item amount of player's tool
 							if {_am} > 1:
@@ -179,7 +179,7 @@ on rightclick:
 									else:
 										set the cooldown of loop-item for player to {_cd}
 									stop loop							
-							set {_id} to string tag "Id" of (custom nbt of {karta::%player%})
+							set {_id} to cardId(player)
 							set {_pospiech} to Haste(player)
 
 							play sound "block.water.ambient" with volume 3 and pitch 1 at (location of player)
@@ -290,8 +290,8 @@ on rightclick:
 		cancel event
 		if {kartaname::%player%} = "Vaporeon":
 			if CanUseAbility(player) != false:
-				set {_id} to line 19 of lore of {karta::%player%}
-				set {_crit} to ({criticalhit::%player%}/10)
+				set {_id} to cardId(player)
+				set {_crit} to CriticalHit(player)
 				set {_pospiech} to Haste(player)
 				set {_cd} to "%1.5/{_pospiech}%"
 				set {_cdtarget} to "%20/{_pospiech}%"
@@ -306,7 +306,7 @@ on rightclick:
 				set {_masteryScaling} to 370
 				if string tag "Talents;Row 3" of (custom nbt of {karta::%player%}) = "Overflow":
 					set {_masteryScaling} to {_masteryScaling}/1.2
-				set {_mastery} to 1.1 + ({mastery::%player%}/{_masteryScaling})
+				set {_mastery} to 1.1 + (Mastery(player)/{_masteryScaling})
 				if cooldown "Explosive Bubble%player%" is finished:
 					if target of player is set:
 						if player's target is a player:
@@ -422,14 +422,14 @@ on rightclick:
 		cancel event
 		if {kartaname::%player%} = "Vaporeon":
 			if CanUseAbility(player) != false:
-				set {_id} to line 19 of lore of {karta::%player%}
-				set {_crit} to ({criticalhit::%player%}/10)
+				set {_id} to cardId(player)
+				set {_crit} to CriticalHit(player)
 				set {_pospiech} to Haste(player)
 				set {_cd} to "%300/{_pospiech}% seconds" parsed as timespan
 				set {_masteryScaling} to 370
 				if string tag "Talents;Row 3" of (custom nbt of {karta::%player%}) = "Overflow":
 					set {_masteryScaling} to {_masteryScaling}/1.2
-				set {_mastery} to 1.1 + ({mastery::%player%}/{_masteryScaling})
+				set {_mastery} to 1.1 + (Mastery(player)/{_masteryScaling})
 				set {_lore} to "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cd}%%nl%&7Use: &fRMB%nl%<#7cafbf>Reverses all shields to healing in a huge%nl%<#7cafbf>radius around the player. Healing from this%nl%<#7cafbf>ability benefits from <#8bbdf0>Mastery: Water Cycles%nl%<#7cafbf>and can &f Critically Strike<#7cafbf>.%nl% %nl%<#8bbdf0>Reversal <#7cafbf>dispels all &fCurse<#7cafbf>, &fDisease<#7cafbf>, &fMagic%nl%<#7cafbf>and &fPoison <#7cafbf>debuffs from affected allies."
 				LoreUpdate(player, "Reversal", {_lore})
 				if cooldown "Reversal%player%" is finished:
@@ -555,13 +555,12 @@ function CircleOfWaterApply(p: player, x: entity, ability: string):
 function CircleOfWaterDetonate(p: player, x: entity, effectiveness: number = 1):
 	set {_versatility} to Versatility({_p})
 	set {_healcircle} to 0.8 + ({utility::%{_p}%}/100) + ({_versatility}/300) + ({primarystat::%{_p}%}/50)
-	
+
 	set {_masteryScaling} to 370
 	if string tag "Talents;Row 3" of (custom nbt of {karta::%{_p}%}) = "Overflow":
 		set {_masteryScaling} to {_masteryScaling}/1.2
-	set {_mastery} to 1.1 + ({mastery::%{_p}%}/{_masteryScaling})
-	set {_crit} to ({criticalhit::%{_p}%}/10)
-	set {_crit} to 100
+	set {_mastery} to 1.1 + (Mastery({_p})/{_masteryScaling})
+	set {_crit} to CriticalHit({_p})
 	loop {_loreheart::*}:
 		loop-value contains "Bound Molecules":
 			add (0.3*{trait::Vaporeon::Bound Molecules::%{_p}%}) to {_molecules}
@@ -637,8 +636,8 @@ function CircleOfWaterDetonate(p: player, x: entity, effectiveness: number = 1):
 
 function Heal(p: player, x: entity, heal: number, spell: text, col: text, lore: text, sendMessage: boolean = true):
 	if {_x} is alive:
-		set {_id} to line 19 of lore of {karta::%{_p}%}
-		replace all "&8Id: " in {_id} with ""
+		set {_id} to cardId({_p})
+
 		Overhealing({_p}, {_x}, {_heal}, {_spell})
 		if {_heal} > ((max health of {_x}) - (health of {_x})):
 			healAboveMaxHealth({_p}, {_x}, ((max health of {_x}) - (health of {_x})-{_heal}))
@@ -800,13 +799,12 @@ function shieldDamageEvent(x: entity, dmg: number) :: number:
 			set {_shieldAmount} to (yaml value "Shields.%{_num}%.Amount" in "Shields%uuid of {_x}%")
 			set {_shieldName} to (yaml value "Shields.%{_num}%.Name" in "Shields%uuid of {_x}%")
 		add 1 to {_num}
-	set {_id} to string tag "Id" of (custom nbt of {karta::%{_shieldCaster}%})
 	if ({_shieldAmount}-{_dmg}) > 0:
 		set {_shieldTotal} to metadata value "ShieldTotal" of {_x}
 		set {_shieldTotal} to {_shieldTotal} - {_dmg}
 		set metadata value "ShieldTotal" of {_x} to {_shieldTotal}
 		if {_shieldCaster} is a player:
-			broadcast "ID: %{_id}% dmg: %{_dmg}%"
+			set {_id} to cardId({_shieldCaster})
 			set {healtotal::%{_shieldCaster}%} to {healtotal::%{_shieldCaster}%} + {_dmg}
 			set {healcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%} to {healcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%} + {_dmg}
 			set {healcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%::%{_shieldName}%} to {healcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%::%{_shieldName}%} + {_dmg}
@@ -823,6 +821,7 @@ function shieldDamageEvent(x: entity, dmg: number) :: number:
 	else:
 		set {_dmg} to {_dmg}-{_shieldAmount}
 		if {_shieldCaster} is a player:
+			set {_id} to cardId({_shieldCaster})
 			set {healtotal::%{_shieldCaster}%} to {healtotal::%{_shieldCaster}%} + {_shieldAmount}
 			set {healcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%} to {healcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%} + {_shieldAmount}
 			set {healcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%::%{_shieldName}%} to {healcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%::%{_shieldName}%} + {_shieldAmount}
