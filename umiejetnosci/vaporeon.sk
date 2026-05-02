@@ -293,8 +293,8 @@ on rightclick:
 				set {_cd} to "%1.5/{_pospiech}%"
 				set {_cdtarget} to "%20/{_pospiech}%"
 
-				set {_cdLore} to "%{_cd}% sec" parsed as timespan
-				set {_cdtargetLore} to "%{_cdtarget}% sec" parsed as timespan
+				set {_cdLore} to "%{_cd}% sec"
+				set {_cdtargetLore} to "%{_cdtarget}% sec"
 
 				set {_wait} to 8/{_pospiech}
 
@@ -352,6 +352,7 @@ on rightclick:
 								set {_shield} to {_shield}*2
 
 							set {_shieldNumber} to Shield(player, {_i}, {_shield} + 0.00, "Explosive Bubble", "<#7cafbf>", {_lore}, 0, true, true)
+							set {_shieldID} to findShieldID({_i}, {_shieldNumber})
 							play sound "block.bubble_column.whirlpool_inside" with volume 3 and pitch 1 at location of {_i}
 							set {_waitTime} to ("%{_wait}% seconds" parsed as timespan)
 							explosiveBubbleParticles(player, {_i}, {_waitTime})
@@ -363,42 +364,41 @@ on rightclick:
 									add (0.15*{trait::Vaporeon::Heavy Bubbles::%player%}) to {_heavybubbles}
 
 							if yaml value "Shields.%{_shieldNumber}%" in "Shields%uuid of {_i}%" is set:
-								play sound "entity.dragon_fireball.explode" with volume 3 and pitch 1 at location of {_i}
-								set {_shieldTarget} to yaml value "Shields.%{_shieldNumber}%.Amount" in "Shields%uuid of {_i}%"
-								loop all living entities in radius 10 around {_i}:
-									if boolean tag "ECMob" of (custom nbt of loop-entity) is set:
-										set {_versatility} to Versatility(player)
-										set {_damage} to 1 + ({damage::%player%}/60) + ({_versatility}/180) + {primarystat::%player%}/30
+								if yaml value "Shields.%{_shieldNumber}%.ID" in "Shields%uuid of {_i}%" = {_shieldID}:
+									play sound "entity.dragon_fireball.explode" with volume 3 and pitch 1 at location of {_i}
+									set {_shieldTarget} to yaml value "Shields.%{_shieldNumber}%.Amount" in "Shields%uuid of {_i}%"
+									loop all living entities in radius 10 around {_i}:
+										if boolean tag "ECMob" of (custom nbt of loop-entity) is set:
+											set {_versatility} to Versatility(player)
+											set {_damage} to 1 + ({damage::%player%}/60) + ({_versatility}/180) + {primarystat::%player%}/30
 
-										chance of {_crit}%:
-											set {_damage} to {_damage}*2
-										if {_heavybubbles} is true:
-											set {_dmg} to (({_shieldTarget} + {_damage}) + ({_shieldTarget}*{_heavybubbles}))
-										else:
-											set {_dmg} to ({_shieldTarget} + {_damage})
-										set loop-entity's last damage cause to sweep attack
-										set metadata value "LastDamageCause" of loop-entity to "<#7cafbf>Explosive Bubble"
-										set metadata value "LastDamageCauseLore" of loop-entity to {_lore}
-										set metadata value "Element" of player to "Water"
-										make player damage loop-entity by {_dmg}
+											chance of {_crit}%:
+												set {_damage} to {_damage}*2
+											if {_heavybubbles} is true:
+												set {_dmg} to (({_shieldTarget} + {_damage}) + ({_shieldTarget}*{_heavybubbles}))
+											else:
+												set {_dmg} to ({_shieldTarget} + {_damage})
+											set loop-entity's last damage cause to sweep attack
+											set metadata value "LastDamageCause" of loop-entity to "<#7cafbf>Explosive Bubble"
+											set metadata value "LastDamageCauseLore" of loop-entity to {_lore}
+											set metadata value "Element" of player to "Water"
+											make player damage loop-entity by {_dmg}
 
-										play sound "entity.player.hurt" with volume 3 and pitch 1 at loop-entity
-								shieldExpire({_i}, {_shieldNumber})
-								send action bar " " to {_i}
-								
-								if string tag "Talents;Row 1" of (custom nbt of {karta::%player%}) = "Undercurrent":
-									set {_undercurrent} to metadata value "Undercurrent" of player
-									remove 1 from {_undercurrent}
-									set metadata value "Undercurrent" of player to {_undercurrent}
+											play sound "entity.player.hurt" with volume 3 and pitch 1 at loop-entity
+									shieldExpire({_i}, {_shieldNumber})
+									send action bar " " to {_i}
+									
+									if string tag "Talents;Row 1" of (custom nbt of {karta::%player%}) = "Undercurrent":
+										set {_undercurrent} to metadata value "Undercurrent" of player
+										remove 1 from {_undercurrent}
+										set metadata value "Undercurrent" of player to {_undercurrent}
 
 							if string tag "Talents;Row 2" of (custom nbt of {karta::%player%}) = "Downpour":
 								set {_downpour} to {_shieldTarget}*0.25
-								broadcast {_shieldTarget}
 								if health of {_i} < (0.5*max health of {_i}):
 									set {_downpour} to {_downpour}*{_mastery}
 								chance of {_crit}%:
 									set {_downpour} to {_downpour}*2
-								broadcast {_downpour}
 								set {_lore} to "<#7cafbf>When an Explosive Bubble detonates, a%nl%<#7cafbf>healing rain is summoned above the target,%nl%<#7cafbf>restoring &f25%% <#7cafbf>of the remaining shield value%nl%<#7cafbf>as HP to the ally."
 								Heal(player, {_i}, {_downpour}, "Downpour", "<#7cafbf>", {_lore})
 								CircleOfWaterApply(player, {_i}, "Downpour")
@@ -426,49 +426,71 @@ on rightclick:
 			if {_target} is set:
 				if CanUseAbility(player) != false:
 					if cooldown "Global Cooldown Interrupted Cast%player%" is finished:
-						set {_pospiech} to Haste(player)
-						set {_baseCastTime} to 1.5
-						set {_casttime} to "%round(({_baseCastTime}/{_pospiech}), 1)% seconds" parsed as timespan
-						if metadata value "cast" of player is not set:
-							set metadata value "casttimemax" of player to {_casttime}
-							play sound "skill.vaporeon_precast" with volume 3 and pitch 1 at player
-							set metadata value "casting" of player to true
-							if metadata value "channeling" of player is set:
-								clear metadata value "channeling" of player
-							set metadata value "cast" of player to {_casttime}
-							while metadata value "casting" of player = true:
-								if metadata value "cast" of player is not set:
-									clear metadata value "casting" of player
-									stop
-								if {_casttime} > 0 seconds:
-									set {_cst} to "%{_casttime}%"
-									set metadata value "casttimeleft" of player to {_casttime}
-									set {_message} to "Casting... %{_cst}% | &f <##6a5e9e>%rounded down {astralpower::%player%}%"
-									if metadata value "CelestialAlignment" of player is set:
-										set {_remainingCADuration} to durationShort("%metadata value "CelestialAlignment" of player%")
-										set {_message} to "%{_message}% &f|  <##6a5e9e>CA: &f%{_remainingCADuration}%"
-									send action bar {_message} to player
-									wait 0.1 seconds
-									remove 0.1 seconds from {_casttime}
-								else:
-									clear metadata value "casting" of player
-									send action bar "" to player
-						else:
-							stop
-						clear metadata value "casting" of player
-						clear metadata value "cast" of player
-						clear metadata value "casttimeleft" of player
-						clear metadata value "casttimemax" of player
-						stop sound "skill.vaporeon_precast" for all players in radius 2 around the player
-						if {_casttime} > 0 seconds:
-							send action bar "&cInterrupted" to player
-							stop
+						if cooldown "Undertow%player%" is finished:
+							set {_haste} to Haste(player)
+							set {_baseCastTime} to 1.5
+							set {_baseCd} to 3
+							set {_casttime} to "%round(({_baseCastTime}/{_haste}), 1)% seconds" parsed as timespan
+							set {_casttimeLore} to "%round(({_baseCastTime}/{_haste}), 1)% sec"
+
+							if metadata value "cast" of player is not set:
+								set metadata value "casttimemax" of player to {_casttime}
+								play sound "skill.vaporeon_undertow_precast" with volume 3 and pitch 1 to player
+								set metadata value "casting" of player to true
+								if metadata value "channeling" of player is set:
+									clear metadata value "channeling" of player
+								set metadata value "cast" of player to {_casttime}
+								while metadata value "casting" of player = true:
+									if metadata value "cast" of player is not set:
+										clear metadata value "casting" of player
+										stop
+									if {_casttime} > 0 seconds:
+										set {_cst} to "%{_casttime}%"
+										set metadata value "casttimeleft" of player to {_casttime}
+										set {_message} to "Casting... %{_cst}%"
+										send action bar {_message} to player
+										wait 0.1 seconds
+										remove 0.1 seconds from {_casttime}
+									else:
+										clear metadata value "casting" of player
+										send action bar "" to player
+							else:
+								stop
+							clear metadata value "casting" of player
+							clear metadata value "cast" of player
+							clear metadata value "casttimeleft" of player
+							clear metadata value "casttimemax" of player
+							stop sound "skill.vaporeon_undertow_precast" for player
+							if {_casttime} > 0 seconds:
+								send action bar "&cInterrupted" to player
+								stop
+						
+						set {_cd} to "%{_baseCd}/{_haste}% seconds" parsed as timespan
+						set {_cdLore} to "%{_baseCd}/{_haste}% sec"
+						create cooldown "Undertow%player%" for {_cd}
+						set the cooldown of player's held item for player to {_cd}
 						AbilityUse(player, "Undertow")
-						play sound "skill.vaporeon_cast" with volume 3 and pitch 1 at player
+						play sound "skill.vaporeon_undertow_cast" with volume 3 and pitch 1 at (location of player)
+						
+						set {_crit} to CriticalHit(player)
+						set {_damage} to 1 + ({damage::%player%}/65) + (Versatility(player)/195) + {primarystat::%player%}/32.5
+						set {_damage} to Crit(player, {_target}, {_crit}, {_damage})
+						set {_lore} to "&8Basic Ability%nl%&f%{_casttimeLore}% cast%nl%&7Cooldown:  &f%{_cdLore}%%nl%&7Use: &fRMB%nl%<#7cafbf>Deal &f%{_damage}% <#1ebbd7>Water <#7cafbf>damage to the target."
+
+						set {_target}'s last damage cause to sweep attack
+						set metadata value "LastDamageCause" of {_target} to "<#7cafbf>Undertow"
+						set metadata value "LastDamageCauseLore" of {_target} to {_lore}
+						set metadata value "Element" of player to "Water"
+						make player damage {_target} by {_damage}
+
+						set {_shape} to a circle with radius 1
+						set particle of {_shape} to rain particle
+						draw shape {_shape} at {_target}
+
 					else:
 						if {tekstcd::%player%} = true:
 							set {_cdd} to cooldown "Global Cooldown Interrupted Cast%player%"
-							send "<##6a5e9e>You must wait &f%{_cdd}%<##6a5e9e> to use this ability." to player
+							send "<#7cafbf>You must wait &f%{_cdd}%<#7cafbf>to use this ability." to player
 						stop
 	if name of player's tool = "<#7cafbf>Reversal":
 		cancel event
@@ -477,12 +499,12 @@ on rightclick:
 				set {_id} to cardId(player)
 				set {_crit} to CriticalHit(player)
 				set {_pospiech} to Haste(player)
-				set {_cd} to "%300/{_pospiech}% seconds" parsed as timespan
+				set {_cd} to "%3/{_pospiech}% seconds" parsed as timespan
 				set {_masteryScaling} to 370
 				if string tag "Talents;Row 3" of (custom nbt of {karta::%player%}) = "Overflow":
 					set {_masteryScaling} to {_masteryScaling}/1.2
 				set {_mastery} to 1.1 + (Mastery(player)/{_masteryScaling})
-				set {_lore} to "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cd}%%nl%&7Use: &fRMB%nl%<#7cafbf>Reverses all shields to healing in a huge%nl%<#7cafbf>radius around the player. Healing from this%nl%<#7cafbf>ability benefits from <#8bbdf0>Mastery: Water Cycles%nl%<#7cafbf>and can &f Critically Strike<#7cafbf>.%nl% %nl%<#8bbdf0>Reversal <#7cafbf>dispels all &fCurse<#7cafbf>, &fDisease<#7cafbf>, &fMagic%nl%<#7cafbf>and &fPoison <#7cafbf>debuffs from affected allies."
+				set {_lore} to "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown: &8 &f%{_cd}%%nl%&7Use: &fRMB%nl%<#7cafbf>Reverses all <#ffef45> Shields <#7cafbf>to <#ae78d0> Healing <#7cafbf>in a huge%nl%<#7cafbf>radius around the player. &f <#8bbdf0>Reversal <#7cafbf>dispels all%nl%&fCurse<#7cafbf>, &fDisease<#7cafbf>, &fMagic <#7cafbf>and &fPoison <#7cafbf>debuffs from%nl%<#7cafbf>affected allies."
 				LoreUpdate(player, "Reversal", {_lore})
 				if cooldown "Reversal%player%" is finished:
 					set the cooldown of player's held item for player to {_cd}
@@ -492,20 +514,23 @@ on rightclick:
 					play sound "entity.elder_guardian.curse" with volume 5 and pitch 2 at (location of player)
 					SixStar(player)
 					play sound "entity.dragon_fireball.explode" with volume 5 and pitch 1.5 at (location of player)
-					loop all living entities in radius 100 around the player where [shieldFind(player, input, "Explosive Bubble") is set]:
+					loop (all living entities in radius 100 around the player) where [getAllShieldsOnEntity(input) is set]:
 						if loop-entity is alive:
-							set {_shieldNum} to shieldFind(player, loop-entity, "Explosive Bubble")
-							if yaml "Shields%uuid of loop-entity%" is not loaded:
-								load yaml "plugins/Skript/combat/Shields/%uuid of loop-entity%" as "Shields%uuid of loop-entity%"
-
-							set {_shield} to yaml value "Shields.%{_shieldNum}%.Amount" in "Shields%uuid of loop-entity%"
-							set {_shield} to "%{_shield}%" parsed as number
-							shieldExpire(loop-entity, {_shieldNum})
+							loop getAllShieldsOnEntity(loop-entity):
+								set {_shield} to "%loop-value-2%" parsed as number
+								set {_index} to loop-index parsed as integer
+								shieldExpire(loop-entity, {_index})
 							
 							set {_heal} to {_shield}
 							if metadata value "Undercurrent" of player > 0:
 								set {_undercurrent} to metadata value "Undercurrent" of player
 								set {_heal} to {_heal}*(1 + 0.08*{_undercurrent})
+
+							if health of loop-entity < (0.5*max health of loop-entity):
+								set {_heal} to {_heal}*{_mastery}
+
+							chance of {_crit}%:
+								set {_heal} to {_heal}*2
 
 							Heal(player, loop-entity, {_heal}, "Reversal", "<#7cafbf>", {_lore})
 							if boolean tag "ECMob" of (custom nbt of loop-entity) is not set:
@@ -781,6 +806,7 @@ function Shield(p: player, x: entity, shield: number, spell: text, col: text, lo
 			set yaml value "Shields.%{_shieldsActive}%.Name" in "Shields%uuid of {_x}%" to {_spell}
 			set yaml value "Shields.%{_shieldsActive}%.Caster" in "Shields%uuid of {_x}%" to {_p}
 			set yaml value "Shields.%{_shieldsActive}%.Amount" in "Shields%uuid of {_x}%" to {_shield}
+			set yaml value "Shields.%{_shieldsActive}%.ID" in "Shields%uuid of {_x}%" to (random 8 char string from charset `0-9` `a-z`)
 			set metadata value "ShieldTotal" of {_x} to {_shield}
 
 		set yaml value "ShieldsActive" in "Shields%uuid of {_x}%" to {_shieldsActive}
@@ -810,6 +836,23 @@ function shieldFind(p: entity, x: entity, shield: text) :: integer:
 				stop loop
 	return {_num}
 
+function findShieldID(x: entity, num: integer) :: string:
+	if yaml "Shields%uuid of {_x}%" is not loaded:
+		load yaml "plugins/Skript/combat/Shields/%uuid of {_x}%" as "Shields%uuid of {_x}%"
+
+	set {_id} to yaml value "Shields.%{_num}%.ID" in "Shields%uuid of {_x}%"
+	return {_id}
+	
+
+function getAllShieldsOnEntity(x: entity) :: numbers:
+	if yaml "Shields%uuid of {_x}%" is not loaded:
+		load yaml "plugins/Skript/combat/Shields/%uuid of {_x}%" as "Shields%uuid of {_x}%"
+	
+	loop yaml node keys "Shields" in "Shields%uuid of {_x}%":
+		set {_shieldAmount} to yaml value "Shields.%loop-value%.Amount" in "Shields%uuid of {_x}%"
+		set {_shields::%loop-value%} to {_shieldAmount}
+
+	return {_shields::*}
 
 function shieldExpire(x: entity, num: integer):
 	if yaml "Shields%uuid of {_x}%" is not loaded:
@@ -833,6 +876,7 @@ function shieldsClear(x: entity):
 				clear yaml value "Shields.%loop-number%.Amount" in "Shields%uuid of {_x}%"
 				clear yaml value "Shields.%loop-number%.Name" in "Shields%uuid of {_x}%"
 				clear yaml value "Shields.%loop-number%.Caster" in "Shields%uuid of {_x}%"
+				clear yaml value "Shields.%loop-number%.ID" in "Shields%uuid of {_x}%"
 				clear yaml value "Shields.%loop-number%" in "Shields%uuid of {_x}%"
 		save yaml "Shields%uuid of {_x}%"
 	clear metadata value "ShieldTotal" of {_x}
@@ -907,7 +951,7 @@ function explosiveBubbleParticles(p: player, e: entity, wait: timespan):
 		set {_shape} to a sphere with radius 2
 		set particle of {_shape} to splash particle
 		draw shape {_shape} at {_e}
-		wait 0.5 seconds
+		wait 0.65 seconds
 	set {_shape} to a sphere with radius 2
 	set particle of {_shape} to cloud particle
 	draw shape {_shape} at {_e}
