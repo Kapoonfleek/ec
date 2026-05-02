@@ -382,7 +382,7 @@ on rightclick:
 							set {_cdd} to cooldown "Global Cooldown Interrupted Cast%player%"
 							send "<#7cafbf>You must wait &f%{_cdd}%<#7cafbf>to use this ability." to player
 						stop
-	else if boolean tag "Undertow" of (custom nbt of player's tool) is set:
+	else if boolean tag "Reversal" of (custom nbt of player's tool) is set:
 		cancel event
 		if {kartaname::%player%} = "Vaporeon":
 			if CanUseAbility(player) != false:
@@ -404,6 +404,11 @@ on rightclick:
 					play sound "entity.elder_guardian.curse" with volume 5 and pitch 2 at (location of player)
 					SixStar(player)
 					play sound "entity.dragon_fireball.explode" with volume 5 and pitch 1.5 at (location of player)
+
+					set {_oceanicUnisonHPStep} to 0.005
+					set {_oceanicUnisonMasteryPerStep} to 1.5
+					set {_oceanicUnisonDuration} to 10 seconds
+
 					loop (all living entities in radius 100 around the player) where [getAllShieldsOnEntity(input) is set]:
 						if loop-entity is alive:
 							loop getAllShieldsOnEntity(loop-entity):
@@ -416,19 +421,29 @@ on rightclick:
 								set {_undercurrent} to metadata value "Undercurrent" of player
 								set {_heal} to {_heal}*(1 + 0.08*{_undercurrent})
 
+							if string tag "Talents;Row 4" of (custom nbt of {karta::%player%}) = "Oceanic Unison":
+								set {_heal} to {_heal}*2
+
 							if health of loop-entity < (0.5*max health of loop-entity):
 								set {_heal} to {_heal}*{_mastery}
 
 							chance of {_crit}%:
 								set {_heal} to {_heal}*2
-
+							
+							set {_HPBeforeHeal} to health of loop-entity
 							Heal(player, loop-entity, {_heal}, "Reversal", "<#7cafbf>", {_lore})
+
 							if boolean tag "ECMob" of (custom nbt of loop-entity) is not set:
 								CircleOfWaterApply(player, loop-entity, "Reversal")
 
 							if loop-entity is a player:
 								send action bar " " to loop-entity
-								if string tag "Talents;Row 5" of (custom nbt of {karta::%{_p}%}) = "Turn of the Tide":
+								if string tag "Talents;Row 4" of (custom nbt of {karta::%player%}) = "Oceanic Unison":
+									set {_percentMaxHealthHealed} to (health of loop-entity - {_HPBeforeHeal})/(max health of loop-entity)
+									set {_bonusMastery} to ({_oceanicUnisonMasteryPerStep} * ({_percentMaxHealthHealed}/{_oceanicUnisonHPStep}))
+									OceanicUnison(player, loop-entity, {_bonusMastery}, {_oceanicUnisonDuration})
+
+								if string tag "Talents;Row 5" of (custom nbt of {karta::%player%}) = "Turn of the Tide":
 									ExplosiveBubble(player, loop-entity, true)
 
 						clear {_heal}
@@ -484,108 +499,109 @@ function ExplosiveBubble(p: player, target: entity, turnOfTheTide: boolean = fal
 	
 	if {_target} is set:
 		set {_uuid} to uuid of {_target}
-		if cooldown "Explosive Bubble%{_p}%-%{_uuid}%" is finished:
-			set the cooldown of {_p}'s held item for {_p} to ("%{_cd}% seconds" parsed as timespan)
-			create cooldown "Explosive Bubble%{_p}%" for ("%{_cd}% seconds" parsed as timespan)
-			create cooldown "Explosive Bubble%{_p}%-%{_uuid}%" for ("%{_cdtarget}% seconds" parsed as timespan)
+		if {_turnOfTheTide} != true:
+			if cooldown "Explosive Bubble%{_p}%-%{_uuid}%" is finished:
+				set the cooldown of {_p}'s held item for {_p} to ("%{_cd}% seconds" parsed as timespan)
+				create cooldown "Explosive Bubble%{_p}%" for ("%{_cd}% seconds" parsed as timespan)
+				create cooldown "Explosive Bubble%{_p}%-%{_uuid}%" for ("%{_cdtarget}% seconds" parsed as timespan)
+			else:
+				if {tekstcd::%{_p}%} = true:
+					set {_cdd} to cooldown "Explosive Bubble%{_p}%-%{_uuid}%"
+					send "<#7cafbf>You must wait &f%{_cdd}%<#7cafbf> to use this ability on that target." to {_p}
+				stop
 
-			AbilityUse({_p}, "Explosive Bubble")
-			if string tag "Talents;Row 1" of (custom nbt of {karta::%{_p}%}) = "Undercurrent":
-				set {_undercurrent} to metadata value "Undercurrent" of {_p}
-				add 1 to {_undercurrent}
-				set metadata value "Undercurrent" of {_p} to {_undercurrent}
+		AbilityUse({_p}, "Explosive Bubble")
+		if string tag "Talents;Row 1" of (custom nbt of {karta::%{_p}%}) = "Undercurrent":
+			set {_undercurrent} to metadata value "Undercurrent" of {_p}
+			add 1 to {_undercurrent}
+			set metadata value "Undercurrent" of {_p} to {_undercurrent}
 
 
-			if string tag "Talents;Row 2" of (custom nbt of {karta::%{_p}%}) is set:
-				send title " " with subtitle "" to {_p} for 1 minute with fade in 0.25 second and fade out 0 second
-				set {_tidalWaves} to metadata value "TidalWaves" of {_p}
-				if {_tidalWaves} is not set:
-					set {_tidalWaves} to 0
-				if string tag "Talents;Row 4" of (custom nbt of {karta::%{_p}%}) = "Coalescing Tides":
-					set {_tidalWavesMax} to 4
-				else:
-					set {_tidalWavesMax} to 2
-				if {_tidalWaves} < {_tidalWavesMax}:
-					add 1 to {_tidalWaves}
-				set metadata value "TidalWaves" of {_p} to {_tidalWaves}
-				play sound "skill.vaporeon_tidalwaves" with volume 3 and pitch 1 to {_p}
+		if string tag "Talents;Row 2" of (custom nbt of {karta::%{_p}%}) is set:
+			send title " " with subtitle "" to {_p} for 1 minute with fade in 0.25 second and fade out 0 second
+			set {_tidalWaves} to metadata value "TidalWaves" of {_p}
+			if {_tidalWaves} is not set:
+				set {_tidalWaves} to 0
+			if string tag "Talents;Row 4" of (custom nbt of {karta::%{_p}%}) = "Coalescing Tides":
+				set {_tidalWavesMax} to 4
+			else:
+				set {_tidalWavesMax} to 2
+			if {_tidalWaves} < {_tidalWavesMax}:
+				add 1 to {_tidalWaves}
+			set metadata value "TidalWaves" of {_p} to {_tidalWaves}
+			play sound "skill.vaporeon_tidalwaves" with volume 3 and pitch 1 to {_p}
 
-			set {_lore} to  "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdLore}% | %{_cdtargetLore}% per target%nl%&7Use: &fRMB%nl%<#7cafbf>Wraps an ally in an explosive bubble, which%nl%<#7cafbf>absorbs &f%{_shield}% <#7cafbf>damage. <#7cafbf>After &f%{_wait}% sec<#7cafbf>, the bubble%nl%<#7cafbf>explodes, <#7cafbf>dealing &f%{_damage}% + (remaining shield value)%nl%<#7cafbf>as <#1ebbd7>Water <#7cafbf>damage to nearby enemies.%nl% %nl%<#7cafbf>When <#7cafbf>Explosive Bubble <#7cafbf>is reapplied, the shield%nl%<#7cafbf>amount will be added to the existing shield,%nl%<#7cafbf>but the duration will not be refreshed."
-			set lore of {_p}'s tool to {_lore}
-			
-			
-			if health of {_target} > (0.5*max health of {_target}):
-				set {_shield} to {_shield}*{_mastery}
+		set {_lore} to  "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdLore}% | %{_cdtargetLore}% per target%nl%&7Use: &fRMB%nl%<#7cafbf>Wraps an ally in an explosive bubble, which%nl%<#7cafbf>absorbs &f%{_shield}% <#7cafbf>damage. <#7cafbf>After &f%{_wait}% sec<#7cafbf>, the bubble%nl%<#7cafbf>explodes, <#7cafbf>dealing &f%{_damage}% + (remaining shield value)%nl%<#7cafbf>as <#1ebbd7>Water <#7cafbf>damage to nearby enemies.%nl% %nl%<#7cafbf>When <#7cafbf>Explosive Bubble <#7cafbf>is reapplied, the shield%nl%<#7cafbf>amount will be added to the existing shield,%nl%<#7cafbf>but the duration will not be refreshed."
+		set lore of {_p}'s tool to {_lore}
+		
+		
+		if health of {_target} > (0.5*max health of {_target}):
+			set {_shield} to {_shield}*{_mastery}
+		chance of {_crit}%:
+			set {_shield} to {_shield}*2
+
+		set {_shieldNumber} to Shield({_p}, {_target}, {_shield} + 0.00, "Explosive Bubble", "<#7cafbf>", {_lore}, 0, true, true)
+		set {_shieldID} to findShieldID({_target}, {_shieldNumber})
+		play sound "block.bubble_column.whirlpool_inside" with volume 3 and pitch 1 at location of {_target}
+		set {_waitTime} to ("%{_wait}% seconds" parsed as timespan)
+		explosiveBubbleParticles({_p}, {_target}, {_waitTime})
+
+		if {_turnOfTheTide} = true:
+			set {_resistanceIncrease} to 90
+			set {bonusResistance::%{_target}%} to {bonusResistance::%{_target}%} + {_resistanceIncrease}
+
+		wait {_waitTime}
+
+		#HEAVY BUBBLES
+		loop {_loreheart::*}:
+			loop-value contains "Heavy Bubbles":
+				add (0.15*{trait::Vaporeon::Heavy Bubbles::%{_p}%}) to {_heavybubbles}
+
+		if yaml value "Shields.%{_shieldNumber}%" in "Shields%uuid of {_target}%" is set:
+			if yaml value "Shields.%{_shieldNumber}%.ID" in "Shields%uuid of {_target}%" = {_shieldID}:
+				play sound "entity.dragon_fireball.explode" with volume 3 and pitch 1 at location of {_target}
+				set {_shieldTarget} to yaml value "Shields.%{_shieldNumber}%.Amount" in "Shields%uuid of {_target}%"
+				loop all living entities in radius 10 around {_target}:
+					if boolean tag "ECMob" of (custom nbt of loop-entity) is set:
+						set {_versatility} to Versatility({_p})
+						set {_damage} to 1 + ({damage::%{_p}%}/60) + ({_versatility}/180) + {primarystat::%{_p}%}/30
+
+						chance of {_crit}%:
+							set {_damage} to {_damage}*2
+						if {_heavybubbles} is true:
+							set {_dmg} to (({_shieldTarget} + {_damage}) + ({_shieldTarget}*{_heavybubbles}))
+						else:
+							set {_dmg} to ({_shieldTarget} + {_damage})
+						set loop-entity's last damage cause to sweep attack
+						set metadata value "LastDamageCause" of loop-entity to "<#7cafbf>Explosive Bubble"
+						set metadata value "LastDamageCauseLore" of loop-entity to {_lore}
+						set metadata value "Element" of {_p} to "Water"
+						make {_p} damage loop-entity by {_dmg}
+
+						play sound "entity.player.hurt" with volume 3 and pitch 1 at loop-entity
+				shieldExpire({_target}, {_shieldNumber})
+				send action bar " " to {_target}
+				
+				if string tag "Talents;Row 1" of (custom nbt of {karta::%{_p}%}) = "Undercurrent":
+					set {_undercurrent} to metadata value "Undercurrent" of {_p}
+					remove 1 from {_undercurrent}
+					set metadata value "Undercurrent" of {_p} to {_undercurrent}
+
+		if {_resistanceIncrease} is set:
+			set {bonusResistance::%{_target}%} to {bonusResistance::%{_target}%} - {_resistanceIncrease}
+
+		if string tag "Talents;Row 2" of (custom nbt of {karta::%{_p}%}) = "Downpour":
+			set {_downpour} to {_shieldTarget}*0.25
+			if health of {_target} < (0.5*max health of {_target}):
+				set {_downpour} to {_downpour}*{_mastery}
 			chance of {_crit}%:
-				set {_shield} to {_shield}*2
-
-			set {_shieldNumber} to Shield({_p}, {_target}, {_shield} + 0.00, "Explosive Bubble", "<#7cafbf>", {_lore}, 0, true, true)
-			set {_shieldID} to findShieldID({_target}, {_shieldNumber})
-			play sound "block.bubble_column.whirlpool_inside" with volume 3 and pitch 1 at location of {_target}
-			set {_waitTime} to ("%{_wait}% seconds" parsed as timespan)
-			explosiveBubbleParticles({_p}, {_target}, {_waitTime})
-
-			if {_turnOfTheTide} = true:
-				set {_resistanceIncrease} to 90
-				set {bonusResistance::%{_target}%} to {bonusResistance::%{_target}%} + {_resistanceIncrease}
-
-			wait {_waitTime}
-
-			#HEAVY BUBBLES
-			loop {_loreheart::*}:
-				loop-value contains "Heavy Bubbles":
-					add (0.15*{trait::Vaporeon::Heavy Bubbles::%{_p}%}) to {_heavybubbles}
-
-			if yaml value "Shields.%{_shieldNumber}%" in "Shields%uuid of {_target}%" is set:
-				if yaml value "Shields.%{_shieldNumber}%.ID" in "Shields%uuid of {_target}%" = {_shieldID}:
-					play sound "entity.dragon_fireball.explode" with volume 3 and pitch 1 at location of {_target}
-					set {_shieldTarget} to yaml value "Shields.%{_shieldNumber}%.Amount" in "Shields%uuid of {_target}%"
-					loop all living entities in radius 10 around {_target}:
-						if boolean tag "ECMob" of (custom nbt of loop-entity) is set:
-							set {_versatility} to Versatility({_p})
-							set {_damage} to 1 + ({damage::%{_p}%}/60) + ({_versatility}/180) + {primarystat::%{_p}%}/30
-
-							chance of {_crit}%:
-								set {_damage} to {_damage}*2
-							if {_heavybubbles} is true:
-								set {_dmg} to (({_shieldTarget} + {_damage}) + ({_shieldTarget}*{_heavybubbles}))
-							else:
-								set {_dmg} to ({_shieldTarget} + {_damage})
-							set loop-entity's last damage cause to sweep attack
-							set metadata value "LastDamageCause" of loop-entity to "<#7cafbf>Explosive Bubble"
-							set metadata value "LastDamageCauseLore" of loop-entity to {_lore}
-							set metadata value "Element" of {_p} to "Water"
-							make {_p} damage loop-entity by {_dmg}
-
-							play sound "entity.player.hurt" with volume 3 and pitch 1 at loop-entity
-					shieldExpire({_target}, {_shieldNumber})
-					send action bar " " to {_target}
-					
-					if string tag "Talents;Row 1" of (custom nbt of {karta::%{_p}%}) = "Undercurrent":
-						set {_undercurrent} to metadata value "Undercurrent" of {_p}
-						remove 1 from {_undercurrent}
-						set metadata value "Undercurrent" of {_p} to {_undercurrent}
-
-			if {_resistanceIncrease} is set:
-				set {bonusResistance::%{_target}%} to {bonusResistance::%{_target}%} - {_resistanceIncrease}
-
-			if string tag "Talents;Row 2" of (custom nbt of {karta::%{_p}%}) = "Downpour":
-				set {_downpour} to {_shieldTarget}*0.25
-				if health of {_target} < (0.5*max health of {_target}):
-					set {_downpour} to {_downpour}*{_mastery}
-				chance of {_crit}%:
-					set {_downpour} to {_downpour}*2
-				set {_lore} to "<#7cafbf>When an Explosive Bubble detonates, a%nl%<#7cafbf>healing rain is summoned above the target,%nl%<#7cafbf>restoring &f25%% <#7cafbf>of the remaining shield value%nl%<#7cafbf>as HP to the ally."
-				Heal({_p}, {_target}, {_downpour}, "Downpour", "<#7cafbf>", {_lore})
-				CircleOfWaterApply({_p}, {_target}, "Downpour")
-				draw 20 of (((cloud particle) with an extra value of 0.02) with offset vector(0.05, 0.01, 0.05)) at (location 3 above {_target})
-				draw 20 of (((rain particle) with an extra value of 0.02) with offset vector(0.05, 0.01, 0.05)) at (location 2 above {_target})
-				draw 30 of (((dripping water particle) with an extra value of 0.1) with offset vector(0.4, 0.05, 0.4)) at (location 2.5 above {_target})
-		else:
-			if {tekstcd::%{_p}%} = true:
-				set {_cdd} to cooldown "Explosive Bubble%{_p}%-%{_uuid}%"
-				send "<#7cafbf>You must wait &f%{_cdd}%<#7cafbf> to use this ability on that target." to {_p}
-			stop
+				set {_downpour} to {_downpour}*2
+			set {_lore} to "<#7cafbf>When an Explosive Bubble detonates, a%nl%<#7cafbf>healing rain is summoned above the target,%nl%<#7cafbf>restoring &f25%% <#7cafbf>of the remaining shield value%nl%<#7cafbf>as HP to the ally."
+			Heal({_p}, {_target}, {_downpour}, "Downpour", "<#7cafbf>", {_lore})
+			CircleOfWaterApply({_p}, {_target}, "Downpour")
+			draw 20 of (((cloud particle) with an extra value of 0.02) with offset vector(0.05, 0.01, 0.05)) at (location 3 above {_target})
+			draw 20 of (((rain particle) with an extra value of 0.02) with offset vector(0.05, 0.01, 0.05)) at (location 2 above {_target})
+			draw 30 of (((dripping water particle) with an extra value of 0.1) with offset vector(0.4, 0.05, 0.4)) at (location 2.5 above {_target})
 
 function isCastableVaporeon(p: player) :: boolean:
     if metadata value "HealingStreamCharges" of {_p} > 0:
@@ -1045,6 +1061,40 @@ function Watercycles(p: player, versatilityGain: number, duration: timespan):
 	set {bonusVersatility::%{_p}%} to {bonusVersatility::%{_p}%} + {_versatilityGain}
 	wait {_duration}
 	set {bonusVersatility::%{_p}%} to {bonusVersatility::%{_p}%} - {_versatilityGain}
+
+function OceanicUnison(p: player, target: entity, mastery: number, duration: timespan):
+	if metadata value "OceanicUnisonDuration%{_p}%" of {_target} is not set:
+		set metadata value "OceanicUnison%{_p}%" of {_target} to {_mastery}
+		set metadata value "OceanicUnisonDuration%{_p}%" of {_target} to {_duration}
+		set {bonusMastery::%{_target}%} to {bonusMastery::%{_target}%} + {_mastery}
+
+		set {_dur} to metadata value "OceanicUnisonDuration%{_p}%" of {_target}
+		set {_durShort} to durationShort("%{_dur}%")
+		set {_currentMasteryBonus} to metadata value "OceanicUnison%{_p}%" of {_target}
+		buffRegister({_target}, "Unison", 1, "", "-", "-", "<#f53b98> &f| %{_currentMasteryBonus}% %{_durShort}%")
+
+		while metadata value "OceanicUnisonDuration%{_p}%" of {_target} > 0 seconds:
+			wait 1 second
+			remove 1 second from metadata value "OceanicUnisonDuration%{_p}%" of {_target}
+			set {_dur} to metadata value "OceanicUnisonDuration%{_p}%" of {_target}
+			set {_durShort} to durationShort("%{_dur}%")
+
+			set {_currentMasteryBonus} to metadata value "OceanicUnison%{_p}%" of {_target}
+			buffRegister({_target}, "Unison", 1, "", "-", "-", "<#f53b98> &f| %{_currentMasteryBonus}% %{_durShort}%")
+
+		clear metadata value "OceanicUnisonDuration%{_p}%" of {_target}
+		remove (metadata value "OceanicUnison%{_p}%" of {_target}) from {bonusMastery::%{_target}%}
+		clear metadata value "OceanicUnison%{_p}%" of {_target}
+		buffClear({_target}, "Unison")
+
+	else:
+		set {_currentMasteryBonus} to metadata value "OceanicUnisonDuration%{_p}%" of {_target}
+		remove {_currentMasteryBonus} from {bonusMastery::%{_target}%}
+
+		set metadata value "OceanicUnisonDuration%{_p}%" of {_target} to {_duration}
+		set metadata value "OceanicUnison%{_p}%" of {_target} to {_mastery}
+		set {bonusMastery::%{_target}%} to {bonusMastery::%{_target}%} + {_mastery}
+
 
 function tidalWavesSound(loc: location):
 	play sound "entity.boat.paddle_water" with volume 2 and pitch 0.5 at {_loc}
