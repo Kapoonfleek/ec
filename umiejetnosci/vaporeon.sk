@@ -468,9 +468,12 @@ on rightclick:
 						set {_cd} to "%{_baseCd}/{_haste}% seconds" parsed as timespan
 						set {_cdLore} to "%{_baseCd}/{_haste}% sec"
 						create cooldown "Undertow%player%" for {_cd}
-						set the cooldown of player's held item for player to {_cd}
 						AbilityUse(player, "Undertow")
 						play sound "skill.vaporeon_undertow_cast" with volume 3 and pitch 1 at (location of player)
+
+						loop all items in the inventory of player:
+							if boolean tag "Undertow" of (custom nbt of (1 of loop-item)):
+								set the cooldown of loop-item for player to {_cd}
 						
 						set {_crit} to CriticalHit(player)
 						set {_damage} to 1 + ({damage::%player%}/65) + (Versatility(player)/195) + {primarystat::%player%}/32.5
@@ -823,17 +826,21 @@ function Shield(p: player, x: entity, shield: number, spell: text, col: text, lo
 		save yaml "Shields%uuid of {_x}%"
 	return {_shieldsActive}
 
-function shieldFind(p: entity, x: entity, shield: text) :: integer:
+function shieldFind(p: entity, x: entity, shield: text, global: boolean = false) :: integer:
 	if yaml "Shields%uuid of {_x}%" is not loaded:
 		load yaml "plugins/Skript/combat/Shields/%uuid of {_x}%" as "Shields%uuid of {_x}%"
 		
 	set {_shieldsActive} to yaml value "ShieldsActive" in "Shields%uuid of {_x}%"
 
 	loop {_shieldsActive} times:
-		if yaml value "Shields.%loop-number%.Caster" in "Shields%uuid of {_x}%" = {_p}:
-			if yaml value "Shields.%loop-number%.Name" in "Shields%uuid of {_x}%" = {_shield}:
+		if yaml value "Shields.%loop-number%.Name" in "Shields%uuid of {_x}%" = {_shield}:
+			if {_global} = true:
 				set {_num} to {_shieldsActive}
 				stop loop
+			else:
+				if yaml value "Shields.%loop-number%.Caster" in "Shields%uuid of {_x}%" = {_p}:
+					set {_num} to {_shieldsActive}
+					stop loop
 	return {_num}
 
 function findShieldID(x: entity, num: integer) :: string:

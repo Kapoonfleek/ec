@@ -722,7 +722,7 @@ on damage:
 
 		else if {_ineffectiveDamage::*} contains {_elementEffect}:
 			if {kartaname::%attacker%} = "Buckshot":
-				if boolean tag "Constellation;Elemental Bypass" of custom nbt of {karta::%attacker%} is set:
+				if boolean tag "Constellation;Elemental Bypass" of (custom nbt of {karta::%attacker%}) is set:
 					if {_elementTypes::*} contains "Magic":
 						ElementalBypassBuckshot(attacker, {_elementVictim})
 						set {_elementalBypassBuckshot} to 1 + (getElementalBypassBuckshot(attacker, {_elementVictim})/100)
@@ -737,6 +737,23 @@ on damage:
 		else if {_elementTypes::*} contains "Ice":
 			if getArtifactSetCount(attacker, "Deepfrost", 2) = true:
 				set {_artifactDamageModifier} to yaml value "Values.Deepfrost.2SETBONUS" in "ArtifactList"
+
+		else if {_elementTypes::*} contains "Water":
+			if attacker is a player:
+				set {_partyMembers::*} to (party members of (party of attacker)) where [input is online]
+				loop {_partyMembers::*}:
+					set {_partyMember} to "%loop-value%" parsed as player
+					if distance between {_partyMember} and attacker < 500:
+						if {kartaname::%{_partyMember}%} = "Vaporeon":
+							if boolean tag "Constellation;Oceanic Might" of (custom nbt of {karta::%{_partyMember}%}) is set:
+								set {_partySizeOceanicMight} to {_partySizeOceanicMight} + 1
+				
+				if {_partySizeOceanicMight} > 0:
+					set {_oceanicMightBonus} to 1.08
+					if shieldFind(attacker, attacker, "Explosive Bubble", true) is set:
+						set {_oceanicMightBonus} to ({_oceanicMightBonus}*2) - 1
+
+					set damage to damage * ({_oceanicMightBonus}^{_partySizeOceanicMight})
 
 		if {_artifactDamageModifier} is set:
 			set damage to damage*(1 + ({_artifactDamageModifier}/100))
