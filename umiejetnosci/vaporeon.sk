@@ -287,129 +287,16 @@ on rightclick:
 		cancel event
 		if {kartaname::%player%} = "Vaporeon":
 			if CanUseAbility(player) != false:
-				set {_id} to cardId(player)
-				set {_crit} to CriticalHit(player)
-				set {_pospiech} to Haste(player)
-				set {_cd} to "%1.5/{_pospiech}%"
-				set {_cdtarget} to "%20/{_pospiech}%"
-
-				set {_cdLore} to "%{_cd}% sec"
-				set {_cdtargetLore} to "%{_cdtarget}% sec"
-
-				set {_wait} to 8/{_pospiech}
-
-				set {_versatility} to Versatility(player)
-				set {_shield} to 6 + ({utility::%player%}/52) + ({_versatility}/156) + {primarystat::%player%}/26
-				set {_damage} to 1 + ({damage::%player%}/60) + ({_versatility}/180) + {primarystat::%player%}/30
-
-				set {_masteryScaling} to 370
-				if string tag "Talents;Row 3" of (custom nbt of {karta::%player%}) = "Overflow":
-					set {_masteryScaling} to {_masteryScaling}/1.2
-				set {_mastery} to 1.1 + (Mastery(player)/{_masteryScaling})
 				if cooldown "Explosive Bubble%player%" is finished:
 					if target of player is set:
 						if player's target is a player:
-							set {_i} to target of player
+							set {_target} to target of player
 						else:
-							set {_i} to player
+							set {_target} to player
 					else:
-						set {_i} to player
-					if {_i} is set:
-						set {_uuid} to uuid of {_i}
-						if cooldown "Explosive Bubble%player%-%{_uuid}%" is finished:
-							set the cooldown of player's held item for player to ("%{_cd}% seconds" parsed as timespan)
-							create cooldown "Explosive Bubble%player%" for ("%{_cd}% seconds" parsed as timespan)
-							create cooldown "Explosive Bubble%player%-%{_uuid}%" for ("%{_cdtarget}% seconds" parsed as timespan)
-
-							AbilityUse(player, "Explosive Bubble")
-							if string tag "Talents;Row 1" of (custom nbt of {karta::%player%}) = "Undercurrent":
-								set {_undercurrent} to metadata value "Undercurrent" of player
-								add 1 to {_undercurrent}
-								set metadata value "Undercurrent" of player to {_undercurrent}
-
-
-							if string tag "Talents;Row 2" of (custom nbt of {karta::%player%}) is set:
-								send title " " with subtitle "" to player for 1 minute with fade in 0.25 second and fade out 0 second
-								set {_tidalWaves} to metadata value "TidalWaves" of player
-								if {_tidalWaves} is not set:
-									set {_tidalWaves} to 0
-								if string tag "Talents;Row 4" of (custom nbt of {karta::%player%}) = "Coalescing Tides":
-									set {_tidalWavesMax} to 4
-								else:
-									set {_tidalWavesMax} to 2
-								if {_tidalWaves} < {_tidalWavesMax}:
-									add 1 to {_tidalWaves}
-								set metadata value "TidalWaves" of player to {_tidalWaves}
-								play sound "skill.vaporeon_tidalwaves" with volume 3 and pitch 1 to player
-
-							set {_lore} to  "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdLore}% | %{_cdtargetLore}% per target%nl%&7Use: &fRMB%nl%<#7cafbf>Wraps an ally in an explosive bubble, which%nl%<#7cafbf>absorbs &f%{_shield}% <#7cafbf>damage. <#7cafbf>After &f%{_wait}% sec<#7cafbf>, the bubble%nl%<#7cafbf>explodes, <#7cafbf>dealing &f%{_damage}% + (remaining shield value)%nl%<#7cafbf>as <#1ebbd7>Water <#7cafbf>damage to nearby enemies.%nl% %nl%<#7cafbf>When <#7cafbf>Explosive Bubble <#7cafbf>is reapplied, the shield%nl%<#7cafbf>amount will be added to the existing shield,%nl%<#7cafbf>but the duration will not be refreshed."
-							set lore of player's tool to {_lore}
-							
-							
-							if health of {_i} > (0.5*max health of {_i}):
-								set {_shield} to {_shield}*{_mastery}
-							chance of {_crit}%:
-								set {_shield} to {_shield}*2
-
-							set {_shieldNumber} to Shield(player, {_i}, {_shield} + 0.00, "Explosive Bubble", "<#7cafbf>", {_lore}, 0, true, true)
-							set {_shieldID} to findShieldID({_i}, {_shieldNumber})
-							play sound "block.bubble_column.whirlpool_inside" with volume 3 and pitch 1 at location of {_i}
-							set {_waitTime} to ("%{_wait}% seconds" parsed as timespan)
-							explosiveBubbleParticles(player, {_i}, {_waitTime})
-							wait {_waitTime}
-
-							#HEAVY BUBBLES
-							loop {_loreheart::*}:
-								loop-value contains "Heavy Bubbles":
-									add (0.15*{trait::Vaporeon::Heavy Bubbles::%player%}) to {_heavybubbles}
-
-							if yaml value "Shields.%{_shieldNumber}%" in "Shields%uuid of {_i}%" is set:
-								if yaml value "Shields.%{_shieldNumber}%.ID" in "Shields%uuid of {_i}%" = {_shieldID}:
-									play sound "entity.dragon_fireball.explode" with volume 3 and pitch 1 at location of {_i}
-									set {_shieldTarget} to yaml value "Shields.%{_shieldNumber}%.Amount" in "Shields%uuid of {_i}%"
-									loop all living entities in radius 10 around {_i}:
-										if boolean tag "ECMob" of (custom nbt of loop-entity) is set:
-											set {_versatility} to Versatility(player)
-											set {_damage} to 1 + ({damage::%player%}/60) + ({_versatility}/180) + {primarystat::%player%}/30
-
-											chance of {_crit}%:
-												set {_damage} to {_damage}*2
-											if {_heavybubbles} is true:
-												set {_dmg} to (({_shieldTarget} + {_damage}) + ({_shieldTarget}*{_heavybubbles}))
-											else:
-												set {_dmg} to ({_shieldTarget} + {_damage})
-											set loop-entity's last damage cause to sweep attack
-											set metadata value "LastDamageCause" of loop-entity to "<#7cafbf>Explosive Bubble"
-											set metadata value "LastDamageCauseLore" of loop-entity to {_lore}
-											set metadata value "Element" of player to "Water"
-											make player damage loop-entity by {_dmg}
-
-											play sound "entity.player.hurt" with volume 3 and pitch 1 at loop-entity
-									shieldExpire({_i}, {_shieldNumber})
-									send action bar " " to {_i}
-									
-									if string tag "Talents;Row 1" of (custom nbt of {karta::%player%}) = "Undercurrent":
-										set {_undercurrent} to metadata value "Undercurrent" of player
-										remove 1 from {_undercurrent}
-										set metadata value "Undercurrent" of player to {_undercurrent}
-
-							if string tag "Talents;Row 2" of (custom nbt of {karta::%player%}) = "Downpour":
-								set {_downpour} to {_shieldTarget}*0.25
-								if health of {_i} < (0.5*max health of {_i}):
-									set {_downpour} to {_downpour}*{_mastery}
-								chance of {_crit}%:
-									set {_downpour} to {_downpour}*2
-								set {_lore} to "<#7cafbf>When an Explosive Bubble detonates, a%nl%<#7cafbf>healing rain is summoned above the target,%nl%<#7cafbf>restoring &f25%% <#7cafbf>of the remaining shield value%nl%<#7cafbf>as HP to the ally."
-								Heal(player, {_i}, {_downpour}, "Downpour", "<#7cafbf>", {_lore})
-								CircleOfWaterApply(player, {_i}, "Downpour")
-								draw 20 of (((cloud particle) with an extra value of 0.02) with offset vector(0.05, 0.01, 0.05)) at (location 3 above {_i})
-								draw 20 of (((rain particle) with an extra value of 0.02) with offset vector(0.05, 0.01, 0.05)) at (location 2 above {_i})
-								draw 30 of (((dripping water particle) with an extra value of 0.1) with offset vector(0.4, 0.05, 0.4)) at (location 2.5 above {_i})
-						else:
-							if {tekstcd::%player%} = true:
-								set {_cdd} to cooldown "Explosive Bubble%player%-%{_uuid}%"
-								send "<#7cafbf>You must wait &f%{_cdd}%<#7cafbf> to use this ability on that target." to player
-							stop
+						set {_target} to player
+						
+					ExplosiveBubble(player, {_target})
 				else:
 					cancel event
 					if {tekstcd::%player%} = true:
@@ -495,7 +382,7 @@ on rightclick:
 							set {_cdd} to cooldown "Global Cooldown Interrupted Cast%player%"
 							send "<#7cafbf>You must wait &f%{_cdd}%<#7cafbf>to use this ability." to player
 						stop
-	if name of player's tool = "<#7cafbf>Reversal":
+	else if boolean tag "Undertow" of (custom nbt of player's tool) is set:
 		cancel event
 		if {kartaname::%player%} = "Vaporeon":
 			if CanUseAbility(player) != false:
@@ -539,8 +426,10 @@ on rightclick:
 							if boolean tag "ECMob" of (custom nbt of loop-entity) is not set:
 								CircleOfWaterApply(player, loop-entity, "Reversal")
 
-						if loop-entity is a player:
-							send action bar " " to loop-entity
+							if loop-entity is a player:
+								send action bar " " to loop-entity
+								if string tag "Talents;Row 5" of (custom nbt of {karta::%{_p}%}) = "Turn of the Tide":
+									ExplosiveBubble(player, loop-entity, true)
 
 						clear {_heal}
 				else:
@@ -571,6 +460,132 @@ function HealingStreamRecharge(p: player, cd: timespan):
 			else:
 				set line 2 of lore of loop-item to "&f%{_charges}% Charges"
 			stop loop
+
+function ExplosiveBubble(p: player, target: entity, turnOfTheTide: boolean = false):
+	set {_id} to cardId({_p})
+	set {_crit} to CriticalHit({_p})
+	set {_pospiech} to Haste({_p})
+	set {_cd} to "%1.5/{_pospiech}%"
+	set {_cdtarget} to "%20/{_pospiech}%"
+
+	set {_cdLore} to "%{_cd}% sec"
+	set {_cdtargetLore} to "%{_cdtarget}% sec"
+
+	set {_wait} to 8/{_pospiech}
+
+	set {_versatility} to Versatility({_p})
+	set {_shield} to 6 + ({utility::%{_p}%}/52) + ({_versatility}/156) + {primarystat::%{_p}%}/26
+	set {_damage} to 1 + ({damage::%{_p}%}/60) + ({_versatility}/180) + {primarystat::%{_p}%}/30
+
+	set {_masteryScaling} to 370
+	if string tag "Talents;Row 3" of (custom nbt of {karta::%{_p}%}) = "Overflow":
+		set {_masteryScaling} to {_masteryScaling}/1.2
+	set {_mastery} to 1.1 + (Mastery({_p})/{_masteryScaling})
+	
+	if {_target} is set:
+		set {_uuid} to uuid of {_target}
+		if cooldown "Explosive Bubble%{_p}%-%{_uuid}%" is finished:
+			set the cooldown of {_p}'s held item for {_p} to ("%{_cd}% seconds" parsed as timespan)
+			create cooldown "Explosive Bubble%{_p}%" for ("%{_cd}% seconds" parsed as timespan)
+			create cooldown "Explosive Bubble%{_p}%-%{_uuid}%" for ("%{_cdtarget}% seconds" parsed as timespan)
+
+			AbilityUse({_p}, "Explosive Bubble")
+			if string tag "Talents;Row 1" of (custom nbt of {karta::%{_p}%}) = "Undercurrent":
+				set {_undercurrent} to metadata value "Undercurrent" of {_p}
+				add 1 to {_undercurrent}
+				set metadata value "Undercurrent" of {_p} to {_undercurrent}
+
+
+			if string tag "Talents;Row 2" of (custom nbt of {karta::%{_p}%}) is set:
+				send title " " with subtitle "" to {_p} for 1 minute with fade in 0.25 second and fade out 0 second
+				set {_tidalWaves} to metadata value "TidalWaves" of {_p}
+				if {_tidalWaves} is not set:
+					set {_tidalWaves} to 0
+				if string tag "Talents;Row 4" of (custom nbt of {karta::%{_p}%}) = "Coalescing Tides":
+					set {_tidalWavesMax} to 4
+				else:
+					set {_tidalWavesMax} to 2
+				if {_tidalWaves} < {_tidalWavesMax}:
+					add 1 to {_tidalWaves}
+				set metadata value "TidalWaves" of {_p} to {_tidalWaves}
+				play sound "skill.vaporeon_tidalwaves" with volume 3 and pitch 1 to {_p}
+
+			set {_lore} to  "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdLore}% | %{_cdtargetLore}% per target%nl%&7Use: &fRMB%nl%<#7cafbf>Wraps an ally in an explosive bubble, which%nl%<#7cafbf>absorbs &f%{_shield}% <#7cafbf>damage. <#7cafbf>After &f%{_wait}% sec<#7cafbf>, the bubble%nl%<#7cafbf>explodes, <#7cafbf>dealing &f%{_damage}% + (remaining shield value)%nl%<#7cafbf>as <#1ebbd7>Water <#7cafbf>damage to nearby enemies.%nl% %nl%<#7cafbf>When <#7cafbf>Explosive Bubble <#7cafbf>is reapplied, the shield%nl%<#7cafbf>amount will be added to the existing shield,%nl%<#7cafbf>but the duration will not be refreshed."
+			set lore of {_p}'s tool to {_lore}
+			
+			
+			if health of {_target} > (0.5*max health of {_target}):
+				set {_shield} to {_shield}*{_mastery}
+			chance of {_crit}%:
+				set {_shield} to {_shield}*2
+
+			set {_shieldNumber} to Shield({_p}, {_target}, {_shield} + 0.00, "Explosive Bubble", "<#7cafbf>", {_lore}, 0, true, true)
+			set {_shieldID} to findShieldID({_target}, {_shieldNumber})
+			play sound "block.bubble_column.whirlpool_inside" with volume 3 and pitch 1 at location of {_target}
+			set {_waitTime} to ("%{_wait}% seconds" parsed as timespan)
+			explosiveBubbleParticles({_p}, {_target}, {_waitTime})
+
+			if {_turnOfTheTide} = true:
+				set {_resistanceIncrease} to 90
+				set {bonusResistance::%{_target}%} to {bonusResistance::%{_target}%} + {_resistanceIncrease}
+
+			wait {_waitTime}
+
+			#HEAVY BUBBLES
+			loop {_loreheart::*}:
+				loop-value contains "Heavy Bubbles":
+					add (0.15*{trait::Vaporeon::Heavy Bubbles::%{_p}%}) to {_heavybubbles}
+
+			if yaml value "Shields.%{_shieldNumber}%" in "Shields%uuid of {_target}%" is set:
+				if yaml value "Shields.%{_shieldNumber}%.ID" in "Shields%uuid of {_target}%" = {_shieldID}:
+					play sound "entity.dragon_fireball.explode" with volume 3 and pitch 1 at location of {_target}
+					set {_shieldTarget} to yaml value "Shields.%{_shieldNumber}%.Amount" in "Shields%uuid of {_target}%"
+					loop all living entities in radius 10 around {_target}:
+						if boolean tag "ECMob" of (custom nbt of loop-entity) is set:
+							set {_versatility} to Versatility({_p})
+							set {_damage} to 1 + ({damage::%{_p}%}/60) + ({_versatility}/180) + {primarystat::%{_p}%}/30
+
+							chance of {_crit}%:
+								set {_damage} to {_damage}*2
+							if {_heavybubbles} is true:
+								set {_dmg} to (({_shieldTarget} + {_damage}) + ({_shieldTarget}*{_heavybubbles}))
+							else:
+								set {_dmg} to ({_shieldTarget} + {_damage})
+							set loop-entity's last damage cause to sweep attack
+							set metadata value "LastDamageCause" of loop-entity to "<#7cafbf>Explosive Bubble"
+							set metadata value "LastDamageCauseLore" of loop-entity to {_lore}
+							set metadata value "Element" of {_p} to "Water"
+							make {_p} damage loop-entity by {_dmg}
+
+							play sound "entity.player.hurt" with volume 3 and pitch 1 at loop-entity
+					shieldExpire({_target}, {_shieldNumber})
+					send action bar " " to {_target}
+					
+					if string tag "Talents;Row 1" of (custom nbt of {karta::%{_p}%}) = "Undercurrent":
+						set {_undercurrent} to metadata value "Undercurrent" of {_p}
+						remove 1 from {_undercurrent}
+						set metadata value "Undercurrent" of {_p} to {_undercurrent}
+
+			if {_resistanceIncrease} is set:
+				set {bonusResistance::%{_target}%} to {bonusResistance::%{_target}%} - {_resistanceIncrease}
+
+			if string tag "Talents;Row 2" of (custom nbt of {karta::%{_p}%}) = "Downpour":
+				set {_downpour} to {_shieldTarget}*0.25
+				if health of {_target} < (0.5*max health of {_target}):
+					set {_downpour} to {_downpour}*{_mastery}
+				chance of {_crit}%:
+					set {_downpour} to {_downpour}*2
+				set {_lore} to "<#7cafbf>When an Explosive Bubble detonates, a%nl%<#7cafbf>healing rain is summoned above the target,%nl%<#7cafbf>restoring &f25%% <#7cafbf>of the remaining shield value%nl%<#7cafbf>as HP to the ally."
+				Heal({_p}, {_target}, {_downpour}, "Downpour", "<#7cafbf>", {_lore})
+				CircleOfWaterApply({_p}, {_target}, "Downpour")
+				draw 20 of (((cloud particle) with an extra value of 0.02) with offset vector(0.05, 0.01, 0.05)) at (location 3 above {_target})
+				draw 20 of (((rain particle) with an extra value of 0.02) with offset vector(0.05, 0.01, 0.05)) at (location 2 above {_target})
+				draw 30 of (((dripping water particle) with an extra value of 0.1) with offset vector(0.4, 0.05, 0.4)) at (location 2.5 above {_target})
+		else:
+			if {tekstcd::%{_p}%} = true:
+				set {_cdd} to cooldown "Explosive Bubble%{_p}%-%{_uuid}%"
+				send "<#7cafbf>You must wait &f%{_cdd}%<#7cafbf> to use this ability on that target." to {_p}
+			stop
 
 function isCastableVaporeon(p: player) :: boolean:
     if metadata value "HealingStreamCharges" of {_p} > 0:
