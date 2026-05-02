@@ -141,7 +141,10 @@ on rightclick:
 							set {_crit} to ({criticalhit::%player%}/10)
 							set {_pospiech} to Haste(player)
 							set {_cd} to "%8/{_pospiech}% seconds" parsed as timespan
-							set {_heal} to 1.5 + ({utility::%player%}/80) + ({versatility::%player%}/240) + ({primarystat::%player%}/40)
+
+							set {_versatility} to Versatility(player)
+							set {_heal} to 1.5 + ({utility::%player%}/80) + ({_versatility}/240) + ({primarystat::%player%}/40)
+
 							set {_masteryScaling} to 370
 							if string tag "Talents;Row 3" of (custom nbt of {karta::%player%}) = "Overflow":
 								set {_masteryScaling} to {_masteryScaling}/1.2
@@ -295,8 +298,11 @@ on rightclick:
 				set {_cdLore} to "%{_cd}% seconds" parsed as timespan
 				set {_cdtargetLore} to "%{_cdtarget}% seconds" parsed as timespan
 				set {_wait} to 8/{_pospiech}
-				set {_shield} to 6 + ({utility::%player%}/52) + ({versatility::%player%}/156) + {primarystat::%player%}/26
-				set {_damage} to 1 + ({damage::%player%}/60) + ({versatility::%player%}/180) + {primarystat::%player%}/30
+
+				set {_versatility} to Versatility(player)
+				set {_shield} to 6 + ({utility::%player%}/52) + ({_versatility}/156) + {primarystat::%player%}/26
+				set {_damage} to 1 + ({damage::%player%}/60) + ({_versatility}/180) + {primarystat::%player%}/30
+
 				set {_masteryScaling} to 370
 				if string tag "Talents;Row 3" of (custom nbt of {karta::%player%}) = "Overflow":
 					set {_masteryScaling} to {_masteryScaling}/1.2
@@ -362,7 +368,9 @@ on rightclick:
 								set {_shieldTarget} to yaml value "Shields.%{_shieldNumber}%.Amount" in "Shields%uuid of {_i}%"
 								loop all living entities in radius 10 around {_i}:
 									if boolean tag "ECMob" of (custom nbt of loop-entity) is set:
-										set {_damage} to 1 + ({damage::%player%}/60) + ({versatility::%player%}/180) + {primarystat::%player%}/30
+										set {_versatility} to Versatility(player)
+										set {_damage} to 1 + ({damage::%player%}/60) + ({_versatility}/180) + {primarystat::%player%}/30
+
 										chance of {_crit}%:
 											set {_damage} to {_damage}*2
 										if {_heavybubbles} is true:
@@ -538,14 +546,16 @@ function CircleOfWaterApply(p: player, x: entity, ability: string):
 		if {_ability} != "Searage":
 			CircleOfWater({_x}, {_p})
 	else:
-		if boolean tag "Constellation;CONSTELLATION 6" of (custom nbt of {karta::%{_p}%}) is set:
+		if {_ability} = "Healing Stream":
 			CircleOfWaterDetonate({_p}, {_x})
 		else:
-			if {_ability} = "Healing Stream":
-				CircleOfWaterDetonate({_p}, {_x})
+			if boolean tag "Constellation;Water of Life" of (custom nbt of {karta::%{_p}%}) is set:
+				CircleOfWaterDetonate({_p}, {_x}, 0.5)
 		
-function CircleOfWaterDetonate(p: player, x: entity):
-	set {_healcircle} to 0.8 + ({utility::%{_p}%}/100) + ({versatility::%{_p}%}/300) + ({primarystat::%{_p}%}/50)
+function CircleOfWaterDetonate(p: player, x: entity, effectiveness: number = 1):
+	set {_versatility} to Versatility({_p})
+	set {_healcircle} to 0.8 + ({utility::%{_p}%}/100) + ({_versatility}/300) + ({primarystat::%{_p}%}/50)
+	
 	set {_masteryScaling} to 370
 	if string tag "Talents;Row 3" of (custom nbt of {karta::%{_p}%}) = "Overflow":
 		set {_masteryScaling} to {_masteryScaling}/1.2
@@ -580,21 +590,26 @@ function CircleOfWaterDetonate(p: player, x: entity):
 				add {_molecules} to {healtotal::%{_p}%}
 				add {_molecules} to {healcard::%{kartaname::%{_p}%}%::%{_id}%}
 				add {_molecules} to {healcard::%{kartaname::%{_p}%}%::%{_id}%::Bound Molecules}
+
 	clear metadata value "CircleOfWater%{_p}%" of {_x}
-	#CASCADE
-	loop {_loreheart::*}:
-		loop-value contains "Cascade":
-			add (0.2*{trait::Vaporeon::Cascade::%{_p}%}) to {_cascade}
-	if {_cascade} is set:
-		remove ("%{_cascade}% seconds" parsed as timespan) from cooldown "Explosive Bubble%{_p}%-%uuid of {_x}%"
+
+	set {_healcircle} to {_healcircle} * {_effectiveness}
+
 	if string tag "Talents;Row 3" of (custom nbt of {karta::%{_p}%}) = "Overflow":
 		set {_healcircle} to {_healcircle}*{_mastery}
 	else:
 		if health of {_x} < (0.5*max health of {_x}):
 			set {_healcircle} to {_healcircle}*{_mastery}
+
 	if metadata value "Undercurrent" of {_p} > 0:
 		set {_undercurrent} to metadata value "Undercurrent" of {_p}
 		set {_healcircle} to {_healcircle}*(1 + 0.08*{_undercurrent})
+
+	if string tag "Talents;Row 2" of (custom nbt of {karta::%{_p}%}) = "Watercycles":
+		set {_healcircle} to {_healcircle}*1.4
+		set {_versatilityGain} to 30
+		Watercycles({_p}, {_versatilityGain}, 4 seconds)
+
 	chance of {_crit}%:
 		set {_healcircle} to {_healcircle}*2
 		if string tag "Talents;Row 1" of (custom nbt of {karta::%{_p}%}) = "Flow of the Tides":
@@ -908,6 +923,11 @@ function coalescingTides(p: player, x: entity, radius: number, heal: number, lor
 				set metadata value "LastDamageCauseLore" of {_x} to {_lore}
 				set metadata value "Element" of {_p} to "Water"
 				make {_p} damage {_x} by {_heal}
+
+function Watercycles(p: player, versatilityGain: number, duration: timespan):
+	set {bonusVersatility::%{_p}%} to {bonusVersatility::%{_p}%} + {_versatilityGain}
+	wait {_duration}
+	set {bonusVersatility::%{_p}%} to {bonusVersatility::%{_p}%} - {_versatilityGain}
 
 function tidalWavesSound(loc: location):
 	play sound "entity.boat.paddle_water" with volume 2 and pitch 0.5 at {_loc}
