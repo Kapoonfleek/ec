@@ -206,6 +206,15 @@ on rightclick:
 									set {_heal} to {_heal}*{_tidalWavesBonus}^{_tidalWaves}
 									if string tag "Talents;Row 4" of (custom nbt of {karta::%player%}) = "Coalescing Tides":
 										set {_coalescingTides} to true
+									if boolean tag "Constellation;Wave Mastery" of (custom nbt of {karta::%player%}) is set:
+										set {_cdbubble} to 20/{_pospiech}
+										set {_cdredWaveMastery} to {_cdbubble}*0.0125
+										remove ("%{_cdredWaveMastery}% seconds" parsed as timespan) from cooldown "Explosive Bubble%player%-%(uuid of {_x})%"
+										remove 1.25 seconds from cooldown "Reversal%player%"
+										loop all items in the inventory of player:
+											if boolean tag "Reversal" of (custom nbt of (1 of loop-item)):
+												set {_reversalRemainingCd} to cooldown "Reversal%player%"
+												set the cooldown of loop-item for player to {_reversalRemainingCd}
 								chance of {_crit}%:
 									set {_heal} to {_heal}*2
 								if string tag "Talents;Row 2" of (custom nbt of {karta::%player%}) = "Tidewaters":
@@ -352,30 +361,30 @@ on rightclick:
 								send action bar "&cInterrupted" to player
 								stop
 						
-						set {_cd} to "%{_baseCd}/{_haste}% seconds" parsed as timespan
-						set {_cdLore} to "%{_baseCd}/{_haste}% sec"
-						create cooldown "Undertow%player%" for {_cd}
-						AbilityUse(player, "Undertow")
-						play sound "skill.vaporeon_undertow_cast" with volume 3 and pitch 1 at (location of player)
+							set {_cd} to "%{_baseCd}/{_haste}% seconds" parsed as timespan
+							set {_cdLore} to "%{_baseCd}/{_haste}% sec"
+							create cooldown "Undertow%player%" for {_cd}
+							AbilityUse(player, "Undertow")
+							play sound "skill.vaporeon_undertow_cast" with volume 3 and pitch 1 at (location of player)
 
-						loop all items in the inventory of player:
-							if boolean tag "Undertow" of (custom nbt of (1 of loop-item)):
-								set the cooldown of loop-item for player to {_cd}
-						
-						set {_crit} to CriticalHit(player)
-						set {_damage} to 1 + ({damage::%player%}/65) + (Versatility(player)/195) + {primarystat::%player%}/32.5
-						set {_damage} to Crit(player, {_target}, {_crit}, {_damage})
-						set {_lore} to "&8Basic Ability%nl%&f%{_casttimeLore}% cast%nl%&7Cooldown:  &f%{_cdLore}%%nl%&7Use: &fRMB%nl%<#7cafbf>Deal &f%{_damage}% <#1ebbd7>Water <#7cafbf>damage to the target."
+							loop all items in the inventory of player:
+								if boolean tag "Undertow" of (custom nbt of (1 of loop-item)):
+									set the cooldown of loop-item for player to {_cd}
+							
+							set {_crit} to CriticalHit(player)
+							set {_damage} to 1 + ({damage::%player%}/65) + (Versatility(player)/195) + {primarystat::%player%}/32.5
+							set {_damage} to Crit(player, {_target}, {_crit}, {_damage})
+							set {_lore} to "&8Basic Ability%nl%&f%{_casttimeLore}% cast%nl%&7Cooldown:  &f%{_cdLore}%%nl%&7Use: &fRMB%nl%<#7cafbf>Deal &f%{_damage}% <#1ebbd7>Water <#7cafbf>damage to the target."
 
-						set {_target}'s last damage cause to sweep attack
-						set metadata value "LastDamageCause" of {_target} to "<#7cafbf>Undertow"
-						set metadata value "LastDamageCauseLore" of {_target} to {_lore}
-						set metadata value "Element" of player to "Water"
-						make player damage {_target} by {_damage}
+							set {_target}'s last damage cause to sweep attack
+							set metadata value "LastDamageCause" of {_target} to "<#7cafbf>Undertow"
+							set metadata value "LastDamageCauseLore" of {_target} to {_lore}
+							set metadata value "Element" of player to "Water"
+							make player damage {_target} by {_damage}
 
-						set {_shape} to a circle with radius 1
-						set particle of {_shape} to rain particle
-						draw shape {_shape} at {_target}
+							set {_shape} to a circle with radius 1
+							set particle of {_shape} to rain particle
+							draw shape {_shape} at {_target}
 
 					else:
 						if {tekstcd::%player%} = true:
@@ -389,7 +398,7 @@ on rightclick:
 				set {_id} to cardId(player)
 				set {_crit} to CriticalHit(player)
 				set {_pospiech} to Haste(player)
-				set {_cd} to "%3/{_pospiech}% seconds" parsed as timespan
+				set {_cd} to "%300/{_pospiech}% seconds" parsed as timespan
 				set {_masteryScaling} to 370
 				if string tag "Talents;Row 3" of (custom nbt of {karta::%player%}) = "Overflow":
 					set {_masteryScaling} to {_masteryScaling}/1.2
@@ -530,7 +539,7 @@ function ExplosiveBubble(p: player, target: entity, turnOfTheTide: boolean = fal
 			set metadata value "TidalWaves" of {_p} to {_tidalWaves}
 			play sound "skill.vaporeon_tidalwaves" with volume 3 and pitch 1 to {_p}
 
-		set {_lore} to  "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &f%{_cdLore}% | %{_cdtargetLore}% per target%nl%&7Use: &fRMB%nl%<#7cafbf>Wraps an ally in an explosive bubble, which%nl%<#7cafbf>absorbs &f%{_shield}% <#7cafbf>damage. <#7cafbf>After &f%{_wait}% sec<#7cafbf>, the bubble%nl%<#7cafbf>explodes, <#7cafbf>dealing &f%{_damage}% + (remaining shield value)%nl%<#7cafbf>as <#1ebbd7>Water <#7cafbf>damage to nearby enemies.%nl% %nl%<#7cafbf>When <#7cafbf>Explosive Bubble <#7cafbf>is reapplied, the shield%nl%<#7cafbf>amount will be added to the existing shield,%nl%<#7cafbf>but the duration will not be refreshed."
+		set {_lore} to  "&8Ability%nl%&fInstant cast%nl%&7Cooldown:  &f%{_cdLore}% | %{_cdtargetLore}% per target%nl%&7Use: &fRMB%nl%<#7cafbf>Wraps an ally in an explosive bubble, which%nl%<#7cafbf>absorbs &f%{_shield}% <#7cafbf>damage. <#7cafbf>After &f%{_wait}% sec<#7cafbf>, the bubble%nl%<#7cafbf>explodes, <#7cafbf>dealing &f%{_damage}% + (remaining shield value)%nl%<#7cafbf>as <#1ebbd7>Water <#7cafbf>damage to nearby enemies.%nl% %nl%<#7cafbf>When <#7cafbf>Explosive Bubble <#7cafbf>is reapplied, the shield%nl%<#7cafbf>amount will be added to the existing shield,%nl%<#7cafbf>but the duration will not be refreshed."
 		loop all items in the inventory of {_p}:
 			if boolean tag "Explosive Bubble" of (custom nbt of (1 of loop-item)):
 				if cooldown "Explosive Bubble%{_p}%-%{_uuid}%" is not finished:
@@ -551,7 +560,7 @@ function ExplosiveBubble(p: player, target: entity, turnOfTheTide: boolean = fal
 		if {_turnOfTheTide} = true:
 			set {_resistanceIncrease} to 90
 			set {bonusResistance::%{_target}%} to {bonusResistance::%{_target}%} + {_resistanceIncrease}
-
+		
 		wait {_waitTime}
 
 		#HEAVY BUBBLES
@@ -1096,7 +1105,6 @@ function OceanicUnison(p: player, target: entity, mastery: number, duration: tim
 		set metadata value "OceanicUnisonDuration%{_p}%" of {_target} to {_duration}
 		set metadata value "OceanicUnison%{_p}%" of {_target} to {_mastery}
 		set {bonusMastery::%{_target}%} to {bonusMastery::%{_target}%} + {_mastery}
-
 
 function tidalWavesSound(loc: location):
 	play sound "entity.boat.paddle_water" with volume 2 and pitch 0.5 at {_loc}
