@@ -95,18 +95,14 @@ function Overhealing(p: player, target: entity, overheal: number, ability: text)
 			set {_targets::*} to sorted indices of {_maxhealth::*} in ascending order
 			set {_entity} to {_targets::1} parsed as entity
 
-			set {_crit} to CriticalHit({_p})
-			set {_masteryScaling} to 370
-			if string tag "Talents;Row 3" of (custom nbt of {karta::%{_p}%}) = "Overflow":
-				set {_masteryScaling} to {_masteryScaling}/1.2
-			set {_mastery} to 1.1 + (Mastery({_p})/{_masteryScaling})
-			
 			if string tag "Talents;Row 5" of (custom nbt of {karta::%{_p}%}) = "Hydrodance":
 				set {_overheal} to 0.3*{_overheal}
 				if health of {_entity} < (0.5*max health of {_entity}):
 					set {_overheal} to {_overheal}*{_mastery}
+					
 				chance of {_crit}%:
 					set {_overheal} to {_overheal}*2
+
 				set {_lore} to "<#7cafbf>Overhealing heals the nearest ally%nl%<#7cafbf>by &f30%% <#7cafbf>of the overheal value. If no%nl%<#7cafbf>eligible allies are nearby, overhealing%nl%<#7cafbf>will instead &fdamage <#7cafbf>nearby enemies%nl%<#7cafbf>by &f20%% <#7cafbf>of the value."
 				if boolean tag "ECMob" of (custom nbt of {_entity}) is not set:
 					Heal({_p}, {_entity}, {_overheal}, "Hydrodance", "<#7cafbf>", {_lore})
@@ -699,8 +695,7 @@ function CircleOfWaterDetonate(p: player, x: entity, effectiveness: number = 1):
 					set {_molecules} to 0
 			heal loop-entity by {_molecules}
 			HealAssist({_p}, loop-entity)
-			set {_lore} to "<#7cafbf>Bound Molecules%nl%<#7cafbf>Uzdrawiający Strumień &7leczy wszystkich sojuszników%nl%&7z aktywnym <#7cafbf>Kołem Wody &7o &f%{_molecules}% &7zdrowia."
-			set {_loreEN} to "<#7cafbf>Bound Molecules%nl%<#7cafbf>Healing Stream &7heals all allies with%nl%<#7cafbf>Circle of Water &7active by &f%{_molecules}% &7health."
+			set {_lore} to "<#7cafbf>Bound Molecules%nl%<#7cafbf>Healing Stream &7heals all allies with%nl%<#7cafbf>Circle of Water &7active by &f%{_molecules}% &7health."
 			HealRefresh({_p}, {_molecules})
 			if metadata value "DungeonInstance" of {_p} is set:
 				DungeonHeal({_p}, loop-entity, {_molecules}, "Bound Molecules")
@@ -760,14 +755,14 @@ function Heal(p: player, x: entity, heal: number, spell: text, col: text, lore: 
 	if {_x} is alive:
 		set {_id} to cardId({_p})
 
+		set {_heal} to cardHealBuffs({_p}, {_x}, {_heal})
+
 		Overhealing({_p}, {_x}, {_heal}, {_spell})
 		if {_heal} > ((max health of {_x}) - (health of {_x})):
 			healAboveMaxHealth({_p}, {_x}, ((max health of {_x}) - (health of {_x})-{_heal}))
 			set {_heal} to ((max health of {_x}) - (health of {_x}))
 			if {_heal} < 0:
 				set {_heal} to 0
-
-		set {_heal} to cardHealBuffs({_p}, {_x}, {_heal})
 
 		heal {_x} by {_heal}
 		HealAssist({_p}, {_x})
@@ -790,6 +785,9 @@ function cardHealBuffs(p: player, x: entity, heal: number) :: number:
 		if boolean tag "Constellation;Deluge" of (custom nbt of {karta::%{_p}%}) is set:
 			if shieldFind({_p}, {_x}, "Explosive Bubble", true) is set:
 				set {_heal} to {_heal}*1.12
+
+	healText(a: entity, e: entity, heal: number, crit: boolean, modifier: number = 1.0)
+
 	return {_heal}
 
 function onHealEvents(p: player, e: entity):
@@ -1115,7 +1113,7 @@ function OceanicUnison(p: player, target: entity, mastery: number, duration: tim
 		set metadata value "OceanicUnison%{_p}%" of {_target} to {_mastery}
 		set {bonusMastery::%{_target}%} to {bonusMastery::%{_target}%} + {_mastery}
 
-function RestorativeDroplets(p: player, entity: player, effectiveness: number, partyMembers: players):
+function RestorativeDroplets(p: player, entity: player, effectiveness: number, partyMembers: players, victim: entity):
 	loop {_partyMembers::*}:
 		set {_heal} to (0.005 * {_effectiveness}) * (loop-value's max health)
 
@@ -1127,15 +1125,18 @@ function RestorativeDroplets(p: player, entity: player, effectiveness: number, p
 			if health of loop-value < (0.5*max health of loop-value):
 				set {_heal} to {_heal}*{_mastery}
 
-		DropletsHeal({_p}, {_entity}, {_heal}, loop-value)
+		DropletsHeal({_p}, {_entity}, {_heal}, loop-value, {_victim})
 
-function DropletsHeal(p: player, entity: player, heal: number, partyMember: player):
-	set {_duration} to 4 seconds
+function DropletsHeal(p: player, entity: player, heal: number, partyMember: player, victim: entity):
+	set {_duration} to 3 seconds
 	set {_lore} to "&7When you or your allies deal <#d5ff57> Supereffective%nl%&7damage, conjure &f <#7cafbf>Restorative Droplets&7.%nl% %nl%&7The droplets heal all party members for &f0.5%% &7of%nl%&7their max HP every &f1.0 sec &7for &f3.0 sec&7. One%nl%&7droplet can be created per player every%nl%&f3.0 sec&7, reduced by <#19943e> Haste&7.%nl% %nl%&7Healing is increased by &f200%% &7when &f <#7cafbf>Restorative%nl%<#7cafbf>Droplets &7are formed by <#7cafbf>Vaporeon&7."
 	while {_duration} > 0 seconds:
 		wait 1 second
+		stop if {_victim} is not alive
 		set {_duration} to {_duration} - 1 second
 		Heal({_p}, {_partyMember}, {_heal}, "Restorative Droplets", "<#7cafbf>", {_lore})
+		draw 30 of (((fishing particle) with an extra value of 0.06) with offset vector(0.1, 0, 0.1)) at (location above {_partyMember})
+		play sound "entity.axolotl.swim" with volume 1 and pitch 2 to {_partyMember}
 
 function tidalWavesSound(loc: location):
 	play sound "entity.boat.paddle_water" with volume 2 and pitch 0.5 at {_loc}
