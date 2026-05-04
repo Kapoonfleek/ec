@@ -1,3 +1,5 @@
+
+
 function dialogue(t: text, loc: location, wait: timespan, waitDelete: timespan, viewers: players = all players):
     wait {_wait}
 
@@ -28,16 +30,14 @@ function dialogue(t: text, loc: location, wait: timespan, waitDelete: timespan, 
         spawn fake armor stand at {_loc2} for {_viewers::*} with id loop-value
         
 
-        set {_meta} to metadata packet with id loop-value
-
         set {_text} to subtext of {_t} from characters ({_maxLength}*{_index})-{_maxLength} to ({_maxLength}*{_index})-1
         set {_text} to unformatted "%{_text}%"
         
-
-        add data from "name %{_text}%" to {_meta}
-        add data from "name visible true" to {_meta}
-        add data from "invisible true" to {_meta}
-        add data from "stand marker true" to {_meta}
+        set {_meta} to new metadata packet with id loop-value:
+            name: {_text}
+            name visible: true
+            invisible: true
+            stand marker: true
 
         send packet {_meta} to {_viewers::*}
 
@@ -76,18 +76,15 @@ function chatBubble(p: player, t: text, viewers: players):
         set {_loc} to location -2 + ({_height} + 0.25 * {_index}) under {_p}
         set {_loc} to location {_extra} above {_loc}
         spawn fake armor stand at {_loc} for {_viewers::*} with id loop-value
-        
-
-        set {_meta} to metadata packet with id loop-value
 
         set {_text} to subtext of {_t} from characters ({_maxLength}*{_index})-{_maxLength} to ({_maxLength}*{_index})-1
         set {_text} to unformatted "%{_text}%"
         
-
-        add data from "name %{_text}%" to {_meta}
-        add data from "name visible true" to {_meta}
-        add data from "invisible true" to {_meta}
-        add data from "stand marker true" to {_meta}
+        set {_meta} to new metadata packet with id loop-value:
+            name: {_text}
+            name visible: true
+            invisible: true
+            stand marker: true
 
         send packet {_meta} to {_viewers::*}
 
@@ -119,7 +116,7 @@ function damageText(a: entity, e: entity, damage: number, crit: boolean, effecti
     set {_y} to (y-coordinate of {_e}) + {_y}
 
     set {_loc} to location({_x}, {_y}, {_z}, world "%{_e}'s world%")
-    spawn fake text display entity at {_loc} for all players with id {_id}
+    spawn fake text display entity at {_loc} for {_a} with id {_id}
 
     set {_damageFormatted} to formatNumberEc({_damage})
     set {_name} to "%{_damageFormatted}%"
@@ -142,7 +139,72 @@ function damageText(a: entity, e: entity, damage: number, crit: boolean, effecti
         else:
             set {_name} to "%{_name}% ↑"
 
-    set {_meta} to metadata packet with id {_id}
+    if {_crit} = true:
+        set {_name} to "&l%{_name}%"
+        set {_scale} to {_scale}*1.1
+    
+    if {_scale} > 5:
+        set {_scale} to 5
+
+    set {_meta} to new metadata packet with id {_id}:
+        display text: "&c%{_name}%"
+        display billboard: center
+        display brightness block: 15
+        display brightness sky: 15
+        display seethrough: true
+        display scale: vector({_scale}, {_scale}, {_scale})
+
+    if {_effective} is set:
+        if {_effective} != {_neutral}:
+            set {_id2} to random integer between 0 and 999999999999
+            spawn fake text display entity at location 0.25 above {_loc} for {_a} with id {_id2}
+            set {_name} to "<##d5ff57>x%{_modifier}% (%{_effective}%)"
+            set {_meta2} to new metadata packet with id {_id2}:
+                display text: {_name}
+                display billboard: center
+                display brightness block: 15
+                display brightness sky: 15
+                display seethrough: true
+                display scale: vector({_scale}*0.5, {_scale}*0.5, {_scale}*0.5)
+            send packet {_meta2} to {_a}
+    
+    send packet {_meta} to {_a}
+
+    set {_waitNum} to 2 + ({_damage}*0.02)
+    set {_waitNum} to 5 if {_waitNum} > 5
+    set {_wait} to "%{_waitNum}% seconds" parsed as timespan
+    wait {_wait}
+    remove fake entity with id {_id} for {_a}
+    remove fake entity with id {_id2} for {_a}
+    
+function healText(a: entity, e: entity, heal: number, crit: boolean, modifier: number = 1.0):
+    set {_id} to random integer between 0 and 999999999999
+    set {_1} to a random integer between 1 and 2
+    set {_2} to a random integer between 1 and 2
+
+    if {_1} = 1:
+        set {_x} to a random number between -1.0 and -0.5
+    else:
+        set {_x} to a random number between 1.0 and 0.5
+
+    if {_2} = 1:
+        set {_z} to a random number between -1.0 and -0.5
+    else:
+        set {_z} to a random number between 1.0 and 0.5
+
+    set {_y} to a random number between 0.5 and 2
+    
+    set {_x} to (x-coordinate of {_e}) + {_x}
+    set {_z} to (z-coordinate of {_e}) + {_z}
+    set {_y} to (y-coordinate of {_e}) + {_y}
+
+    set {_loc} to location({_x}, {_y}, {_z}, world "%{_e}'s world%")
+    spawn fake text display entity at {_loc} for {_a} with id {_id}
+
+    set {_healFormatted} to formatNumberEc({_heal})
+    set {_name} to "%{_healFormatted}%"
+
+    set {_scale} to 0.75 + ({_heal}*0.0025)
 
     if {_crit} = true:
         set {_name} to "&l%{_name}%"
@@ -151,33 +213,99 @@ function damageText(a: entity, e: entity, damage: number, crit: boolean, effecti
     if {_scale} > 5:
         set {_scale} to 5
 
-    set {_name} to "&c%{_name}%"
-    add data from "display text %{_name}%" to {_meta}
-    add data from "display billboard center" to packet {_meta}
-    add data from "display brightness 15 15" to packet {_meta}
-    add data from "display scale %{_scale}% %{_scale}% %{_scale}%" to packet {_meta}
+    set {_meta} to new metadata packet with id {_id}:
+        display text: "&a%{_name}%"
+        display billboard: center
+        display brightness block: 15
+        display brightness sky: 15
+        display seethrough: true
+        display scale: vector({_scale}, {_scale}, {_scale})
 
-    if {_effective} is set:
-        if {_effective} != {_neutral}:
-            set {_id2} to random integer between 0 and 999999999999
-            spawn fake text display entity at location 0.25 above {_loc} for all players with id {_id2}
-            set {_meta2} to metadata packet with id {_id2}
-            set {_name} to "<##d5ff57>x%{_modifier}% (%{_effective}%)"
-            add data from "display text %{_name}%" to {_meta2}
-            add data from "display billboard center" to packet {_meta2}
-            add data from "display brightness 15 15" to packet {_meta2}
-            add data from "display scale %{_scale}*0.5% %{_scale}*0.5% %{_scale}*0.5%" to packet {_meta2}
-            send packet {_meta2} to all players
+    set {_id2} to random integer between 0 and 999999999999
+    spawn fake text display entity at location 0.25 above {_loc} for {_a} with id {_id2}
+    set {_name} to "<#d5ff57>x%{_modifier}% effective"
+    set {_meta2} to new metadata packet with id {_id2}:
+        display text: {_name}
+        display billboard: center
+        display brightness block: 15
+        display brightness sky: 15
+        display seethrough: true
+        display scale: vector({_scale}*0.5, {_scale}*0.5, {_scale}*0.5)
     
-    send packet {_meta} to all players
+    send packet {_meta2} to {_a}
+    send packet {_meta} to {_a}
 
     set {_waitNum} to 2 + ({_damage}*0.02)
     set {_waitNum} to 5 if {_waitNum} > 5
     set {_wait} to "%{_waitNum}% seconds" parsed as timespan
     wait {_wait}
-    remove fake entity with id {_id} for all players
-    remove fake entity with id {_id2} for all players
+    remove fake entity with id {_id} for {_a}
+    remove fake entity with id {_id2} for {_a}
+
+function shieldText(a: entity, e: entity, heal: number, crit: boolean, modifier: number = 1.0):
+    set {_id} to random integer between 0 and 999999999999
+    set {_1} to a random integer between 1 and 2
+    set {_2} to a random integer between 1 and 2
+
+    if {_1} = 1:
+        set {_x} to a random number between -1.0 and -0.5
+    else:
+        set {_x} to a random number between 1.0 and 0.5
+
+    if {_2} = 1:
+        set {_z} to a random number between -1.0 and -0.5
+    else:
+        set {_z} to a random number between 1.0 and 0.5
+
+    set {_y} to a random number between 0.5 and 2
     
+    set {_x} to (x-coordinate of {_e}) + {_x}
+    set {_z} to (z-coordinate of {_e}) + {_z}
+    set {_y} to (y-coordinate of {_e}) + {_y}
+
+    set {_loc} to location({_x}, {_y}, {_z}, world "%{_e}'s world%")
+    spawn fake text display entity at {_loc} for {_a} with id {_id}
+
+    set {_healFormatted} to formatNumberEc({_heal})
+    set {_name} to "%{_healFormatted}%"
+
+    set {_scale} to 0.75 + ({_heal}*0.0025)
+
+    if {_crit} = true:
+        set {_name} to "&l%{_name}%"
+        set {_scale} to {_scale}*1.1
+    
+    if {_scale} > 5:
+        set {_scale} to 5
+
+    set {_meta} to new metadata packet with id {_id}:
+        display text: "&b%{_name}%"
+        display billboard: center
+        display brightness block: 15
+        display brightness sky: 15
+        display seethrough: true
+        display scale: vector({_scale}, {_scale}, {_scale})
+
+    set {_id2} to random integer between 0 and 999999999999
+    spawn fake text display entity at location 0.25 above {_loc} for {_a} with id {_id2}
+    set {_name} to "<#d5ff57>x%{_modifier}% effective"
+    set {_meta2} to new metadata packet with id {_id2}:
+        display text: {_name}
+        display billboard: center
+        display brightness block: 15
+        display brightness sky: 15
+        display seethrough: true
+        display scale: vector({_scale}*0.5, {_scale}*0.5, {_scale}*0.5)
+    
+    send packet {_meta2} to {_a}
+    send packet {_meta} to {_a}
+
+    set {_waitNum} to 2 + ({_damage}*0.02)
+    set {_waitNum} to 5 if {_waitNum} > 5
+    set {_wait} to "%{_waitNum}% seconds" parsed as timespan
+    wait {_wait}
+    remove fake entity with id {_id} for {_a}
+    remove fake entity with id {_id2} for {_a}
 
 function chatBubbleRemove(wait: timespan, id: integer):
     wait {_wait}

@@ -209,7 +209,6 @@ on rightclick:
 								
 								if boolean tag "ECMob" of (custom nbt of {_x}) is not set:
 									Heal(player, {_x}, {_heal}, "Healing Stream", "<#7cafbf>", {_lore})
-									CircleOfWaterApply(player, {_x}, "Healing Stream")
 									if {_coalescingTides} is true:
 										play sound "entity.generic.splash" with volume 3 and pitch 1 at location of {_x}
 										set {_lore} to "&8Ability%nl%&f%{_charges}% Charges%nl%&fInstant cast%nl%&7Cooldown: &f%{_cd}%%nl%&7Use: &fRMB%nl%<#7cafbf>Sends a healing stream towards an ally.%nl%<#7cafbf>Upon reaching its target, the stream will%nl%<#7cafbf>restore &f%{_heal}*0.3% <#7cafbf>HP to the affected ally."
@@ -415,9 +414,6 @@ on rightclick:
 							set {_HPBeforeHeal} to health of loop-entity
 							Heal(player, loop-entity, {_heal}, "Reversal", "<#7cafbf>", {_lore})
 
-							if boolean tag "ECMob" of (custom nbt of loop-entity) is not set:
-								CircleOfWaterApply(player, loop-entity, "Reversal")
-
 							if loop-entity is a player:
 								send action bar " " to loop-entity
 								if string tag "Talents;Row 4" of (custom nbt of {karta::%player%}) = "Oceanic Unison":
@@ -570,7 +566,6 @@ function ExplosiveBubble(p: player, target: entity, turnOfTheTide: boolean = fal
 			set {_lore} to "<#7cafbf>When an Explosive Bubble detonates, a%nl%<#7cafbf>healing rain is summoned above the target,%nl%<#7cafbf>restoring &f25%% <#7cafbf>of the remaining shield value%nl%<#7cafbf>as HP to the ally."
 			Heal({_p}, {_target}, {_downpour}, "Downpour", "<#7cafbf>", {_lore})
 			
-			CircleOfWaterApply({_p}, {_target}, "Downpour")
 			draw 20 of (((cloud particle) with an extra value of 0.02) with offset vector(0.05, 0.01, 0.05)) at (location 3 above {_target})
 			draw 20 of (((rain particle) with an extra value of 0.02) with offset vector(0.05, 0.01, 0.05)) at (location 2 above {_target})
 			draw 30 of (((dripping water particle) with an extra value of 0.1) with offset vector(0.4, 0.05, 0.4)) at (location 2.5 above {_target})
@@ -615,7 +610,6 @@ function Tidewaters(p: player, x: entity, heal: number):
 		set {_lore} to "&8Talent%nl%&fInstant cast%nl%&7Cooldown: &fnone%nl%&7Use: &fPassive%nl%<#7cafbf>Healing Stream sends a second stream of%nl%<#7cafbf>revitalising waters at the affected ally after%nl%&f%{_cd}%<#7cafbf>, reduced by <#19943e> Haste<#7cafbf>. The second%nl%<#7cafbf>stream restores &f35%% <#7cafbf>of the initial value as HP%nl%<#7cafbf>to the ally."
 		if boolean tag "ECMob" of (custom nbt of {_x}) is not set:
 			Heal({_p}, {_x}, {_healValue}, "Tidewaters", "<#7cafbf>", {_lore})
-			CircleOfWaterApply({_p}, {_x}, "Tidewaters")
 		else:
 			set {_x}'s last damage cause to sweep attack
 			set metadata value "LastDamageCause" of {_x} to "<#7cafbf>Tidewaters"
@@ -710,7 +704,7 @@ function Heal(p: player, x: entity, heal: number, spell: text, col: text, lore: 
 		HealRefresh({_p}, {_heal})
 		if metadata value "DungeonInstance" of {_p} is set:
 			DungeonHeal({_p}, {_x}, {_heal}, "%{_spell}%")
-		if {_heal} > 0.01:
+		if {_heal} > 0.0001:
 			onHealEvents({_p}, {_x})
 			if {_x} is a player:
 				if {_sendMessage} != false:
@@ -769,7 +763,7 @@ function cardHealBuffs(p: player, x: entity, heal: number, spell: text) :: numbe
 
 	return {_heal}
 
-function onHealEvents(p: player, e: entity):
+function onHealEvents(p: player, e: entity, spell: string):
 	if {kartaname::%{_p}%} = "Vaporeon":
 		if string tag "Talents;Row 3" of (custom nbt of {karta::%{_p}%}) = "Current Control":
 			set {_haste} to Haste({_p})
@@ -777,6 +771,8 @@ function onHealEvents(p: player, e: entity):
 			set {_uuid} to uuid of {_e}
 			if cooldown "Explosive Bubble%{_p}%-%{_uuid}%" is set:
 				remove ("%{_cd}% seconds" parsed as timespan) from cooldown "Explosive Bubble%{_p}%-%{_uuid}%"
+
+		CircleOfWaterApply({_p}, {_e}, {_spell})
 
 function cardShieldBuffs(p: player, x: entity, shield: number) :: number:
 	set {_shieldBeforeModifiers} to {_shield}
@@ -1054,11 +1050,9 @@ function coalescingTides(p: player, x: entity, radius: number, heal: number, lor
 			loop {_allies::*}:
 				draw 15 of ((rain particle) with an extra value of 0.03) with offset vector(0.5, 0.5, 0.5) at (location above loop-value)
 				Heal({_p}, loop-value, {_heal}*0.3, "Healing Stream", "<#7cafbf>", {_lore})
-				CircleOfWaterApply({_p}, loop-value, "Healing Stream")
 		else:
 			draw 15 of ((rain particle) with an extra value of 0.03) with offset vector(0.5, 0.5, 0.5) at (location above {_x})
 			Heal({_p}, {_x}, {_heal}*0.3, "Healing Stream", "<#7cafbf>", {_lore})
-			CircleOfWaterApply({_p}, {_x}, "Healing Stream")
 	else:
 		set {_enemies::*} to LoopEntitiesAroundTarget({_x}, {_radius}, false)
 		wait 1 tick
