@@ -774,7 +774,7 @@ function Heal(p: player, x: entity, heal: number, spell: text, col: text, lore: 
 		HealRefresh({_p}, {_heal})
 		if metadata value "DungeonInstance" of {_p} is set:
 			DungeonHeal({_p}, {_x}, {_heal}, "%{_spell}%")
-		if {_heal} > 0:
+		if {_heal} > 0.00:
 			onHealEvents({_p}, {_x})
 			if {_x} is a player:
 				if {_sendMessage} != false:
@@ -799,8 +799,7 @@ function onHealEvents(p: player, e: entity):
 			set {_cd} to (20/{_haste})*0.025
 			set {_uuid} to uuid of {_e}
 			if cooldown "Explosive Bubble%{_p}%-%{_uuid}%" is set:
-				remove ("%{_cd}% seconds" parsed as timespan) from cooldown "Explosive Bubble%{_p}%-%{_uuid}%"
-
+				remove ("%{_cd}% seconds" parsed as timespan) from cooldown "Explosive Bubble%{_p}%-%{_uuid}%"		
 
 function selfHealModifiers(p: entity, heal: number) :: number:
 	if {kartaname::%{_p}%} = "Brother Therold":
@@ -1115,6 +1114,28 @@ function OceanicUnison(p: player, target: entity, mastery: number, duration: tim
 		set metadata value "OceanicUnisonDuration%{_p}%" of {_target} to {_duration}
 		set metadata value "OceanicUnison%{_p}%" of {_target} to {_mastery}
 		set {bonusMastery::%{_target}%} to {bonusMastery::%{_target}%} + {_mastery}
+
+function RestorativeDroplets(p: player, entity: player, effectiveness: number, partyMembers: players):
+	loop {_partyMembers::*}:
+		set {_heal} to (0.005 * {_effectiveness}) * (loop-value's max health)
+
+		if {kartaname::%{_p}%} = "Vaporeon":
+			set {_masteryScaling} to 370
+			if string tag "Talents;Row 3" of (custom nbt of {karta::%{_p}%}) = "Overflow":
+				set {_masteryScaling} to {_masteryScaling}/1.2
+			set {_mastery} to 1.1 + (Mastery({_p})/{_masteryScaling})
+			if health of loop-value < (0.5*max health of loop-value):
+				set {_heal} to {_heal}*{_mastery}
+
+		DropletsHeal({_p}, {_entity}, {_heal}, loop-value)
+
+function DropletsHeal(p: player, entity: player, heal: number, partyMember: player):
+	set {_duration} to 4 seconds
+	set {_lore} to "&7When you or your allies deal <#d5ff57> Supereffective%nl%&7damage, conjure &f <#7cafbf>Restorative Droplets&7.%nl% %nl%&7The droplets heal all party members for &f0.5%% &7of%nl%&7their max HP every &f1.0 sec &7for &f3.0 sec&7. One%nl%&7droplet can be created per player every%nl%&f3.0 sec&7, reduced by <#19943e> Haste&7.%nl% %nl%&7Healing is increased by &f200%% &7when &f <#7cafbf>Restorative%nl%<#7cafbf>Droplets &7are formed by <#7cafbf>Vaporeon&7."
+	while {_duration} > 0 seconds:
+		wait 1 second
+		set {_duration} to {_duration} - 1 second
+		Heal({_p}, {_partyMember}, {_heal}, "Restorative Droplets", "<#7cafbf>", {_lore})
 
 function tidalWavesSound(loc: location):
 	play sound "entity.boat.paddle_water" with volume 2 and pitch 0.5 at {_loc}
