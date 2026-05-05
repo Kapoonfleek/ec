@@ -416,8 +416,9 @@ on rightclick:
 
 							if loop-entity is a player:
 								send action bar " " to loop-entity
+								set {_percentMaxHealthHealed} to (health of loop-entity - {_HPBeforeHeal})/(max health of loop-entity)
+								set {_percentMaxHealthHealedTotal} to {_percentMaxHealthHealedTotal} + ({_percentMaxHealthHealed}*100)
 								if string tag "Talents;Row 4" of (custom nbt of {karta::%player%}) = "Oceanic Unison":
-									set {_percentMaxHealthHealed} to (health of loop-entity - {_HPBeforeHeal})/(max health of loop-entity)
 									set {_bonusMastery} to ({_oceanicUnisonMasteryPerStep} * ({_percentMaxHealthHealed}/{_oceanicUnisonHPStep}))
 									OceanicUnison(player, loop-entity, {_bonusMastery}, {_oceanicUnisonDuration})
 
@@ -425,6 +426,16 @@ on rightclick:
 									ExplosiveBubble(player, loop-entity, true)
 
 						clear {_heal}
+
+					if boolean tag "Constellation;Riptide Refresh" of (custom nbt of {karta::%player%}) is set:
+						if {_percentMaxHealthHealedTotal} > 0:
+							if {_percentMaxHealthHealedTotal} > 120:
+								set {_percentMaxHealthHealedTotal} to 120
+							remove ("%{_percentMaxHealthHealedTotal}% seconds" parsed as timespan) from (cooldown "Reversal%player%")
+
+							loop all items in the inventory of player:
+								if boolean tag "Reversal" of (custom nbt of (1 of loop-item)):
+									set the cooldown of loop-item for player to (cooldown "Reversal%player%")
 				else:
 					cancel event
 					if {tekstcd::%player%} = true:
