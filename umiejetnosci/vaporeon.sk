@@ -619,15 +619,16 @@ function Tidewaters(p: player, x: entity, heal: number):
 
 function CircleOfWaterApply(p: player, x: entity, ability: string):
 	if metadata value "CircleOfWater%{_p}%" of {_x} is not set:
-		set metadata value "CircleOfWater%{_p}%" of {_x} to true
-		if {_ability} != "Searage":
+		if {_ability} != "Circle of Water":
+			set metadata value "CircleOfWater%{_p}%" of {_x} to true
 			CircleOfWater({_x}, {_p})
 	else:
 		if {_ability} = "Healing Stream":
 			CircleOfWaterDetonate({_p}, {_x})
 		else:
 			if boolean tag "Constellation;Water of Life" of (custom nbt of {karta::%{_p}%}) is set:
-				CircleOfWaterDetonate({_p}, {_x}, 0.5)
+				if {_ability} != "Circle of Water":
+					CircleOfWaterDetonate({_p}, {_x}, 0.5)
 		
 function CircleOfWaterDetonate(p: player, x: entity, effectiveness: number = 1):
 	set {_versatility} to Versatility({_p})
@@ -675,22 +676,13 @@ function CircleOfWaterDetonate(p: player, x: entity, effectiveness: number = 1):
 	Heal({_p}, {_x}, {_healcircle}, "Circle of Water", "<#7cafbf>", {_lore})
 	play sound "entity.player.splash.high_speed" with volume 3 and pitch 1 at location of {_x}
 	draw 3 of (heart particle) with offset vector(0.6, 0.9, 0.6) at location 0.5 above {_x}
-	if string tag "Talents;Row 4" of (custom nbt of {karta::%{_p}%}) = "Searage":
-		loop LoopEntitiesAroundTarget({_x}, 6, false):
-			set loop-entity's last damage cause to sweep attack
-			set metadata value "LastDamageCause" of loop-entity to "<#7cafbf>Circle of Water"
-			set metadata value "LastDamageCauseLore" of loop-entity to {_lore}
-			set metadata value "Element" of {_p} to "Water"
-			make {_p} damage loop-entity by {_healcircle}
-			draw 15 of (((bubble pop particle) with an extra value of 0.03) with offset vector(0.6, 0.45, 0.6)) at (location above loop-entity)
-
 	
-
 function Heal(p: player, x: entity, heal: number, spell: text, col: text, lore: text, sendMessage: boolean = true):
 	if {_x} is alive:
 		set {_id} to cardId({_p})
-
-		set {_heal} to cardHealBuffs({_p}, {_x}, {_heal}, {_spell})
+		
+		set {_heal} to cardHealModifiers({_p}, {_x}, {_heal}, {_spell})
+		set {_healBeforeOverheal} to {_heal}
 
 		Overhealing({_p}, {_x}, {_heal}, {_spell})
 		if {_heal} > ((max health of {_x}) - (health of {_x})):
@@ -704,8 +696,11 @@ function Heal(p: player, x: entity, heal: number, spell: text, col: text, lore: 
 		HealRefresh({_p}, {_heal})
 		if metadata value "DungeonInstance" of {_p} is set:
 			DungeonHeal({_p}, {_x}, {_heal}, "%{_spell}%")
+
+		onAnyHealEvent({_p}, {_x}, {_spell}, {_heal}, {_healBeforeOverheal})
+
 		if {_heal} > 0.0001:
-			onHealEvents({_p}, {_x})
+			onHealEvents({_p}, {_x}, {_spell}, {_heal})
 			if {_x} is a player:
 				if {_sendMessage} != false:
 					send formatted "%{kartacolor::%{_p}%}%%{_p}% &fhealed you. <tooltip:%{_col}%%{_spell}%%nl%%{_lore}%>(<#baff8c>+%{_heal}% HP&f)" to {_x}
@@ -715,7 +710,7 @@ function Heal(p: player, x: entity, heal: number, spell: text, col: text, lore: 
 			set {healcard::%{kartaname::%{_p}%}%::%{_id}%} to {healcard::%{kartaname::%{_p}%}%::%{_id}%} + {_heal}
 			set {healcard::%{kartaname::%{_p}%}%::%{_id}%::%{_spell}%} to {healcard::%{kartaname::%{_p}%}%::%{_id}%::%{_spell}%} + {_heal}
 
-function cardHealBuffs(p: player, x: entity, heal: number, spell: text) :: number:
+function cardHealModifiers(p: player, x: entity, heal: number, spell: text) :: number:
 	set {_healBeforeModifiers} to {_heal}
 	set {_nbt} to (custom nbt of {karta::%{_p}%})
 
@@ -736,6 +731,9 @@ function cardHealBuffs(p: player, x: entity, heal: number, spell: text) :: numbe
 		else if health of {_x} < (0.5*max health of {_x}):
 			set {_heal} to {_heal}*{_mastery}
 
+		if boolean tag "Constellation;Water of Life" of {_nbt} is set:
+			set {_heal} to {_heal}*1.2
+
 		if boolean tag "Constellation;Deluge" of (custom nbt of {karta::%{_p}%}) is set:
 			if shieldFind({_p}, {_x}, "Explosive Bubble", true) is set:
 				set {_heal} to {_heal}*1.12
@@ -754,27 +752,46 @@ function cardHealBuffs(p: player, x: entity, heal: number, spell: text) :: numbe
 
 				if string tag "Talents;Row 4" of {_nbt} = "Searage":
 					chance of 30%:
-						CircleOfWaterApply({_p}, {_x}, "Searage")
+						set metadata value "SearageReapply%{_p}%" of {_x} to true
 						play sound "ambient.underwater.exit" with volume 2.5 and pitch 2 at location of {_x}
 
-	set {_healModifier} to {_heal}/{_healBeforeModifier}
+	set {_healModifier} to {_heal}/{_healBeforeModifiers}
 
 	healText({_p}, {_x}, {_heal}, {_crit}, {_healModifier})
 
 	return {_heal}
 
-function onHealEvents(p: player, e: entity, spell: string):
+function onHealEvents(p: player, e: entity, spell: string, heal: number): #applies on successful heal
 	if {kartaname::%{_p}%} = "Vaporeon":
 		if string tag "Talents;Row 3" of (custom nbt of {karta::%{_p}%}) = "Current Control":
 			set {_haste} to Haste({_p})
 			set {_cd} to (20/{_haste})*0.025
 			set {_uuid} to uuid of {_e}
 			if cooldown "Explosive Bubble%{_p}%-%{_uuid}%" is set:
+
 				remove ("%{_cd}% seconds" parsed as timespan) from cooldown "Explosive Bubble%{_p}%-%{_uuid}%"
 
+function onAnyHealEvent(p: player, e: entity, spell: string, heal: number, healBeforeOverheal: number): #applies on any heal, even at value 0
+	if {kartaname::%{_p}%} = "Vaporeon":
 		CircleOfWaterApply({_p}, {_e}, {_spell})
 
-function cardShieldBuffs(p: player, x: entity, shield: number) :: number:
+		if {_spell} = "Circle of Water":
+
+			if metadata value "SearageReapply%{_p}%" of {_e} is set:
+				clear metadata value "SearageReapply%{_p}%" of {_e}
+				CircleOfWaterApply({_p}, {_e}, "Searage")
+				play sound "ambient.underwater.exit" with volume 2.5 and pitch 2 at location of {_e}
+
+			if string tag "Talents;Row 4" of (custom nbt of {karta::%{_p}%}) = "Searage":
+				loop LoopEntitiesAroundTarget({_e}, 6, false):
+					set loop-entity's last damage cause to sweep attack
+					set metadata value "LastDamageCause" of loop-entity to "<#7cafbf>Circle of Water"
+					set metadata value "LastDamageCauseLore" of loop-entity to {_lore}
+					set metadata value "Element" of {_p} to "Water"
+					make {_p} damage loop-entity by {_healBeforeOverheal}
+					draw 15 of (((bubble pop particle) with an extra value of 0.03) with offset vector(0.6, 0.45, 0.6)) at (location above loop-entity)
+
+function cardShieldModifiers(p: player, x: entity, shield: number, spell: string) :: number:
 	set {_shieldBeforeModifiers} to {_shield}
 
 	if {kartaname::%{_p}%} = "Vaporeon":
@@ -794,7 +811,7 @@ function cardShieldBuffs(p: player, x: entity, shield: number) :: number:
 		set {_shield} to {_shield}*{_critModifier}
 		set {_crit} to true
 
-	set {_shieldModifier} to {_shield}/{_shieldBeforeModifier}
+	set {_shieldModifier} to {_shield}/{_shieldBeforeModifiers}
 
 	shieldText({_p}, {_x}, {_shield}, {_crit}, {_shieldModifier})
 
@@ -839,6 +856,8 @@ function Shield(p: player, x: entity, shield: number, spell: text, col: text, lo
 			load yaml "plugins/Skript/combat/Shields/%uuid of {_x}%" as "Shields%uuid of {_x}%"
 
 		set {_shieldsActive} to yaml value "ShieldsActive" in "Shields%uuid of {_x}%"
+
+		set {_shield} to cardShieldModifiers({_p}, {_x}, {_shield}, {_spell})
 
 		loop {_shieldsActive} times:
 			if yaml value "Shields.%loop-number%.Caster" in "Shields%uuid of {_x}%" = {_p}:
