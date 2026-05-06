@@ -69,6 +69,16 @@ command /en4:
             load yaml "plugins/Skript/lists/CardList" as "CardList"
             broadcast "loaded"
 
+command /en5:
+    trigger:
+        if yaml "TraitList" is loaded:
+            unload yaml "TraitList"
+            broadcast "unloaded"
+        else:
+            load yaml "plugins/Skript/azeritearmor/TraitList" as "TraitList"
+            load yaml "plugins/Skript/lists/PrimaryStatList" as "PrimaryStatList"
+            broadcast "loaded"
+
 function learnEnchantingRecipe(p: player, recipeName: string):
     set yaml value "Professions.Enchanting.Unlocked Recipes.%{_recipeName}%.Purchased" in "data-%{_p}%" to true
     set {_recipesLearned} to "Statistics.Professions.Recipes Learned"
@@ -456,11 +466,6 @@ on rightclick:
 
         save yaml "data-%{_p}%"
     if player's tool is gold nugget:
-        set {_i} to yaml value "Peridot.Item" in "ItemList"
-        give player {_i}
-
-        set {_i} to yaml value "Aquamarine.Item" in "ItemList"
-        give player {_i}
         if yaml "EnchantingProfessionList" is loaded:
             addEnchantingExp(player, 400, 1)
         stop
@@ -471,21 +476,25 @@ on rightclick:
         #broadcast {_item}
         give {_item2} and {_item3} to player
         stop
-        set string tag "Enchant;Name" of (custom nbt of player's tool) to "Atticus's Wisdom"
-        set int tag "Enchant;Rank" of (custom nbt of player's tool) to 1
-        set int tag "Enchant;Stats;Mastery" of (custom nbt of player's tool) to 4
+        set string tag "Enchant;Name" of ((custom nbt of player's tool)) to "Atticus's Wisdom"
+        set int tag "Enchant;Rank" of ((custom nbt of player's tool)) to 1
+        set int tag "Enchant;Stats;Mastery" of ((custom nbt of player's tool)) to 4
         set lore of player's tool to GearLoreUpdate(player's tool)
         
-        clear string list tag "Runes" of (custom nbt of player's tool)
-        set string tag "Runes;Core Intensity;Card" of (custom nbt of player's tool) to "Ghazan"
-        set double tag "Runes;Core Intensity;Value" of (custom nbt of player's tool) to 1.3
-        set double tag "Runes;Core Intensity;Runic Power" of (custom nbt of player's tool) to 100
-        #set string list tag "Runes" of (custom nbt of player's tool) to "Igneous Flow"
+        clear string list tag "Runes" of ((custom nbt of player's tool))
+        set string tag "Runes;Core Intensity;Card" of ((custom nbt of player's tool)) to "Ghazan"
+        set double tag "Runes;Core Intensity;Value" of ((custom nbt of player's tool)) to 1.3
+        set double tag "Runes;Core Intensity;Runic Power" of ((custom nbt of player's tool)) to 100
+        #set string list tag "Runes" of ((custom nbt of player's tool)) to "Igneous Flow"
         stop
         #give player enchanted book named "<#aa56db>Enchanting Scroll - Atticus's Wisdom" with lore ("<#f536cb>Gear Enchant%nl%&7Imbues a gear slot with the &fAtticus's Wisdom%nl%&f✨ Enchant&7, increasing <#f53b98> Mastery &7by &f4&7.%nl% %nl%&6&o'Atticus forgot more about magic than most%nl%&6&owill ever learn.'%nl% %nl%&7Quality: <#6b492e>★"
         set {_flavourText::*} to "&6&o'The weight of the world, held in your palm.'", "&6&o'Chaos, contained within a single sigil.'", "&6&o'An ancient echo trapped in etched stone.'" and "&6&o'The deeper the carving, the louder the magic.'"
         set {_flavourText} to a random element of {_flavourText::*} 
         give player (burn pottery sherd named "<#b03228>Rune: &kGhazan") with lore ("<#9a38ab>🌀 Gear Rune%nl%&7Used by &f✨ Enchanters &7to infuse Gear with runic%nl%&7power. Can be engraved onto any Gear to provide%nl%&7a minor boost to an Ability for its matching Card.%nl%&7The potency of each &fRune &7is determined randomly.%nl% %nl%&8» &7Card: <#b03228>Ghazan%nl%&8» &7Effect: &f1.3%%  <#b03228>Lava Burst &7damage%nl% %nl%  <#9a38ab>* Runic Power: &f100%%%nl% %nl%%{_flavourText}%")
+    if player's tool is carrot named "trota":
+        set {_flavourText::*} to "&6&o'The weight of the world, held in your palm.'", "&6&o'Chaos, contained within a single sigil.'", "&6&o'An ancient echo trapped in etched stone.'" and "&6&o'The deeper the carving, the louder the magic.'"
+        set {_flavourText} to a random element of {_flavourText::*} 
+        give player (burn pottery sherd named "<#b03228>Rune: Core Intensity") with lore ("<#9a38ab>🌀 Gear Rune%nl%&7Used by &f✨ Enchanters &7to infuse <#9a38ab>Gear &7with runic%nl%&7power. Can be engraved onto any <#9a38ab>Gear &7to provide%nl%&7a minor boost to an <#9a38ab>Ability &7for its matching <#9a38ab>Card&7.%nl% %nl%&7The potency of each <#9a38ab>🌀 Rune &7is determined randomly.%nl% %nl%&8» &7Card: &f <#b03228>Ghazan%nl%&8» &7Effect: &f1.3%%  <#b03228>Lava Burst &7damage%nl% %nl%&8» <#9a38ab>🌀 Runic Power: &f100%%%nl% %nl%%{_flavourText}%")
         
 
 on inventory click:
@@ -596,9 +605,10 @@ on inventory click:
             set (metadata tag "EnchantingMenu-Clicked Item-Display" of player) to event-slot
             sliderShopDialog(player, "Craft")
             play sound "item.book.page_turn" with volume 0.8 and pitch 1.81 at player for player
+
     else if event-inventory = (metadata tag "EnchantingTable-CraftItem" of player):
         cancel event
-        if boolean tag "CraftItem" of (custom nbt of event-slot):
+        if boolean tag "ItemCraftable" of (custom nbt of event-slot):
             set {_items::*} to nbt tags of (compound tag "Materials" of (custom nbt of event-slot))
             set {_craftedItem} to metadata tag "EnchantingMenu-Clicked Item" of player
             set {_itemAmount} to int tag "ItemAmount" of (custom nbt of event-slot)
@@ -607,7 +617,7 @@ on inventory click:
                 set {_materialItem} to yaml value "%loop-value%.Item" in "ItemList"
                 remove ({_materialAmount} of {_materialItem}) from the inventory of player
             
-            clear boolean tag "CraftItem" of (custom nbt of {_craftedItem})
+            clear boolean tag "ItemCraftable" of (custom nbt of {_craftedItem})
             clear compound tag "Materials" of (custom nbt of {_craftedItem})
 
             giveItem(player, ({_itemAmount} of {_craftedItem}))
@@ -628,10 +638,21 @@ on inventory click:
 
             send mini message from "<gradient:#9921de:#d35de8:#f536cb:#bf8cfa>Enchanting</gradient> <#555555>>> <white>%{_craftMessage}% <gray>(<#bf8cfa>+%{_expAmount}% EXP<gray>)" to player
             play sound "minecraft:block.enchantment_table.use" with volume 2 and pitch 1.8 at location of player
+            
+            set {_craftingExp} to "Statistics.Experience.Crafting"
+            addToYaml({_expAmount}, "data-%player%", "%{_craftingExp}%.Professions.Enchanting.Total")
+            addToYaml({_expAmount}, "data-%player%", "%{_craftingExp}%.Professions.Enchanting.%{_resipe}%")
 
-            #ADD STATISTICS HERE, FIX DOUBLE FIRST ITEM (CARD DUST) ON +MORE ITEM
+            set {_craftingActions} to "Statistics.Crafting"
+            addToYaml({_itemAmount}, "data-%player%", "%{_craftingActions}%.Total")
+            addToYaml({_itemAmount}, "data-%player%", "%{_craftingActions}%.Professions.Enchanting.Total")
+            addToYaml({_itemAmount}, "data-%player%", "%{_craftingActions}%.Professions.Enchanting.%{_recipe}%")
+
+            save yaml "data-%player%"
 
             onCraft(player)
+        else if boolean tag "CantCraftItem" of (custom nbt of event-slot):
+            play sound "entity.villager.no" with volume 1 and pitch 1 at player for player
 
 function onCraft(p: player):
     loop 6 times:
@@ -784,6 +805,7 @@ function sliderShopDialog(p: player, type: string):
                                         if {_amountReq} > 0:
                                             add "&7- %(name of {_item})% &7(&f%{_amountReq}%x&7)" to lore of (slot 44 of {_menu})
                                         add 1 to {_startingSlotMaterial}
+                                        set {_amountReq} to 0 
                                     
                                     else:
                                         add "&7- %(name of {_item})% &7(&f%{_amountReq}%x&7)" to lore of (slot 44 of {_menu})
@@ -795,13 +817,14 @@ function sliderShopDialog(p: player, type: string):
                             
                             if {_itemCondition} = (size of {_items::*}):
                                 set (slot 49 of {_menu}) to (lime stained glass pane named "&aCraft Item") with lore "&7Click here to craft the item."
-                                set boolean tag "CraftItem" of (custom nbt of (slot 49 of {_menu})) to true
+                                set boolean tag "ItemCraftable" of (custom nbt of (slot 49 of {_menu})) to true
                                 set int tag "ItemAmount" of (custom nbt of (slot 49 of {_menu})) to {_amount}
                                 loop {_items::*}:
                                     set {_materialAmount} to int tag "Materials;%loop-value%" of (custom nbt of (slot 4 of {_menu}))
                                     set int tag "Materials;%loop-value%" of (custom nbt of (slot 49 of {_menu})) to {_materialAmount}
                             else:
                                 set (slot 49 of {_menu}) to (red stained glass pane named "&cCraft Item") with lore "&7You do not have the required amount%nl%&7of materials to craft this item."
+                                set boolean tag "CantCraftItem" of (custom nbt of (slot 49 of {_menu})) to true
                                 clear metadata tag "EnchantingMenu-Clicked Item" of {_p}
 
                             clear metadata tag "EnchantingMenu-Clicked Item-Display" of {_p}
@@ -891,7 +914,7 @@ function disenchantItem(p: player, item: item):
         set {_expModifier} to getEnchantingExpIncrease({_p})
 
         set {_playerExp} to {_dropAmount}
-        set {_expAmount} to addPlayerXP({_p}, {_playerExp}, {_expModifier}, "Disenchanting")
+        set {_expAmount} to addPlayerXP({_p}, {_playerExp}, {_expModifier}, "Professions.Enchanting.Disenchanting")
         addEnchantingExp({_p}, {_expAmount}, 1)
 
         set {_cardDust} to yaml value "Card Dust.Item" in "ItemList"
@@ -927,7 +950,7 @@ function disenchantItem(p: player, item: item):
         set {_rarityModifier} to yaml value "Disenchanting.Gear.%{_rarity}%.Modifier" in "EnchantingProfessionList"
 
         set {_playerExp} to {_itemLevel}*{_rarityModifier}
-        set {_expAmount} to addPlayerXP({_p}, {_playerExp}, {_expModifier}, "Disenchanting")
+        set {_expAmount} to addPlayerXP({_p}, {_playerExp}, {_expModifier}, "Professions.Enchanting.Disenchanting")
         addEnchantingExp({_p}, {_expAmount}, 1)
 
         set {_disenchantItem} to yaml value "%{_disenchantItemType}%.Item" in "ItemList"
@@ -966,8 +989,6 @@ function disenchantItem(p: player, item: item):
 
     addToYaml({_expAmount}, "data-%{_p}%", "Statistics.Experience.Total")
     addToYaml({_expAmount}, "data-%{_p}%", "Statistics.Experience.Professions.Enchanting.Total")
-
-    addToYaml({_expAmount}, "data-%{_p}%", "%{_disenchantingExp}%.Total")
     addToYaml({_itemAmount}, "data-%{_p}%", "%{_disenchantedItems}%.Total")
 
     playDisenchantSound({_p})
@@ -1135,6 +1156,7 @@ function learnEnchanting(p: player):
         add "Enchanting" to (yaml list "Professions.Learned Professions" in "data-%{_p}%")
         set yaml value "Professions.Enchanting.Exp" in "data-%{_p}%" to 0
         set yaml value "Professions.Enchanting.Level" in "data-%{_p}%" to 0
+        set (yaml list "Professions.Enchanting.Disenchant Knowledge" in "data-%{_p}%") to ("Common Cards", "Common Gear" and "Uncommon Gear")
         save yaml "data-%{_p}%"
         set {_string} to mini message from "<gradient:#9921de:#d35de8:#f536cb:#bf8cfa>Enchanting</gradient> <#555555>>> <white>You have learned the <white>✨ Enchanting profession!"
         send {_string} to {_p}
