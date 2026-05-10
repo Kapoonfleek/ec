@@ -91,7 +91,7 @@ on rightclick:
 			cancel event
 			if {kartaname::%player%} = "Ghazan":
 				if CanUseAbility(player) != false:
-					set {_id} to line 19 of lore of {karta::%player%}
+					set {_id} to cardId(player)
 					set {_pospiech} to Haste(player)
 					set {_cd} to "%300/{_pospiech}% seconds" parsed as timespan
 					set {_cdd} to {_cd}
@@ -869,7 +869,7 @@ function LavaBurst(p: player, x: entity, multiplier: number, ability: string, re
 	else:
 		set {_maxStacks} to 25
 	BonusLavaBurst({_p}, {_x}, {_maxStacks})
-
+	
 	set {_LTStacks} to metadata value "Lava Technique Stacks%{_p}%" of {_x}
 
 	set {_maxMasteryDmg} to ((1 + ({_mistrzostwo}/100))^{_LTmaxStacks})*100
@@ -979,6 +979,10 @@ function LavaBurst(p: player, x: entity, multiplier: number, ability: string, re
 		if {_replicated} is not true:
 			chance of 40%:
 				ReplicatedLavaBurst({_p}, {_x}, 0.2, {_ability})
+	
+	if string tag "Talents;Row 4" of (custom nbt of {karta::%{_p}%}) = "Eruption":
+		if metadata value "Lava Technique Stacks%{_p}%" of {_x} = {_maxStacks}:
+			Eruption({_p}, {_x})
 
 	if metadata value "PyroclasticStormActive" of {_p}:
 		if metadata value "PyroclasticStorm%uuid of {_x}%" of {_p} is not set:
@@ -1046,41 +1050,28 @@ function WildfireFall(p: player, id: integer):
 	clear metadata value "Rain of Lava-Camera" of {_p}
 
 function MasterHeritage(p: player, target: entity, damageLava: number):
-	set {_pospiech} to Haste({_p})/1.5
-	set {_ticks} to rounded 4*({_pospiech})
-	if metadata value "Master Heritage-%{_p}%" of {_target} is not set:
-		set metadata value "Master Heritage-%{_p}%" of {_target} to {_ticks}
-		set metadata value "Master Heritage Total Damage-%{_p}%" of {_target} to {_damageLava}
-		wait 1 tick
-		while metadata value "Master Heritage-%{_p}%" of {_target} > 0:
-			if {_target} is alive:
-				set {_crit} to CriticalHit({_p})
-				set {_duration} to 14
-				set {_damageTotal} to (metadata value "Master Heritage Total Damage-%{_p}%" of {_target})
-				set {_damage} to {_damageTotal}*(0.1/{_ticks})
+	set {_baseDuration} to 4
+	set {_baseTicks} to 4
+	set {_haste} to Haste({_p})
 
-				set {_damageLeft} to metadata value "Master Heritage Total Damage-%{_p}%" of {_target}
-				remove {_damage} from {_damageLeft}
-				set metadata value "Master Heritage Total Damage-%{_p}%" of {_target} to {_damageLeft}
+	set {_lore} to "&f <#b03228>Lava Burst &7burns your target for &f10%%%nl%&7additional damage over &f4 sec&7."
+	set {_modifier} to 0.1
 
-				set {_target}'s last damage cause to sweep attack
-				set metadata value "Element" of {_p} to "Lava"
-				set metadata value "LastDamageCause" of {_target} to "<##b03228>Lava Languish"
-				set metadata value "LastDamageCauseLore" of {_target} to {_lore}
-				make {_p} damage {_target} by {_damage}
-				set {_ticksTotal} to metadata value "Master Heritage-%{_p}%" of {_target}
-				remove 1 from {_ticksTotal}
-				set metadata value "Master Heritage-%{_p}%" of {_target} to {_ticksTotal}
-				wait 1 second
-			else:
-				clear metadata value "Master Heritage-%{_p}%" of {_target}
-				clear metadata value "Master Heritage Total Damage-%{_p}%" of {_target}
-				stop loop
-		clear metadata value "Master Heritage-%{_p}%" of {_target}
-		clear metadata value "Master Heritage Total Damage-%{_p}%" of {_target}
-	else:
-		set metadata value "Master Heritage-%{_p}%" of {_target} to {_ticks}
-		set metadata value "Master Heritage Total Damage-%{_p}%" of {_target} to (metadata value "Master Heritage Total Damage-%{_p}%" of {_target} + {_damageLava})
+	set {_ticks} to floor({_baseTicks} * {_haste})
+	set {_interval} to {_baseDuration} / {_ticks}
+	set {_tickDamage} to ({_damageLava} * 0.1) / {_baseTicks}
+
+	loop {_ticks} times:
+		set {_interval} to {_baseDuration} / {_ticks}
+		wait "%{_interval}% seconds" parsed as timespan
+
+		set {_target}'s last damage cause to sweep attack
+		set metadata value "Element" of {_p} to "Lava"
+		set metadata value "LastDamageCause" of {_target} to "<#b03228>Lava Languish"
+		set metadata value "LastDamageCauseLore" of {_target} to {_lore}
+		make {_p} damage {_target} by {_tickDamage}
+
+		stop if {_target} is not alive
 
 function MasterHeritageLavaSpread(p: player, target: entity):
 	if metadata value "Lava Wave" of {_p} is not true:
@@ -1145,24 +1136,37 @@ function IgneousHail(p: player, stat: number):
 		set metadata value "IgneousHail" of {_p} to {_stat}
 		add {_stat} to {primarystat::%{_p}%}
 
-function GhazanCritDamage(p: player) :: number:
-	set {_critdamage} to 2
-	
-
-	#MOLTEN BLAST
-	#Readd this portion when the Heart of Earthcraft is readded
-	if {_heart} is true:
-		loop {_loreheart::*}:
-			loop-value contains "Molten Blast":
-				add ((1*{trait::Ghazan::Molten Blast::%{_p}%})/100) to {_bonuscritdmg}
-
-	return {_critdamage}
-
 function Eruption(p: player, target: entity):
-	set {_entities::*} to LoopEntitiesAroundTarget({_target}, 100, false)
+	set {_entities::*} to LoopEntitiesAroundTarget({_target}, 5, false)
+
+	set {_mastery} to 4 + (Mastery({_p})/26)
+	set {_LTStacks} to metadata value "Lava Technique Stacks%{_p}%" of {_target}
+	set {_modifier} to 0.2
+
+	set {_damage} to 0.3 + ({damage::%{_p}%}/300) + (Versatility({_p})/900) + ({primarystat::%{_p}%}/150)
+	set {_damage} to {_damage}*(1+({_mastery}*{_LTStacks}/100))
+	set {_lore} to "&7When &f <#b03228>Lava Burst &7hits a target at maximum%nl%&f <#b03228>Mastery: Lava Technique &7stacks, it causes%nl%&7an &f <#d14d43>Eruption&7.%nl% %nl%&f <#d14d43>Eruption%nl%&7Deals &f%{_damage}% <#ff3014>Lava &7damage to a target and splashes%nl%&7for &f20%% &7of the damage to nearby targets.%nl% %nl%&7This damage scales with your <#f53b98> Mastery &7bonus."
+
+	set {_crit} to CriticalHit({_p})
+	set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage})
+
+	play sound "block.lava.pop" with volume 3 and pitch 1 at (location of {_target})
+
+	set {_target}'s last damage cause to sweep attack
+	set metadata value "Element" of {_p} to "Lava"
+	set metadata value "LastDamageCause" of {_target} to "<#b03228>Eruption"
+	set metadata value "LastDamageCauseLore" of {_target} to {_lore}
+	make {_p} damage {_target} by {_damage}
+	
 	loop {_entities::*}:
-		if metadata value "MoltenLava%{_p}%" of block under loop-value is set:
-			broadcast "A"
+		set {_crit} to CriticalHit({_p})
+		set {_damage} to Crit({_p}, loop-value, {_crit}, {_damage})
+
+		set loop-value's last damage cause to sweep attack
+		set metadata value "Element" of {_p} to "Lava"
+		set metadata value "LastDamageCause" of loop-value to "<#b03228>Eruption"
+		set metadata value "LastDamageCauseLore" of loop-value to {_lore}
+		make {_p} damage loop-value by {_damage}*{_modifier}
 
 function PyroclasticStorm(p: player, target: entity):
 	set {_modifier} to 0.15
