@@ -1,11 +1,14 @@
 import:
     java.lang.Double
+    java.lang.System
+
+
 
 on rightclick:
     if metadata value "Hypercognition" of player is set:
         hypercognitionClick(player, "right")
         stop
-    if boolean tag "Future Sight" of custom nbt of player's tool is set:
+    if boolean tag "Future Sight" of (custom nbt of player's tool) is set:
         if {kartaname::%player%} = "Espeon":
             if CanUseAbility(player) != false:
                 set {_target} to Target(player, 100, false)
@@ -62,7 +65,7 @@ on rightclick:
                         stop
                             
 
-    else if boolean tag "Mind Transfer" of custom nbt of player's tool is set:
+    else if boolean tag "Mind Transfer" of (custom nbt of player's tool) is set:
         if {kartaname::%player%} = "Espeon":
             if CanUseAbility(player) != false:
                 if cooldown "Mind Transfer%player%" is finished:
@@ -82,10 +85,18 @@ on rightclick:
                         set {_FS} to "Future Sight%player%"
                         if cooldown "MindTransferEffect%player%" is finished:
                             create cooldown "MindTransferEffect%player%" for {_casttime}
-                            loop all entities in radius {_radius} around the player where [metadata value {_FS} of input is set]:
-                                add 1 to {_targets}
-                                add metadata value "Future Sight%player%" of loop-entity to {_totalStacks}
-                                mindTransferEffect(player, loop-entity, {_casttime})
+                            set {_world} to world of player
+
+                            loop {ECMobs::%{_world}%::*}:
+                                set {_entity} to loop-value parsed as entity
+                                if distance between {_entity} and player < {_radius}:
+                                    set {_entityLoc} to location of {_entity}
+
+                                    if metadata value {_FS} of {_entity} is set:
+                                        if chunk at {_entityLoc} is loaded:
+                                            set {_targets} to {_targets} + 1
+                                            set {_totalStacks} to ({_totalStacks} + metadata value "Future Sight%player%" of {_entity})
+                                            mindTransferEffect(player, {_entity}, {_casttime})
 
                             if {_targets} > 0:
                                 set {_targets} to 0
@@ -112,8 +123,14 @@ on rightclick:
                                             set {_cst} to "%{_casttime}%"
                                             send action bar "Casting... %{_cst}% |  FS: %{_totalStacks}%" to player
 
-                                            loop all entities in radius {_radius} around the player where [metadata value {_FS} of input is set]:
-                                                add 1 to {_tr}
+                                            loop {ECMobs::%{_world}%::*}:
+                                                set {_entity} to loop-value parsed as entity
+                                                if distance between {_entity} and player < {_radius}:
+                                                    set {_entityLoc} to location of {_entity}
+
+                                                    if metadata value {_FS} of {_entity} is set:
+                                                        set {_tr} to {_tr} + 1
+
                                             stop loop if {_tr} is not set
                                             clear {_tr}
                                             wait 0.1 seconds
@@ -136,12 +153,17 @@ on rightclick:
                                 AbilityUse(player, "Mind Transfer")
                                 play sound "skill.beast_master.cobra_shot" with volume 3 and pitch 1 on player
 
-                                loop all entities in radius {_radius} around the player where [metadata value {_FS} of input is set]:
-                                    add 1 to {_targets}
-                                    set {_stacks} to metadata value {_FS} of loop-value
-                                    add {_stacks} to {_addTotalStacks}
-                                    clearFutureSight(player, loop-value)
-                                    set {_lastEntity} to loop-value
+                                loop {ECMobs::%{_world}%::*}:
+                                set {_entity} to loop-value parsed as entity
+                                if distance between {_entity} and player < {_radius}:
+                                    set {_entityLoc} to location of {_entity}
+
+                                    if metadata value {_FS} of {_entity} is set:
+                                        set {_targets} to {_targets} + 1
+                                        set {_stacks} to metadata value {_FS} of {_entity}
+                                        add {_stacks} to {_addTotalStacks}
+                                        clearFutureSight(player, {_entity})
+                                        set {_lastEntity} to {_entity}
 
 
                                 if {_targets} > 0:
@@ -152,7 +174,7 @@ on rightclick:
                                         set metadata value "LastDamageCause" of player to "<##d48bc3>Future Sight"
                                         set metadata value "LastDamageCauseLore" of player to {_lore}
                                         set metadata value "IgnoreModifiers" of player to true
-                                        make player damage player by (player's max health*2)
+                                        make player damage player by (player's max health)
                                         send " %player% became overwhelmed by their mental power." to all players
                                     else:
                                         combatInitiate(player, {_lastEntity})
@@ -197,7 +219,7 @@ on rightclick:
                         set {_cdd} to cooldown "Mind Transfer%player%"
                         send "<##d48bc3>You must wait &f%{_cdd}% <##d48bc3>to use this ability." to player
                     stop
-    else if boolean tag "Time Warp" of custom nbt of player's tool is set:
+    else if boolean tag "Time Warp" of (custom nbt of player's tool) is set:
         if {kartaname::%player%} = "Espeon":
             if CanUseAbility(player) != false:
                 if metadata value "casting" of player is not set:
@@ -331,9 +353,10 @@ function futureSightEffect(p: player, target: entity, dur: timespan):
         if {_count} is divisible by 3:
             draw 15 of reverse_portal at location 3.5 above {_e} with offset vector(5/{_count}, 1.5, 5/{_count}) with extra 0.03 with force
         set vector length of {_vec} to {_count} * ({_dist}/({_seconds}*20))
+        set yaw of {_locStar} to {_y}
+        set pitch of {_locStar} to {_y}
         teleport {_e} to {_locStar} ~ {_vec}
 
-        add nbt from "{Rotation:[%{_y}%.0f,%{_y}%.0f]}" to nbt of {_e}
         draw shape {_shape} at {_locStar} ~ {_vec}
         set {_h} to location 0.3 below {_locStar}
         set {_rad} to Double.valueOf(1/{_seconds})
@@ -380,9 +403,16 @@ function futureSightSkill(p: player, target: entity, dur: timespan, addAmount: n
         set {_intellectGain} to 0.5 + {mastery::%{_p}%}/40
         set {_hasteGain} to 1.5 + {mastery::%{_p}%}/16
 
-        loop all entities where [metadata value {_FS} of input is set]:
-            add 1 to {_targets}
-            add metadata value "Future Sight%{_p}%" of loop-entity to {_totalStacks}
+        set {_world} to world of {_p}
+
+        loop {ECMobs::%{_world}%::*}:
+            set {_entity} to loop-value parsed as entity
+            set {_entityLoc} to location of {_entity}
+
+            if metadata value {_FS} of {_entity} is set:
+                if chunk at {_entityLoc} is loaded:
+                    set {_targets} to {_targets} + 1
+                    add metadata value "Future Sight%{_p}%" of {_entity} to {_totalStacks}
         
         send action bar "&f FS: %{_totalStacks}%" to {_p}
 
@@ -431,7 +461,7 @@ function futureSightSkill(p: player, target: entity, dur: timespan, addAmount: n
 
             set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage})
 
-            make {_p} damage {_target} by {_damage}*2
+            make {_p} damage {_target} by {_damage}
 
         if {_target} = {_p}:
             clear metadata value "Mind Transfer" of {_p}
@@ -439,9 +469,16 @@ function futureSightSkill(p: player, target: entity, dur: timespan, addAmount: n
         if {_addStack} = true:
             add {_addAmount} to metadata value "Future Sight%{_p}%" of {_target}
     
-    loop all entities where [metadata value {_FS} of input is set]:
-        add 1 to {_targets}
-        add metadata value "Future Sight%{_p}%" of loop-entity to {_totalStacks}
+     set {_world} to world of {_p}
+
+    loop {ECMobs::%{_world}%::*}:
+        set {_entity} to loop-value parsed as entity
+        set {_entityLoc} to location of {_entity}
+
+        if metadata value {_FS} of {_entity} is set:
+            if chunk at {_entityLoc} is loaded:
+                set {_targets} to {_targets} + 1
+                add metadata value "Future Sight%{_p}%" of {_entity} to {_totalStacks}
 
     if {_targets} is not set:
         clear metadata value "EspeonBonusIntellect" of {_p}
@@ -658,9 +695,10 @@ function mindTransferEffect(p: player, target: entity, dur: timespan):
         set {_dist} to distance between {_locStar} and {_targetLoc}-1.5
 
         set vector length of {_vec} to {_count} * ({_dist}/({_seconds}*20))
+        set yaw of {_locStar} to {_y}
+        set pitch of {_locStar} to {_y}
         teleport {_e} to {_locStar} ~ {_vec}
 
-        add nbt from "{Rotation:[%{_y}%.0f,%{_y}%.0f]}" to nbt of {_e}
         draw shape {_shape} at {_locStar} ~ {_vec}
         set {_h} to location 0.3 below {_locStar}
         set {_rad} to Double.valueOf(1/{_seconds})
@@ -819,8 +857,9 @@ function FutureSightEspeonEffect(p: player, target: entity, e: entity):
             draw 1 of witch particle at {_loc}
             draw 1 of portal particle at {_e}
         set vector length of {_vec} to {_count} * {_moonSpeed}
+        set yaw of {_locMoon} to {_y}
+        set pitch of {_locMoon} to {_y}
         teleport {_e} to {_locMoon} ~ {_vec}
-        add nbt from "{Rotation:[%{_y}%.0f,%{_y}%.0f]}" to nbt of {_e}
         stop loop if distance between {_e} and {_target} < 1
         if metadata value "FutureSightStacks" of {_target} is not set:
             kill {_e}

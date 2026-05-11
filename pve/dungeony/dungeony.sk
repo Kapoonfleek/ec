@@ -3,6 +3,9 @@ import:
     com.earth2me.essentials.UserData
     org.bukkit.Bukkit
     java.io.File
+    java.lang.System
+
+
 #Affixes:
     #Level 2:
         #Fortified: Non-boss enemies have 20% more health and inflict up to 30% increased damage.
@@ -22,8 +25,8 @@ on rightclick on reinforced deepslate:
     if {KeystoneHolderID::%location of clicked block%} is set:
         if metadata value "DungeonInstance" of player is not set:
             if metadata value "DungeonInProgress" of clicked block is not set:
-                if boolean tag "Keystone" of custom nbt of player's tool is set:
-                    if string tag "Soulbound" of custom nbt of player's tool = player's name:
+                if boolean tag "Keystone" of (custom nbt of player's tool) is set:
+                    if string tag "Soulbound" of (custom nbt of player's tool) = player's name:
                         if player's tool = {KeystoneItem::%player%}:
                             set {_KeystoneHolderSpawnLoc} to yaml value "KeystoneHolder" in "SOSspawnlocations"
                             set metadata value "KeystoneHolderLoc" of player to {_KeystoneHolderSpawnLoc} #//Spawn location
@@ -53,9 +56,9 @@ on rightclick on reinforced deepslate:
                             play sound "block.glass.break" with volume 2 and pitch 0 to player
                     else:
                         if {language::%player%} = "English":
-                            send "&c&oThis key is Soulbound to %string tag "Soulbound" of custom nbt of player's tool%." to player
+                            send "&c&oThis key is Soulbound to %string tag "Soulbound" of (custom nbt of player's tool)%." to player
                         else:
-                            send "&c&oTen klucz należy do %string tag "Soulbound" of custom nbt of player's tool%." to player
+                            send "&c&oTen klucz należy do %string tag "Soulbound" of (custom nbt of player's tool)%." to player
                         play sound "block.glass.break" with volume 2 and pitch 0 to player
                 else:
                     if {language::%player%} = "English":
@@ -89,9 +92,9 @@ on inventory click:
         if index of event-slot is 40:
             if event-slot is black stained glass pane:
                 loop all items in the player's inventory:
-                    set {_tag} to boolean tag "Keystone" of custom nbt of loop-item
+                    set {_tag} to boolean tag "Keystone" of (custom nbt of loop-item)
                     if {_tag} is set:
-                        if string tag "Soulbound" of custom nbt of loop-item = player's name:
+                        if string tag "Soulbound" of (custom nbt of loop-item) = player's name:
                             set {_item} to loop-item
                             #set {_lore::*} to lore of {_item}
                             #set {_num} to 1
@@ -1445,6 +1448,8 @@ function Explosive(e: entity, instance: number):
     play sound "item.flintandsteel.use" with volume 3 and pitch 1 at {_block}
     ExplosiveOrb({_explosiveOrb}, {_instance})
 
+    onECMobSpawn(last spawned skeleton)
+
 function ExplosiveOrb(explosiveOrb: entity, instance: number):
     set {_explosiveOrbStacks} to metadata value "ExplosiveOrbStacks" of {_explosiveOrb}
     while {_explosiveOrbStacks} < 5:
@@ -1609,6 +1614,8 @@ function DungeonMobAssignment(e: entity, b: boolean, lvl: number, percent: numbe
         set boolean tag "ECBoss" of custom nbt of {_e} to true
         set {_id} to random 5 char string from charset `0-9` `a-z`  
         set string tag "ECBossBossBar" of custom nbt of {_e} to {_id}
+
+    onECMobSpawn({_e})
 #Zrobić w worldguardzie zeby dodawalo permisje na wejscie na region dla graczy w dungeonie, reszta nei moze wejsc
 #Keystone with lore Dungeon Level 2 and Place within
 #Scoreboard DPS, bosses defeated, time elapsed time left, dungeon name and level
@@ -2000,10 +2007,6 @@ function MobHealthBar(e: entity):
 on death:
     if victim is not a player:
         if boolean tag "ECMob" of custom nbt of victim is set:
-            if string tag "ECTextAbove" of custom nbt of victim is set:
-                kill (string tag "ECTextAbove" of custom nbt of victim parsed as entity)
-                if (string tag "ECTextAboveLevel" of custom nbt of victim) is set:
-                    kill (string tag "ECTextAboveLevel" of custom nbt of victim parsed as entity)
             if boolean tag "ECDungeonMob" of custom nbt of victim is set:
                 clear {threat::%uuid of victim%::%uuid of attacker%}
                 clear metadata value "KeystoneId" of victim

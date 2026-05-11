@@ -190,6 +190,7 @@ function SOSSpawnGosha(loc: location, keystoneId: string, partySize: integer, in
     disguise {_x} as saved disguise "Gosha"
     DungeonMobAssignment({_x}, true, 70, 0)
     set boolean tag "ECMob" of custom nbt of {_x} to true
+    onECMobSpawn({_x})
     set {_potion} to potion effect of speed of tier 1.9 without particles for 24 hours
     add {_potion} to potion effects of {_x}
     set metadata value "ECBossBarColor" of {_x} to red
@@ -234,6 +235,7 @@ function SOSSpawnDreamcatcher(loc: location, keystoneId: string, partySize: inte
     set the name of {_x} to "Dreamcatcher"
     DungeonMobAssignment({_x}, true, 70, 0)
     set boolean tag "ECMob" of custom nbt of {_x} to true
+    onECMobSpawn({_x})
     set metadata value "ECBossBarColor" of {_x} to white
     set metadata value "ECMobSpawnLoc" of {_x} to {_loc}
     set {_loc} to location of last spawned ghast
@@ -360,7 +362,7 @@ function Fireball(e: entity):
     set {_instance} to int tag "ECDungeonInstance" of custom nbt of {_e}
     while {_e} is alive:
         if metadata value "ECPulled" of {_e} is set:
-            if {stun::%{_e}%} is not true:
+            if CanUseAbilityMob({_e}) != false:
                 loop 3 times:
                     set {_target} to a random element of {dungeonInstance%{_instance}%::*}
                     play sound "entity.blaze.shoot" with volume 3 and pitch 2 at {_e}
@@ -389,7 +391,7 @@ function Fireball(e: entity):
 function FireballStorm(e: entity):
     wait 5 seconds
     while {_e} is alive:
-        if {stun::%{_e}%} is not true:
+        if CanUseAbilityMob({_e}) != false:
             set {_instance} to int tag "ECDungeonInstance" of custom nbt of {_e}
             if metadata value  "ECPulled" of {_e} is set:
                 set {_x} to block 10 above {_e}
@@ -410,7 +412,7 @@ function FireballStorm(e: entity):
 
 function DestructionArrow(e: entity):
     while {_e} is alive:
-        if {stun::%{_e}%} is not true:
+        if CanUseAbilityMob({_e}) != false:
             set {_instance} to int tag "ECDungeonInstance" of custom nbt of {_e}
             set {_target} to a random element of {dungeonInstance%{_instance}%::*}
             loop 3 times:
@@ -475,15 +477,15 @@ function RandomAbility(e: entity):
                     set {_random} to a random number between 1 and 1.5
                     create cooldown "Shadowy Apparition Sound-%{_e}%" for ("%{_random}% seconds" parsed as timespan)
         else if {_randomAbility} = "Inferno":
-            set {_lore} to "&8Umiejętność%nl%&fInstant cast%nl%&7Cooldown: &fbrak%nl%&7Użycie: &fPPM&7/&fSHIFT%nl%<##e53311>Więzi przeciwnika podpalonego Miotaczem Płomieni%nl%<##e53311>w ognistym więzieniu, ogłuszając go na &f%{_stuntekst}% sekund%nl%<##e53311>i zadajac &f%{_dmg}% <##e53311>obrażeń <##ff4d00>Ognia<##e53311>.%nl% %nl%<##e53311>Kliknięcie Shiftem zdetonuje więzienie,%nl%<##e53311>zadając &f%{_explotekst}% <##e53311>damage <##ff4d00>Ognia <##e53311>i podrzucając wroga do góry."
-            set {_loreEN} to "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &fnone%nl%&7Use: &fRMB&7/&fSHIFT%nl%<##e53311>Imprisons the target affected by Flamethrower%nl%<##e53311>in a fiery prison, stunning them for &f%{_stun}%%nl%<##e53311>and inflicting &f%{_dmg}% <##ff4d00>Fire <##e53311>damage.%nl% %nl%<##e53311>Pressing Shift will detonate the prison,%nl%<##e53311>dealing &f%{_explotekst}% <##ff4d00>Fire <##e53311>damage and tossing the%nl%<##e53311>enemy into the air."
+            set {_lore} to "&8Umiejętność%nl%&fInstant cast%nl%&7Cooldown: &fbrak%nl%&7Użycie: &fPPM&7/&fSHIFT%nl%<##fa4420>Więzi przeciwnika podpalonego Miotaczem Płomieni%nl%<##fa4420>w ognistym więzieniu, ogłuszając go na &f%{_stuntekst}% sekund%nl%<##fa4420>i zadajac &f%{_dmg}% <##fa4420>obrażeń <##ff4d00>Ognia<##fa4420>.%nl% %nl%<##fa4420>Kliknięcie Shiftem zdetonuje więzienie,%nl%<##fa4420>zadając &f%{_explotekst}% <##fa4420>damage <##ff4d00>Ognia <##fa4420>i podrzucając wroga do góry."
+            set {_loreEN} to "&8Ability%nl%&fInstant cast%nl%&7Cooldown: &fnone%nl%&7Use: &fRMB&7/&fSHIFT%nl%<##fa4420>Imprisons the target affected by Flamethrower%nl%<##fa4420>in a fiery prison, stunning them for &f%{_stun}%%nl%<##fa4420>and inflicting &f%{_dmg}% <##ff4d00>Fire <##fa4420>damage.%nl% %nl%<##fa4420>Pressing Shift will detonate the prison,%nl%<##fa4420>dealing &f%{_explotekst}% <##ff4d00>Fire <##fa4420>damage and tossing the%nl%<##fa4420>enemy into the air."
             loop {dungeonInstance%{_instance}%::*}:
                 set {_target} to loop-value
                 set {infernotarget::%{_target}%} to true
                 if canBeCCed({_target}) = true:
                     InfernoTimerMagicTome({_e}, {_target}, {_instance}, 3)
                     set metadata value "Element" of {_e} to "Fire"
-                    DamageProperties({_target}, {_e}, "<##e53311>Inferno", "<##e53311>Inferno", {_lore}, {_loreEN}, 2)
+                    DamageProperties({_target}, {_e}, "<##fa4420>Inferno", "<##fa4420>Inferno", {_lore}, {_loreEN}, 2)
                     InfernoParticles({_target})
                     play sound "entity.illusioner.mirror_move" with volume 2.5 and pitch 1 at {_e}
         else if {_randomAbility} = "Explosive Bubble":
@@ -533,16 +535,9 @@ function ShadowyApparitionFloatMagicTome(e: entity, apparition: entity, target: 
     kill {_apparition}
 
 function InfernoTimerMagicTome(e: entity, p: player, instanceMob: number, timer: integer):
-    set {stun::%{_p}%} to true
-    while {_timer} > 0:
-        stop loop if {dungeonInstance%{_instanceMob}%::*} does not contain {_p}
-        stop loop if {_p} is not alive
-        stop loop if {_e} is not alive
-        wait 1 second
-        remove 1 from {_timer}
-    clear {stun::%{_p}%}
-    clear {infernotarget::%{_p}%}
-
+    set metadata value "Stun" of {_p} to true
+    set {_timer} to "%{_timer}% seconds" parsed as timespan
+    Stun({_e}, {_timer})
 
 on projectile collide:
     if event-projectile is blaze fireball:
@@ -676,3 +671,6 @@ on region enter:
   #                  add 1 to {_count}
   #              clear {intermissionLila::%victim%::*}
    #             clear {intermissionLilaloc::%victim%::*}
+
+
+   # <#cc533b>

@@ -10,6 +10,7 @@ variables:
 import:
     java.lang.Math
     org.bukkit.event.entity.EntityEvent
+	java.lang.System
 
 function ExpAreaIce(p: player):
     wait 1 tick
@@ -59,7 +60,7 @@ function ExpAreaIceMobSpawn(p: player, loc: location):
 		ExpAreaIceBossSpawn()
 	stop
 	#Gets the player's Card Level to spawn a mob at an appropriate level
-	set {_id} to string tag "Id" of custom nbt of {karta::%{_p}%}
+	set {_id} to string tag "Id" of (custom nbt of {karta::%{_p}%})
 	set {_name} to {kartaname::%{_p}%}
 	set {_cardLevel} to yaml value "Card.Level" in "activeCard-%{_p}%"
 
@@ -94,6 +95,7 @@ function ExpAreaIceMobSpawn(p: player, loc: location):
 	set boolean tag "ECMob" of custom nbt of {_mob} to true
 	set int tag "ECLvl" of custom nbt of {_mob} to {_mobLevel}
 	set {_element} to "Ice"
+	onECMobSpawn({_mob})
 
 	if {_mob} is a zombie or a skeleton:
 		if {_mob} is a skeleton:
@@ -141,6 +143,7 @@ function ExpAreaIceMobSpawn(p: player, loc: location):
 				set {_mob}'s off hand item to shield
 				set {_maxHealthMob} to 24 * Math.pow(1.076, ({_mobLevel}))
 				set the display name of {_mount} to "&fSkeletal Mount"
+				onECMobSpawn({_mount})
 				if {_superMob} is true:
 					set {_maxHealthMob} to {_maxHealthMob}*4
 					set boolean tag "ECSuperMob" of custom nbt of {_mount} to true
@@ -186,6 +189,7 @@ function ExpAreaIceMobSpawn(p: player, loc: location):
 			set boolean tag "ECMob" of custom nbt of {_fox} to true
 			set int tag "ECLvl" of custom nbt of {_fox} to {_mobLevel}
 			set metadata value "Owner" of {_fox} to (uuid of {_mob})
+			onECMobSpawn({_fox})
 			set {_potion} to potion effect of speed of tier 1 without particles for 1 day
 			add {_potion} to potion effects of {_fox}
 			set {_nbt} to "{Marker:1b,Invulnerable:1b,Invisible:1b,CustomNameVisible:1b,NoGravity:1b}"
@@ -305,7 +309,7 @@ function ExpAreaIceBossSpawn():
 
 	stop if {_players} is not set
 
-	set {_cardLevelTotal} to {_cardLevelTotal} + 10
+	set {_cardLevelTotal} to {_cardLevelTotal} + (10*{_players})
 	if ({_cardLevelTotal}/{_players}) > 40:
 		set {_mobLevel} to {_cardLevelTotal}/{_players}
 	else:
@@ -358,6 +362,7 @@ function ExpAreaIceBossSpawn():
 	set boolean tag "ECMob" of custom nbt of {_mob} to true
 	set int tag "ECLvl" of custom nbt of {_mob} to {_mobLevel}
 	set boolean tag "ECBoss" of custom nbt of {_mob} to true
+	onECMobSpawn({_mob})
 
 	set {_id} to random 5 char string from charset `0-9` `a-z`
 	clear boss bar with id {_id}
@@ -1135,6 +1140,7 @@ function IceCubeSpawn(e: entity):
 		set string tag "ECElement" of nbt of custom nbt of {_slime} to "Ice"
 		set boolean tag "ECExpAreaMob" of custom nbt of {_slime} to true
 		set boolean tag "ECMob" of custom nbt of {_slime} to true
+		onECMobSpawn({_slime})
 		set {_mobLevel} to int tag "ECLvl" of custom nbt of {_e}
 		set int tag "ECLvl" of custom nbt of {_slime} to {_mobLevel}
 		set {_maxHealthMob} to {_slime}'s max health * Math.pow(1.076, ({_mobLevel}))
@@ -1188,6 +1194,7 @@ function SnowmanSpawn(e: entity, player: player):
 		set string tag "ECElement" of nbt of custom nbt of {_snowman} to "Ice"
 		set boolean tag "ECExpAreaMob" of custom nbt of {_snowman} to true
 		set boolean tag "ECMob" of custom nbt of {_snowman} to true
+		onECMobSpawn({_snowman})
 		set {_snowmanLevel} to int tag "ECLvl" of custom nbt of {_e}
 		set int tag "ECLvl" of custom nbt of {_snowman} to {_snowmanLevel}
 		set {_maxHealthMob} to {_snowman}'s max health * Math.pow(1.076, ({_snowmanLevel}))
@@ -1416,7 +1423,7 @@ function ExpAreaIceMobDrop(p: player, e: entity, dropChanceMultiplier: number, t
 				set {_itemLevel} to round(1 + ({_mobLevel}*0.66), 0)
 				set {_rarity} to "<##cccccc>Common"
 
-			set {_item} to Gear({_lootItem}, {_itemType}, {_itemLevel}, {_rarity}, (string tag "PrimaryStat" of nbt of {karta::%{_p}%}))
+			set {_item} to Gear({_lootItem}, {_itemType}, {_itemLevel}, {_rarity}, (string tag "PrimaryStat" of nbt of {karta::%{_p}%}), "Ice")
 			giveItem({_p}, {_item})
 			play sound "item.armor.equip_netherite" with volume 3 and pitch 1 to {_p}
 			send "&d&oReceived &f%{_lootItem}% &e(Ilvl %{_itemLevel}%&e) &d&ofrom %name of {_e}%&d&o." to {_p}
@@ -1528,7 +1535,7 @@ function ExpAreaIceMobDrop(p: player, e: entity, dropChanceMultiplier: number, t
 				set {_itemLevel} to round(1 + ({_mobLevel}*0.66), 0)
 				set {_rarity} to "<##cccccc>Common"
 
-			set {_item} to Gear({_lootItem}, {_itemType}, {_itemLevel}, {_rarity}, (string tag "PrimaryStat" of nbt of {karta::%{_p}%}))
+			set {_item} to Gear({_lootItem}, {_itemType}, {_itemLevel}, {_rarity}, (string tag "PrimaryStat" of nbt of {karta::%{_p}%}), "Ice")
 			giveItem({_p}, {_item})
 			play sound "item.armor.equip_netherite" with volume 3 and pitch 1 to {_p}
 			send "&d&oReceived &f%{_lootItem}% &e(Ilvl %{_itemLevel}%&e) &d&ofrom %name of {_e}%&d&o." to {_p}
@@ -1607,7 +1614,7 @@ function ExpAreaIceMobDrop(p: player, e: entity, dropChanceMultiplier: number, t
 				set {_itemLevel} to round(1 + ({_mobLevel}*0.66), 0)
 				set {_rarity} to "<##cccccc>Common"
 
-			set {_item} to Gear({_lootItem}, {_itemType}, {_itemLevel}, {_rarity}, (string tag "PrimaryStat" of nbt of {karta::%{_p}%}))
+			set {_item} to Gear({_lootItem}, {_itemType}, {_itemLevel}, {_rarity}, (string tag "PrimaryStat" of nbt of {karta::%{_p}%}), "Ice")
 			giveItem({_p}, {_item})
 			play sound "item.armor.equip_netherite" with volume 3 and pitch 1 to {_p}
 			send "&d&oReceived &f%{_lootItem}% &e(Ilvl %{_itemLevel}%&e) &d&ofrom %name of {_e}%&d&o." to {_p}
@@ -1648,7 +1655,7 @@ function WaterTentacleMingHua(e: entity):
 		wait 4 ticks
 		if {_blocks::*} is set:
 			loop {_blocks::*}:
-				make all players see block at loop-value as (type of block at loop-value)
+				make all players see block at loop-value as its actual type
 			clear {_blocks::*}
 
 function WaterArmsParticles(e: entity):

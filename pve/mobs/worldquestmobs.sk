@@ -1,0 +1,192 @@
+
+
+function WorldQuestGoshaImitation(e: entity):
+    while {_e} is alive:
+        set {_parrotAmount} to 10
+        set {_hasteScaling} to 4
+
+        loop {_parrotAmount} times:
+            spawn 1 parrot at {_e}
+            push last spawned parrot upwards at speed 0.6
+            apply levitation of tier 2 without particles to last spawned parrot for 5 seconds
+            leash the last spawned parrot to {_e}
+
+            set boolean tag "RemoveOnReset" of custom nbt of last spawned parrot to true
+            set boolean tag "ECSummon" of custom nbt of last spawned parrot to true
+            set string tag "ECSummoned" of custom nbt of last spawned parrot to uuid of {_e}
+            set boolean tag "Silent" of nbt of last spawned parrot to true
+            
+            add last spawned parrot to {_parrots::*}
+            add uuid of last spawned parrot to {_parrotUuids::*}
+            set max health of last spawned parrot to 0.1*max health of {_e}
+            heal last spawned parrot
+            play sound "entity.chicken.egg" with volume 3 and pitch 0.3 at location of last spawned parrot
+            wait 1 tick
+
+        set string list tag "ECSummons" of custom nbt of {_e} to {_parrotUuids::*}
+
+        set {_randomDuration} to a random number between 2 and 8
+        set {_haste} to float tag "Stats;Haste" of custom nbt of {_e}
+        set {_haste} to 1 + (({_haste}/{_hasteScaling}))/100
+        set {_randomDuration} to {_randomDuration}/{_haste}
+
+        set {_interval} to 0.2/{_haste}
+        set {_durationLevitation} to {_randomDuration} + {_interval}*{_parrotAmount}
+
+        set {_duration} to "%{_randomDuration}% seconds" parsed as timespan
+        set {_durationLevitation} to "%{_durationLevitation}% seconds" parsed as timespan
+        set {_interval} to "%{_interval}% seconds" parsed as timespan
+
+        apply levitation of tier 2 without particles to {_e} for {_durationLevitation}
+        wait {_duration}
+
+        set {_durationText} to durationShort("%{_duration}%")
+        set {_dmgModifier} to long tag "MobDamageModifier" of custom nbt of {_e}
+        set {_damage} to 0.25
+        set {_lore} to "&7Performs a party ritual, spawning &f%{_parrotAmount}% &7parrot helpers%nl%&7and floating up. After &f%{_durationText}%&7,%nl%&7parrots explode, dealing &f%{_damage}*{_dmgModifier}% &7each."
+        set {_abilityName} to mini message from "<gradient:##db2e88:##ff5940:##985fc7>Party Ritual"
+
+        loop {_parrots::*}:
+            if loop-value is alive:
+                unleash loop-value
+
+                loop all players in radius 20 of loop-value:
+                    if {incombatwith::%loop-player%::*} contains uuid of {_e}:
+                        DamageProperties(loop-player, {_e}, {_abilityName}, {_lore}, {_damage})
+
+                kill loop-value
+                draw 1 explosion particle at location of loop-value
+                play sound "block.lava.extinguish" with volume 4 and pitch 1.9 at location of loop-value
+
+                set {_randomSound} to a random integer between 1 and 5
+                if {_randomSound} is between 1 and 2:
+                    play sound "block.note_block.banjo" with volume 3 and pitch 1 at location of {_e}
+                else if {_randomSound} = 3:
+                    play sound "block.note_block.guitar" with volume 3 and pitch 1 at location of {_e}
+                else if {_randomSound} = 4:
+                    play sound "block.note_block.bass" with volume 3 and pitch 2 at location of {_e}
+                else if {_randomSound} = 5:
+                    play sound "block.note_block.snare" with volume 3 and pitch 1 at location of {_e}
+
+                wait {_interval}
+        
+        set {_randomWait} to a random number between 18 and 20
+        set {_randomWait} to "%{_randomWait}/{_haste}% seconds" parsed as timespan
+
+        wait {_randomWait}
+
+on entity unleash:
+    if boolean tag "ECSummon" of custom nbt of event-entity is true:
+        prevent the leash from dropping
+
+function WorldQuestAzeriteElemental(e: entity):
+    while {_e} is alive:
+        stop loop if {_e} is not alive
+        set {_loc} to eye location of {_e}
+        set {_dir} to vector in direction of {_e}
+        set {_range} to 100
+        set {_hasteScaling} to 4
+        set {_radius} to 5
+
+        set {_haste} to float tag "Stats;Haste" of custom nbt of {_e}
+        set {_haste} to 1 + (({_haste}/{_hasteScaling}))/100
+
+        set {_randomWait} to a random number between 2 and 10
+        set {_randomWait} to "%{_randomWait}/{_haste}% seconds" parsed as timespan
+
+        wait {_randomWait}
+
+        play sound "block.stone.break" with volume 1.5 and pitch 0.6 at {_loc}
+        play sound "block.amethyst_block.hit" with volume 1.2 and pitch 1.2 at {_loc}
+        play sound "entity.warden.attack_impact" with volume 0.8 and pitch 0.5 at {_loc}
+
+        spawn block display at {_e}
+        set {_boulder} to last spawned block display
+        set display block data of {_boulder} to cobblestone
+        set display scale of {_boulder} to vector(1.8, 1.8, 1.8)
+
+        spawn block display at {_e}
+        set {_azerite} to last spawned block display
+        set display block data of {_azerite} to light blue stained glass
+        set display scale of {_azerite} to vector(3.0, 1.0, 2.0)
+
+        spawn block display at {_e}
+        set {_azerite2} to last spawned block display
+        set display block data of {_azerite2} to yellow stained glass
+        set display scale of {_azerite2} to vector(1.0, 3.0, 1.0)
+
+        set {_displayEntities::*} to {_boulder}, {_azerite} and {_azerite2}
+
+        set {_targetLocation} to TargetLocation({_e}, {_range}, false)
+
+        set {_dist} to distance between {_loc} and {_targetLocation}
+        set {_stepVec} to {_dir}
+        set {_step} to quaternion(0, 0.1736, 0, 0.9848)
+
+        loop 3 times:
+            set {_rR::%loop-counter-2%} to a random number between 0.0 and 25.0
+
+        setAIState({_e}, "attack")
+        playEntitySound({_e}, "Attack")
+
+        loop {_displayEntities::*}:
+            set {_element} to loop-value
+            set {_rotation} to display right rotation of {_element}
+            set {_rotation} to {_rotation} rotated by vector({_rR::1}, {_rR::2}, {_rR::3})
+            set display right rotation of {_element} to {_rotation}
+            set boolean tag "RemoveOnReset" of custom nbt of {_element} to true
+
+        loop {_dist} times:
+            set {_loc} to {_loc} offset by {_stepVec}
+            loop {_displayEntities::*}:
+                set teleport duration of loop-value-2 to 2 ticks
+                teleport loop-value-2 to {_loc}
+
+                set interpolation duration of loop-value-2 to 8 ticks
+                set interpolation delay of loop-value-2 to 0 ticks
+
+                set {_rotation} to display right rotation of loop-value-2
+                set {_rotation} to {_rotation} rotated by vector(2,3,2)
+                set display right rotation of loop-value-2 to {_rotation}
+
+            draw 3 dust particle using dustOption(gray, 2) at {_loc}
+            
+            if (random integer between 1 and 2) is 1:
+                draw 5 dust particle using dustOption(rgb(80,180,255), 1.2) at {_loc}
+            else:
+                draw 5 dust particle using dustOption(rgb(255,220,120), 1.2) at {_loc}
+                
+            draw 2 smoke particle at {_loc} with extra  0.05
+
+            set {_pitch} to a random number between 0.0 and 0.85
+            play sound "block.deepslate_tiles.break" with volume 2 and pitch {_pitch} at {_loc}
+            play sound "block.stone.break" with volume 2 and pitch {_pitch} at {_loc}
+                
+            wait 1 tick
+
+        play sound "entity.generic.explode" with volume 2.0 and pitch 0.6 at {_loc}
+        play sound "block.glass.break" with volume 1.5 and pitch 0.5 at {_loc}
+        play sound "block.amethyst_block.break" with volume 1.5 and pitch 0.8 at {_loc}
+
+        draw 20 dust particle using dustOption(gray, 1.5) at {_loc}
+        draw 15 dust particle using dustOption(yellow, 1.2) at {_loc}
+        draw 15 dust particle using dustOption(cyan, 1.2) at {_loc}
+        draw 30 explosion particle at {_loc}
+
+        loop {_displayEntities::*}:
+            set {_element} to loop-value
+            kill {_element}
+
+        set {_dmgModifier} to long tag "MobDamageModifier" of custom nbt of {_e}
+        set {_damage} to 5
+        set {_lore} to "&7Throws an Azerite rock, dealing &f%{_damage}*{_dmgModifier}% <##633200>Earth &7damage%nl%&7to all enemies caught in its radius of impact."
+        set {_abilityName} to mini message from "<gradient:##50b4ff:##ffdc78>Azerite Rock"
+
+        set {_players::*} to loopPlayersAroundLocation({_loc}, {_radius})
+        loop {_players::*}:
+            DamageProperties(loop-value, {_e}, {_abilityName}, {_lore}, {_damage})
+
+        set {_randomWait} to a random number between 3 and 15
+        set {_randomWait} to "%{_randomWait}/{_haste}% seconds" parsed as timespan
+
+        wait {_randomWait}

@@ -140,20 +140,25 @@ on rightclick:
 							else:
 								set {_ascendanceDuration} to "%{_ascDuration}% seconds" parsed as timespan
 							add {_bonusIntellect} to {primarystat::%player%}
-
+						
+						set {_world} to world of player
 						while metadata value "Rain of Lava" of player is true:
 							stop loop if metadata value "Rain of Lava" of player is not true
 							if boolean tag "Constellation;Unstoppable Heat" of (custom nbt of {karta::%player%}) is not set:
 								stop loop if metadata value "cast" of player is not true
-							loop all entities in radius 60 around player:
-								if boolean tag "ECMob" of (custom nbt of loop-entity) is set:
-									if loop-entity is alive:
-										if metadata value "ECPulled" of loop-entity is set:
-											set {_enemyPulled::*} to {_enemyPulled::*} and loop-entity
-											if metadata value "MoltenLava%player%" of block under loop-entity is set:
-												set {_enemyMoltenLava::*} to {_enemyMoltenLava::*} and loop-entity
-										else:
-											set {_enemyNotInCombat::*} to {_enemyNotInCombat::*} and loop-entity
+								
+							loop {ECMobs::%{_world}%::*}:
+								set {_entity} to loop-value parsed as entity
+								set {_entityLoc} to location of {_entity}
+
+								if chunk at {_entityLoc} is loaded:
+									if metadata value "ECPulled" of {_entity} is set:
+										set {_enemyPulled::*} to {_enemyPulled::*} and {_entity}
+										if metadata value "MoltenLava%player%" of (block under {_entity}) is set:
+											set {_enemyMoltenLava::*} to {_enemyMoltenLava::*} and {_entity}
+									else:
+										set {_enemyNotInCombat::*} to {_enemyNotInCombat::*} and {_entity}
+
 							if size of {_enemyMoltenLava::*} >= 1:
 								set {_target} to a random element of {_enemyMoltenLava::*}
 							else:
@@ -161,17 +166,21 @@ on rightclick:
 									set {_target} to a random element of {_enemyPulled::*}
 								else:
 									set {_target} to {_enemyNotInCombat::1}
+
 							LavaBurst(player, {_target}, 1, "Rain of Lava", false, {_bonusDamage})
+
 							if {_shield} is set:
 								draw 8 of ((falling lava particle) with an extra value of 0.015) with offset vector(1.25, 0.5, 1.25) at location above player 
 							if boolean tag "Constellation;Splintered Lava" of (custom nbt of {karta::%player%}) is set:
 								if metadata value "Lava Surge" of player is set:
 									LavaSurge(player, {_target})
+
 							clear {_enemyPulled::*}
 							clear {_enemyMoltenLava::*}
 							clear {_enemyNotInCombat::*}
 							add rollingLava(player) to {_bonusDamage}
 							wait {_tick}
+
 						clear metadata value "cast" of player
 
 						set {_igneousHail} to statTrait(player, "Ghazan", "Igneous Hail")
@@ -188,9 +197,13 @@ on rightclick:
 						
 						if string tag "Talents;Row 4" of (custom nbt of {karta::%player%}) = "Pyroclastic Storm":
 							clear metadata value "PyroclasticStormActive" of player
-							loop all entities in radius 60 around player:
-								if metadata value "PyroclasticStormLavaBurstCount" of loop-value >= 3:
-									PyroclasticStorm(player, loop-value)
+							loop {ECMobs::%{_world}%::*}:
+								set {_entity} to loop-value parsed as entity
+								set {_entityLoc} to location of {_entity}
+
+								if chunk at {_entityLoc} is loaded:
+									if metadata value "PyroclasticStormLavaBurstCount" of {_entity} >= 3:
+										PyroclasticStorm(player, {_entity})
 					else: 
 						cancel event
 						if {tekstcd::%player%} = true:
@@ -492,11 +505,18 @@ on rightclick:
 		
 function LavaWave(p: player, target: entity):
 	wait 1 tick
-	loop all entities in radius 100 around {_p}:
-		if boolean tag "ECMob" of (custom nbt of loop-entity) is set:
-			if metadata value "MoltenLava%{_p}%" of block under loop-entity is set:
-				LavaBurst({_p}, loop-entity, 0.8, "Lava Burst", false)
-				add 1 to {_targets}
+	set {_world} to world of {_p}
+
+	loop {ECMobs::%{_world}%::*}:
+		set {_entity} to loop-value parsed as entity
+		set {_entityLoc} to location of {_entity}
+
+		if chunk at {_entityLoc} is loaded:
+			if boolean tag "ECMob" of (custom nbt of {_entity}) is set:
+				if metadata value "MoltenLava%{_p}%" of block under {_entity} is set:
+					LavaBurst({_p}, {_entity}, 0.8, "Lava Burst", false)
+					add 1 to {_targets}
+
 	if boolean tag "Constellation;Splintered Lava" of (custom nbt of {karta::%{_p}%}) is set:
 		LavaWaveHasteBuff({_p}, {_targets})
 
@@ -714,53 +734,50 @@ function Magma(p: player):
 	set {_wait} to "%(1/{_faster})/(((({_pospiech}-1)/1.3))+1)% seconds" parsed as timespan
 	set {_radius} to 2 + (CrowdControl({_p})/40)
 	set {_lore} to "&8Basic Ability%nl%&fInstant cast%nl%&7Cooldown:  &f%{_cdd}% seconds%nl%&7Use: &fRMB%nl%<#b03228>Turns all terrain in radius &f%{_radius}% <#b03228>of the%nl%<#b03228>target block into &f <#d14d43>Molten Lava <#b03228>for &f%{_duration}%<#b03228>.%nl% %nl%<#b03228>Enemies standing in &f <#d14d43>Molten Lava%nl%<#b03228>receive &f%{_damage}% <#ff4d00>Lava <#b03228>damage every &f%{_wait}% sec<#b03228>."
-	loop all living entities in radius 100 around {_p}:
-		if metadata value "MoltenLava%{_p}%" of (block under loop-entity) is set:
-			if boolean tag "ECMob" of (custom nbt of loop-entity) is set:
-				set metadata value "Element" of {_p} to "Lava"
-				set loop-entity's last damage cause to sweep attack
-				set metadata value "LastDamageCause" of loop-entity to "<#b03228>Molten Lava"
-				set metadata value "LastDamageCauseLore" of loop-entity to {_lore}
+	set {_world} to world of {_p}
 
-				if metadata value "Lavafury" of {_p} > 0:
-					if boolean tag "Constellation;Splintered Lava" of (custom nbt of {karta::%{_p}%}) is set:
-						set {_LFMultiplier} to 1.2
-					else:
-						set {_LFMultiplier} to 1.6
-					set {_damage} to {_damage}*{_LFMultiplier}
-					remove 1 from metadata value "Lavafury" of {_p}
-					set metadata value "Lava Surge" of {_p} to true
-					if {guiscale::%{_p}%} = 4:
-						send title " " with subtitle "          " to {_p} for 1 minute with fade in 0.25 second and fade out 0.0 second
-					else:
-						send title " " with subtitle "                    " to {_p} for 1 minute with fade in 0.25 second and fade out 0.0 second
-					if metadata value "Lavafury" of {_p} = 0:
-						clear metadata value "Lavafury" of {_p}
-				
-				set {_damage} to Crit({_p}, loop-entity, {_crit}, {_damage})
-				make {_p} damage loop-entity by {_damage}
-				play sound "block.lava.pop" with volume 1.5 and pitch 1.5 at (location of loop-entity)
-				#LAVA SURGE
-				chance of {_chance}%:
-					set metadata value "Lava Surge" of {_p} to true
-					if metadata value "Rain of Lava-Camera" of {_p} is set:
-						set {_entityId} to metadata value "Rain of Lava-Camera" of {_p}
-						set {_entity} to entity from id {_entityId} in {_p}'s world
-						send title " " with subtitle "          " to {_entity} for 1 minute with fade in 0.25 second and fade out 0.0 second
+	loop {ECMobs::%{_world}%::*}:
+		set {_entity} to loop-value parsed as entity
+		set {_entityLoc} to location of {_entity}
 
-					if {guiscale::%{_p}%} = 4:
-						send title " " with subtitle "          " to {_p} for 1 minute with fade in 0.25 second and fade out 0.0 second
-					else:
-						send title " " with subtitle "                    " to {_p} for 1 minute with fade in 0.25 second and fade out 0.0 second
-						
-#Transforms the ground into molten rocks
-#Melts the ground around target area. Enemies inside take 0.5 damage every one second.
-function moltenLavaRefresh(p: player):
-	set {_MLDuration} to 30 seconds
-	set {_n} to now
-	loop all blocks in radius 50 around {_p}:
-		if metadata value "MoltenLava%{_p}%" of loop-block is set:
-			set metadata value "MoltenLava%{_p}%" of loop-block to 30 seconds
+		if chunk at {_entityLoc} is loaded:
+			if metadata value "MoltenLava%{_p}%" of (block under {_entity}) is set:
+				if boolean tag "ECMob" of (custom nbt of {_entity}) is set:
+					set metadata value "Element" of {_p} to "Lava"
+					set {_entity}'s last damage cause to sweep attack
+					set metadata value "LastDamageCause" of {_entity} to "<#b03228>Molten Lava"
+					set metadata value "LastDamageCauseLore" of {_entity} to {_lore}
+
+					if metadata value "Lavafury" of {_p} > 0:
+						if boolean tag "Constellation;Splintered Lava" of (custom nbt of {karta::%{_p}%}) is set:
+							set {_LFMultiplier} to 1.2
+						else:
+							set {_LFMultiplier} to 1.6
+						set {_damage} to {_damage}*{_LFMultiplier}
+						remove 1 from metadata value "Lavafury" of {_p}
+						set metadata value "Lava Surge" of {_p} to true
+						if {guiscale::%{_p}%} = 4:
+							send title " " with subtitle "          " to {_p} for 1 minute with fade in 0.25 second and fade out 0.0 second
+						else:
+							send title " " with subtitle "                    " to {_p} for 1 minute with fade in 0.25 second and fade out 0.0 second
+						if metadata value "Lavafury" of {_p} = 0:
+							clear metadata value "Lavafury" of {_p}
+					
+					set {_damage} to Crit({_p}, {_entity}, {_crit}, {_damage})
+					make {_p} damage {_entity} by {_damage}
+					play sound "block.lava.pop" with volume 1.5 and pitch 0.75 at (location of {_entity})
+					#LAVA SURGE
+					chance of {_chance}%:
+						set metadata value "Lava Surge" of {_p} to true
+						if metadata value "Rain of Lava-Camera" of {_p} is set:
+							set {_entityId} to metadata value "Rain of Lava-Camera" of {_p}
+							set {_entity} to entity from id {_entityId} in {_p}'s world
+							send title " " with subtitle "          " to {_entity} for 1 minute with fade in 0.25 second and fade out 0.0 second
+
+						if {guiscale::%{_p}%} = 4:
+							send title " " with subtitle "          " to {_p} for 1 minute with fade in 0.25 second and fade out 0.0 second
+						else:
+							send title " " with subtitle "                    " to {_p} for 1 minute with fade in 0.25 second and fade out 0.0 second
 
 function Ascendance(p: player, duration: timespan):
 	play sound "skill.ghazan.ascendance_activate" with volume 3 and pitch 0 at (location of {_p})
@@ -770,11 +787,17 @@ function Ascendance(p: player, duration: timespan):
 	set {_cdd} to (15-{_cdred})/{_haste}
 	set {_radius} to 2 + (CrowdControl({_p})/40)
 
-	loop all entities in radius 100 around {_p}:
-		if metadata value "MoltenLava%{_p}%" of (block under loop-entity) is set:
-			if boolean tag "ECMob" of (custom nbt of loop-entity) is set:
-				LavaBurst({_p}, loop-entity, 1, "Lava Burst", false)
-				MoltenLava({_p}, {_radius}, {_cdd}, {_haste}, true, loop-entity)
+	set {_world} to world of {_p}
+
+	loop {ECMobs::%{_world}%::*}:
+		set {_entity} to loop-value parsed as entity
+		set {_entityLoc} to location of {_entity}
+
+		if chunk at {_entityLoc} is loaded:
+			if metadata value "MoltenLava%{_p}%" of (block under {_entity}) is set:
+				if boolean tag "ECMob" of (custom nbt of {_entity}) is set:
+					LavaBurst({_p}, {_entity}, 1, "Lava Burst", false)
+					MoltenLava({_p}, {_radius}, {_cdd}, {_haste}, true, {_entity})
 
 	if metadata value "Ascendance" of {_p} is not set:
 		set metadata value "Ascendance" of {_p} to 1
@@ -1101,12 +1124,19 @@ function MasterHeritageLavaSpread(p: player, target: entity):
 		set metadata value "Master Heritage Lava Spread" of {_p} to {_lavaSpread}
 		if metadata value "Master Heritage Lava Spread" of {_p} = 0:
 			clear metadata value "Master Heritage Lava Spread" of {_p}
-		set {_entities::*} to LoopEntitiesAroundTarget({_target}, 100, false)
-		loop {_entities::*}:
-			if metadata value "MoltenLava%{_p}%" of block under loop-value is set:
-				LavaBurst({_p}, loop-value, 0.65, "Lava Burst", false)
-				add 1 to {_count}
-			stop loop if {_count} = 3
+		
+		set {_world} to world of {_p}
+
+		loop {ECMobs::%{_world}%::*}:
+			set {_entity} to loop-value parsed as entity
+			if {_entity} != {_target}:
+				set {_entityLoc} to location of {_entity}
+
+				if chunk at {_entityLoc} is loaded:
+					if metadata value "MoltenLava%{_p}%" of block under {_entity} is set:
+						LavaBurst({_p}, {_entity}, 0.65, "Lava Burst", false)
+						set {_count} to {_count} + 1
+					stop loop if {_count} = 3
 
 function PerpetualBurn(p: player):
 	if metadata value "PerpetualBurnCount" of {_p} is not set:
