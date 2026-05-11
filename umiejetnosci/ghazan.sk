@@ -131,15 +131,17 @@ on rightclick:
 						if string tag "Talents;Row 2" of (custom nbt of {karta::%player%}) = "Lava Will Rain":
 							set {_bonusIntellect} to 20
 							if string tag "Talents;Row 5" of (custom nbt of {karta::%player%}) = "Further Beyond":
-								add 20 to {_bonusIntellect}
+								set {_bonusIntellect} to {_bonusIntellect} + 20
 							set {_ascDuration} to 8
+
 							if getTrait(player, "Mountains will Fall") is set:
-								add 2 to {_ascDuration}
+								set {_ascDuration} to {_ascDuration} + 2
+
 							if boolean tag "Constellation;Let the World Watch" of (custom nbt of {karta::%player%}) is set:
 								set {_ascendanceDuration} to "%{_ascDuration}*1.33% seconds" parsed as timespan
 							else:
 								set {_ascendanceDuration} to "%{_ascDuration}% seconds" parsed as timespan
-							add {_bonusIntellect} to {primarystat::%player%}
+							set {bonusPrimarystat::%player%} to {bonusPrimarystat::%player%} + {_bonusIntellect}
 						
 						set {_world} to world of player
 						while metadata value "Rain of Lava" of player is true:
@@ -189,7 +191,6 @@ on rightclick:
 							IgneousHail(player, {_igneousHail})
 
 						if string tag "Talents;Row 2" of (custom nbt of {karta::%player%}) = "Lava Will Rain":
-							remove {_bonusIntellect} from {primarystat::%player%}
 							Ascendance(player, {_ascendanceDuration})
 
 						if {_shieldNumber} is set:
@@ -358,9 +359,7 @@ on rightclick:
 					set {_pospiech} to Haste(player)
 					set {_casttime} to "%round((1.5/{_pospiech}), 1)% seconds" parsed as timespan
 					set {_casttext} to {_casttime}
-					loop all items in player's inventory:
-						if boolean tag "Lavakeeper" of (custom nbt of loop-item) = true:
-							set lore of loop-item to "&8Basic Ability%nl%&f%{_casttime}% cast%nl%&7Cooldown: &8 &f1 minute%nl%&7Use: &fRMB%nl%<#b03228>Charge yourself with heat, causing%nl%<#b03228>your next &f2 &f <#d14d43>Lava Burst <#b03228>casts to deal%nl%&f190%% <#b03228>increased damage."
+					
 					play sound "skill.ghazan.lava_burst_precast" with volume 2 and pitch 1 to player
 					if metadata value "cast" of player is not set:
 						play sound "skill.ghazan.lava_burst_precast" with volume 2 and pitch 1 to player
@@ -399,6 +398,11 @@ on rightclick:
 					play sound "skill.ghazan.lava_burst_impact" with volume 1.3 and pitch 2 at location of player
 					if boolean tag "Constellation;Master Heritage" of (custom nbt of {karta::%player%}) is set:
 						set metadata value "Master Heritage Lava Spread" of player to 2
+
+					loop all items in player's inventory:
+						if boolean tag "Lavakeeper" of (custom nbt of loop-item) = true:
+							set the cooldown of loop-item for player to 1 minute
+							set lore of loop-item to "&8Basic Ability%nl%&f%{_casttime}% cast%nl%&7Cooldown: &8 &f1 minute%nl%&7Use: &fRMB%nl%<#b03228>Charge yourself with heat, causing%nl%<#b03228>your next &f2 &f <#d14d43>Lava Burst <#b03228>casts to deal%nl%&f190%% <#b03228>increased damage."
 				else: 
 					cancel event
 					if {tekstcd::%player%} = true:
@@ -446,7 +450,6 @@ on rightclick:
 								send action bar "&cInterrupted" to player
 								stop
 							set cooldown "Lavafury%player%" to 1 minute
-							set the cooldown of player's held item for player to 1 minute
 							AbilityUse(player, "Lavafury")
 							set {_l} to location 0.7 blocks below player's head
 							set {_l} to location 0.4 blocks right of {_l}
@@ -484,6 +487,7 @@ on rightclick:
 							loop all items in player's inventory:
 								if boolean tag "Lavafury" of (custom nbt of loop-item) = true:
 									set lore of loop-item to {_lore}
+									set the cooldown of loop-item for player to 1 minute
 							set {_target}'s last damage cause to sweep attack
 							set metadata value "LastDamageCause" of {_target} to "<#b03228>Lavafury"
 							set metadata value "LastDamageCauseLore" of {_target} to {_lore}
@@ -784,7 +788,7 @@ function Ascendance(p: player, duration: timespan):
 	play sound "skill.ghazan.ascendance_activate" with volume 3 and pitch 0 at (location of {_p})
 	clear cooldown "LavaBurst%{_p}%"
 	set {_haste} to Haste({_p})
-	set {_id} to line 19 of lore of {karta::%{_p}%}
+	set {_id} to cardId({_p })
 	set {_cdd} to (15-{_cdred})/{_haste}
 	set {_radius} to 2 + (CrowdControl({_p})/40)
 
@@ -808,7 +812,7 @@ function Ascendance(p: player, duration: timespan):
 			set {_furtherBeyond} to true
 		if string tag "Talents;Row 2" of (custom nbt of {karta::%{_p}%}) = "Lava Will Rain":
 			set {_bonusIntellect} to 20
-			add {_bonusIntellect} to {primarystat::%{_p}%}
+			add {_bonusIntellect} to {bonusPrimarystat::%{_p}%}
 		set {_mountainsWillFall} to statTrait({_p}, "Ghazan", "Mountains will Fall")
 		add {_mountainsWillFall} to {bonusCriticalHit::%{_p}%}
 	else:
@@ -839,7 +843,7 @@ function Ascendance(p: player, duration: timespan):
 		remove {_mountainsWillFall} from {bonusCriticalHit::%{_p}%} 
 
 	if string tag "Talents;Row 2" of (custom nbt of {karta::%{_p}%}) = "Lava Will Rain":
-		remove {_bonusIntellect} from {primarystat::%{_p}%}
+		remove {_bonusIntellect} from {bonusPrimarystat::%{_p}%}
 
 on disconnect:
 	wait 60 seconds
@@ -1211,7 +1215,8 @@ function Eruption(p: player, target: entity):
 	set {_crit} to CriticalHit({_p})
 	set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage})
 
-	play sound "block.lava.pop" with volume 3 and pitch 1 at (location of {_target})
+	play sound "block.lava.pop" with volume 3 and pitch 2 at (location of {_target})
+	draw 15 of ((dripping lava particle) with an extra value of 0.03) with offset vector(0.4, 0.1, 0.4) at (location 0.2 above {_target})
 
 	set {_target}'s last damage cause to sweep attack
 	set metadata value "Element" of {_p} to "Lava"
