@@ -69,6 +69,21 @@ function LoreUpdate(p: player, nbt: text, lore: text):
         if boolean tag {_nbt} of (custom nbt of loop-item) is set:
             set lore of loop-item to {_lore}
 
+function PrimaryStatStat(p: player) :: number:
+    set {_primaryStat} to {primarystat::%{_p}%} + {bonusprimarystat::%{_p}%}
+
+    if {kartaname::%{_p}%} = "Espeon":
+        set {_primaryStat} to ({_primaryStat} + metadata value "EspeonBonusIntellect" of {_p})
+
+    return {_primaryStat}
+
+function PrimaryStat(p: player, scaling: number = 1) :: number:
+    set {_primaryStat} to PrimaryStatStat({_p})
+    
+    set {_primaryStat} to {_primaryStat}*{_scaling}
+
+    return {_primaryStat}
+
 function Haste(p: player, scaling: number = 4) :: number:
     set {_haste} to 1 + ((HasteStat({_p})/{_scaling}))/100
     return {_haste}
@@ -101,10 +116,17 @@ function Resistance(p: player, scaling: number = 1) :: number:
 
     return {_resistance}
 
+function CrowdControl(p: player, scaling: number = 1) :: number:
+    set {_crowdcontrol} to CrowdControlStat({_p})
+
+    set {_crowdcontrol} to {_crowdcontrol}*{_scaling}
+
+    return {_crowdcontrol}
+
 function MasteryStat(p: player, check: boolean = false) :: number:
     set {_mastery} to ({mastery::%{_p}%} + {bonusMastery::%{_p}%})
     if metadata value "MoltenBlast" of {_p} is set:
-        add metadata value "MoltenBlast" of {_p} to {_mastery}
+        set {_mastery} to {_mastery} + metadata value "MoltenBlast" of {_p}
 
     if {_check} != true:
         if getArtifactSetCount({_p}, "Arcane Mysteries", 2, "yaml") = true:
@@ -159,16 +181,20 @@ function VersatilityStat(p: player) :: number:
 
 function HasteStat(p: player) :: number:
     set {_haste} to {haste::%{_p}%} + {bonusHaste::%{_p}%}
+
+    if {kartaname::%{_p}%} = "Espeon":
+        set {_haste} to {_haste} + metadata value "EspeonBonusHaste" of {_p}
+
     return {_haste}
 
 function CriticalHitStat(p: player) :: number:
     set {_crit} to {criticalhit::%{_p}%} + {bonusCriticalHit::%{_p}%}
 
     if metadata value "ChorusOfInsanityCrit" of {_p} is set:
-        add metadata value "ChorusOfInsanityCrit" of {_p} to {_crit}
+        set {_crit} to {_crit} + metadata value "ChorusOfInsanityCrit" of {_p}
 
     if metadata value "BonusCritDelphox" of {_p} is set:
-        add metadata value "BonusCritDelphox" of {_p} to {_crit}
+        set {_crit} to {_crit} + metadata value "BonusCritDelphox" of {_p}
 
     return {_crit}
 
@@ -350,13 +376,32 @@ function pathfind(e: entity, e2: entity):
 function CritVisual(e: entity):
     draw 20 of (((crit particle) with an extra value of 0.07) with offset vector(0.5, 0.4, 0.5)) at (location above {_e})
 
+function CritDamage(attacker: entity) :: number:
+    set {_critDamage} to 0
+
+    if metadata value "DeepfrostSet4SetBonus" of {_attacker} > 0:
+        set {_critDamage} to {_critDamage} + metadata value "DeepfrostSet4SetBonus" of {_attacker}
+
+    if {kartaname::%{_attacker}%} = "Ghazan":
+        if boolean tag "Constellation;Perpetual Burn" of (custom nbt of {karta::%{_attacker}%}) is set:
+            set {_perpetualBurnCount} to metadata value "PerpetualBurnCount" of {_attacker}
+            set {_critDamage} to {_critDamage} + (0.02*{_perpetualBurnCount})
+            PerpetualBurn({_attacker})       
+            add 1 to metadata value "IgneousHailCrits" of {_p}
+
+    return {_critDamage}
+
+function CritHealing(healer: entity) :: number:
+    set {_critModifier} to 2
+
+    return {_critModifier}
+
 function Crit(attacker: entity, victim: entity, chance: number, damage: number, modifier: number = 2) :: number:
     chance of {_chance}%:
         set {_damage} to {_damage}*{_modifier}
-        set {_critDamage} to 0
+        
+        set {_critDamage} to CritDamage({_attacker})
 
-        if metadata value "DeepfrostSet4SetBonus" of {_attacker} > 0:
-            set {_critDamage} to {_critDamage} + metadata value "DeepfrostSet4SetBonus" of {_attacker}
         set {_damage} to {_damage} * (1 + {_critDamage}/100)
 
         CritVisual({_victim})
@@ -367,30 +412,6 @@ function sort(indices: strings, values: numbers, descending: boolean = true) :: 
     loop {_indices::*}: 
         set {_sort::%{_values::%loop-index%}%.%loop-index%} to loop-value in proper case
     return (reversed {_sort::*}) if {_descending} is true, else {_sort::*}
-
-function bonusStat(p: player, stat: string) :: number:
-    
-    set {_bonus} to 0
-    replace all " " in {_stat} with ""
-    if {bonus%{_stat}%::%{_p}%} is set:
-        set {_bonus} to {_bonus} + {bonus%{_stat}%::%{_p}%}
-    if metadata value "EspeonBonus%{_stat}%" of {_p} is set:
-        set {_bonus} to {_bonus} + metadata value "EspeonBonus%{_stat}%" of {_p}
-
-    if {_stat} = "CriticalHit":
-        if metadata value "ChorusOfInsanityCrit" of {_p} is set:
-            add metadata value "ChorusOfInsanityCrit" of {_p} to {_bonus}
-
-    else if {_stat} = "Mastery":
-        if metadata value "MoltenBlast" of {_p} is set:
-            add metadata value "MoltenBlast" of {_p} to {_bonus}
-
-    else if {_stat} = "Mobility":
-        if metadata value "UmbreonFeatherfoot" of {_p} is set:
-            add metadata value "UmbreonFeatherfoot" of {_p} to {_bonus}
-
-    set {_bonus} to round({_bonus}, 0)
-    return {_bonus}
 
 function buffRegister(p: player, buff: text, prio: integer, icon: text, type: text, value: text, duration: text):
     if yaml "Buffs%uuid of {_p}%" is not loaded:
