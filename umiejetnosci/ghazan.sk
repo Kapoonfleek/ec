@@ -1,9 +1,8 @@
 
-#LAVA BURST
+import:
+	org.bukkit.World
+
 on rightclick:
-	if clicked block exists:
-		if metadata value "MoltenLava%player%" of clicked block is set:
-			make player see block at clicked block as magma block
 	if boolean tag "Lava Burst" of (custom nbt of player's tool) = true:
 		if name of player's tool = "<#b03228>Lava Burst":
 			cancel event
@@ -191,6 +190,7 @@ on rightclick:
 							IgneousHail(player, {_igneousHail})
 
 						if string tag "Talents;Row 2" of (custom nbt of {karta::%player%}) = "Lava Will Rain":
+							set {bonusPrimarystat::%player%} to {bonusPrimarystat::%player%} - {_bonusIntellect}
 							Ascendance(player, {_ascendanceDuration})
 
 						if {_shieldNumber} is set:
@@ -570,8 +570,11 @@ function LavaSurge(p: player, target: entity):
 
 	if metadata value "Rain of Lava-Camera" of {_p} is set:
 		set {_entityId} to metadata value "Rain of Lava-Camera" of {_p}
-		set {_entity} to entity from id {_entityId} in {_p}'s world
-		send title " " with subtitle " " to {_entity} for 1 second with fade in 0 second and fade out 0 second
+
+		set {_world} to {_p}'s world
+		set {_entityFromId} to {_world}.getEntity({_entityId})
+
+		send title " " with subtitle " " to {_entityFromId} for 1 second with fade in 0 second and fade out 0 second
 	send title " " with subtitle " " to {_p} for 1 second with fade in 0 second and fade out 0 second
 	if metadata value "Lava Wave" of {_p} is set:
 		clear metadata value "Lava Wave" of {_p}
@@ -659,17 +662,15 @@ function MoltenLavaTick(p: player, loc: location, sound: boolean = false):
 	if {_sound} = true:
 		play sound "block.lava.extinguish" with volume 4 and pitch 2 at location of {_loc}
 
-on packet event play_server_block_change:
-	set {_field} to field 0 of event-packet
-	set {_loc} to location({_field}.getX(), {_field}.getY(), {_field}.getZ(), world "%player's world%")
-	if metadata value "MoltenLava" of block at {_loc} is set:
-		cancel event
-
 function moltenLavaSee(p: player, loc: location):
-	set {_packet} to new play_server_block_change packet
-	set field 0 of {_packet} to {_loc}
-	set field 1 of {_packet} to "magma block" parsed as item type
-	send (all players in {_p}'s world) packet {_packet} without calling event
+	loop {playersOnline::*}:
+		if distance between loop-value and {_p} < 100:
+			make loop-value see block at {_loc} as magma block
+
+on player interact:
+	if metadata value "MoltenLava%player%" of event-block is set:
+		wait 1 tick
+		make player see event-block as magma block
 
 function BonusLavaBurst(p: player, target: entity, maxStacks: integer):
 	set metadata value "Lava Technique Duration%{_p}%" of {_target} to 16 seconds
@@ -776,8 +777,10 @@ function Magma(p: player):
 						set metadata value "Lava Surge" of {_p} to true
 						if metadata value "Rain of Lava-Camera" of {_p} is set:
 							set {_entityId} to metadata value "Rain of Lava-Camera" of {_p}
-							set {_entity} to entity from id {_entityId} in {_p}'s world
-							send title " " with subtitle "          " to {_entity} for 1 minute with fade in 0.25 second and fade out 0.0 second
+
+							set {_entityFromId} to {_world}.getEntity({_entityId})
+
+							send title " " with subtitle "          " to {_entityFromId} for 1 minute with fade in 0.25 second and fade out 0.0 second
 
 						if {guiscale::%{_p}%} = 4:
 							send title " " with subtitle "          " to {_p} for 1 minute with fade in 0.25 second and fade out 0.0 second
@@ -810,11 +813,17 @@ function Ascendance(p: player, duration: timespan):
 		if string tag "Talents;Row 5" of (custom nbt of {karta::%{_p}%}) = "Further Beyond":
 			add 200 to {bonusHaste::%{_p}%}
 			set {_furtherBeyond} to true
+
 		if string tag "Talents;Row 2" of (custom nbt of {karta::%{_p}%}) = "Lava Will Rain":
 			set {_bonusIntellect} to 20
-			add {_bonusIntellect} to {bonusPrimarystat::%{_p}%}
+
+			if {_furtherBeyond} = true:
+				set {_bonusIntellect} to {_bonusIntellect} + 20
+
+			set {bonusPrimarystat::%{_p}%} to {bonusPrimarystat::%{_p}%} + {_bonusIntellect}
+
 		set {_mountainsWillFall} to statTrait({_p}, "Ghazan", "Mountains will Fall")
-		add {_mountainsWillFall} to {bonusCriticalHit::%{_p}%}
+		set {bonusCriticalHit::%{_p}%} to {bonusCriticalHit::%{_p}%} + {_mountainsWillFall}
 	else:
 		add {_duration} to metadata value "AscendanceDuration" of {_p}
 		stop
@@ -842,8 +851,8 @@ function Ascendance(p: player, duration: timespan):
 	if {_mountainsWillFall} > 0:
 		remove {_mountainsWillFall} from {bonusCriticalHit::%{_p}%} 
 
-	if string tag "Talents;Row 2" of (custom nbt of {karta::%{_p}%}) = "Lava Will Rain":
-		remove {_bonusIntellect} from {bonusPrimarystat::%{_p}%}
+	if {_bonusIntellect} is set:
+		set {bonusPrimarystat::%{_p}%} to {bonusPrimarystat::%{_p}%} - {_bonusIntellect}
 
 on disconnect:
 	wait 60 seconds
