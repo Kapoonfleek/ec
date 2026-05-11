@@ -495,7 +495,69 @@ on rightclick:
         set {_flavourText::*} to "&6&o'The weight of the world, held in your palm.'", "&6&o'Chaos, contained within a single sigil.'", "&6&o'An ancient echo trapped in etched stone.'" and "&6&o'The deeper the carving, the louder the magic.'"
         set {_flavourText} to a random element of {_flavourText::*} 
         give player (burn pottery sherd named "<#b03228>Rune: Core Intensity") with lore ("<#9a38ab>🌀 Gear Rune%nl%&7Used by &f✨ Enchanters &7to infuse <#9a38ab>Gear &7with runic%nl%&7power. Can be engraved onto any <#9a38ab>Gear &7to provide%nl%&7a minor boost to an <#9a38ab>Ability &7for its matching <#9a38ab>Card&7.%nl% %nl%&7The potency of each <#9a38ab>🌀 Rune &7is determined randomly.%nl% %nl%&8» &7Card: &f <#b03228>Ghazan%nl%&8» &7Effect: &f1.3%%  <#b03228>Lava Burst &7damage%nl% %nl%&8» <#9a38ab>🌀 Runic Power: &f100%%%nl% %nl%%{_flavourText}%")
-        
+
+        clear string list tag "Runes" of ((custom nbt of player's tool))
+        set string tag "Runes;Core Intensity;Card" of ((custom nbt of player's tool)) to "Ghazan"
+        set double tag "Runes;Core Intensity;Value" of ((custom nbt of player's tool)) to 1.3
+        set double tag "Runes;Core Intensity;Runic Power" of ((custom nbt of player's tool)) to 100
+
+        set {_item} to Gear("Ring of Forbidden Techniques", "Ring", 120, "Epic", "Intellect", "Siege of Spawn")
+
+function dropRune(p: player, card: text, minBoost: number, highRollBias: number) :: item:
+    set {_runes::*} to yaml node keys {_card} in "RuneList"
+    set {_rune} to a random element of {_runes::*}
+
+    set {_runeMaxValue} to yaml value "%{_card}%.%{_rune}%.Max Value" in "RuneList"
+    
+    set {_runicPower} to rollRune({_minBoost}, {_highRollBiast})
+    set {_runeRandomValue} to {_runeMaxValue}*({_runicPower}/100)
+
+    set {_runeDesc} to yaml value "%{_card}%.%{_rune}%.Description" in "RuneList"
+    set {_uncoloredRuneDesc} to (uncolored {_runeDesc})
+
+    if length of {_uncoloredRuneDesc} > 42:
+        set {_runeDesc} to join wrapTextColoured("%{_runeDesc}%", 42) by "%nl%  &7"
+
+    set {_runeValue} to {_runeRandomValue}
+    if {_runeValue} < 0.01:
+        set {_runeValue} to formatNumber({_runeRandomValue}, "##.####")
+
+    replace all "{VALUE}" in {_runeDesc} with "%{_runeValue}%"
+
+    set {_cardColour} to yaml value "Card Colours.%{_card}%.Base" in "CardList"
+    set {_cardIcon} to yaml value "Card Icons.%{_card}%.Base.General" in "CardList"
+
+    set {_flavourText::*} to "&6&o'The weight of the world, held in your palm.'", "&6&o'Chaos, contained within a single sigil.'", "&6&o'An ancient echo trapped in etched stone.'" and "&6&o'The deeper the carving, the louder the magic.'"
+    set {_flavourText} to a random element of {_flavourText::*}
+
+    set {_runeItem} to (burn pottery sherd named (formatted "%{_cardcolour}%Rune: %{_rune}%")) with lore (formatted "<#9a38ab>🌀 Gear Rune%nl%&7Used by &f✨ Enchanters &7to infuse <#9a38ab>Gear &7with runic%nl%&7power. Can be engraved onto any <#9a38ab>Gear &7to provide%nl%&7a minor boost to an <#9a38ab>Ability &7for its matching <#9a38ab>Card&7.%nl% %nl%&7The potency of each <#9a38ab>🌀 Rune &7is determined randomly.%nl% %nl%&8» &7Card: &f%{_cardIcon}% %{_cardcolour}%%{_card}%%nl%&8» &7Effect: %{_runeDesc}%%nl% %nl%&8» <#9a38ab>🌀 Runic Power: &f%({_runicPower})%%%%nl% %nl%%{_flavourText}%")
+    
+    set {_customNbt} to custom nbt of {_runeItem}
+    set string tag "Runes;%{_rune}%;Card" of {_customNbt} to {_card}
+    set double tag "Runes;%{_rune}%;Value" of {_customNbt} to {_runeRandomValue}
+    set double tag "Runes;%{_rune}%;Runic Power" of {_customNbt} to {_runicPower}
+
+    return {_runeItem}
+
+function rollRune(minBoost: number, highRollBias: number) :: number:
+    set {_min} to 0.1
+    if {_minBoost} > {_min}:
+        set {_min} to {_minBoost}
+    
+    set {_exponent} to 1 - ({_highRollBias} / 100)
+    
+    set {_raw} to a random number between 0.01 and 1.0
+    set {_curved} to {_raw} ^ {_exponent}
+    
+    set {_value} to {_min} + ({_curved} * (100 - {_min}))
+    return {_value}
+
+function applyRune(p: player, card: item, rune: item):
+    broadcast "t"
+
+command /giverune:
+    trigger:
+        give player dropRune(player, "Ghazan", 0, 0) 
 
 on inventory click:
     if event-inventory = (metadata tag "EnchantingLearn" of player):
