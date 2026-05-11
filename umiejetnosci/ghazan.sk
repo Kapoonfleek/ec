@@ -261,6 +261,7 @@ on rightclick:
 						LoreUpdate(player, "Ascendance", {_lore})
 						if cooldown "Ascendance%player%" is finished:
 							set cooldown "Ascendance%player%" to {_cd}
+							set cooldown of (player's held item) for player to {_cd}
 							AbilityUse(player, "Ascendance")
 							set {_ascDuration} to 18
 							if getTrait(player, "Mountains will Fall") is set:
@@ -814,6 +815,10 @@ function Ascendance(p: player, duration: timespan):
 		add {_duration} to metadata value "AscendanceDuration" of {_p}
 		stop
 
+	loop all items in the inventory of {_p}:
+		if boolean tag "Lava Burst" of (custom nbt of loop-item) = true:
+			set cooldown of loop-item for {_p} to 0 seconds
+
 	while metadata value "Ascendance" of {_p} is set:
 		if metadata value "cast" of {_p} is not set:
 			send action bar " Ascendance: %metadata value "AscendanceDuration" of {_p}%" to {_p}
@@ -1191,10 +1196,15 @@ function Eruption(p: player, target: entity):
 	set {_entities::*} to LoopEntitiesAroundTarget({_target}, 5, false)
 
 	set {_mastery} to 4 + (Mastery({_p})/26)
+
+	if string tag "Talents;Row 1" of (custom nbt of {karta::%{_p}%}) = "Advanced Technique":
+		set {_mastery} to {_mastery} + 0.1
+
 	set {_LTStacks} to metadata value "Lava Technique Stacks%{_p}%" of {_target}
 	set {_modifier} to 0.2
 
 	set {_damage} to 0.3 + ({damage::%{_p}%}/300) + (Versatility({_p})/900) + ({primarystat::%{_p}%}/150)
+	
 	set {_damage} to {_damage}*(1+({_mastery}*{_LTStacks}/100))
 	set {_lore} to "&7When &f <#b03228>Lava Burst &7hits a target at maximum%nl%&f <#b03228>Mastery: Lava Technique &7stacks, it causes%nl%&7an &f <#d14d43>Eruption&7.%nl% %nl%&f <#d14d43>Eruption%nl%&7Deals &f%{_damage}% <#ff3014>Lava &7damage to a target and splashes%nl%&7for &f20%% &7of the damage to nearby targets.%nl% %nl%&7This damage scales with your <#f53b98> Mastery &7bonus."
 
