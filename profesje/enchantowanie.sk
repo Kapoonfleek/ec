@@ -552,13 +552,37 @@ function rollRune(minBoost: number, highRollBias: number) :: number:
     set {_value} to {_min} + ({_curved} * (100 - {_min}))
     return {_value}
 
-function applyRune(p: player, card: item, rune: item):
-    broadcast "t"
+function engraveRune(p: player, rune: item, gearItem: item) :: item:
+    set {_customNbt} to custom nbt of {_rune}
+    set {_customNbtGearItem} to custom nbt of {_gearItem}
+
+    set {_statsGear} to compound tag "Runes" of {_customNbt}
+    set {_statsType::*} to nbt tags of {_statsGear}
+    loop {_statsType::*}:
+        set {_runeTags} to compound tag "Runes;%loop-value%" of {_customNbt}
+        broadcast {_runeTags}
+        set compound tag "Runes;%loop-value%" of {_customNbtGearItem} to {_runeTags}
+    
+    set lore of {_gearItem} to GearLoreUpdate({_gearItem})
+
+    return {_gearItem}
+
+function applyRune(p: player, card: item):
+    broadcast "A"
 
 command /giverune:
     trigger:
         give player dropRune(player, "Ghazan", 0, 0) 
 
+command /engrave:
+    trigger:
+        loop all items in player's inventory:
+            if name of loop-item contains "Rune":
+                set string tag "Enchant;Name" of ((custom nbt of player's tool)) to "Atticus's Wisdom"
+                set int tag "Enchant;Rank" of ((custom nbt of player's tool)) to 1
+                set int tag "Enchant;Stats;Mastery" of ((custom nbt of player's tool)) to 4
+                give player engraveRune(player, loop-item, player's tool)
+                remove player's tool from player
 on inventory click:
     if event-inventory = (metadata tag "EnchantingLearn" of player):
         cancel event
