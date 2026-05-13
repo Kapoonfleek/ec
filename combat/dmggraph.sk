@@ -21,7 +21,7 @@ function CombatRefresh(v: entity, a: entity):
 					remove 1 from {_tag}
 					set metadata value "ECEngaged" of {_v} to {_tag}
 				else:
-					clear metadata value "ECEngaged" of {_v}
+					clearECEngaged({_v})
 					loop {asyst::%uuid of {_v}%::*}:
 						set {_player} to loop-value parsed as entity
 						clear metadata value "CircleOfWater%{_player}%" of {_v}
@@ -40,7 +40,7 @@ function CombatRefresh(v: entity, a: entity):
 
 function clearCombat(e: entity):
 	LogDmgBreakdown({_e})
-	clear metadata value "ECEngaged" of {_e}
+	clearECEngaged({_e})
 	SetPlayerStats({_e})
 	if {_e} is a player:
 		delete yaml "CombatDetails-%{_e}%"
@@ -54,7 +54,10 @@ function clearCombat(e: entity):
 	clear {ascendanceDuration::%{_e}%}
 	clear {lingeringInsanityHaste::%{_e}%}
 	clear {hasteVoidform::%{_e}%}
+
 	clear {bonusHaste::%{_e}%}
+	clear {bonusPrimarystat::%{_e}%}
+
 	set {insanity::%{_e}%} to 0
 	loop {incombatwith::%{_e}%::*}:
 		remove uuid of {_e} from {asyst::%uuid of loop-value%}
@@ -338,10 +341,18 @@ function combatInitiate(att: entity, vict: entity):
 	#while metadata value "ECEngaged" of {_att} = true:
 		#add 1 to {seconds::%{_att}%}
 		#wait 1 second
+
+function clearECEngaged(p: entity):
+	if {_p} is a player:
+		if yaml "activeCard-%{_p}%" is loaded:
+			set {_totalCombatTime} to yaml value "Combat Data.Total Combat Time" in "activeCard-%{_p}%"
+			set yaml value "Combat Data.Total Combat Time" in "activeCard-%{_p}%" to ({_totalCombatTime} + metadata value "ECEngaged" of {_p})
+			save yaml "activeCard-%{_p}%"
+	clear metadata value "ECEngaged" of {_p}
 on leave:
 	wait 60 seconds
 	if player is not online:
-		clear metadata value "ECEngaged" of player
+		clearECEngaged(player)
 		clear {seconds::%player%}
 		clear {seconds::%player%}
 		set {dps::%player%} to 0
@@ -355,6 +366,7 @@ on leave:
 		replace all "&8Id " in {_id} with ""
 		clear {dmgbreak::%{kartaname::%player%}%::%{_id}%}
 		clear {bonusHaste::%player%}
+		clear {bonusPrimarystat::%player%}
 
 		ClearPlayerStats(player) #Clears player stats inherited from the player's card
 
