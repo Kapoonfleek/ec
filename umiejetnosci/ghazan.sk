@@ -14,10 +14,11 @@ on rightclick:
 					if {_target} is set:
 						if metadata value "Lava Surge" of player is not true:
 							if cooldown "LavaBurst%player%" is finished:
-								set {_id} to line 19 of lore of {karta::%player%}
+								set {_id} to cardId(player)
 								set {_pospiech} to Haste(player)
 								set {_casttime} to "%round((2/{_pospiech}), 1)% seconds" parsed as timespan
-								set {_cd} to "%8/{_pospiech}% seconds" parsed as timespan
+								set {_baseCd} to 8 - getRunePower(player, "Igneous Flow")
+								set {_cd} to "%{_baseCd}/{_pospiech}% seconds" parsed as timespan
 								if {_target} is alive:
 									if metadata value "cast" of player is not set:
 										play sound "skill.ghazan.lava_burst_precast" with volume 2 and pitch 1 to player
@@ -664,8 +665,9 @@ function MoltenLavaTick(p: player, loc: location, sound: boolean = false):
 
 function moltenLavaSee(p: player, loc: location):
 	loop {playersOnline::*}:
-		if distance between loop-value and {_p} < 100:
-			make loop-value see block at {_loc} as magma block
+		if (world of loop-value) = (world of {_p}):
+			if distance between loop-value and {_p} < 100:
+				make loop-value see block at {_loc} as magma block
 
 on player interact:
 	if metadata value "MoltenLava%player%" of event-block is set:
@@ -722,7 +724,7 @@ function Magma(p: player):
 	set {_crit} to CriticalHit({_p})
 	set {_damage} to (0.5 + ({damage::%{_p}%}/160)) + (Versatility({_p})/480) + ({primarystat::%{_p}%}/80) + {_bonusdmg}
 
-	if string tag "Talents;Row 4" of (custom nbt of {karta::%{_p}%}) = "Obsidianbreaker":
+	if string tag "Talents;Row 4" of (custom nbt of {karta::%{_p}%}) = "Groundbreaker":
 		set {_damage} to {_damage}*1.25
 
 	set {_pospiech} to Haste({_p})
@@ -897,7 +899,8 @@ function LavaBurst(p: player, x: entity, multiplier: number, ability: string, re
 	set {_mistrzostwo} to 4 + (Mastery({_p})/26)
 	set {_pospiech} to Haste({_p})
 	set {_casttime} to round((2/{_pospiech}), 1)
-	set {_cdd} to (8/{_pospiech})
+	
+	set {_cdd} to ((8 - getRunePower({_p}, "Igneous Flow"))/{_pospiech})
 
 	add {_bonusDamage} to {_damage}
 	set {_damage} to {_damage}*{_multiplier}					
@@ -1034,11 +1037,13 @@ function LavaBurst(p: player, x: entity, multiplier: number, ability: string, re
 		if metadata value "Lava Technique Stacks%{_p}%" of {_x} = {_maxStacks}:
 			Eruption({_p}, {_x})
 
-	else if string tag "Talents;Row 4" of (custom nbt of {karta::%{_p}%}) = "Obsidianbreaker":
+	else if string tag "Talents;Row 4" of (custom nbt of {karta::%{_p}%}) = "Groundbreaker":
 		if {_damageBeforeCrit} != {_damage}:
 			if any:
 				{_ability} = "Lava Burst"
+				{_ability} = "Lava Burst (Echo)"
 				{_ability} = "Rain of Lava"
+				{_ability} = "Rain of Lava (Echo)"
 			then:
 				set {_refreshRadius} to 2.5 + (CrowdControl({_p})/38)
 				set {_refreshDuration} to 2 seconds
