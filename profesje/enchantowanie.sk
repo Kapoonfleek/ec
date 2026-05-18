@@ -73,10 +73,20 @@ command /en5:
     trigger:
         if yaml "TraitList" is loaded:
             unload yaml "TraitList"
+            unload yaml "PrimaryStatList"
             broadcast "unloaded"
         else:
             load yaml "plugins/Skript/azeritearmor/TraitList" as "TraitList"
             load yaml "plugins/Skript/lists/PrimaryStatList" as "PrimaryStatList"
+            broadcast "loaded"
+
+command /en6:
+    trigger:
+        if yaml "GemList" is loaded:
+            unload yaml "GemList"
+            broadcast "unloaded"
+        else:
+            load yaml "plugins/Skript/lists/GemList" as "GemList"
             broadcast "loaded"
 
 function learnEnchantingRecipe(p: player, recipeName: string):
@@ -567,12 +577,37 @@ function engraveRune(p: player, rune: item, gearItem: item) :: item:
 
     return {_gearItem}
 
-function applyRune(p: player, card: item):
-    broadcast "A"
+function applyRune(p: player, card: item, rune: string, runeValue: number, runicPower: number):
+    set {_count} to yaml value "Card.Runes.%{_rune}%.Count" in "activeCard-%{_p}%"
+    set {_count} to {_count} + 1
+    set yaml value "Card.Runes.%{_rune}%.Count" in "activeCard-%{_p}%" to {_count}
+
+    set {_value} to yaml value "Card.Runes.%{_rune}%.Value" in "activeCard-%{_p}%"
+    set {_value} to {_value} + {_runeValue}
+    set yaml value "Card.Runes.%{_rune}%.Value" in "activeCard-%{_p}%" to {_value}
+
+    set {_power} to yaml value "Card.Runes.%{_rune}%.Runic Power" in "activeCard-%{_p}%"
+    set {_power} to {_power} + {_runicPower}
+    set yaml value "Card.Runes.%{_rune}%.Runic Power" in "activeCard-%{_p}%" to {_power}
+
+function removeRune(p: player, card: item, rune: string, runeValue: number, runicPower: number):
+    set {_count} to yaml value "Card.Runes.%{_rune}%.Count" in "activeCard-%{_p}%"
+    set {_count} to {_count} - 1
+    if {_count} > 0:
+        set yaml value "Card.Runes.%{_rune}%.Count" in "activeCard-%{_p}%" to {_count}
+    else:
+        clear yaml value "Card.Runes.%{_rune}%" in "activeCard-%{_p}%"
+
+function getRunePower(p: player, rune: string) :: number:
+    set {_runeValue} to yaml value "Card.Runes.%{_rune}%.Value" in "activeCard-%{_p}%"
+
+    return {_runeValue}
 
 command /giverune:
     trigger:
-        give player dropRune(player, "Ghazan", 0, 0) 
+        set {_item} to Gear("Ring of Forbidden Techniques", "Ring", 120, "Epic", "Intellect", "Siege of Spawn")
+        give {_item} to player
+        give player dropRune(player, "Ghazan", 0, 0)
 
 command /engrave:
     trigger:
