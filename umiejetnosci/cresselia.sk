@@ -81,8 +81,16 @@ function ShootingStar(p: player):
 			set {_bonusY} to 0.9
 			set {_lore} to {_loreShootingStars}
 			play sound "entity.firework_rocket.launch" with volume 4 and pitch 0 at location of {_target}
+			
+			set {_chanceShooting} to 8
+			if boolean tag "Constellation;Stellar Command" of (custom nbt of {karta::%{_p}%}) is set:
+				set {_chanceShooting} to {_chanceShooting} + 2
+			if metadata value "CelestialAlignment" of {_p} is set:
+				set {_chanceShooting} to {_chanceShooting}*2
+			if metadata value "Solstice" of {_p} is set:
+				set {_chanceShooting} to {_chanceShooting}*3
 
-		set {_loreShootingStars} to "&8Mastery Bonus%nl%&fNo cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fPASSIVE%nl%<##6a5e9e>Every <##b9aeeb>second<##6a5e9e>, you have a &f%{_chance}%%% <##b9aeeb>chance <##6a5e9e>to call%nl%<##6a5e9e>down a &f <##b9aeeb>Shooting Star<##6a5e9e>, dealing &f%{_damage}% <##a99afc>Astral <##6a5e9e>damage%nl%<##6a5e9e>to the enemy and generating &f %{_astralpower}% <##b9aeeb>Astral Power<##6a5e9e>.%nl% %nl%<##6a5e9e>This effect can only trigger when you have%nl%<##b9aeeb>attacked a target <##6a5e9e>through a different damage%nl%<##6a5e9e>source than &f <##b9aeeb>Shooting Stars <##6a5e9e>in the last &f20 sec<##6a5e9e>."
+		set {_loreShootingStars} to "&8Mastery Bonus%nl%&fNo cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fPASSIVE%nl%<##6a5e9e>Every <##b9aeeb>second<##6a5e9e>, you have a &f%{_chanceShooting}%%% <##b9aeeb>chance <##6a5e9e>to call%nl%<##6a5e9e>down a &f <##b9aeeb>Shooting Star<##6a5e9e>, dealing &f%{_damage}% <##a99afc>Astral <##6a5e9e>damage%nl%<##6a5e9e>to the enemy and generating &f %{_astralpower}% <##b9aeeb>Astral Power<##6a5e9e>.%nl% %nl%<##6a5e9e>This effect can only trigger when you have%nl%<##b9aeeb>attacked a target <##6a5e9e>through a different damage%nl%<##6a5e9e>source than &f <##b9aeeb>Shooting Stars <##6a5e9e>in the last &f20 sec<##6a5e9e>."
 		LoreUpdate({_p}, "Shooting Stars", {_loreShootingStars})
 
 		set {_y} to 0
@@ -120,11 +128,11 @@ function ShootingStar(p: player):
 		loop {_loops} times:
 			set {_shootingStarsDamage} to {_damage}
 			set {_target}'s last damage cause to sweep attack
-			set metadata value "Element" of {_target} to "Astral"
 			set metadata value "LastDamageCause" of {_target} to {_damageCause}
 			set metadata value "LastDamageCauseLore" of {_target} to {_lore}
+			set metadata value "Element" of {_p} to "Astral"
 			set {_shootingStarsDamage} to Crit({_p}, {_target}, {_crit}, {_shootingStarsDamage}, {_critModifier})
-			make {_p} damage {_target} by {_shootingStarsDamage}*2
+			make {_p} damage {_target} by {_shootingStarsDamage}
 			chance of {_astralInvocationChance}%:
 				AstralInvocation({_p})
 			if string tag "Talents;Row 2" of (custom nbt of {karta::%{_p}%}) = "Astral Communion":
@@ -150,6 +158,7 @@ function ShootingStarSpawn(target: entity, crashingStar: boolean = false) :: ent
 	set {_randomYcoordinate} to a random number between 8 and 35
 	set {_l} to location of block {_randomYcoordinate} blocks above {_target}
 	spawn an armor stand at {_l} with nbt from "{Invulnerable:1b,NoGravity:1b,Silent:1b,Pose:{Head:[180.0f,0.0f,0.0f]}}"
+	set boolean tag "RemoveOnReset" of (custom nbt of last spawned armor stand) to true
 	if {_crashingStar} = true:
 		set name of last spawned armor stand to "CrashingStar"
 	else:
@@ -160,7 +169,6 @@ function ShootingStarSpawn(target: entity, crashingStar: boolean = false) :: ent
 
 function ShootingStarKill(e: entity):
 	wait 20 seconds
-	#kill on server stop
 	kill {_e}
 
 function AstralPower(p: player):
@@ -302,13 +310,13 @@ on rightclick:
 										set {_critModifier} to {_critModifier} + 0.2
 									
 									set {_target}'s last damage cause to sweep attack
-									set metadata value "Element" of player to "Astral"
 									set {_lore} to "&8Basic Ability%nl%&fInstant cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fRMB%nl%&7Cost: &f 30 Astral Power%nl%<##6a5e9e>Launches a surge of stellar energies at the%nl%<##6a5e9e>target, dealing &f%{_damage}% <##a99afc>Astral <##6a5e9e>damage and empowering%nl%<##b9aeeb>subsequent <##6a5e9e>uses of &f <##b9aeeb>Starsurge <##6a5e9e>within &f12 sec%nl%<##6a5e9e>on the target by &f15%%<##6a5e9e>.%nl% %nl%<##6a5e9e>This effect stacks up to &f2 <##6a5e9e>times."
 									set metadata value "LastDamageCause" of {_target} to "<##6a5e9e>Starsurge"
 									set metadata value "LastDamageCauseLore" of {_target} to {_lore}
 									play sound "skill.cresselia.starsurgeimpact" with volume 4 and pitch 1 at location of {_target}
+									set metadata value "Element" of player to "Astral"
 									set {_damage} to Crit(player, {_target}, {_crit}, {_damage}, {_critModifier})
-									make player damage {_target} by {_damage}*2
+									make player damage {_target} by {_damage}
 
 									CresseliaRecentlyDamaged(player, {_target})
 								else:
@@ -582,11 +590,11 @@ function Starfire(p: player, target: entity, astronomicalImpact: boolean = false
 			StarfireVisual({_p}, loop-value, true)
 		set {_lore} to "&8Basic Ability%nl%&f%{_casttime}% second cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fRMB%nl%<##6a5e9e>Calls down a burst of star energy, causing%nl%&f%{_damageMainTarget}% <##a99afc>Astral <##6a5e9e>damage to the target, and &f%{_damageAoe}% <##a99afc>Astral%nl%<##6a5e9e>damage to all other enemies in a short radius.%nl% %nl%<##6a5e9e>Generates &f 8 <##b9aeeb>Astral Power<##6a5e9e>."
 		set loop-value's last damage cause to sweep attack
-		set metadata value "Element" of loop-value to "Astral"
 		set metadata value "LastDamageCause" of loop-value to "<##6a5e9e>Starfire"
 		set metadata value "LastDamageCauseLore" of loop-value to {_lore}
+		set metadata value "Element" of {_p} to "Astral"
 		set {_damage} to Crit({_p}, loop-value, {_crit}, {_damage}, {_critModifier})
-		make {_p} damage loop-value by {_damage}*2
+		make {_p} damage loop-value by {_damage}
 
 	play sound "entity.player.hurt" with volume 0.5 and pitch 1 at location of {_target}
 
@@ -661,13 +669,15 @@ function Starfall(p: player, effectiveness: number):
 			set {_loc} to location of {_randomEnemy}
 			set y-coordinate of {_loc} to (y-coordinate of {_randomEnemy} + {_randomIncrease})
 
-			spawn an armor stand at {_loc} with nbt from "{Invisible:1b,Invulnerable:1b,Silent:1b,NoGravity:1b,Pose:{Head:[180.0f,0.0f,0.0f]}}"
+			spawn an armor stand at {_loc} with nbt from "{Invulnerable:1b,Silent:1b,NoGravity:1b,Pose:{Head:[180.0f,0.0f,0.0f]}}"
+			set boolean tag "RemoveOnReset" of (custom nbt of last spawned armor stand) to true
 			set {_starfallStar} to last spawned armor stand
 			set helmet of {_starfallStar} to stick named "StarfallModel"
 			StarfallStarKill({_starfallStar})
 			StarfallStarTravel({_p}, {_starfallStar}, {_randomEnemy}, {_starfallDuration}, {_pospiech}, {_effectiveness})
 
 			spawn an armor stand at location 0.5 above {_loc} with nbt from "{Invulnerable:1b,Silent:1b,NoGravity:1b}"
+			set boolean tag "RemoveOnReset" of (custom nbt of last spawned armor stand) to true
 			set {_starfallParticle} to last spawned armor stand
 			set name of {_starfallParticle} to "StarfallAnim"
 			StarfallStarTravel({_p}, {_starfallParticle}, {_randomEnemy}, {_starfallDuration}, {_pospiech}, {_effectiveness}, true)
@@ -702,6 +712,7 @@ function StarsurgeBonus(p: player, target: entity):
 				clear metadata value "StarsurgeBonus%{_p}%" of {_target}
 				stop loop
 		if {_target} is alive:
+			set {_name} to name of {_target}
 			set {_meta} to new metadata packet with id {_id}:
 				name: {_name}
 			send packet {_meta} to {_p}
@@ -778,11 +789,11 @@ function StarfallStarTravel(p: player, e: entity, target: entity, duration: time
 				set {_damage} to {_damage}*1.08
 			set loop-value's last damage cause to sweep attack
 			set {_lore} to "&8Basic Ability%nl%&fInstant cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fRMB%nl%&7Cost: &f 50 Astral Power%nl%<##6a5e9e>Calls down waves of falling stars upon enemies%nl%<##6a5e9e>within a <##b9aeeb>huge radius<##6a5e9e>, dealing &f%{_damage}% <##a99afc>Astral <##6a5e9e>damage%nl%<##6a5e9e>over &f%{_starfallDuration}% sec <##6a5e9e>to targets at random and nearby%nl%<##6a5e9e>enemies.%nl% %nl%<##6a5e9e>Multiple uses of this ability may overlap."
-			set metadata value "Element" of loop-value to "Astral"
 			set metadata value "LastDamageCause" of loop-value to "<##6a5e9e>Starfall"
 			set metadata value "LastDamageCauseLore" of loop-value to {_lore}
+			set metadata value "Element" of {_p} to "Astral"
 			set {_damage} to Crit({_p}, loop-value, {_crit}, {_damage}, {_critModifier})
-			make {_p} damage loop-value by {_damage}*2
+			make {_p} damage loop-value by {_damage}
 			CresseliaRecentlyDamaged({_p}, loop-value)
 			if loop-value = {_target}:
 				play sound "entity.player.hurt" with volume 1.5 and pitch 1 at location of loop-value
@@ -851,10 +862,13 @@ function FullMoon(p: player, target: entity, effectiveness: number = 1):
 	set {_haste} to Haste({_p})
 	set {_randomIncrease} to a random number between 10 and 40
 	set {_loc} to location of {_target}
-	set y-coordinate of {_loc} to (y-coordinate of {_target} + {_randomIncrease})
+	set y of {_loc} to (y of (location at {_target}) + {_randomIncrease})
 	spawn an armor stand at {_loc} with nbt from "{Invulnerable:1b,NoGravity:1b,Silent:1b,Pose:{Head:[180.0f,0.0f,0.0f]}}"
-	set name of last spawned armor stand to "CrashingStar"
+	set boolean tag "RemoveOnReset" of (custom nbt of last spawned armor stand) to true
+
+	modelApply(last spawned armor stand, "fullmoon", 2.0)
 	set {_e} to last spawned armor stand
+
 	set {_y} to 0
 	set {_locMoon} to location of {_e}
 	set {_count} to 0
@@ -907,11 +921,11 @@ function FullMoon(p: player, target: entity, effectiveness: number = 1):
 			set {_damage} to {_damage}*1.15
 			set {_crit} to {_crit} + 15
 		set loop-value's last damage cause to sweep attack
-		set metadata value "Element" of loop-value to "Astral"
 		set metadata value "LastDamageCause" of loop-value to "<##6a5e9e>Full Moon"
 		set metadata value "LastDamageCauseLore" of loop-value to {_lore}
+		set metadata value "Element" of {_p} to "Astral"
 		set {_damage} to Crit({_p}, loop-value, {_crit}, {_damage}, {_critModifier})
-		make {_p} damage loop-value by {_damage}*2
+		make {_p} damage loop-value by {_damage}
 		CresseliaRecentlyDamaged({_p}, loop-value)
 		play sound "entity.player.hurt" with volume 1.5 and pitch 1 at location of loop-value
 
