@@ -14,23 +14,24 @@
 using script reflection
 
 
+#RESTORE IF SKRIPT-PACKET IS BROUGHT BACK, OR REWRITE
 
-effect change client side equipment %string% of %entity% to %itemstack% for %players%:
-    trigger:
-        set {_slot} to expression-1 in upper case
-        {_slot} is "CHEST" or "FEET" or "HEAD" or "LEGS" or "MAINHAND" or "OFFHAND"
-        set {_entity} to expression-2
-        {_entity} is an entity
-        set {_item} to expression-3 ? air
-        set {_nmsItem} to nms of (random item out of {_item})
-        {_nmsItem} is set
-        set {_players::*} to expression-4
-        set {_packet} to new play_server_entity_equipment packet
-        set field 0 of {_packet} to {_entity}
-        set {_itemSlot} to enum {_slot} from nms class "world.entity.EnumItemSlot"
-        set {_pair} to pair {_itemSlot} with {_nmsItem}
-        set field 1 of {_packet} to {_pair} # Auto-convert as List
-        send {_players::*} packet {_packet}
+#effect change client side equipment %string% of %entity% to %itemstack% for %players%:
+#    trigger:
+#        set {_slot} to expression-1 in upper case
+#        {_slot} is "CHEST" or "FEET" or "HEAD" or "LEGS" or "MAINHAND" or "OFFHAND"
+ #       set {_entity} to expression-2
+ #       {_entity} is an entity
+#        set {_item} to expression-3 ? air
+ #       set {_nmsItem} to nms of (random item out of {_item})
+ #       {_nmsItem} is set
+ #       set {_players::*} to expression-4
+ #       set {_packet} to new play_server_entity_equipment packet
+  #      set field 0 of {_packet} to {_entity}
+ #       set {_itemSlot} to enum {_slot} from nms class "world.entity.EnumItemSlot"
+ #       set {_pair} to pair {_itemSlot} with {_nmsItem}
+  #      set field 1 of {_packet} to {_pair} # Auto-convert as List
+  #      send {_players::*} packet {_packet}
 
 function formatNumberEc(num: number) :: string:
 	if {_num} >= 1000000:
@@ -41,7 +42,7 @@ function formatNumberEc(num: number) :: string:
 		set {_number} to "%{_num}%"
 	return {_number}
 
-function cardId(p: player):
+function cardId(p: player) :: string:
 	set {_id} to string tag "Id" of (custom nbt of {karta::%{_p}%})
 	return {_id}
 
@@ -577,6 +578,7 @@ function SetPlayerStats(p: player):
 	set {avoidance::%{_p}%} to {_avoidance}
 
 	clear {bonusHaste::%{_p}%}
+	clear {bonusPrimarystat::%{_p}%}
 
 	set {_currentMaxHealth} to {_p}'s max health
 	set max health of {_p} to 25 + ({health::%{_p}%}/5)
@@ -1026,10 +1028,33 @@ function clientSideItem(p: player, loc: location, item: item, wait: timespan, wa
 	remove fake entity with id {_id} for {_p}
 
 import:
-    org.bukkit.Material
-    org.bukkit.block.BlockFace
-    java.util.LinkedList
-    java.util.HashSet
+	org.bukkit.Material
+	org.bukkit.block.BlockFace
+	java.util.LinkedList
+	java.util.HashSet
+	kr.toxicity.model.api.BetterModel
+	kr.toxicity.model.api.manager.ModelManager
+
+function betterModelWarmup():
+	set {_loc} to location(0, -64, 0, world "world")
+	spawn an armor stand at {_loc}
+	set boolean tag "RemoveOnReset" of (custom nbt of last spawned armor stand) to true
+	set {_dummy} to last spawned armor stand
+
+	set {_manager} to BetterModel.plugin().modelManager()
+	set {_keys} to "%{_manager}.modelKeys()%"
+	replace all "[" and "]" in {_keys} with ""
+	set {_keys::*} to {_keys} split at ", "
+	
+	loop {_keys::*}:
+		set {_model} to BetterModel.model("%loop-value%").get().getOrCreate({_dummy})
+		wait 1 tick
+		{_model}.scaler({_model}.scaler().multiply(2.0))
+		wait 1 tick
+		{_model}.registry().reload()
+	kill {_dummy}
+	
+	broadcast "&aBetterModel warmup complete (%size of {_keys::*}% models)"
 
 function getClosestAirBlock(start: location, max: integer) :: location:
     set {_origin} to {_start}.getBlock()

@@ -5,6 +5,8 @@ function data() :: string:
 options:
 	UTC-Offset: 2
 
+
+
 # find the number of seconds until a given time
 # Uses 24 hour time
 function findSecondsUntil(hour: number, minutes: number = 0, seconds: number = 0) :: number:
@@ -96,6 +98,8 @@ on skript start:
 	load yaml "plugins/Skript/lists/CardList" as "CardList"
 	load yaml "plugins/Skript/lists/TalentList" as "TalentList"
 	load yaml "plugins/Skript/lists/SpellList" as "SpellList"
+	load yaml "plugins/Skript/lists/GearList" as "GearList"
+	load yaml "plugins/Skript/lists/RuneList" as "RuneList"
 	load yaml "plugins/Skript/lists/ElementList" as "ElementList"
 	load yaml "plugins/Skript/lists/VariantList" as "VariantList"
 	load yaml "plugins/Skript/lists/AbilityDescriptionList" as "AbilityDescriptionList"
@@ -103,8 +107,11 @@ on skript start:
 	load yaml "plugins/Skript/lists/WorldQuestList" as "WorldQuestList"
 	load yaml "plugins/Skript/lists/DialogueList" as "DialogueList"
 	load yaml "plugins/Skript/lists/ItemList" as "ItemList"
+	load yaml "plugins/Skript/lists/PrimaryStatList" as "PrimaryStatList"
 	load yaml "plugins/Skript/files/ReputationRequirements" as "ReputationRequirements"
+	load yaml "plugins/Skript/files/ModelHeights" as "ModelHeights"
 	load yaml "plugins/Skript/lists/WorkOrderList" as "WorkOrderList"
+	load yaml "plugins/Skript/lists/EnchantingProfessionList" as "EnchantingProfessionList"
 	load yaml "plugins/Skript/worldquests/WorldQuestHTML" as "WorldQuestHTML"
 	load yaml "plugins/Skript/azeritearmor/TraitList" as "TraitList"
 	load yaml "plugins/Skript/azeritearmor/Sources" as "AzeriteArmorSources"
@@ -159,7 +166,27 @@ on skript start:
 					if {urodzinydzien::%loop-offline player%} is set:
 						clear {urodzinydzien::%loop-offline player%}
 
-	if {tygodniowyreset} is true:
+	if {tygodniowyreset} != true:
+		clear {doubleXPFriday}
+		loop {activeWorldQuests::*}:
+			set {_WQLocations::*} to WorldQuestRegionSpawn(loop-value)
+        
+			set {_WQLocation} to {_WQLocations::1}
+			set {_WQLocationMin} to {_WQLocations::2}
+			set {_WQLocationMax} to {_WQLocations::3}
+
+			set {_plugin} to instance of plugin "Skript"
+
+			loop all chunks within {_WQLocationMin} and {_WQLocationMax}:
+				set {_chunk} to loop-chunk
+				set {_chunkLoc} to block at 0,0,0 in {_chunk}
+				{_chunk}.addPluginChunkTicket({_plugin})
+				set {_chunk} to {_chunk}.getWorld().getChunkAtAsync({_chunkLoc})
+				set {_actualChunk} to {_chunk}.join()
+				wait 1 tick if loop-counter-2 is divisible by 20
+
+			WorldQuestSpawn(loop-value)
+	else:
 		set {tygodniowyreset} to false
 		send "Tygodniowy reset nastąpił!" to console
 		set {doubleXPFriday} to true
@@ -167,8 +194,7 @@ on skript start:
 		log "%{_data}% Tygodniowy reset nastąpił!" to "logi/serwer.log"
 		resetMessage("weekly")
 
-		delete all yaml from directory "plugins/Skript/playerdata/worldquests"
-		CreateWorldQuest(10)
+		NewWorldQuests()
 		
 		loop all offline players:
 			set {tresetwiad::%loop-offline player%} to true
@@ -192,14 +218,12 @@ on skript start:
 		set {_datadzien::1} to {_day}
 		set {_datadzien} to join {_datadzien::*} with "."
 		set {datatydzien2} to "%{_day}%.%{_datadzien}%"
-	else:
-		clear {doubleXPFriday}
 
 	UpdateTopDungeons({topKeystones::1}, {topKeystonesPath::1}, "top")
 	UpdateTopDungeons({mostRecentKeystone}, {mostRecentKeystonePath}, "recent")
 	clear {dmgdealt::*}
 	clear {dailyResetSoon}
-	reload script "systemy/walki"
+	betterModelWarmup()
 			
 on skript stop:
 	clear {discordCodes::*}
@@ -271,8 +295,11 @@ on join:
 	send resource pack from url "http://raw.githubusercontent.com/kapoonfleek/ecresourcepack/8.3.0/release.zip" with uuid (random uuid) with prompt {_prompt} to player
 	if online player count = 1:
 		chamberOfHeartAmbience()
+		diamondChestAnimate()
+		stellarChestAnimate()
+		dailyRewardAnimate()
 	if {kartaname::%player%} = "Umbreon":
-		if boolean tag "Constellation;Featherfoot" of custom nbt of {karta::%player%} is set:
+		if boolean tag "Constellation;Featherfoot" of (custom nbt of {karta::%player%}) is set:
 			if (time in world "world") is between 10:00 PM and 4:00 AM:
 				set metadata value "UmbreonFeatherfoot" of player to 150
 			else:
@@ -301,8 +328,6 @@ on join:
 		if {_x} contains """day_of_week"":5":
 			send "&dBenefit from a Double EXP day today!" to player
 			doubleExpDayReminder(player)
-	if player's name = "kapoonfleek" or "llamadegree" or "Pehrek":
-		execute player command "noinvincibility on"
 
 on pickup:
 	if boolean tag "CantDespawn" of custom nbt of event-dropped item is set:
