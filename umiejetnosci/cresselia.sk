@@ -1,15 +1,13 @@
 variables:
 	{astralpower::%player%} = 50
 
-
-
 function ShootingStars(p: player):
 	wait 1 tick
 	while metadata value "ECEngaged" of {_p} is set:
 		if {_p} is alive:
 			set {_chance} to 8
 			if boolean tag "Constellation;Stellar Command" of (custom nbt of {karta::%{_p}%}) is set:
-				add 2 to {_chance}
+				set {_chance} to {_chance} + 2
 			if metadata value "CelestialAlignment" of {_p} is set:
 				set {_chance} to {_chance}*2
 			if metadata value "Solstice" of {_p} is set:
@@ -25,15 +23,15 @@ function ShootingStar(p: player):
 	set {_id} to line 19 of lore of {karta::%{_p}%}
 	set {_loops} to 1
 	set {_astralInvocationChance} to 10
-	set {_damage} to (0.6 + (({damage::%{_p}%}/61) + ({versatility::%{_p}%}/183) + {primarystat::%{_p}%}/30.5)) * (1 + (({mastery::%{_p}%}/2.7)/100))
+	set {_damage} to (0.8 + (({damage::%{_p}%}/61) + (Versatility({_p})/183) + {primarystat::%{_p}%}/30.5)) * (1 + (Mastery({_p})/60))
 	if string tag "Talents;Row 2" of (custom nbt of {karta::%{_p}%}) = "Crashing Star":
 		chance of 15%:
-			set {_damage} to (1.8 + (({damage::%{_p}%}/41) + ({versatility::%{_p}%}/123) + {primarystat::%{_p}%}/20.5)) * (1 + (({mastery::%{_p}%}/2.7)/100))
+			set {_damage} to (2.4 + (({damage::%{_p}%}/41) + (Versatility({_p})/123) + {primarystat::%{_p}%}/20.5)) * (1 + (Mastery({_p})/60))
 			set {_crashingStar} to true
 			set {_astralInvocationChance} to 20
 	set {_crit} to 0 + (CriticalHit({_p})/10)
 	if metadata value "CelestialAlignment" of {_p} is set:
-		add 15 to {_crit}
+		set {_crit} to {_crit} + 15
 	set {_haste} to Haste({_p})
 	if metadata value "CelestialAlignment" of {_p} is set:
 		set {_damage} to {_damage}*1.15
@@ -61,7 +59,7 @@ function ShootingStar(p: player):
 				if boolean tag "ECMob" of custom nbt of {_entity} is set:
 					if metadata value "ECPulled" of {_entity} is set:
 						if metadata value "RecentlyDamagedCresselia%{_p}%" of {_entity} is set:
-							add {_entity} to {_enti::*}
+							set {_enti::*} to {_enti::*} and {_entity}
 	
 	if size of {_enti::*} > 0:
 		set {_target} to a random element of {_enti::*}
@@ -94,28 +92,30 @@ function ShootingStar(p: player):
 			set {_targetLoc} to location 0.5 below {_target}
 			set {_vec} to vector between {_locStar} and {_targetLoc}
 			set {_loc} to location of {_shootingStar}
-			add {_bonusY} to y-location of {_loc}
+			add {_bonusY} to y of {_loc}
 			if {_crashingStar} is true:
-				draw 1 firework particle at {_loc}
-			draw 1 of dust using dustOption((rgb 168, 134, 240), 1) at {_loc}
+				draw 1 of firework particle at {_loc}
+
+			draw 1 of (rgb(168, 134, 240) dust particle of size 1) at {_loc}
+
 			set vector length of {_vec} to {_count} * {_starSpeed}
 			teleport {_shootingStar} to {_locStar} ~ {_vec}
 			add nbt from "{Rotation:[%{_y}%.0f,%{_y}%.0f]}" to nbt of {_shootingStar}
 			stop loop if distance between {_shootingStar} and {_target} < 1
 			wait 1 tick
-			add 1 to {_count}
-			add 10 to {_y}
+			set {_count} to {_count} + 1
+			set {_y} to {_y} + 10
 		kill {_shootingStar}
 		
 		play sound "skill.cresselia.shootingstarhit" with volume 2 and pitch {_pitch} at location of {_target}
 		play sound "entity.player.hurt" with volume 1.5 and pitch 1 at location of {_target}
 
 		if {_crashingStar} = true:
-			draw 25 firework particle at location above {_target} with offset vector(1.25, 0.5, 1.25) with extra 0.015
+			draw 25 of (firework particle with an extra value of 0.015) with offset vector(1.25, 0.5, 1.25) at (location above {_target})
 
 		set {_critModifier} to 2
 		if boolean tag "Constellation;The Eternal Moon" of (custom nbt of {karta::%{_p}%}) is set:
-			add 0.2 to {_critModifier}
+			set {_critModifier} to {_critModifier} + 0.2
 		
 		loop {_loops} times:
 			set {_shootingStarsDamage} to {_damage}
@@ -132,13 +132,13 @@ function ShootingStar(p: player):
 			else:
 				set {_astralPowerCap} to 100
 			if {astralpower::%{_p}%} + {_astralpower} <= {_astralPowerCap}:
-				add 2 to {astralpower::%{_p}%}
+				set {astralpower::%{_p}%} to {astralpower::%{_p}%} + 2
 			else:
 				set {astralpower::%{_p}%} to {_astralPowerCap}
 			AstralPowerUpdate({_p})
 			if string tag "Talents;Row 5" of (custom nbt of {karta::%{_p}%}) = "Orbit Breaker":
 				set {_orbitBreaker} to metadata value "OrbitBreaker" of {_p}
-				add 1 to {_orbitBreaker}
+				set {_orbitBreaker} to {_orbitBreaker} + 1
 				if {_orbitBreaker} >= 30:
 					set {_orbitBreaker} to 0
 					FullMoon({_p}, {_target})
@@ -174,7 +174,7 @@ function AstralPower(p: player):
 		if {_p} is alive:
 			set {_astralpower} to 2
 			if {astralpower::%{_p}%} + {_astralpower} <= {_astralPowerCap}:
-				add 2 to {astralpower::%{_p}%}
+				set {astralpower::%{_p}%} to {astralpower::%{_p}%} + 2
 			else:
 				set {astralpower::%{_p}%} to {_astralPowerCap}
 			AstralPowerUpdate({_p})
@@ -195,7 +195,7 @@ function AstralPowerAdd(p: player, astralPower: number):
 	else:
 		set {_astralPowerCap} to 100
 	if {astralpower::%{_p}%} + {_astralPower} <= {_astralPowerCap}:
-		add {_astralPower} to {astralpower::%{_p}%}
+		set {astralpower::%{_p}%} to {astralpower::%{_p}%} + {_astralPower}
 	else:
 		set {astralpower::%{_p}%} to {_astralPowerCap}
 
@@ -215,7 +215,7 @@ on rightclick:
 									if metadata value "CelestialAlignment" of player is set:
 										set {_astralPowerCost} to 20
 
-								set {_damage} to 5.5 + ({damage::%player%}/12) + ({versatility::%player%}/36) + ({primarystat::%player%}/6)
+								set {_damage} to 5.5 + ({damage::%player%}/12) + (Versatility(player)/36) + ({primarystat::%player%}/6)
 
 								if boolean tag "Constellation;Rattle the Stars" of (custom nbt of {karta::%player%}) is set:
 									set {_astralPowerCost} to {_astralPowerCost}*0.9
@@ -241,7 +241,7 @@ on rightclick:
 									set {_crit} to 0 + (CriticalHit(player)/10)
 									if metadata value "CelestialAlignment" of player is set:
 										set {_damage} to {_damage}*1.15
-										add 15 to {_crit}
+										set {_crit} to {_crit} + 15
 									if metadata value "UmbralInspiration" of player is set:
 										set {_damage} to {_damage}*1.3
 
@@ -253,8 +253,8 @@ on rightclick:
 											if metadata value "AetherialKindlingExtension" of player is not set:
 												set metadata value "AetherialKindlingExtension" of player to 0
 											if metadata value "AetherialKindlingExtension" of player < 15:
-												add 3 to metadata value "AetherialKindlingExtension" of player
-												add 3 seconds to metadata value "CelestialAlignment" of player
+												set metadata value "AetherialKindlingExtension" of player to (metadata value "AetherialKindlingExtension" of player + 3)
+												set metadata value "CelestialAlignment" of player to (metadata value "CelestialAlignment" of player + 3 seconds)
 
 									else if string tag "Talents;Row 3" of (custom nbt of {karta::%player%}) = "Starweaver":
 										chance of 20%:
@@ -272,8 +272,8 @@ on rightclick:
 										set {_particleList::*} to magenta concrete powder and purple concrete powder
 
 									loop {_particleList::*}:
-										set particle of {_shape} to item particle using loop-value
-										draw {_shape} at {_particleLoc}
+										set particle of {_shape} to loop-value item particle
+										draw shape {_shape} at {_particleLoc}
 									CresseliaStarsurgeVisual(player, {_target})
 
 									set {_starsurgeBonusMax} to 2
@@ -284,7 +284,7 @@ on rightclick:
 										set metadata value "StarsurgeStacks%player%" of {_target} to 0
 
 									if metadata value "StarsurgeStacks%player%" of {_target} < {_starsurgeBonusMax}:
-										add 1 to metadata value "StarsurgeStacks%player%" of {_target}
+										set metadata value "StarsurgeStacks%player%" of {_target} to (metadata value "StarsurgeStacks%player%" of {_target} + 1)
 
 									set metadata value "StarsurgeTime%player%" of {_target} to 12 seconds
 									if metadata value "StarsurgeBonus%player%" of {_target} is not set:
@@ -299,7 +299,7 @@ on rightclick:
 
 									set {_critModifier} to 2
 									if boolean tag "Constellation;The Eternal Moon" of (custom nbt of {karta::%player%}) is set:
-										add 0.2 to {_critModifier}
+										set {_critModifier} to {_critModifier} + 0.2
 									
 									set {_target}'s last damage cause to sweep attack
 									set metadata value "Element" of player to "Astral"
@@ -541,7 +541,7 @@ function Starfire(p: player, target: entity, astronomicalImpact: boolean = false
 		set {_soulOfTheCosmos} to (1 + ({_enemiesAffected}/5))
 
 	if {astralpower::%{_p}%} + {_astralPower} <= {_astralPowerCap}:
-		add {_astralPower} to {astralpower::%{_p}%}
+		set {astralpower::%{_p}%} to {astralpower::%{_p}%} + {_astralPower}
 	else:
 		set {astralpower::%{_p}%} to {_astralPowerCap}
 	AstralPowerUpdate({_p})
@@ -557,15 +557,15 @@ function Starfire(p: player, target: entity, astronomicalImpact: boolean = false
 
 	set {_critModifier} to 2
 	if boolean tag "Constellation;The Eternal Moon" of (custom nbt of {karta::%{_p}%}) is set:
-		add 0.2 to {_critModifier}
+		set {_critModifier} to {_critModifier} + 0.2
 
 	loop {_enemies::*}:
-		set {_damage} to 1.5 + (({damage::%{_p}%}/30) + ({versatility::%{_p}%}/90) + {primarystat::%{_p}%}/15)
+		set {_damage} to 1.5 + (({damage::%{_p}%}/30) + (Versatility({_p})/90) + {primarystat::%{_p}%}/15)
 		set {_crit} to 0 + (CriticalHit({_p})/10)
 		if metadata value "CelestialAlignment" of {_p} is set:
 			if string tag "Talents;Row 3" of (custom nbt of {karta::%{_p}%}) = "Aetherial Kindling":
 				set {_damage} to {_damage}*1.15
-			add 15 to {_crit}
+			set {_crit} to {_crit} + 15
 		if {_astronomicalImpact} = true:
 			set {_damage} to {_damage}*1.6
 		if {_soulOfTheCosmos} is set:
@@ -593,19 +593,19 @@ function Starfire(p: player, target: entity, astronomicalImpact: boolean = false
 function StarfireVisual(p: player, target: entity, mainTarget: boolean = false):
 	set {_l} to location 8 above {_target}
 	set {_v} to vector between {_l} and {_target}
-	draw 15 dust using dustOption(rgb(177, 170, 242), 1) at location above {_target} with offset vector(0.5, 0.5, 0.5) with extra 0.03
+	draw 15 of ((rgb(177, 170, 242) dust particle of size 1) with an extra value of 0.03) with offset vector(0.5, 0.5, 0.5) at (location above {_target})
 	loop round(distance between {_l} and {_target}) / 0.45 times:
 		set {_v} to vector between {_l} and {_target}'s head
 		set vector length of {_v} to loop-value * 0.45
 		if {_mainTarget} = true:
-			draw 1 flash particle at {_l} ~ {_v}
-		draw 1 dust using dustOption(rgb(255, 255, 255), 1) at {_l} ~ {_v} with offset vector(0.1, 0.1, 0.1) with extra 0.01
-		draw 1 item particle using pink wool at {_l} ~ {_v}
-		draw 1 dust using dustOption(rgb(96, 146, 219), 1) at {_l} ~ {_v} offset by a random vector
-		draw 2 dust using dustOption(rgb(177, 170, 242), 1) at {_l} ~ {_v} with offset vector(0.25, 0.1, 0.25) with extra 0.02
+			draw 1 of white flash particle at {_l} ~ {_v}
+		draw 1 of ((rgb(255, 255, 255) dust particle of size 1) with an extra value of 0.01) with offset vector(0.1, 0.1, 0.1) at ({_l} ~ {_v})
+		draw 1 pink wool item particle at {_l} ~ {_v}
+		draw 1 of ((rgb(96, 146, 219) dust particle of size 1) with an extra value of 0.01) with offset random vector at ({_l} ~ {_v})
+		draw 2 of ((rgb(177, 170, 242) dust particle of size 1) with an extra value of 0.02) with offset vector(0.25, 0.1, 0.25) at ({_l} ~ {_v})
 		if loop-number > 14:
-			draw 2 dust using dustOption(rgb(145, 164, 255), 1) at {_l} ~ {_v} with offset vector(0.6, 0.25, 0.6) with extra 0.06
-			draw 2 dust using dustOption(rgb(231, 145, 255), 1) at {_l} ~ {_v} with offset vector(0.6, 0.25, 0.6) with extra 0.06
+			draw 2 of ((rgb(145, 164, 255) dust particle of size 1) with an extra value of 0.06) with offset vector(0.6, 0.25, 0.6) at ({_l} ~ {_v})
+			draw 2 of ((rgb(231, 145, 255) dust particle of size 1) with an extra value of 0.06) with offset vector(0.6, 0.25, 0.6) at ({_l} ~ {_v})
 
 function Starfall(p: player, effectiveness: number):
 	if string tag "Talents;Row 5" of (custom nbt of {karta::%{_p}%}) = "Primordial Arcanic Pulsar":
@@ -614,11 +614,11 @@ function Starfall(p: player, effectiveness: number):
 	set {_starfallDuration} to 8 seconds
 	if string tag "Talents;Row 4" of (custom nbt of {karta::%{_p}%}) = "Hail of Stars":
 		set {_pospiech} to Haste({_p}, 3.6)
-		add 3 seconds to {_starfallDuration}
+		set {_starfallDuration} to {_starfallDuration} + 3 seconds
 	else:
 		set {_pospiech} to Haste({_p})
 	if boolean tag "Constellation;Stellar Amplification" of (custom nbt of {karta::%{_p}%}) is set:
-		add 3 seconds to {_starfallDuration}
+		set {_starfallDuration} to {_starfallDuration} + 3 seconds
 	set {_wait} to "%1/{_pospiech}% seconds" parsed as timespan
 
 	if boolean tag "Constellation;Starlord" of (custom nbt of {karta::%{_p}%}) is set:
@@ -629,8 +629,8 @@ function Starfall(p: player, effectiveness: number):
 			if metadata value "AetherialKindlingExtension" of {_p} is not set:
 				set metadata value "AetherialKindlingExtension" of {_p} to 0
 			if metadata value "AetherialKindlingExtension" of {_p} < 27:
-				add 3 to metadata value "AetherialKindlingExtension" of {_p}
-				add 3 seconds to metadata value "CelestialAlignment" of {_p}
+				set metadata value "AetherialKindlingExtension" of {_p} to (metadata value "AetherialKindlingExtension" of {_p} + 3)
+				set metadata value "CelestialAlignment" of {_p} to (metadata value "CelestialAlignment" of {_p} + 3 seconds)
 
 	else if string tag "Talents;Row 3" of (custom nbt of {karta::%{_p}%}) = "Starweaver":
 		chance of 40%:
@@ -681,13 +681,13 @@ function StarsurgeBonus(p: player, target: entity):
 	if metadata value "StarsurgeBonus%{_p}%" of {_target} = true:
 		set metadata value "StarsurgeBonus%{_p}%" of {_target} to false
 		set {_id} to entity id of {_target}
-		set {_meta} to metadata packet with id {_id}
 		while metadata value "StarsurgeTime%{_p}%" of {_target} > 0 seconds:
 			if {_target} is alive:
 				set {_stacks} to metadata value "StarsurgeStacks%{_p}%" of {_target}
 				set {_duration} to seconds of (metadata value "StarsurgeTime%{_p}%" of {_target})
 				set {_name} to "%name of {_target}% &8| &f %{_stacks}%x (%{_duration}%s)"
-				add data from "name %{_name}%" to {_meta}
+				set {_meta} to new metadata packet with id {_id}:
+					name: {_name}
 				send packet {_meta} to {_p}
 				wait 1 second
 				remove 1 second from metadata value "StarsurgeTime%{_p}%" of {_target}
@@ -702,7 +702,8 @@ function StarsurgeBonus(p: player, target: entity):
 				clear metadata value "StarsurgeBonus%{_p}%" of {_target}
 				stop loop
 		if {_target} is alive:
-			add data from "name %name of {_target}%" to {_meta}
+			set {_meta} to new metadata packet with id {_id}:
+				name: {_name}
 			send packet {_meta} to {_p}
 
 function CresseliaStarsurgeVisual(p: player, target: entity):
@@ -713,19 +714,19 @@ function CresseliaStarsurgeVisual(p: player, target: entity):
 		set {_v} to vector between {_l} and {_target}'s head
 		set vector length of {_v} to loop-value * 0.85
 		if string tag "Variant" of (custom nbt of {karta::%{_p}%}) = "Winter Delight":
-			draw 1 dust using dustOption(rgb(176, 255, 185), 1) at {_l} ~ {_v} with offset vector(0.6, 0.25, 0.6) with extra 0.06
-			draw 2 item particle using white concrete powder at {_l} ~ {_v}
-			draw 1 end rod particle using pink wool at {_l} ~ {_v} offset by a random vector
-			draw 1 of item particle using light blue wool at {_l} ~ {_v} offset by a random vector
-			draw 1 of item particle using blue wool at {_l} ~ {_v} offset by a random vector
-			draw 1 item particle using lime wool at {_l} ~ {_v} offset by a random vector
-			draw 1 item particle using lime concrete powder at {_l} ~ {_v} offset by a random vector
+			draw 1 of ((rgb(176, 255, 185) dust particle of size 1) with an extra value of 0.06) with offset vector(0.6, 0.25, 0.6) at ({_l} ~ {_v})
+			draw 2 white concrete powder item particle at {_l} ~ {_v}
+			draw 1 end rod particle with offset random vector at {_l} ~ {_v}
+			draw 1 light blue wool item particle with offset random vector at {_l} ~ {_v}
+			draw 1 blue wool item particle with offset random vector at {_l} ~ {_v}
+			draw 1 lime wool item particle with offset random vector at {_l} ~ {_v}
+			draw 1 lime concrete powder item particle with offset random vector at {_l} ~ {_v}
 		else:
 			draw 1 firework particle at {_l} ~ {_v}
-			draw 2 item particle using white concrete powder at {_l} ~ {_v}
-			draw 1 end rod particle using pink wool at {_l} ~ {_v} offset by a random vector
-			draw 1 of item particle using light blue wool at {_l} ~ {_v} offset by a random vector
-			draw 1 item particle using blue wool at {_l} ~ {_v} offset by a random vector
+			draw 2 white concrete powder item particle at {_l} ~ {_v}
+			draw 1 pink wool item particle with offset random vector at {_l} ~ {_v}
+			draw 1 light blue wool item particle with offset random vector at {_l} ~ {_v}
+			draw 1 blue wool item particle with offset random vector at {_l} ~ {_v}
 
 function CresseliaRandomOffset() :: numbers:
 	set {_offsetX} to a random number between -5 and -20
@@ -746,29 +747,29 @@ function StarfallStarTravel(p: player, e: entity, target: entity, duration: time
 		set {_vec} to vector between {_locStar} and {_targetLoc}
 		if {_count} is divisible by 7:
 			set {_loc} to location of {_e}
-			add 2.5 to y-location of {_loc}
+			add 2.5 to y of {_loc}
 			draw 1 firework particle at {_loc}
 		set vector length of {_vec} to {_count} * {_starSpeed}
 		teleport {_e} to {_locStar} ~ {_vec}
 		add nbt from "{Rotation:[%{_y}%.0f,%{_y}%.0f]}" to nbt of {_e}
 		stop loop if distance between {_e} and {_target} < 1
 		wait 1 tick
-		add 1 to {_count}
-		add 10 to {_y}
+		set {_count} to {_count} + 1
+		set {_y} to {_y} + 10
 	kill {_e}
 
 	set {_critModifier} to 2
 	if boolean tag "Constellation;The Eternal Moon" of (custom nbt of {karta::%{_p}%}) is set:
-		add 0.2 to {_critModifier}
+		set {_critModifier} to {_critModifier} + 0.2
 
 	if {_particle} != true:
 		set {_enemies::*} to LoopEntitiesAroundTarget({_target}, 3, true)
 		loop {_enemies::*}:
 			set {_crit} to 0 + (CriticalHit({_p})/10)
-			set {_damage} to (1 + (({damage::%{_p}%}/63) + ({versatility::%{_p}%}/189) + {primarystat::%{_p}%}/31.5)) * {_effectiveness}
+			set {_damage} to (1 + (({damage::%{_p}%}/63) + (Versatility({_p})/189) + {primarystat::%{_p}%}/31.5)) * {_effectiveness}
 			if metadata value "CelestialAlignment" of {_p} is set:
 				set {_damage} to {_damage}*1.15
-				add 15 to {_crit}
+				set {_crit} to {_crit} + 15
 			if metadata value "UmbralInspiration" of {_p} is set:
 				set {_damage} to {_damage}*1.3
 			if string tag "Talents;Row 2" of (custom nbt of {karta::%{_p}%}) = "Stellar Drift":
@@ -827,7 +828,7 @@ function CelestialAlignmentVisual(p: player):
 		if loop-number < 20:
 			set {_v} to vector between {_loc1} and {_loc}
 		set vector length of {_v} to loop-value * 0.1
-		draw 1 of dust using dustOption(rgb(255-loop-number, 255-loop-number, 255-loop-number), 1) at {_loc1} ~ {_v}
+		draw 1 of (rgb(255-loop-number, 255-loop-number, 255-loop-number) dust particle of size 1) at {_loc1} ~ {_v}
 
 function Solstice(p: player):
 	if metadata value "Solstice" of {_p} is not set:
@@ -863,16 +864,16 @@ function FullMoon(p: player, target: entity, effectiveness: number = 1):
 		set {_vec} to vector between {_locMoon} and {_targetLoc}
 		if {_count} is divisible by 2:
 			set {_loc} to location of {_e}
-			add 3 to y-location of {_loc}
-			draw 1 of dust using dustOption((rgb 252, 240, 204), 1) at {_loc}
+			add 3 to y of {_loc}
+			draw 1 of (rgb(252, 240, 204) dust particle of size 1) at {_loc}
 			draw 1 of end rod particle at {_e}
 		set vector length of {_vec} to {_count} * {_moonSpeed}
 		teleport {_e} to {_locMoon} ~ {_vec}
 		add nbt from "{Rotation:[%{_y}%.0f,%{_y}%.0f]}" to nbt of {_e}
 		stop loop if distance between {_e} and {_target} < 1
 		wait 1 tick
-		add 1 to {_count}
-		add 10 to {_y}
+		set {_count} to {_count} + 1
+		set {_y} to {_y} + 10
 	kill {_e}
 	set {_enemies::*} to LoopEntitiesAroundTarget({_target}, 5, true)
 	set {_astralpower} to 40
@@ -882,20 +883,20 @@ function FullMoon(p: player, target: entity, effectiveness: number = 1):
 	else:
 		set {_astralPowerCap} to 100
 	if {_astralPowerCap} >= {astralpower::%{_p}%} + {_astralpower}:
-		add {_astralpower} to {astralpower::%{_p}%}
+		set {astralpower::%{_p}%} to {astralpower::%{_p}%} + {_astralpower} 
 	else:
 		set {astralpower::%{_p}%} to {_astralPowerCap}
 	AstralPowerUpdate({_p})
-	draw 25 smoke at location above {_target} with offset vector(2, 0.5, 2) with extra 0.01
-	draw 25 cloud at location above {_target} with offset vector(0.45, 0.5, 0.45) with extra 0.005
+	draw 25 of (smoke particle with an extra value of 0.01) with offset vector(2, 0.5, 2) at (location above {_target})
+	draw 25 of (cloud particle with an extra value of 0.005) with offset vector(0.45, 0.5, 0.45) at (location above {_target})
 	
-	set {_damageFullMoon} to (13 + (({damage::%{_p}%}/6.5) + ({versatility::%{_p}%}/19.5) + {primarystat::%{_p}%}/3.25)) * (1 + (({mastery::%{_p}%}/2.7)/100))
+	set {_damageFullMoon} to (13 + (({damage::%{_p}%}/6.5) + (Versatility({_p})/19.5) + {primarystat::%{_p}%}/3.25)) * (1 + (Mastery({_p})/60))
 	set {_damageFullMoon} to {_damageFullMoon}*{_effectiveness}
 	set {_lore} to "&f <##6a5e9e>Full Moon%nl%&7Deals &f%{_damage}% <##a99afc>Astral &7damage &7to the target and%nl%&f%{_damageFullMoon}*0.4% <##a99afc>Astral &7damage to all enemies around%nl%&7and generates &f40  <##6a5e9e>Astral Power&7."
 	
 	set {_critModifier} to 2
 	if boolean tag "Constellation;The Eternal Moon" of (custom nbt of {karta::%{_p}%}) is set:
-		add 0.2 to {_critModifier}
+		set {_critModifier} to {_critModifier} + 0.2
 
 	loop {_enemies::*}:
 		set {_crit} to 0 + (CriticalHit({_p})/10)
@@ -904,7 +905,7 @@ function FullMoon(p: player, target: entity, effectiveness: number = 1):
 			set {_damage} to {_damage}*0.4
 		if metadata value "CelestialAlignment" of {_p} is set:
 			set {_damage} to {_damage}*1.15
-			add 15 to {_crit}
+			set {_crit} to {_crit} + 15
 		set loop-value's last damage cause to sweep attack
 		set metadata value "Element" of loop-value to "Astral"
 		set metadata value "LastDamageCause" of loop-value to "<##6a5e9e>Full Moon"
@@ -939,7 +940,7 @@ function CelestialAlignment(p: player, duration: timespan):
 
 	if metadata value "CelestialAlignment" of {_p} is not set:
 		set metadata value "CelestialAlignment" of {_p} to {_duration}
-		add 150 to {bonusCriticalhit::%{_p}%}
+		set {bonusCriticalhit::%{_p}%} to {bonusCriticalhit::%{_p}%} + 150
 		#add 60 to {bonusHaste::%{_p}%}
 		while metadata value "CelestialAlignment" of {_p} > 0 seconds:
 			buffRegister({_p}, "Alignment", 5, "", "-", "-", durationShort("%metadata value "CelestialAlignment" of {_p}%"))
@@ -949,7 +950,7 @@ function CelestialAlignment(p: player, duration: timespan):
 			set metadata value "CelestialAlignment" of {_p} to {_timeRemaining}
 			if 0 seconds >= metadata value "CelestialAlignment" of {_p}:
 				clear metadata value "CelestialAlignment" of {_p}
-				remove 150 from {bonusCriticalhit::%{_p}%}
+				set {bonusCriticalhit::%{_p}%} to {bonusCriticalhit::%{_p}%} - 150
 				#remove 60 from {bonusHaste::%{_p}%}
 				AstronomicalImpact({_p})
 				stop loop
@@ -958,7 +959,7 @@ function CelestialAlignment(p: player, duration: timespan):
 	else:
 		set {_timeRemaining} to metadata value "CelestialAlignment" of {_p}
 		set {_timeRemaining} to 0 seconds if {_timeRemaining} is not set
-		add {_duration} to {_timeRemaining}
+		set {_timeRemaining} to {_timeRemaining} + {_duration}
 		set metadata value "CelestialAlignment" of {_p} to {_duration}
 
 function StellarDrift(p: player, duration: timespan):
@@ -985,8 +986,8 @@ function Starlord(p: player):
 	if metadata value "StarlordStackCount" of {_p} is not set:
 		set metadata value "StarlordStackCount" of {_p} to 0
 	if metadata value "StarlordStackCount" of {_p} < 3:
-		add 1 to metadata value "StarlordStackCount" of {_p}
-		add 16 to {bonusHaste::%{_p}%}
+		set  metadata value "StarlordStackCount" of {_p} to ( metadata value "StarlordStackCount" of {_p} + 1)
+		set {bonusHaste::%{_p}%} to {bonusHaste::%{_p}%} + 16
 	if metadata value "Starlord" of {_p} is not set:
 		set metadata value "Starlord" of {_p} to 15 seconds
 		while metadata value "Starlord" of {_p} > 0 seconds:
@@ -1017,7 +1018,7 @@ function PrimordialArcanicPulsar(p: player, astralPowerCost: number):
 	if metadata value "PrimordialArcanicPulsar" of {_p} is not set:
 		set metadata value "PrimordialArcanicPulsar" of {_p} to 0
 
-	add {_astralPowerCost} to metadata value "PrimordialArcanicPulsar" of {_p}
+	set metadata value "PrimordialArcanicPulsar" of {_p} to (metadata value "PrimordialArcanicPulsar" of {_p} + {_astralPowerCost})
 	if metadata value "PrimordialArcanicPulsar" of {_p} >= {_astralPowerTrigger}:
 		set metadata value "PrimordialArcanicPulsar" of {_p} to 0
 		CelestialAlignment({_p}, {_CADuration})
