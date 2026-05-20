@@ -1,0 +1,49 @@
+import:
+    kr.toxicity.model.api.BetterModel
+    kr.toxicity.model.api.bukkit.platform.BukkitAdapter
+    kr.toxicity.model.api.entity.BaseEntity
+    kr.toxicity.model.api.tracker.ModelScaler
+    kr.toxicity.model.api.tracker.TrackerData
+    kr.toxicity.model.api.tracker.TrackerModifier
+    kr.toxicity.model.api.tracker.EntityBodyRotator
+    java.util.function.Consumer
+    java.lang.Float
+    java.util.Collections
+
+function bmBaseEntity(e: entity) :: object:
+    return BaseEntity.of(BukkitAdapter.adapt({_e}))
+
+function bmFloat(n: number) :: object:
+    set {_s} to "%{_n}%"
+    replace all "," in {_s} with "."
+    return Float.parseFloat({_s})
+
+function bmTrackerData(modelName: string, scale: number) :: object:
+    set {_floatScale} to bmFloat({_scale})
+    set {_scaleObject} to ModelScaler.value({_floatScale})
+    set {_modifier} to TrackerModifier.DEFAULT
+    set {_bodyRotator} to EntityBodyRotator.defaultData()
+    set {_emptySet} to Collections.emptySet()
+    return new TrackerData({_modelName}, {_scaleObject}, null, {_modifier}, {_bodyRotator}, null, {_emptySet})
+
+function modelApply(e: entity, modelName: string, scale: number = 1):
+    set {_opt} to BetterModel.model({_modelName})
+    if {_opt}.isEmpty():
+        send "[BM] Model not found/not loaded: %{_modelName}%" to console
+        stop
+
+    set {_baseEntity} to bmBaseEntity({_e})
+    set {_renderer} to {_opt}.get()
+    set {_data} to bmTrackerData({_modelName}, {_scale})
+
+    set {_oldRegistry} to BetterModel.registryOrNull({_baseEntity})
+    if {_oldRegistry} is set:
+        set {_removed} to {_oldRegistry}.remove({_modelName})
+
+    delete {_consumerMethods::*}
+    create section with {_proxy}, {_tracker} stored in {_consumerMethods::accept}:
+        {_data}.applyAs({_tracker})
+
+    set {_consumer} to new proxy instance of Consumer using {_consumerMethods::*}
+
+    set {_createdModel} to {_renderer}.create({_baseEntity}, TrackerModifier.DEFAULT, {_consumer})

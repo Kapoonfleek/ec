@@ -1,49 +1,201 @@
 import:
     java.lang.Runnable
     java.util.function.Consumer
-    java.util.Optional
-    kr.toxicity.model.api.tracker.EntityHideOption
-    kr.toxicity.model.api.animation.AnimationIterator
-    kr.toxicity.model.api.animation.RunningAnimation
     kr.toxicity.model.api.BetterModel
+    kr.toxicity.model.api.bukkit.platform.BukkitAdapter
+    kr.toxicity.model.api.entity.BaseEntity
+    kr.toxicity.model.api.tracker.EntityHideOption
     kr.toxicity.model.api.tracker.EntityTrackerRegistry
-    kr.toxicity.model.api.tracker.Tracker
     kr.toxicity.model.api.tracker.TrackerModifier
+    kr.toxicity.model.api.tracker.TrackerUpdateAction
+    kr.toxicity.model.api.animation.AnimationIterator
     kr.toxicity.model.api.animation.AnimationModifier
-    kr.toxicity.model.api.BetterModelConfig
+    kr.toxicity.model.api.util.TransformedItemStack
+    kr.toxicity.model.api.util.function.BonePredicate
+    java.lang.Float
+
+function bmTracker(e: entity, modelName: string) :: object:
+    set {_baseEntity} to bmBaseEntity({_e})
+    set {_registry} to BetterModel.registryOrNull({_baseEntity})
+    if {_registry} is not set:
+        return null
+    return {_registry}.tracker({_modelName})
+
+function bmRenderer(modelName: string) :: object:
+    set {_renderer} to BetterModel.modelOrNull({_modelName})
+    if {_renderer} is not set:
+        set {_renderer} to BetterModel.limbOrNull({_modelName})
+    return {_renderer}
+
+function bmAnimationModifier(haste: number, once: boolean = false, priority: integer = 0) :: object:
+    set {_builder} to AnimationModifier.builder()
+    {_builder}.speed(bmFloat({_haste}))
+    {_builder}.priority({_priority})
+    if {_once} is true:
+        {_builder}.type(AnimationIterator.Type.PLAY_ONCE)
+    return {_builder}.build()
 
 function hideOptionCallback(tracker: object):
     {_tracker}.hideOption(EntityHideOption.DEFAULT)
 
 function isPlayingAnimation(e: entity) :: boolean:
-    if metadata value "InAnimation" of {_e} != true:
-        set {_bool} to false
-    return {_bool}
+    if metadata value "InAnimation" of {_e} is true:
+        return true
+    return false
 
 function playAnimation(e: entity, animation: string, duration: number, haste: number):
-    if isPlayingAnimation({_e}) = false:
-        set {_limb} to BetterModel.limbOrNull("steve")
-        set {_animation} to {_limb}.animation({_animation}).orElse(null)
+    if isPlayingAnimation({_e}) is true:
+        stop
 
-        # lambda reference
-        #set {_functions::accept} to function reference "hideOptionCallback"
-        set {_callback} to new proxy instance of Consumer using {_functions::*}
+    set {_limb} to BetterModel.limbOrNull("steve")
+    if {_limb} is not set:
+        stop
 
-        set {_modifier} to TrackerModifier.builder().build()
-        set {_tracker} to {_limb}.getOrCreate({_e}, {_modifier}, {_callback})
+    set {_animationObject} to {_limb}.animation({_animation}).orElse(null)
+    if {_animationObject} is not set:
+        stop
 
-        # section reference
-        create new section with {_tracker} stored in {_runnable::accept}:
-            {_tracker}.close()
-        set {_callback} to new proxy instance of Runnable using {_runnable::*}
-        {_tracker}.animate({_animation}, new AnimationModifier(0,0,{_haste}), {_callback})
+    set {_baseEntity} to bmBaseEntity({_e})
 
-        set metadata value "InAnimation" of {_e} to true
+    delete {_consumerMethods::*}
+    create section with {_proxy}, {_tracker} stored in {_consumerMethods::accept}:
+        {_tracker}.hideOption(EntityHideOption.DEFAULT)
 
-        set {_duration} to "%{_duration}/{_haste}% seconds" parsed as timespan
-        broadcast {_duration}
+    set {_consumer} to new proxy instance of Consumer using {_consumerMethods::*}
+    set {_modifier} to TrackerModifier.builder().build()
+    set {_tracker} to {_limb}.getOrCreate({_baseEntity}, {_modifier}, {_consumer})
 
-        wait {_duration}
-        clear metadata value "InAnimation" of {_e}
+    delete {_runnableMethods::*}
+    create section with {_proxy} stored in {_runnableMethods::run}:
         {_tracker}.close()
-        {_tracker}.clearAnimations()
+
+    set {_callback} to new proxy instance of Runnable using {_runnableMethods::*}
+    set {_animModifier} to bmAnimationModifier({_haste}, true, 0)
+
+    set {_animated} to {_tracker}.animate({_animationObject}, {_animModifier}, {_callback})
+
+    set metadata value "InAnimation" of {_e} to true
+
+    set {_duration} to "%{_duration} / {_haste}% seconds" parsed as timespan
+    wait {_duration}
+
+    clear metadata value "InAnimation" of {_e}
+    {_tracker}.close()
+
+function animationPlayEntity(e: entity, animation: string, cooldown: timespan, freezeMob: timespan = 0 seconds):
+    if {_freezeMob} > 0 seconds:
+        set metadata value "MovementFrozen" of {_e} to true
+        unfreezeMovementEntity({_e}, {_freezeMob})
+
+    set {_modelName} to string tag "ECModelName" of custom nbt of {_e}
+    if {_modelName} is not set:
+        stop
+
+    set {_tracker} to bmTracker({_e}, {_modelName})
+    if {_tracker} is not set:
+        stop
+
+    if cooldown "%uuid of {_e}%%{_animation}%Animation" is finished:
+        create cooldown "%uuid of {_e}%%{_animation}%Animation" for {_cooldown}
+        set {_animated} to {_tracker}.animate({_animation})
+
+    wait {_cooldown}
+
+function setAIState(e: entity, state: string, extraSpeed: number = 0):
+    set string tag "ECAIState" of custom nbt of {_e} to {_state}
+    set {_modelName} to string tag "ECModelName" of custom nbt of {_e}
+    if {_modelName} is not set:
+        stop
+
+    set {_haste} to float tag "Stats;Haste" of custom nbt of {_e}
+    if {_haste} is not set:
+        set {_haste} to 0
+
+    set {_hasteScaling} to 4
+    set {_haste} to (1 + (({_haste} / {_hasteScaling}) / 100)) + {_extraSpeed}
+
+    if {_state} is "walk":
+        playEntityAnimation({_e}, {_modelName}, "walk", 1, {_haste}, false)
+
+    else if {_state} is "attack":
+        playEntityAnimation({_e}, {_modelName}, "punch", 2, {_haste})
+
+    else if {_state} is "rage":
+        playEntityAnimation({_e}, {_modelName}, "rage", 2, {_haste})
+
+    else if {_state} is "death":
+        playEntityAnimation({_e}, {_modelName}, "death", 3, {_haste})
+
+function playEntityAnimation(e: entity, modelName: string, anim: string, priority: integer, haste: number, once: boolean = true):
+    set {_tracker} to bmTracker({_e}, {_modelName})
+    if {_tracker} is not set:
+        stop
+
+    if int tag "ECAnimationPriority" of custom nbt of {_e} is set:
+        set {_currentPriority} to int tag "ECAnimationPriority" of custom nbt of {_e}
+    else:
+        set {_currentPriority} to 0
+
+    if {_priority} < {_currentPriority}:
+        stop
+
+    if {_once} is not true:
+        if string tag "ECCurrentAnimation" of custom nbt of {_e} is {_anim}:
+            stop
+
+    set int tag "ECAnimationPriority" of custom nbt of {_e} to {_priority}
+    set string tag "ECCurrentAnimation" of custom nbt of {_e} to {_anim}
+
+    delete {_runnableMethods::*}
+    create section with {_proxy} stored in {_runnableMethods::run}:
+        if string tag "ECCurrentAnimation" of custom nbt of {_e} is {_anim}:
+            clear string tag "ECCurrentAnimation" of custom nbt of {_e}
+            set int tag "ECAnimationPriority" of custom nbt of {_e} to 0
+            clear string tag "ECAIState" of custom nbt of {_e}
+
+    set {_callback} to new proxy instance of Runnable using {_runnableMethods::*}
+    set {_modifier} to bmAnimationModifier({_haste}, {_once}, {_priority})
+
+    set {_animated} to {_tracker}.animate({_anim}, {_modifier}, {_callback})
+
+function getAnimationDuration(modelName: string, animationName: string, haste: number) :: number:
+    set {_renderer} to bmRenderer({_modelName})
+    if {_renderer} is not set:
+        return 0
+
+    set {_animation} to {_renderer}.animation({_animationName}).orElse(null)
+    if {_animation} is not set:
+        return 0
+
+    if {_haste} <= 0:
+        set {_haste} to 1
+
+    set {_ticks} to {_animation}.length()
+    return {_ticks} / 20 / {_haste}
+
+function getActiveAnimationDuration(e: entity, modelName: string, haste: number) :: number:
+    set {_anim} to string tag "ECCurrentAnimation" of custom nbt of {_e}
+    if {_anim} is not set:
+        return 0
+
+    return getAnimationDuration({_modelName}, {_anim}, {_haste})
+
+function updateHeldItemLimb(p: player):
+    set {_tracker} to bmTracker({_p}, "steve")
+    if {_tracker} is not set:
+        stop
+
+    set {_predicate} to BonePredicate.name("right_hand_item").notSet()
+
+    if {_p}'s tool is air:
+        set {_action} to TrackerUpdateAction.togglePart(false)
+        {_tracker}.update({_action}, {_predicate})
+        stop
+
+    set {_platformItem} to BukkitAdapter.adapt({_p}'s tool)
+    set {_transformedItem} to TransformedItemStack.of({_platformItem})
+    set {_itemAction} to TrackerUpdateAction.itemStack({_transformedItem})
+    set {_showAction} to TrackerUpdateAction.togglePart(true)
+
+    {_tracker}.update({_itemAction}, {_predicate})
+    {_tracker}.update({_showAction}, {_predicate})
