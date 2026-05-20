@@ -80,7 +80,7 @@ function ShootingStar(p: player):
 			set {_pitch} to 1.5
 			set {_bonusY} to 0.9
 			set {_lore} to {_loreShootingStars}
-			play sound "entity.firework_rocket.launch" with volume 4 and pitch 0 at location of {_target}
+			CresseliaShootingStarSound({_p}, {_target})
 			
 			set {_chanceShooting} to 8
 			if boolean tag "Constellation;Stellar Command" of (custom nbt of {karta::%{_p}%}) is set:
@@ -160,9 +160,9 @@ function ShootingStarSpawn(target: entity, crashingStar: boolean = false) :: ent
 	spawn an armor stand at {_l} with nbt from "{Invulnerable:1b,NoGravity:1b,Silent:1b,Pose:{Head:[180.0f,0.0f,0.0f]}}"
 	set boolean tag "RemoveOnReset" of (custom nbt of last spawned armor stand) to true
 	if {_crashingStar} = true:
-		set name of last spawned armor stand to "CrashingStar"
+		modelApply(last spawned armor stand, "shootingstar", 4.0)
 	else:
-		set name of last spawned armor stand to "ShootingStars"
+		modelApply(last spawned armor stand, "shootingstar", 1.25)
 	set {_shootingStar} to last spawned armor stand
 	ShootingStarKill({_shootingStar})
 	return {_shootingStar}
@@ -241,7 +241,8 @@ on rightclick:
 										set {astralpower::%player%} to {astralpower::%player%} - {_astralPowerCost}
 									AstralPowerUpdate(player)
 									AbilityUse(player, "Starsurge")
-									play sound "skill.cresselia.starsurgecast" with volume 4 and pitch 1 at location of player
+									
+									CresseliaStarsurgeCastSound(player)
 
 									if string tag "Talents;Row 5" of (custom nbt of {karta::%player%}) = "Primordial Arcanic Pulsar":
 										PrimordialArcanicPulsar(player, {_astralPowerCost})
@@ -271,17 +272,6 @@ on rightclick:
 												if boolean tag "Starfall" of (custom nbt of loop-item) is set:
 													set item amount of loop-item to 2
 
-									set {_particleLoc} to location 1.758 above {_p}
-									set {_shape} to a line from {_particleLoc} to location 1 above {_target}
-
-									if string tag "Variant" of (custom nbt of {karta::%player%}) = "Winter Delight":
-										set {_particleList::*} to cyan concrete powder, blue concrete powder and lime concrete powder
-									else:
-										set {_particleList::*} to magenta concrete powder and purple concrete powder
-
-									loop {_particleList::*}:
-										set particle of {_shape} to loop-value item particle
-										draw shape {_shape} at {_particleLoc}
 									CresseliaStarsurgeVisual(player, {_target})
 
 									set {_starsurgeBonusMax} to 2
@@ -313,12 +303,14 @@ on rightclick:
 									set {_lore} to "&8Basic Ability%nl%&fInstant cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fRMB%nl%&7Cost: &f 30 Astral Power%nl%<##6a5e9e>Launches a surge of stellar energies at the%nl%<##6a5e9e>target, dealing &f%{_damage}% <##a99afc>Astral <##6a5e9e>damage and empowering%nl%<##b9aeeb>subsequent <##6a5e9e>uses of &f <##b9aeeb>Starsurge <##6a5e9e>within &f12 sec%nl%<##6a5e9e>on the target by &f15%%<##6a5e9e>.%nl% %nl%<##6a5e9e>This effect stacks up to &f2 <##6a5e9e>times."
 									set metadata value "LastDamageCause" of {_target} to "<##6a5e9e>Starsurge"
 									set metadata value "LastDamageCauseLore" of {_target} to {_lore}
-									play sound "skill.cresselia.starsurgeimpact" with volume 4 and pitch 1 at location of {_target}
+									
 									set metadata value "Element" of player to "Astral"
 									set {_damage} to Crit(player, {_target}, {_crit}, {_damage}, {_critModifier})
 									make player damage {_target} by {_damage}
 
 									CresseliaRecentlyDamaged(player, {_target})
+
+									CresseliaStarsurgeImpactSound(player, {_target})
 								else:
 									if {tekstcd::%player%} = true:
 										send action bar "<##6a5e9e>You must have at least %{_astralPowerCost}% Astral Power to use this ability." to player
@@ -388,7 +380,9 @@ on rightclick:
 								set {_casttime} to "%round(({_baseCastTime}/{_pospiech}), 1)% seconds" parsed as timespan
 								if metadata value "cast" of player is not set:
 									set metadata value "casttimemax" of player to {_casttime}
-									play sound "skill.cresselia.starfire_precast" with volume 3 and pitch 1 at location of player
+
+									CresseliaStarfirePrecastSound(player)
+									
 									set metadata value "casting" of player to true
 									if metadata value "channeling" of player is set:
 										clear metadata value "channeling" of player
@@ -416,7 +410,9 @@ on rightclick:
 								clear metadata value "cast" of player
 								clear metadata value "casttimeleft" of player
 								clear metadata value "casttimemax" of player
-								stop sound "skill.cresselia.starfire_precast" for all players in radius 2 around the player
+
+								CresseliaStarfirePrecastSoundStop(player)
+								
 								if {_casttime} > 0 seconds:
 									send action bar "&cInterrupted" to player
 									stop
@@ -466,6 +462,8 @@ on rightclick:
 
 					AstralPowerAdd(player, {_astralPower})
 					AstralPowerUpdate(player)
+
+					celestialAlignmentVisual(player)
 
 			else:
 				if {tekstcd::%player%} = true:
@@ -530,7 +528,7 @@ on rightclick:
 				send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to player
 
 function Starfire(p: player, target: entity, astronomicalImpact: boolean = false):
-	play sound "skill.cresselia.starfire_cast" with volume 3 and pitch 1 at location of {_p}
+	CresseliaStarfireCastSound({_p})
 
 	set {_astralPower} to 8
 	if string tag "Talents;Row 2" of (custom nbt of {karta::%{_p}%}) = "Astral Communion":
@@ -667,21 +665,14 @@ function Starfall(p: player, effectiveness: number):
 			set {_randomEnemy} to a random element of {_enemies::*}
 			set {_randomIncrease} to a random number between 8 and 35
 			set {_loc} to location of {_randomEnemy}
-			set y-coordinate of {_loc} to (y-coordinate of {_randomEnemy} + {_randomIncrease})
+			set y of {_loc} to (y of (location at {_randomEnemy}) + {_randomIncrease})
 
 			spawn an armor stand at {_loc} with nbt from "{Invulnerable:1b,Silent:1b,NoGravity:1b,Pose:{Head:[180.0f,0.0f,0.0f]}}"
 			set boolean tag "RemoveOnReset" of (custom nbt of last spawned armor stand) to true
 			set {_starfallStar} to last spawned armor stand
-			set helmet of {_starfallStar} to stick named "StarfallModel"
+			modelApply({_starfallStar}, "starfallmodel", 1)
 			StarfallStarKill({_starfallStar})
 			StarfallStarTravel({_p}, {_starfallStar}, {_randomEnemy}, {_starfallDuration}, {_pospiech}, {_effectiveness})
-
-			spawn an armor stand at location 0.5 above {_loc} with nbt from "{Invulnerable:1b,Silent:1b,NoGravity:1b}"
-			set boolean tag "RemoveOnReset" of (custom nbt of last spawned armor stand) to true
-			set {_starfallParticle} to last spawned armor stand
-			set name of {_starfallParticle} to "StarfallAnim"
-			StarfallStarTravel({_p}, {_starfallParticle}, {_randomEnemy}, {_starfallDuration}, {_pospiech}, {_effectiveness}, true)
-			StarfallStarKill({_starfallParticle})
 
 			wait {_wait}
 			stop loop if (difference between {_duration} and now) >= {_starfallDuration}
@@ -717,27 +708,147 @@ function StarsurgeBonus(p: player, target: entity):
 				name: {_name}
 			send packet {_meta} to {_p}
 
+function CresseliaStarsurgeCastSound(p: player):
+	if getCurrentVariant({_p}, "Cresselia") = "Arctic Lights":
+		play sound "skill.cresselia.starsurgecast.arcticlights" with volume 4 and pitch 1 at location of {_p}
+		play sound "skill.cresselia.starsurgeecho.arcticlights" with volume 4 and pitch 1 at location of {_p}
+		play sound "skill.cresselia.starsurgeextra.arcticlights" with volume 4 and pitch 1 at location of {_p}
+	else:
+		play sound "skill.cresselia.starsurgecast" with volume 4 and pitch 1 at location of {_p}
+
+function CresseliaStarsurgeImpactSound(p: player, target: entity):
+	if getCurrentVariant({_p}, "Cresselia") = "Arctic Lights":
+		play sound "skill.cresselia.starsurgeimpact.arcticlights" with volume 4 and pitch 1 at location of {_target}
+	else:
+		play sound "skill.cresselia.starsurgeimpact" with volume 4 and pitch 1 at location of {_target}
+
+function CresseliaStarfirePrecastSound(p: player):
+	if getCurrentVariant({_p}, "Cresselia") = "Arctic Lights":
+		play sound "skill.cresselia.starfire_precast.arcticlights" with volume 4 and pitch 1 for {_p}
+	else:
+		play sound "skill.cresselia.starfire_precast" with volume 4 and pitch 1 for {_p}
+
+function CresseliaStarfireCastSound(p: player):
+	if getCurrentVariant({_p}, "Cresselia") = "Arctic Lights":
+		play sound "skill.cresselia.starfire_cast.arcticlights" with volume 3 and pitch 1 at location of {_p}
+		play sound "skill.cresselia.starfire_castextra.arcticlights" with volume 3 and pitch 1 at location of {_p}
+	else:
+		play sound "skill.cresselia.starfire_cast" with volume 3 and pitch 1 at location of {_p}
+
+function CresseliaShootingStarSound(p: player, target: entity):
+	if getCurrentVariant({_p}, "Cresselia") = "Arctic Lights":
+		play sound "skill.cresselia.shootingstar_spawn.arcticlights" with volume 4 and pitch 0 at location of {_target}
+	else:
+		play sound "entity.firework_rocket.launch" with volume 4 and pitch 0 at location of {_target}
+
+function CresseliaStarfirePrecastSoundStop(p: player):
+	stop sound "skill.cresselia.starfire_precast" for {_p}
+	stop sound "skill.cresselia.starfire_precast.arcticlights" for {_p}
+
 function CresseliaStarsurgeVisual(p: player, target: entity):
-	set {_l} to location 0.7 blocks below {_p}'s head
-	set {_l} to location 0.4 blocks right of {_l}
-	set {_v} to vector between {_l} and {_target}'s head
-	loop round(distance between {_l} and {_target}) / 0.85 times:
+
+	set {_variant} to getCurrentVariant({_p}, "Cresselia")
+	
+	if {_variant} = "Arctic Lights":
+		CresseliaStarsurgeArcticLightsVisual({_p}, {_target})
+		set {_l} to location 0.7 blocks below {_p}'s head
+		set {_l} to location 0.4 blocks right of {_l}
 		set {_v} to vector between {_l} and {_target}'s head
-		set vector length of {_v} to loop-value * 0.85
-		if string tag "Variant" of (custom nbt of {karta::%{_p}%}) = "Winter Delight":
-			draw 1 of ((rgb(176, 255, 185) dust particle of size 1) with an extra value of 0.06) with offset vector(0.6, 0.25, 0.6) at ({_l} ~ {_v})
-			draw 2 white concrete powder item particle at {_l} ~ {_v}
-			draw 1 end rod particle with offset random vector at {_l} ~ {_v}
-			draw 1 light blue wool item particle with offset random vector at {_l} ~ {_v}
-			draw 1 blue wool item particle with offset random vector at {_l} ~ {_v}
-			draw 1 lime wool item particle with offset random vector at {_l} ~ {_v}
-			draw 1 lime concrete powder item particle with offset random vector at {_l} ~ {_v}
-		else:
+
+		set {_particleList::*} to cyan concrete powder, blue concrete powder and lime concrete powder
+
+		loop {_particleList::*}:
+			set particle of {_shape} to loop-value item particle
+			draw shape {_shape} at {_particleLoc}
+
+		set {_particleLoc} to location 1.758 above {_p}
+		set {_shape} to a line from {_particleLoc} to location 1 above {_target}
+
+	else:
+		set {_l} to location 0.7 blocks below {_p}'s head
+		set {_l} to location 0.4 blocks right of {_l}
+		set {_v} to vector between {_l} and {_target}'s head
+
+		set {_particleList::*} to magenta concrete powder and purple concrete powder
+
+		loop {_particleList::*}:
+			set particle of {_shape} to loop-value item particle
+			draw shape {_shape} at {_particleLoc}
+
+		set {_particleLoc} to location 1.758 above {_p}
+		set {_shape} to a line from {_particleLoc} to location 1 above {_target}
+
+		loop round(distance between {_l} and {_target}) / 0.85 times:
+			set {_v} to vector between {_l} and {_target}'s head
+			set vector length of {_v} to loop-value * 0.85
+
 			draw 1 firework particle at {_l} ~ {_v}
 			draw 2 white concrete powder item particle at {_l} ~ {_v}
 			draw 1 pink wool item particle with offset random vector at {_l} ~ {_v}
 			draw 1 light blue wool item particle with offset random vector at {_l} ~ {_v}
 			draw 1 blue wool item particle with offset random vector at {_l} ~ {_v}
+
+function CresseliaStarsurgeArcticLightsVisual(p: player, target: entity):
+	set {_start} to location of {_p}
+	set {_target} to location of {_target}
+
+	set {_dir} to vector from {_start} to {_target}
+
+	if (y of {_start}) = (y of {_target}):
+		set y of {_dir} to a random number between 1.0 and 2.0
+	set {_dist} to distance between {_start} and {_target}
+
+	set {_totalSteps} to ({_dist} * 40)
+	set {_freq1} to random number between 0.1 and 0.5
+	set {_freq2} to random number between 0.4 and 1.0
+	set {_amp} to random number between 0.25 and 2.0
+	set {_jitter} to random number between 0.1 and 2
+
+	loop {_totalSteps} times:
+		set {_progress} to (loop-value / {_totalSteps})
+		
+		set {_basePos} to {_start} ~ ({_dir} * {_progress})
+		
+		set {_swayX} to sin(loop-value * {_freq1}) * {_amp}
+		set {_swayZ} to cos(loop-value * {_freq2}) * {_amp}
+		
+		set {_finalPos} to {_basePos} ~ vector({_swayX}, random number between -0.2 and 0.2, {_swayZ})
+		add vector((random number between ({_jitter}*-1) and {_jitter}), 0, (random number between ({_jitter}*-1) and {_jitter})) to {_finalPos}
+
+		if loop-value is divisible by 6:
+			if {_progress} is less than 0.2:
+				set {_randomPart} to a random integer between 1 and 2
+				if {_randomPart} = 1:
+					draw 1 of (rgb(50, 255, 80) dust particle of size 1.4 with an extra value of 0.1) with offset vector(0, 0, 0) at {_finalPos}
+					draw 1 of (lime wool item particle with an extra value of 0.1) with offset vector(0, 0, 0) at {_finalPos}
+				else:
+					draw 1 of (rgb(125, 255, 129) dust particle of size 1.4 with an extra value of 0.1) with offset vector(0, 0, 0) at {_finalPos}
+					draw 1 of (lime concrete powder item particle with an extra value of 0.1) with offset vector(0, 0, 0) at {_finalPos}
+				
+			else if {_progress} is less than 0.4:
+				draw 1 of (rgb(0, 255, 180) dust particle of size 1.3 with an extra value of 0.1) with offset vector(0, 0, 0) at {_finalPos}
+				draw 1 of (cyan wool item particle with an extra value of 0.1) with offset vector(0, 0, 0) at {_finalPos}
+				
+			else if {_progress} is less than 0.55:
+				draw 1 of (rgb(0, 240, 255) dust particle of size 1.2 with an extra value of 0.1) with offset vector(0, 0, 0) at {_finalPos}
+				draw 1 of (light blue wool item particle with an extra value of 0.1) with offset vector(0, 0, 0) at {_finalPos}
+				
+			else if {_progress} is less than 0.9:
+				set {_randomPart} to a random integer between 1 and 2
+				if {_randomPart} = 1:
+					draw 1 of (rgb(252, 43, 120) dust particle of size 1.0 with an extra value of 0.1) with offset vector(0, 0, 0) at {_finalPos}
+					draw 1 of (magenta wool item particle with an extra value of 0.1) with offset vector(0, 0, 0) at {_finalPos}
+				else:
+					draw 1 of (rgb(40, 100, 255) dust particle of size 1.0 with an extra value of 0.1) with offset vector(0.05, 0, 0.05) at {_finalPos}
+
+
+			if loop-value is divisible by 10:
+				draw 1 of (end rod particle with an extra value of 0.05) with offset vector(0, 0, 0) at {_finalPos}
+			
+			if loop-value is divisible by 50:
+				wait 1 tick
+		
+	draw 1 of lime flash particle at {_finalPos}
 
 function CresseliaRandomOffset() :: numbers:
 	set {_offsetX} to a random number between -5 and -20
@@ -762,7 +873,6 @@ function StarfallStarTravel(p: player, e: entity, target: entity, duration: time
 			draw 1 firework particle at {_loc}
 		set vector length of {_vec} to {_count} * {_starSpeed}
 		teleport {_e} to {_locStar} ~ {_vec}
-		add nbt from "{Rotation:[%{_y}%.0f,%{_y}%.0f]}" to nbt of {_e}
 		stop loop if distance between {_e} and {_target} < 1
 		wait 1 tick
 		set {_count} to {_count} + 1
@@ -788,7 +898,7 @@ function StarfallStarTravel(p: player, e: entity, target: entity, duration: time
 			if boolean tag "Constellation;Rattle the Stars" of (custom nbt of {karta::%{_p}%}) is set:
 				set {_damage} to {_damage}*1.08
 			set loop-value's last damage cause to sweep attack
-			set {_lore} to "&8Basic Ability%nl%&fInstant cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fRMB%nl%&7Cost: &f 50 Astral Power%nl%<##6a5e9e>Calls down waves of falling stars upon enemies%nl%<##6a5e9e>within a <##b9aeeb>huge radius<##6a5e9e>, dealing &f%{_damage}% <##a99afc>Astral <##6a5e9e>damage%nl%<##6a5e9e>over &f%{_starfallDuration}% sec <##6a5e9e>to targets at random and nearby%nl%<##6a5e9e>enemies.%nl% %nl%<##6a5e9e>Multiple uses of this ability may overlap."
+			set {_lore} to "&8Basic Ability%nl%&fInstant cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fRMB%nl%&7Cost: &f 50 Astral Power%nl%<##6a5e9e>Calls down waves of falling stars upon enemies%nl%<##6a5e9e>within a <##b9aeeb>huge radius<##6a5e9e>, dealing &f%{_damage}% <##a99afc>Astral <##6a5e9e>damage%nl%<##6a5e9e>over &f%(seconds of {_starfallDuration})% sec <##6a5e9e>to targets at random and nearby%nl%<##6a5e9e>enemies.%nl% %nl%<##6a5e9e>Multiple uses of this ability may overlap."
 			set metadata value "LastDamageCause" of loop-value to "<##6a5e9e>Starfall"
 			set metadata value "LastDamageCauseLore" of loop-value to {_lore}
 			set metadata value "Element" of {_p} to "Astral"
@@ -1040,6 +1150,153 @@ function PrimordialArcanicPulsar(p: player, astralPowerCost: number):
 	set {_pulsar} to metadata value "PrimordialArcanicPulsar" of {_p}
 	buffRegister({_p}, "Pulsar", 1, "", "Value", "%{_pulsar}% AP", "-")
 
+function caBezier(start: location, control: location, end: location, t: number) :: location:
+    set {_u} to (1 - {_t})
+    set {_uu} to ({_u} * {_u})
+    set {_tt} to ({_t} * {_t})
+    set {_ut2} to (2 * {_u} * {_t})
+
+    set {_x1} to ({_uu} * (x of {_start}))
+    set {_x2} to ({_ut2} * (x of {_control}))
+    set {_x3} to ({_tt} * (x of {_end}))
+    set {_x} to ({_x1} + {_x2} + {_x3})
+
+    set {_y1} to ({_uu} * (y of {_start}))
+    set {_y2} to ({_ut2} * (y of {_control}))
+    set {_y3} to ({_tt} * (y of {_end}))
+    set {_y} to ({_y1} + {_y2} + {_y3})
+
+    set {_z1} to ({_uu} * (z of {_start}))
+    set {_z2} to ({_ut2} * (z of {_control}))
+    set {_z3} to ({_tt} * (z of {_end}))
+    set {_z} to ({_z1} + {_z2} + {_z3})
+
+    return location({_x}, {_y}, {_z}, world of {_start})
+
+function caMidControl(start: location, end: location, height: number) :: location:
+    set {_x} to (((x of {_start}) + (x of {_end})) / 2)
+    set {_y} to ((((y of {_start}) + (y of {_end})) / 2) + {_height})
+    set {_z} to (((z of {_start}) + (z of {_end})) / 2)
+    return location({_x}, {_y}, {_z}, world of {_start})
+
+function caMoonTrail(loc: location, amount: number):
+    set {_dust} to ((rgb(255, 255, 200) dust particle of size 0.8) with an extra value of 0.01)
+    set {_dustOffset} to vector(0.1, 0.1, 0.1)
+    set {_smallOffset} to vector(0.05, 0.05, 0.05)
+
+    draw {_amount} of {_dust} with offset {_dustOffset} at {_loc}
+    draw 1 end rod particle with offset {_smallOffset} at {_loc}
+
+function caStarTrail(loc: location, amount: number):
+    set {_dust} to ((rgb(170, 80, 220) dust particle of size 0.8) with an extra value of 0.01)
+    set {_dustOffset} to vector(0.1, 0.1, 0.1)
+    set {_smallOffset} to vector(0.05, 0.05, 0.05)
+
+    draw {_amount} of {_dust} with offset {_dustOffset} at {_loc}
+    draw 1 firework particle with offset {_smallOffset} at {_loc}
+
+function caBurst(loc: location):
+    set {_moonDust} to ((rgb(255, 255, 200) dust particle of size 1.2) with an extra value of 0.01)
+    set {_starDust} to ((rgb(170, 80, 220) dust particle of size 1.2) with an extra value of 0.01)
+
+    set {_bigOffset} to vector(1.5, 1.5, 1.5)
+    set {_fireworkOffset} to vector(1, 1, 1)
+
+    draw 60 of {_moonDust} with offset {_bigOffset} at {_loc}
+    draw 60 of {_starDust} with offset {_bigOffset} at {_loc}
+    draw 30 end rod particle with offset {_bigOffset} at {_loc}
+    draw 30 firework particle with offset {_fireworkOffset} at {_loc}
+    draw 1 white flash particle at {_loc}
+
+function celestialAlignmentVisual(p: player):
+    set {_baseLoc} to location of {_p}
+    set {_radius} to 1.5
+    set {_height} to 1
+
+    set {_leftX} to (0 - {_radius})
+    set {_rightX} to {_radius}
+
+    set {_moonStart} to ({_baseLoc} ~ vector({_leftX}, {_height}, 0))
+    set {_starStart} to ({_baseLoc} ~ vector({_rightX}, {_height}, 0))
+
+    set {_standNBT} to "{Invulnerable:1b,Invisible:1b,NoGravity:1b,Silent:1b,Marker:1b}"
+
+    spawn an armor stand at {_moonStart} with nbt from {_standNBT}
+    set {_moon} to last spawned armor stand
+    set name of {_moon} to "FullMoon"
+    modelApply({_moon}, "fullmoon", 0.5)
+
+    spawn an armor stand at {_starStart} with nbt from {_standNBT}
+    set {_star} to last spawned armor stand
+    set name of {_star} to "ShootingStar"
+    modelApply({_star}, "shootingstar", 1)
+
+    set {_orbitTicks} to 40
+
+    set boolean tag "Invisible" of nbt of {_moonStart} to false
+    set boolean tag "Invisible" of nbt of {_starStart} to false
+
+    loop {_orbitTicks} times:
+        set {_baseLoc} to location of {_p}
+        set {_progress} to ((loop-value - 1) / {_orbitTicks})
+
+        set {_moonAngle} to (180 - ({_progress} * 360))
+        set {_starAngle} to (0 - ({_progress} * 360))
+
+        set {_moonX} to ((cos({_moonAngle})) * {_radius})
+        set {_moonZ} to ((sin({_moonAngle})) * {_radius})
+
+        set {_starX} to ((cos({_starAngle})) * {_radius})
+        set {_starZ} to ((sin({_starAngle})) * {_radius})
+
+        set {_moonPos} to ({_baseLoc} ~ vector({_moonX}, {_height}, {_moonZ}))
+        set {_starPos} to ({_baseLoc} ~ vector({_starX}, {_height}, {_starZ}))
+
+        teleport {_moon} to {_moonPos}
+        teleport {_star} to {_starPos}
+
+        caMoonTrail({_moonPos}, 2)
+        caStarTrail({_starPos}, 2)
+
+        if loop-counter is divisible by 2:
+            wait 1 tick
+
+    set {_moonArcStart} to location of {_moon}
+    set {_starArcStart} to location of {_star}
+    set {_meetPoint} to ((location of {_p}) ~ vector(0, 3.5, 0))
+
+    set {_moonControl} to caMidControl({_moonArcStart}, {_meetPoint}, 1.5)
+    set {_starControl} to caMidControl({_starArcStart}, {_meetPoint}, 1.5)
+
+    set {_arcTicks} to 10
+
+    loop {_arcTicks} times:
+        set {_t} to ((loop-value - 1) / {_arcTicks})
+
+        set {_moonPos} to caBezier({_moonArcStart}, {_moonControl}, {_meetPoint}, {_t})
+        set {_starPos} to caBezier({_starArcStart}, {_starControl}, {_meetPoint}, {_t})
+
+        teleport {_moon} to {_moonPos}
+        teleport {_star} to {_starPos}
+
+        set {_densityRaw} to ({_t} * 3)
+        set {_trailDensity} to (2 + round({_densityRaw}))
+
+        caMoonTrail({_moonPos}, {_trailDensity})
+        caStarTrail({_starPos}, {_trailDensity})
+
+        wait 1 tick
+
+    teleport {_moon} to {_meetPoint}
+    teleport {_star} to {_meetPoint}
+
+    caBurst({_meetPoint})
+
+    wait 10 ticks
+
+    kill {_moon}
+    kill {_star}
+	
 #on rightclick:
 #	set {_shape} to a star with 5 points, inner radius 0.25, and outer radius 2
 #	set particle of {_shape} to flame
