@@ -20,7 +20,8 @@ function ShootingStars(p: player):
 		wait {_wait}
 
 function ShootingStar(p: player):
-	set {_id} to line 19 of lore of {karta::%{_p}%}
+	set {_id} to cardId({_p})
+
 	set {_loops} to 1
 	set {_astralInvocationChance} to 10
 	set {_damage} to (0.8 + (({damage::%{_p}%}/61) + (Versatility({_p})/183) + {primarystat::%{_p}%}/30.5)) * (1 + (Mastery({_p})/60))
@@ -45,6 +46,7 @@ function ShootingStar(p: player):
 		set {_damage} to {_damage}*1.15
 		chance of 20%:
 			set {_loops} to 2
+
 	if {_crashingStar} is true:
 		set {_astralpower} to {_astralpower}*2
 
@@ -65,6 +67,17 @@ function ShootingStar(p: player):
 		set {_target} to a random element of {_enti::*}
 		if metadata value "Stellar Command%{_p}%" of {_target} is set:
 			set {_damage} to {_damage}*1.3
+
+		set {_chanceShooting} to 8
+		if boolean tag "Constellation;Stellar Command" of (custom nbt of {karta::%{_p}%}) is set:
+			set {_chanceShooting} to {_chanceShooting} + 2
+		if metadata value "CelestialAlignment" of {_p} is set:
+			set {_chanceShooting} to {_chanceShooting}*2
+		if metadata value "Solstice" of {_p} is set:
+			set {_chanceShooting} to {_chanceShooting}*3
+
+		set {_loreShootingStars} to "&8Mastery Bonus%nl%&fNo cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fPASSIVE%nl%<##6a5e9e>Every <##b9aeeb>second<##6a5e9e>, you have a &f%{_chanceShooting}%%% <##b9aeeb>chance <##6a5e9e>to call%nl%<##6a5e9e>down a &f <##b9aeeb>Shooting Star<##6a5e9e>, dealing &f%{_damage}% <##a99afc>Astral <##6a5e9e>damage%nl%<##6a5e9e>to the enemy and generating &f %{_astralpower}% <##b9aeeb>Astral Power<##6a5e9e>.%nl% %nl%<##6a5e9e>This effect can only trigger when you have%nl%<##b9aeeb>attacked a target <##6a5e9e>through a different damage%nl%<##6a5e9e>source than &f <##b9aeeb>Shooting Stars <##6a5e9e>in the last &f20 sec<##6a5e9e>."
+
 		if {_crashingStar} is true:
 			set {_starSpeed} to 0.2*{_haste}
 			set {_damageCause} to "<##6a5e9e>Crashing Star"
@@ -81,16 +94,7 @@ function ShootingStar(p: player):
 			set {_bonusY} to 0.9
 			set {_lore} to {_loreShootingStars}
 			CresseliaShootingStarSound({_p}, {_target})
-			
-			set {_chanceShooting} to 8
-			if boolean tag "Constellation;Stellar Command" of (custom nbt of {karta::%{_p}%}) is set:
-				set {_chanceShooting} to {_chanceShooting} + 2
-			if metadata value "CelestialAlignment" of {_p} is set:
-				set {_chanceShooting} to {_chanceShooting}*2
-			if metadata value "Solstice" of {_p} is set:
-				set {_chanceShooting} to {_chanceShooting}*3
 
-		set {_loreShootingStars} to "&8Mastery Bonus%nl%&fNo cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fPASSIVE%nl%<##6a5e9e>Every <##b9aeeb>second<##6a5e9e>, you have a &f%{_chanceShooting}%%% <##b9aeeb>chance <##6a5e9e>to call%nl%<##6a5e9e>down a &f <##b9aeeb>Shooting Star<##6a5e9e>, dealing &f%{_damage}% <##a99afc>Astral <##6a5e9e>damage%nl%<##6a5e9e>to the enemy and generating &f %{_astralpower}% <##b9aeeb>Astral Power<##6a5e9e>.%nl% %nl%<##6a5e9e>This effect can only trigger when you have%nl%<##b9aeeb>attacked a target <##6a5e9e>through a different damage%nl%<##6a5e9e>source than &f <##b9aeeb>Shooting Stars <##6a5e9e>in the last &f20 sec<##6a5e9e>."
 		LoreUpdate({_p}, "Shooting Stars", {_loreShootingStars})
 
 		set {_y} to 0
@@ -133,20 +137,29 @@ function ShootingStar(p: player):
 			set metadata value "Element" of {_p} to "Astral"
 			set {_shootingStarsDamage} to Crit({_p}, {_target}, {_crit}, {_shootingStarsDamage}, {_critModifier})
 			make {_p} damage {_target} by {_shootingStarsDamage}
+
 			chance of {_astralInvocationChance}%:
 				AstralInvocation({_p})
+
 			if string tag "Talents;Row 2" of (custom nbt of {karta::%{_p}%}) = "Astral Communion":
 				set {_astralPowerCap} to 120
 			else:
 				set {_astralPowerCap} to 100
+
 			if {astralpower::%{_p}%} + {_astralpower} <= {_astralPowerCap}:
-				set {astralpower::%{_p}%} to {astralpower::%{_p}%} + 2
+				set {astralpower::%{_p}%} to {astralpower::%{_p}%} + {_astralpower}
 			else:
 				set {astralpower::%{_p}%} to {_astralPowerCap}
+
 			AstralPowerUpdate({_p})
+
 			if string tag "Talents;Row 5" of (custom nbt of {karta::%{_p}%}) = "Orbit Breaker":
+				if metadata value "OrbitBreaker" of {_p} is not set:
+					set metadata value "OrbitBreaker" of {_p} to 0
+
 				set {_orbitBreaker} to metadata value "OrbitBreaker" of {_p}
 				set {_orbitBreaker} to {_orbitBreaker} + 1
+				
 				if {_orbitBreaker} >= 30:
 					set {_orbitBreaker} to 0
 					FullMoon({_p}, {_target})
@@ -231,15 +244,17 @@ on rightclick:
 								
 								if string tag "Talents;Row 3" of (custom nbt of {karta::%player%}) = "Starweaver":
 									if metadata value "Starweaver" of player = "Starsurge":
-										set {_freeStarsurge} to true
+
+										set {_astralPowerCost} to 0
+
 										clear metadata value "Starweaver" of player
 										loop all items in the inventory of player:
 											if boolean tag "Starsurge" of (custom nbt of loop-item) is set:
 												set item amount of loop-item to 1
 
-								if ({astralpower::%player%} >= {_astralPowerCost}) or {_freeStarsurge} = true:
-									if {_freeStarsurge} != true:
-										set {astralpower::%player%} to {astralpower::%player%} - {_astralPowerCost}
+								if ({astralpower::%player%} >= {_astralPowerCost}):
+									set {astralpower::%player%} to {astralpower::%player%} - {_astralPowerCost}
+
 									AstralPowerUpdate(player)
 									AbilityUse(player, "Starsurge")
 									
@@ -262,9 +277,18 @@ on rightclick:
 										if metadata value "CelestialAlignment" of player is set:
 											if metadata value "AetherialKindlingExtension" of player is not set:
 												set metadata value "AetherialKindlingExtension" of player to 0
-											if metadata value "AetherialKindlingExtension" of player < 15:
-												set metadata value "AetherialKindlingExtension" of player to (metadata value "AetherialKindlingExtension" of player + 3)
-												set metadata value "CelestialAlignment" of player to (metadata value "CelestialAlignment" of player + 3 seconds)
+
+											set {_currentExtension} to metadata value "AetherialKindlingExtension" of player
+											set {_add} to 3
+
+											if {_currentExtension} + {_add} > 15:
+												set {_add} to 15 - {_currentExtension}
+
+											set {_addSeconds} to "%{_add}% seconds" parsed as timespan
+
+											if {_add} > 0:
+												set metadata value "AetherialKindlingExtension" of player to ({_currentExtension} + {_add})
+												set metadata value "CelestialAlignment" of player to (metadata value "CelestialAlignment" of player + {_addSeconds})
 
 									else if string tag "Talents;Row 3" of (custom nbt of {karta::%player%}) = "Starweaver":
 										chance of 20%:
@@ -282,10 +306,13 @@ on rightclick:
 									if metadata value "StarsurgeStacks%player%" of {_target} is not set:
 										set metadata value "StarsurgeStacks%player%" of {_target} to 0
 
+									set {_starsurgeStacks} to metadata value "StarsurgeStacks%player%" of {_target}
+
+									set {_starsurgeBonus} to 1+(0.15*{_starsurgeStacks})
+									set {_damage} to {_damage}*{_starsurgeBonus}
+
 									if metadata value "StarsurgeStacks%player%" of {_target} < {_starsurgeBonusMax}:
 										set metadata value "StarsurgeStacks%player%" of {_target} to (metadata value "StarsurgeStacks%player%" of {_target} + 1)
-
-									set {_starsurgeStacks} to metadata value "StarsurgeStacks%player%" of {_target}
 
 									set metadata value "StarsurgeTime%player%" of {_target} to 12 seconds
 									if metadata value "StarsurgeBonus%player%" of {_target} is not set:
@@ -294,9 +321,6 @@ on rightclick:
 								
 									if boolean tag "Constellation;Stellar Command" of (custom nbt of {karta::%player%}) is set:
 										StellarCommand(player, {_target})
-										
-									set {_starsurgeBonus} to 1+(0.15*{_starsurgeStacks})
-									set {_damage} to {_damage}*{_starsurgeBonus}
 
 									set {_critModifier} to 2
 									if boolean tag "Constellation;The Eternal Moon" of (custom nbt of {karta::%player%}) is set:
@@ -342,18 +366,21 @@ on rightclick:
 							if string tag "Talents;Row 3" of (custom nbt of {karta::%player%}) = "Starweaver":
 								if metadata value "Starweaver" of player = "Starfall":
 									clear metadata value "Starweaver" of player
-									set {_freeStarfall} to true
+
+									set {_astralPowerCost} to 0
+
 									loop all items in the inventory of player:
 										if boolean tag "Starfall" of (custom nbt of loop-item) is set:
 											set item amount of loop-item to 1
 
-							if ({astralpower::%player%} >= {_astralPowerCost}) or {_freeStarfall} = true:
-								if {_freeStarfall} != true:
-									set {astralpower::%player%} to {astralpower::%player%} - {_astralPowerCost}
+							if ({astralpower::%player%} >= {_astralPowerCost}):
+								set {astralpower::%player%} to {astralpower::%player%} - {_astralPowerCost}
+								
 								AstralPowerUpdate(player)
 								AbilityUse(player, "Starfall")
 								CresseliaStarfallSound(player)
-								Starfall(player, 1)
+
+								Starfall(player, 1, {_astralPowerCost})
 
 							else:
 								if {tekstcd::%player%} = true:
@@ -376,11 +403,11 @@ on rightclick:
 								if boolean tag "Constellation;The Eternal Moon" of (custom nbt of {karta::%player%}) is set:
 									if metadata value "CelestialAlignment" of player is set:
 										set {_baseCastTime} to {_baseCastTime} - 0.25
+
 								if metadata value "AstronomicalImpact" of player is set:
+									set {_astronomicalImpact} to true
 									set {_baseCastTime} to {_baseCastTime}/1.6
-									remove 1 from metadata value "AstronomicalImpact" of player
-									if metadata value "AstronomicalImpact" of player = 0:
-										clear metadata value "AstronomicalImpact" of player
+
 								set {_casttime} to "%round(({_baseCastTime}/{_pospiech}), 1)% seconds" parsed as timespan
 								if metadata value "cast" of player is not set:
 									set metadata value "casttimemax" of player to {_casttime}
@@ -420,11 +447,18 @@ on rightclick:
 								if {_casttime} > 0 seconds:
 									send action bar "&cInterrupted" to player
 									stop
-								if {_astronomicalImpact} is set:
+
+								if {_astronomicalImpact} = true:
+									remove 1 from metadata value "AstronomicalImpact" of player
+									if metadata value "AstronomicalImpact" of player = 0:
+										clear metadata value "AstronomicalImpact" of player
 									Starfire(player, {_target}, true)
+
 								else:
 									Starfire(player, {_target})
+
 								AbilityUse(player, "Starfire")
+
 							else:
 								if {tekstcd::%player%} = true:
 									set {_cdd} to cooldown "Global Cooldown Interrupted Cast%player%"
@@ -434,10 +468,14 @@ on rightclick:
 							if metadata value "casting" of player is not set:
 								if cooldown "StarfireDoublecast%player%" is finished:
 									create cooldown "StarfireDoublecast%player%" for 1 tick
+
 									if {_astronomicalImpact} is set:
 										Starfire(player, {_target}, true)
 									else:
 										Starfire(player, {_target})
+
+									AbilityUse(player, "Starfire")
+									
 									clear metadata value "AstralInvocation" of player
 									send title " " with subtitle " " to player for 1 tick with fade in 0.0 second and fade out 0.0 second
 									if string tag "Talents;Row 1" of (custom nbt of {karta::%player%}) = "Umbral Inspiration":
@@ -490,8 +528,9 @@ on rightclick:
 							if {_target} != player:
 								set {_cdReduction} to 40 seconds
 								set {_lastusedability} to metadata value "lastspell" of {_target}
-								if cooldown "%{_cooldown}%%{_target}%" is not finished:
-									remove {_cdReduction} from cooldown "%{_cooldown}%%{_target}%"
+
+								if cooldown "%{_lastusedability}%%{_target}%" is not finished:
+									remove {_cdReduction} from cooldown "%{_lastusedability}%%{_target}%"
 									send "&f Innervate <##6a5e9e>lowered the cooldown of your &f%{_lastusedability}% <##6a5e9e>by &f %{_cdreduction}%<##6a5e9e>!" to {_target}
 									play sound "skill.cresselia.innervate_cast" with volume 2 and pitch 1 to {_target}
 									play sound "block.beacon.power_select" with volume 2 and pitch 2 to {_target}
@@ -541,14 +580,17 @@ function Starfire(p: player, target: entity, astronomicalImpact: boolean = false
 		set {_astralPowerCap} to 100
 
 	set {_enemies::*} to LoopEntitiesAroundTarget({_target}, 5, true)
-	if size of {_enemies::*} >= 3:
-		set {_enemiesAffected} to 3
-	else:
-		set {_enemiesAffected} to size of {_enemies::*}
 
 	if boolean tag "Constellation;Soul of the Cosmos" of (custom nbt of {karta::%{_p}%}) is set:
-		set {_astralPower} to {_astralPower} * (1 + ({_enemiesAffected}/5))
-		set {_soulOfTheCosmos} to (1 + ({_enemiesAffected}/5))
+		if metadata value "CelestialAlignment" of {_p} is set:
+
+			if size of {_enemies::*} >= 3:
+				set {_enemiesAffected} to 3
+			else:
+				set {_enemiesAffected} to size of {_enemies::*}
+
+			set {_astralPower} to {_astralPower} * (1 + (({_enemiesAffected}-1)/5))
+			set {_soulOfTheCosmos} to (1 + (({_enemiesAffected}-1)/5))
 
 	if {astralpower::%{_p}%} + {_astralPower} <= {_astralPowerCap}:
 		set {astralpower::%{_p}%} to {astralpower::%{_p}%} + {_astralPower}
@@ -617,7 +659,7 @@ function StarfireVisual(p: player, target: entity, mainTarget: boolean = false):
 			draw 2 of ((rgb(145, 164, 255) dust particle of size 1) with an extra value of 0.06) with offset vector(0.6, 0.25, 0.6) at ({_l} ~ {_v})
 			draw 2 of ((rgb(231, 145, 255) dust particle of size 1) with an extra value of 0.06) with offset vector(0.6, 0.25, 0.6) at ({_l} ~ {_v})
 
-function Starfall(p: player, effectiveness: number):
+function Starfall(p: player, effectiveness: number, astralPowerCost: number = 0):
 	if string tag "Talents;Row 5" of (custom nbt of {karta::%{_p}%}) = "Primordial Arcanic Pulsar":
 		PrimordialArcanicPulsar({_p}, {_astralPowerCost})
 
@@ -638,9 +680,18 @@ function Starfall(p: player, effectiveness: number):
 		if metadata value "CelestialAlignment" of {_p} is set:
 			if metadata value "AetherialKindlingExtension" of {_p} is not set:
 				set metadata value "AetherialKindlingExtension" of {_p} to 0
-			if metadata value "AetherialKindlingExtension" of {_p} < 27:
-				set metadata value "AetherialKindlingExtension" of {_p} to (metadata value "AetherialKindlingExtension" of {_p} + 3)
-				set metadata value "CelestialAlignment" of {_p} to (metadata value "CelestialAlignment" of {_p} + 3 seconds)
+				
+			set {_currentExtension} to metadata value "AetherialKindlingExtension" of {_p}
+			set {_add} to 3
+
+			if {_currentExtension} + {_add} > 15:
+				set {_add} to 15 - {_currentExtension}
+
+			set {_addSeconds} to "%{_add}% seconds" parsed as timespan
+
+			if {_add} > 0:
+				set metadata value "AetherialKindlingExtension" of {_p} to ({_currentExtension} + {_add})
+				set metadata value "CelestialAlignment" of {_p} to (metadata value "CelestialAlignment" of {_p} + {_addSeconds})
 
 	else if string tag "Talents;Row 3" of (custom nbt of {karta::%{_p}%}) = "Starweaver":
 		chance of 40%:
@@ -662,7 +713,10 @@ function Starfall(p: player, effectiveness: number):
 	if {_enemies::*} is set:
 		set {_duration} to now
 		wait 1 tick
-		StellarDrift({_p}, {_starfallDuration})
+
+		if string tag "Talents;Row 2" of (custom nbt of {karta::%{_p}%}) = "Stellar Drift":
+			StellarDrift({_p}, {_starfallDuration})
+
 		while (difference between {_duration} and now) < {_starfallDuration}:
 			#15.08.2024 -> Maybe increase the amount of stars falling based on amount enemies in the list?
 			#starfall would scale with the amount of enemies dynamically
@@ -780,12 +834,12 @@ function CresseliaStarsurgeVisual(p: player, target: entity):
 
 		set {_particleList::*} to cyan concrete powder, blue concrete powder and lime concrete powder
 
+		set {_particleLoc} to location 1.758 above {_p}
+		set {_shape} to a line from {_particleLoc} to location 1 above {_target}
+
 		loop {_particleList::*}:
 			set particle of {_shape} to loop-value item particle
 			draw shape {_shape} at {_particleLoc}
-
-		set {_particleLoc} to location 1.758 above {_p}
-		set {_shape} to a line from {_particleLoc} to location 1 above {_target}
 
 	else:
 		set {_l} to location 0.7 blocks below {_p}'s head
@@ -886,7 +940,8 @@ function StarfallStarTravel(p: player, e: entity, target: entity, duration: time
 	set {_count} to 0
 	set {_starSpeed} to 0.25*{_haste}
 	set {_starfallDuration} to "%{_duration}%"
-	replace all " seconds" and " second" in {_starfalDuration} with " sec"
+	replace all " seconds" and " second" in {_starfallDuration} with " sec"
+
 	while {_e} is alive:
 		set {_targetLoc} to location 0.5 below {_target}
 		set {_vec} to vector between {_locStar} and {_targetLoc}
@@ -921,7 +976,7 @@ function StarfallStarTravel(p: player, e: entity, target: entity, duration: time
 			if boolean tag "Constellation;Rattle the Stars" of (custom nbt of {karta::%{_p}%}) is set:
 				set {_damage} to {_damage}*1.08
 			set loop-value's last damage cause to sweep attack
-			set {_lore} to "&8Basic Ability%nl%&fInstant cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fRMB%nl%&7Cost: &f 50 Astral Power%nl%<##6a5e9e>Calls down waves of falling stars upon enemies%nl%<##6a5e9e>within a <##b9aeeb>huge radius<##6a5e9e>, dealing &f%{_damage}% <##a99afc>Astral <##6a5e9e>damage%nl%<##6a5e9e>over &f%(seconds of {_starfallDuration})% sec <##6a5e9e>to targets at random and nearby%nl%<##6a5e9e>enemies.%nl% %nl%<##6a5e9e>Multiple uses of this ability may overlap."
+			set {_lore} to "&8Basic Ability%nl%&fInstant cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fRMB%nl%&7Cost: &f 50 Astral Power%nl%<##6a5e9e>Calls down waves of falling stars upon enemies%nl%<##6a5e9e>within a <##b9aeeb>huge radius<##6a5e9e>, dealing &f%{_damage}% <##a99afc>Astral <##6a5e9e>damage%nl%<##6a5e9e>over &f%{_starfallDuration}% sec <##6a5e9e>to targets at random and nearby%nl%<##6a5e9e>enemies.%nl% %nl%<##6a5e9e>Multiple uses of this ability may overlap."
 			set metadata value "LastDamageCause" of loop-value to "<##6a5e9e>Starfall"
 			set metadata value "LastDamageCauseLore" of loop-value to {_lore}
 			set metadata value "Element" of {_p} to "Astral"
@@ -961,6 +1016,7 @@ function AstralInvocation(p: player):
 		remove 1 second from {_time}
 		stop loop if 0 seconds >= {_time}
 	send title " " with subtitle " " to {_p} for 1 second with fade in 0.0 second and fade out 0.0 second
+	clear metadata value "AstralInvocation" of {_p}
 			
 function CelestialAlignmentVisual(p: player):
 	set {_loc} to location 2.5 above {_p}
@@ -1039,7 +1095,7 @@ function FullMoon(p: player, target: entity, effectiveness: number = 1):
 	
 	set {_damageFullMoon} to (13 + (({damage::%{_p}%}/6.5) + (Versatility({_p})/19.5) + {primarystat::%{_p}%}/3.25)) * (1 + (Mastery({_p})/60))
 	set {_damageFullMoon} to {_damageFullMoon}*{_effectiveness}
-	set {_lore} to "&f <##6a5e9e>Full Moon%nl%&7Deals &f%{_damage}% <##a99afc>Astral &7damage &7to the target and%nl%&f%{_damageFullMoon}*0.4% <##a99afc>Astral &7damage to all enemies around%nl%&7and generates &f40  <##6a5e9e>Astral Power&7."
+	set {_lore} to "&f <##6a5e9e>Full Moon%nl%&7Deals &f%{_damageFullMoon}% <##a99afc>Astral &7damage &7to the target and%nl%&f%{_damageFullMoon}*0.4% <##a99afc>Astral &7damage to all enemies around%nl%&7and generates &f40  <##6a5e9e>Astral Power&7."
 	
 	set {_critModifier} to 2
 	if boolean tag "Constellation;The Eternal Moon" of (custom nbt of {karta::%{_p}%}) is set:
@@ -1083,31 +1139,34 @@ function CelestialAlignment(p: player, duration: timespan):
 		Starfall({_p}, 4)
 	if boolean tag "Constellation;The Eternal Moon" of (custom nbt of {karta::%{_p}%}) is set:
 		set {_lastDamagedTarget} to (metadata value "MostRecentlyDamagedEnemy" of {_p})
-		FullMoon({_p}, {_lastDamagedTarget}, 0.7)
+
+		if {_lastDamagedTarget} is set:
+			FullMoon({_p}, {_lastDamagedTarget}, 0.7)
 
 	if metadata value "CelestialAlignment" of {_p} is not set:
 		set metadata value "CelestialAlignment" of {_p} to {_duration}
 		set {bonusCriticalhit::%{_p}%} to {bonusCriticalhit::%{_p}%} + 150
-		#add 60 to {bonusHaste::%{_p}%}
 		while metadata value "CelestialAlignment" of {_p} > 0 seconds:
 			buffRegister({_p}, "Alignment", 5, "", "-", "-", durationShort("%metadata value "CelestialAlignment" of {_p}%"))
 			wait 1 second
 			set {_timeRemaining} to metadata value "CelestialAlignment" of {_p}
 			remove 1 second from {_timeRemaining}
+
 			set metadata value "CelestialAlignment" of {_p} to {_timeRemaining}
+
 			if 0 seconds >= metadata value "CelestialAlignment" of {_p}:
 				clear metadata value "CelestialAlignment" of {_p}
 				set {bonusCriticalhit::%{_p}%} to {bonusCriticalhit::%{_p}%} - 150
-				#remove 60 from {bonusHaste::%{_p}%}
 				AstronomicalImpact({_p})
 				stop loop
+
 		buffClear({_p}, "Alignment")
 		clear metadata value "AetherialKindlingExtension" of {_p}
 	else:
 		set {_timeRemaining} to metadata value "CelestialAlignment" of {_p}
 		set {_timeRemaining} to 0 seconds if {_timeRemaining} is not set
 		set {_timeRemaining} to {_timeRemaining} + {_duration}
-		set metadata value "CelestialAlignment" of {_p} to {_duration}
+		set metadata value "CelestialAlignment" of {_p} to {_timeRemaining}
 
 function StellarDrift(p: player, duration: timespan):
 	if metadata value "StellarDrift" of {_p} is not set:
