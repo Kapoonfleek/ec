@@ -232,6 +232,7 @@ on rightclick:
 								if string tag "Talents;Row 3" of (custom nbt of {karta::%player%}) = "Starweaver":
 									if metadata value "Starweaver" of player = "Starsurge":
 										set {_freeStarsurge} to true
+										clear metadata value "Starweaver" of player
 										loop all items in the inventory of player:
 											if boolean tag "Starsurge" of (custom nbt of loop-item) is set:
 												set item amount of loop-item to 1
@@ -283,6 +284,8 @@ on rightclick:
 
 									if metadata value "StarsurgeStacks%player%" of {_target} < {_starsurgeBonusMax}:
 										set metadata value "StarsurgeStacks%player%" of {_target} to (metadata value "StarsurgeStacks%player%" of {_target} + 1)
+
+									set {_starsurgeStacks} to metadata value "StarsurgeStacks%player%" of {_target}
 
 									set metadata value "StarsurgeTime%player%" of {_target} to 12 seconds
 									if metadata value "StarsurgeBonus%player%" of {_target} is not set:
@@ -338,6 +341,7 @@ on rightclick:
 
 							if string tag "Talents;Row 3" of (custom nbt of {karta::%player%}) = "Starweaver":
 								if metadata value "Starweaver" of player = "Starfall":
+									clear metadata value "Starweaver" of player
 									set {_freeStarfall} to true
 									loop all items in the inventory of player:
 										if boolean tag "Starfall" of (custom nbt of loop-item) is set:
@@ -348,7 +352,7 @@ on rightclick:
 									set {astralpower::%player%} to {astralpower::%player%} - {_astralPowerCost}
 								AstralPowerUpdate(player)
 								AbilityUse(player, "Starfall")
-								play sound "skill.cresselia.starfall" with volume 5 and pitch 1 at location of player
+								CresseliaStarfallSound(player)
 								Starfall(player, 1)
 
 							else:
@@ -731,7 +735,14 @@ function CresseliaStarfirePrecastSound(p: player):
 function CresseliaStarfireCastSound(p: player):
 	if getCurrentVariant({_p}, "Cresselia") = "Arctic Lights":
 		play sound "skill.cresselia.starfire_cast.arcticlights" with volume 3 and pitch 1 at location of {_p}
-		play sound "skill.cresselia.starfire_castextra.arcticlights" with volume 3 and pitch 1 at location of {_p}
+		set {_extraCastSound} to metadata value "StarfireArcticLightsExtraCastSound" of {_p}
+
+		set {_extraCastSound} to {_extraCastSound} + 1
+		play sound "skill.cresselia.starfire_castextra%{_extraCastSound}%.arcticlights" with volume 3 and pitch 1 at location of {_p}
+		if {_extraCastSound} = 2:
+			set {_extraCastSound} to 0
+		set metadata value "StarfireArcticLightsExtraCastSound" of {_p} to {_extraCastSound}
+
 	else:
 		play sound "skill.cresselia.starfire_cast" with volume 3 and pitch 1 at location of {_p}
 
@@ -740,6 +751,18 @@ function CresseliaShootingStarSound(p: player, target: entity):
 		play sound "skill.cresselia.shootingstar_spawn.arcticlights" with volume 4 and pitch 0 at location of {_target}
 	else:
 		play sound "entity.firework_rocket.launch" with volume 4 and pitch 0 at location of {_target}
+
+function CresseliaStarfallSound(p: player):
+	if getCurrentVariant({_p}, "Cresselia") = "Arctic Lights":
+		play sound "skill.cresselia.starfall.arcticlights" with volume 5 and pitch 1 at location of {_p}
+	else:
+		play sound "skill.cresselia.starfall" with volume 5 and pitch 1 at location of {_p}
+
+function CresseliaStarfallHitSound(p: player, target: entity):
+	if getCurrentVariant({_p}, "Cresselia") = "Arctic Lights":
+		play sound "skill.cresselia.starfall_hit.arcticlights" with volume 1.5 and pitch 1 at location of {_target}
+	else:
+		play sound "entity.player.hurt" with volume 1.5 and pitch 1 at location of {_target}
 
 function CresseliaStarfirePrecastSoundStop(p: player):
 	stop sound "skill.cresselia.starfire_precast" for {_p}
@@ -906,7 +929,7 @@ function StarfallStarTravel(p: player, e: entity, target: entity, duration: time
 			make {_p} damage loop-value by {_damage}
 			CresseliaRecentlyDamaged({_p}, loop-value)
 			if loop-value = {_target}:
-				play sound "entity.player.hurt" with volume 1.5 and pitch 1 at location of loop-value
+				CresseliaStarfallHitSound({_p}, loop-value)
 
 function StarfallStarKill(e: entity):
 	wait 20 seconds
