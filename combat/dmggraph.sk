@@ -270,6 +270,7 @@ function combatInitiate(att: entity, vict: entity):
 		if {_att} is a player:
 			load yaml "plugins/Skript/combat/details/%uuid of {_att}%" as "CombatDetails-%{_att}%"
 			if {kartaname::%{_att}%} = "Cresselia":
+				set metadata value "OrbitBreaker" of {_att} to 0
 				ShootingStars({_att})
 				AstralPower({_att})
 			else if {kartaname::%{_att}%} = "Ghazan":
@@ -473,7 +474,13 @@ function CombatBreakdown(p: player, type: text):
 			set {_size} to size of {_r::*}
 			loop {_size} times:
 				set {_1} to ({_r::%loop-number%} in strict proper case)
-				add "%{_1}%: %{dmgbreak::%{_k}%::%{_id}%::%{_1}%}% (%({dmgbreak::%{_k}%::%{_id}%::%{_1}%}/{dmgdealt::%{_p}%})*100%%%)" to {_breakdown::*}
+
+				set {_icon} to getCardIcon({_p}, {_ability})
+				if {_icon} is set:
+					set {_1} to "%{_icon}% %{_1}%"
+
+				set {_breakdown::*} to {_breakdown::*} and "%{_1}%: %{dmgbreak::%{_k}%::%{_id}%::%{_1}%}% (%({dmgbreak::%{_k}%::%{_id}%::%{_1}%}/{dmgdealt::%{_p}%})*100%%%)"
+
 			if size of {_breakdown::*} > 1:
 				set {_breakdown} to join {_breakdown::*} by nl
 				set {_message} to mini message from "<gradient:##20e32a:##ffe270:##f54242>%{_breakdown}%"
@@ -490,14 +497,19 @@ function CombatBreakdown(p: player, type: text):
 			set {_size} to size of {_r::*}
 			loop {_size} times:
 				set {_1} to ({_r::%loop-number%} in strict proper case)
-				add "%{_1}%: %{healcard::%{_k}%::%{_id}%::%{_1}%}% (%({healcard::%{_k}%::%{_id}%::%{_1}%}/{healed::%{_p}%})*100%%%)" to {_breakdown::*}
+
+				set {_icon} to getCardIcon({_p}, {_ability})
+				if {_icon} is set:
+					set {_1} to "%{_icon}% %{_1}%"
+
+				set {_breakdown::*} to {_breakdown::*} and "%{_1}%: %{healcard::%{_k}%::%{_id}%::%{_1}%}% (%({healcard::%{_k}%::%{_id}%::%{_1}%}/{healed::%{_p}%})*100%%%)"
+
 			if size of {_breakdown::*} > 1:
 				set {_breakdown} to join {_breakdown::*} by nl
 				set {_message} to mini message from "<gradient:##03fc41:##69faff:##2faabd:##303f96>%{_breakdown}%"
 			else:
 				set {_message} to "<#03fc41>%{_breakdown::1}%"
 
-	send "Coming soon (TM)" to {_p}
 	send "%{_type}% breakdown:" to {_p}
 	if metadata value "ECEngaged" of {_p} is set:
 		set {_t} to SecondsToMinutes("%{seconds::%{_p}%}%")
@@ -510,7 +522,7 @@ function CombatBreakdown(p: player, type: text):
 			clear {dmgbreak::%{kartaname::%{_p}%}%::%{_id}%::*}
 		if {healcard::%{kartaname::%{_p}%}%::%{_id}%::*} is set:
 			clear {healcard::%{kartaname::%{_p}%}%::%{_id}%::*}
-	
+
 		
 	if {_variable} is 0:
 		send "Total: - (- %{_text}%)" to {_p}
