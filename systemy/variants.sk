@@ -1,7 +1,9 @@
+
+
 function VariantMenu(p: player) :: number:
     set metadata tag "variantgui" of {_p} to chest inventory with 3 rows named "%uncolored name of {_p}'s tool% - Variants"
     set {_gui} to metadata tag "variantgui" of {_p}
-    set {_id} to string tag "Id" of custom nbt of {_p}'s tool
+    set {_id} to string tag "Id" of (custom nbt of {_p}'s tool)
     set {_card} to uncolored name of {_p}'s tool
     set {_cardColour} to last string colour code of (name of {_p}'s tool)
 
@@ -34,7 +36,7 @@ function VariantMenu(p: player) :: number:
         set {_colourDesc} to yaml value "Variant Options.Description Colour" in "VariantList"
 
         if loop-value != "Classic":
-            set {_colour} to yaml value "Variant List.%loop-value%.Colour" in "VariantList"
+            set {_colour} to yaml value "Variant List.%loop-value%.Colour.Primary" in "VariantList"
             set name of {_item} to (mini message from "%{_colour}%%loop-value% %{_card}%")
             set {_source} to yaml value "%{_card}%.%loop-value%.Source" in "VariantList"
             set {_acquired} to yaml value "%{_card}%.%loop-value%.Acquired" in "Variants%{_p}%"
@@ -81,19 +83,43 @@ function VariantMenu(p: player) :: number:
         set string tag "Variant" of custom nbt of {_item} to loop-value
 
         set lore of {_item} to {_lore}
-        set slot {_baseSlot} of {_gui} to {_item}
+        set slot {_baseSlot} of {_gui} to ({_item} with item flag hide attributes)
         
         set {_baseSlot} to {_baseSlot} + {_change}
 
     open {_gui} to {_p}
 
-function getCurrentVariant(p: player, card: text) :: text:
-    set {_currentVariant} to yaml value "%{_card}%.Current Variant" in "Variants%{_p}%"
+function getCurrentVariant(p: player, card: string) :: text:
+    set {_id} to cardId({_p})
+    set {_currentVariant} to yaml value "%{_card}%.Current Variant.%{_id}%" in "Variants%{_p}%"
     return {_currentVariant}
 
 function setCurrentVariant(p: player, card: string, variant: string):
-    set yaml value "%{_card}%.Current Variant" in "Variants%{_p}%" to {_variant}
+    set {_id} to cardId({_p})
+    set yaml value "%{_card}%.Current Variant.%{_id}%" in "Variants%{_p}%" to {_variant}
     save yaml "Variants%{_p}%"
+
+function getPrimaryCardColour(p: player, card: string) :: text:
+    set {_id} to cardId({_p})
+    set {_variant} to getCurrentVariant({_p}, {_card})
+
+    if yaml value "%{_card}%.%{_variant}%.Colour.Primary" in "VariantList" is set:
+        set {_colour} to yaml value "%{_card}%.%{_variant}%.Colour.Primary" in "VariantList"
+    else:
+        set {_colour} to last string color code of (name of {karta::%{_p}%})
+
+    return {_colour}
+
+function getSecondaryCardColour(p: player, card: string) :: text:
+    set {_id} to cardId({_p})
+    set {_variant} to getCurrentVariant({_p}, {_card})
+
+    if yaml value "%{_card}%.%{_variant}%.Colour.Secondary" in "VariantList" is set:
+        set {_colour} to yaml value "%{_card}%.%{_variant}%.Colour.Secondary" in "VariantList"
+    else:
+        set {_colour} to last string color code of (name of {karta::%{_p}%})
+
+    return {_colour}
 
 command /variantitem:
     trigger:
@@ -106,13 +132,13 @@ command /variantitem:
 command /variantoption:
     trigger:
         if player's name = "Pehrek":
-            set yaml value "Variant List.Winterfjord.Colour" in "VariantList" to "<gradient:##638fc9:##d9d9d9:##57b2f2:##c5def0>"
+            set yaml value "Variant List.Winterfjord.Colour.Primary" in "VariantList" to "<gradient:##638fc9:##d9d9d9:##57b2f2:##c5def0>"
             set yaml list "Variant List.Winterfjord.Description" in "VariantList" to "Channel the spirit of the artic" and "hunt and unleash a volley of" and "jagged ice arrows with this" and "exclusive Variant for {CARDNAME}."
             save yaml "VariantList"
 
 on inventory click:
     if event-inventory = (metadata tag "kartagui" of player):
-        if index of event-slot is 22:
+        if index of event-slot is 21:
             if name of event-slot contains "&6Variants":
                 VariantMenu(player)
                 play sound "skill.cresselia.shootingstarhit" with volume 1 and pitch 2 to player
@@ -125,7 +151,7 @@ on inventory click:
                 set {_variant} to string tag "Variant" of custom nbt of event-slot
                 setCurrentVariant(player, {_card}, {_variant})
 
-                teleport player to player's location
+                close player's inventory
                 send "&f&oSuccessfully selected the %name of event-slot% &f&oVariant." to player
 
                 play sound "item.bucket.empty" with volume 1 and pitch 0.8 to player
