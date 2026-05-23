@@ -967,14 +967,32 @@ function InterruptHideCastBar(e: entity):
 	wait 1 second
 	kill {_e}
 
-function GetAbilityDescription(card: text, ability: text, valueNames: texts, values: numbers) :: text:
-	set {_description} to yaml value "%{_card}%.%{_ability}%" in "AbilityDescriptionList"
+function GetAbilityDescription(p: player, card: text, ability: text, valueNames: texts, values: numbers) :: text:
+	set {_description::*} to yaml list "%{_card}%.%{_ability}%.Description" in "AbilityDescriptionList"
+	set {_description} to (join {_description::*} by nl)
+
+	set {_primCol} to getPrimaryCardColour({_p})
+	set {_secCol} to getSecondaryCardColour({_p})
+
+	replace all "{COLOUR:primary}" in {_description} with {_primCol}
+	replace all "{COLOUR:secondary}" in {_description} with {_secCol}
+
 	loop {_valueNames::*}:
 		if loop-value = "COOLDOWN":
 			set {_timespan} to "%{_values::%loop-counter%}% seconds" parsed as timespan
-			replace all "{COOLDOWN} seconds" in {_description} with "%{_timespan}%"
+			replace all "{COOLDOWN}" in {_description} with "%{_timespan}%"
 		else:
 			replace all "{%loop-value%}" in {_description} with "%{_values::%loop-counter%}%"
+	
+	set {_variant} to getCurrentVariant({_p}, {_card})
+	set {_cardAbilities::*} to yaml node keys "Card.%{_card}%" in "SpellList"
+
+	loop {_cardAbilities::*}:
+		set {_icon} to yaml value "Card.%{_card}%.%loop-value%.Icons.%{_variant}%" in "SpellList"
+		replace all "{ICON:%loop-value%}" in {_description} with {_icon}
+
+	set {_description} to coloured {_description}
+
 	return {_description}
 
 function petFollow(p: player):
