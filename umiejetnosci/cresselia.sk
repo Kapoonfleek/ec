@@ -110,8 +110,8 @@ function ShootingStar(p: player):
 			add {_bonusY} to y of {_loc}
 			if {_crashingStar} is true:
 				draw 1 of firework particle at {_loc}
-
-			draw 1 of (rgb(168, 134, 240) dust particle of size 1) at {_loc}
+			
+			shootingStarsVisual({_p}, {_loc})
 
 			set vector length of {_vec} to {_count} * {_starSpeed}
 			teleport {_shootingStar} to {_locStar} ~ {_vec}
@@ -129,8 +129,7 @@ function ShootingStar(p: player):
 
 		stop if {_hit} != true
 		
-		play sound "skill.cresselia.shootingstarhit" with volume 2 and pitch {_pitch} at location of {_target}
-		play sound "entity.player.hurt" with volume 1.5 and pitch 1 at location of {_target}
+		CresseliaShootingStarHitSound({_p}, {_target}, {_pitch})
 
 		if {_crashingStar} = true:
 			draw 25 of (firework particle with an extra value of 0.015) with offset vector(1.25, 0.5, 1.25) at (location above {_target})
@@ -541,7 +540,7 @@ on rightclick:
 					create cooldown "Celestial Alignment%player%" for {_cd}
 					set the cooldown of player's held item for player to {_cd}
 
-					play sound "skill.cresselia.celestial_alignment_cast" with volume 4 and pitch 1 at location of player
+					CresseliaCelestialAlignmentCastSound(player)
 					AbilityUse(player, "Celestial Alignment")
 					CelestialAlignment(player, 20 seconds)
 
@@ -714,19 +713,151 @@ function Starfire(p: player, target: entity, astronomicalImpact: boolean = false
 function StarfireVisual(p: player, target: entity, mainTarget: boolean = false):
 	set {_l} to location 8 above {_target}
 	set {_v} to vector between {_l} and {_target}
-	draw 15 of ((rgb(177, 170, 242) dust particle of size 1) with an extra value of 0.03) with offset vector(0.5, 0.5, 0.5) at (location above {_target})
-	loop round(distance between {_l} and {_target}) / 0.45 times:
-		set {_v} to vector between {_l} and {_target}'s head
-		set vector length of {_v} to loop-value * 0.45
+
+	set {_variant} to getCurrentVariant({_p}, "Cresselia")
+	
+	if {_variant} = "Arctic Lights":
+		set {_sky} to location 9 above {_target}
+		add a random number between -1.5 and 1.5 to x of {_sky}
+		add a random number between -1.5 and 1.5 to z of {_sky}
+
+		set {_end} to {_target}'s head
+		set {_beamVec} to vector between {_sky} and {_end}
+		set {_distance} to distance between {_sky} and {_end}
+
+		set {_outerRing} to a star with 4 points, inner radius 0.75, and outer radius 2.21
+		
+		set {_particle} to (rgb(0, 255, 180) dust particles of size 1.1 that transitions to rgb(0, 240, 255)) with an extra value of 0.03
+		set particle of {_outerRing} to {_particle}
+		rotate shape {_outerRing} around x axis by 90 degrees
+		rotate shape {_outerRing} around y axis by a random number between 0 and 360 degrees
+		rotate shape {_outerRing} around z axis by a random number between 0 and 360 degrees
+		draw shape {_outerRing} at {_sky} for 0.75 seconds
+
+		set {_innerRing} to a circle of radius 1.25
+		set particle of {_innerRing} to (rgb(0, 240, 255) dust particle of size 0.9 with an extra value of 0.03)
+		rotate shape {_innerRing} around x axis by 90 degrees
+		rotate shape {_innerRing} around y axis by a random number between 0 and 360 degrees
+		draw shape {_innerRing} at {_sky}
+
+		draw 8 of (end rod particle with an extra value of 0.02) with offset vector(0.55, 0.15, 0.55) at {_sky}
+		draw 12 of (rgb(50, 255, 80) dust particle of size 1.2 with an extra value of 0.04) with offset vector(0.9, 0.15, 0.9) at {_sky}
+		draw 10 of (rgb(252, 43, 120) dust particle of size 0.85 with an extra value of 0.035) with offset vector(0.75, 0.1, 0.75) at {_sky}
+
+		loop 3 times:
+			set {_starLoc} to {_sky}
+			add a random number between -2.4 and 2.4 to x of {_starLoc}
+			add a random number between -0.4 and 0.6 to y of {_starLoc}
+			add a random number between -2.4 and 2.4 to z of {_starLoc}
+
+			set {_starShape} to a star with 5 points, inner radius 0.18, and outer radius 0.65
+
+			if loop-number = 1:
+				set particle of {_starShape} to (rgb(125, 255, 129) dust particle of size 0.9 with an extra value of 0.04)
+			else if loop-number = 2:
+				set particle of {_starShape} to (rgb(0, 240, 255) dust particle of size 0.9 with an extra value of 0.04)
+			else:
+				set particle of {_starShape} to (rgb(252, 43, 120) dust particle of size 0.8 with an extra value of 0.04)
+
+			rotate shape {_starShape} around x axis by a random number between 0 and 360 degrees
+			rotate shape {_starShape} around y axis by a random number between 0 and 360 degrees
+			rotate shape {_starShape} around z axis by a random number between 0 and 360 degrees
+			draw shape {_starShape} at {_starLoc}
+
+			wait 1 tick
+
+		loop round({_distance} / 0.32) times:
+			set {_progress} to loop-value / (round({_distance} / 0.32))
+
+			set {_beamVec} to vector between {_sky} and {_end}
+			set vector length of {_beamVec} to loop-value * 0.32
+			set {_base} to {_sky} ~ {_beamVec}
+
+			set {_swayPower} to (1 - {_progress}) * 0.85
+			set {_swayX} to sin(loop-value * 0.7) * {_swayPower}
+			set {_swayZ} to cos(loop-value * 0.55) * {_swayPower}
+
+			set {_loc1} to {_base} ~ vector({_swayX}, 0, {_swayZ})
+			set {_loc2} to {_base} ~ vector(0 - {_swayX}, 0, 0 - {_swayZ})
+
+			draw 1 of (rgb(255, 255, 255) dust particle of size 0.9 with an extra value of 0.01) with offset vector(0.05, 0.05, 0.05) at {_base}
+			draw 1 of (end rod particle with an extra value of 0.01) with offset vector(0.03, 0.03, 0.03) at {_base}
+
+			if {_progress} < 0.22:
+				draw 2 of (rgb(50, 255, 80) dust particle of size 1.15 with an extra value of 0.04) with offset vector(0.08, 0.08, 0.08) at {_loc1}
+				draw 1 lime wool item particle with offset random vector at {_loc1}
+				draw 1 lime concrete powder item particle with offset random vector at {_loc2}
+
+			else if {_progress} < 0.42:
+				draw 2 of (rgb(0, 255, 180) dust particle of size 1.1 with an extra value of 0.04) with offset vector(0.08, 0.08, 0.08) at {_loc1}
+				draw 1 cyan wool item particle with offset random vector at {_loc1}
+				draw 1 cyan concrete powder item particle with offset random vector at {_loc2}
+
+			else if {_progress} < 0.62:
+				draw 2 of (rgb(0, 240, 255) dust particle of size 1.05 with an extra value of 0.04) with offset vector(0.08, 0.08, 0.08) at {_loc1}
+				draw 1 light blue wool item particle with offset random vector at {_loc1}
+				draw 1 light blue concrete powder item particle with offset random vector at {_loc2}
+
+			else if {_progress} < 0.82:
+				draw 2 of (rgb(40, 100, 255) dust particle of size 0.95 with an extra value of 0.04) with offset vector(0.08, 0.08, 0.08) at {_loc1}
+				draw 1 blue wool item particle with offset random vector at {_loc1}
+				draw 1 blue concrete powder item particle with offset random vector at {_loc2}
+
+			else:
+				draw 2 of (rgb(252, 43, 120) dust particle of size 0.85 with an extra value of 0.04) with offset vector(0.08, 0.08, 0.08) at {_loc1}
+				draw 1 magenta wool item particle with offset random vector at {_loc1}
+				draw 1 magenta concrete powder item particle with offset random vector at {_loc2}
+
+			if loop-number is divisible by 7:
+				set {_tinyStar} to a solid star with 5 points, inner radius 0.25, and outer radius 0.75
+				set particle of {_tinyStar} to (rgb(255, 255, 255) dust particle of size 0.7 with an extra value of 0.02)
+				rotate shape {_tinyStar} around x axis by a random number between 0 and 360 degrees
+				rotate shape {_tinyStar} around y axis by a random number between 0 and 360 degrees
+				rotate shape {_tinyStar} around z axis by a random number between 0 and 360 degrees
+				draw shape {_tinyStar} at {_base}
+
+		set {_impact} to location 0.8 above {_target}
+
 		if {_mainTarget} = true:
-			draw 1 of white flash particle at {_l} ~ {_v}
-		draw 1 of ((rgb(255, 255, 255) dust particle of size 1) with an extra value of 0.01) with offset vector(0.1, 0.1, 0.1) at ({_l} ~ {_v})
-		draw 1 pink wool item particle at {_l} ~ {_v}
-		draw 1 of ((rgb(96, 146, 219) dust particle of size 1) with an extra value of 0.01) with offset random vector at ({_l} ~ {_v})
-		draw 2 of ((rgb(177, 170, 242) dust particle of size 1) with an extra value of 0.02) with offset vector(0.25, 0.1, 0.25) at ({_l} ~ {_v})
-		if loop-number > 14:
-			draw 2 of ((rgb(145, 164, 255) dust particle of size 1) with an extra value of 0.06) with offset vector(0.6, 0.25, 0.6) at ({_l} ~ {_v})
-			draw 2 of ((rgb(231, 145, 255) dust particle of size 1) with an extra value of 0.06) with offset vector(0.6, 0.25, 0.6) at ({_l} ~ {_v})
+			draw 1 of lime flash particle at {_impact}
+			draw 1 of white flash particle at {_impact}
+
+		set {_impactRing} to a circle of radius 1.35
+		set particle of {_impactRing} to (rgb(0, 255, 180) dust particle of size 1.1 with an extra value of 0.04)
+		rotate shape {_impactRing} around x axis by 90 degrees
+		rotate shape {_impactRing} around y axis by a random number between 0 and 360 degrees
+		draw shape {_impactRing} at {_impact}
+
+		set {_impactStar} to a star with 5 points, inner radius 0.25, and outer radius 1.15
+		set particle of {_impactStar} to (rgb(252, 43, 120) dust particle of size 0.95 with an extra value of 0.05)
+		rotate shape {_impactStar} around x axis by a random number between 0 and 360 degrees
+		rotate shape {_impactStar} around y axis by a random number between 0 and 360 degrees
+		rotate shape {_impactStar} around z axis by a random number between 0 and 360 degrees
+		draw shape {_impactStar} at {_impact}
+
+		draw 18 of (rgb(125, 255, 129) dust particle of size 1.2 with an extra value of 0.04) with offset vector(0.9, 0.35, 0.9) at {_impact}
+		draw 16 of (rgb(0, 240, 255) dust particle of size 1.1 with an extra value of 0.04) with offset vector(0.8, 0.25, 0.8) at {_impact}
+		draw 10 of (rgb(252, 43, 120) dust particle of size 0.9 with an extra value of 0.04) with offset vector(0.7, 0.2, 0.7) at {_impact}
+
+		draw 3 lime wool item particle with offset random vector at {_impact}
+		draw 3 cyan wool item particle with offset random vector at {_impact}
+		draw 2 light blue wool item particle with offset random vector at {_impact}
+		draw 2 magenta wool item particle with offset random vector at {_impact}
+
+	else:
+		draw 15 of ((rgb(177, 170, 242) dust particle of size 1) with an extra value of 0.03) with offset vector(0.5, 0.5, 0.5) at (location above {_target})
+		loop round(distance between {_l} and {_target}) / 0.45 times:
+			set {_v} to vector between {_l} and {_target}'s head
+			set vector length of {_v} to loop-value * 0.45
+			if {_mainTarget} = true:
+				draw 1 of white flash particle at {_l} ~ {_v}
+			draw 1 of ((rgb(255, 255, 255) dust particle of size 1) with an extra value of 0.01) with offset vector(0.1, 0.1, 0.1) at ({_l} ~ {_v})
+			draw 1 pink wool item particle at {_l} ~ {_v}
+			draw 1 of ((rgb(96, 146, 219) dust particle of size 1) with an extra value of 0.01) with offset random vector at ({_l} ~ {_v})
+			draw 2 of ((rgb(177, 170, 242) dust particle of size 1) with an extra value of 0.02) with offset vector(0.25, 0.1, 0.25) at ({_l} ~ {_v})
+			if loop-number > 14:
+				draw 2 of ((rgb(145, 164, 255) dust particle of size 1) with an extra value of 0.06) with offset vector(0.6, 0.25, 0.6) at ({_l} ~ {_v})
+				draw 2 of ((rgb(231, 145, 255) dust particle of size 1) with an extra value of 0.06) with offset vector(0.6, 0.25, 0.6) at ({_l} ~ {_v})
 
 function Starfall(p: player, effectiveness: number, astralPowerCost: number = 0):
 	if string tag "Talents;Row 5" of (custom nbt of {karta::%{_p}%}) = "Primordial Arcanic Pulsar":
@@ -844,6 +975,8 @@ function StarsurgeBonus(p: player, target: entity):
 	if metadata value "StarsurgeBonus%{_p}%" of {_target} = true:
 		set metadata value "StarsurgeBonus%{_p}%" of {_target} to false
 		set {_id} to entity id of {_target}
+		set {_icon} to getCardIcon({_p}, "Starsurge")
+		
 		while metadata value "StarsurgeTime%{_p}%" of {_target} > 0 seconds:
 			if {_target} is alive:
 				set {_stacks} to metadata value "StarsurgeStacks%{_p}%" of {_target}
@@ -869,6 +1002,12 @@ function StarsurgeBonus(p: player, target: entity):
 			set {_meta} to new metadata packet with id {_id}:
 				name: {_name}
 			send packet {_meta} to {_p}
+
+function CresseliaCelestialAlignmentCastSound(p: player):
+	if getCurrentVariant({_p}, "Cresselia") = "Arctic Lights":
+		play sound "skill.cresselia.celestial_alignment.arcticlights" with volume 4 and pitch 1 at location of {_p}
+	else:
+		play sound "skill.cresselia.celestial_alignment_cast" with volume 4 and pitch 1 at location of {_p}
 
 function CresseliaStarsurgeCastSound(p: player):
 	if getCurrentVariant({_p}, "Cresselia") = "Arctic Lights":
@@ -912,6 +1051,12 @@ function CresseliaShootingStarSound(p: player, target: entity):
 		play sound "skill.cresselia.shootingstar_spawn.arcticlights" with volume 4 and pitch 0 at location of {_target}
 	else:
 		play sound "entity.firework_rocket.launch" with volume 4 and pitch 0 at location of {_target}
+
+function CresseliaShootingStarHitSound(p: player, target: entity, pitch: number):
+	if getCurrentVariant({_p}, "Cresselia") = "Arctic Lights":
+		play sound "skill.cresselia.shootingstar_hit.arcticlights" with volume 2 and pitch 1 at location of {_target}
+	else:
+		play sound "skill.cresselia.shootingstarhit"  with volume 2 and pitch {_pitch} at location of {_target}
 
 function CresseliaStarfallSound(p: player):
 	if getCurrentVariant({_p}, "Cresselia") = "Arctic Lights":
@@ -1143,18 +1288,253 @@ function AstralInvocation(p: player):
 		clear metadata value "AstralInvocation" of {_p}
 		clear metadata value "AstralInvocationUUID" of {_p}
 		send title " " with subtitle " " to {_p} for 1 second with fade in 0 second and fade out 0 second
+	
+function shootingStarsVisual(p: player, loc: location):
+	set {_variant} to getCurrentVariant({_p}, "Cresselia")
+	
+	if {_variant} = "Arctic Lights":
+		set {_particle} to (rgb(0, 255, 180) dust particles of size 1 that transitions to rgb(0, 240, 255))
+
+		draw 1 of {_particle} at {_loc}
+
+		chance of 4%:
+			set {_star} to a star with 5 points, inner radius 0.3, and outer radius 0.6
 			
+			set {_random} to a random integer between 1 and 4
+
+			if {_random} = 1:
+				set {_particle} to (rgb(125, 255, 149) dust particles of size 0.85 that transitions to rgb(138, 253, 255)) with an extra value of 0.03
+			else if {_random} = 2:
+				set {_particle} to (rgb(0, 255, 180) dust particles of size 1 that transitions to rgb(0, 240, 255))
+			else if {_random} = 3:
+				set {_particle} to (rgb(255, 41, 155) dust particles of size 1 that transitions to rgb(0, 240, 255))
+			else:
+				set {_particle} to (rgb(179, 101, 247) dust particles of size 1 that transitions to rgb(125, 255, 149))
+
+			set {_x} to x of {_loc}
+			set {_z} to z of {_loc}
+
+			set {_x} to {_x} + (random number between -3.0 and 3.0)
+			set {_z} to {_z} + (random number between -3.0 and 3.0)
+
+			set {_newLoc} to location({_x}, (y of {_loc}), {_z}, world of {_loc})
+
+			set particle of {_star} to {_particle}
+			rotate shape {_star} around x axis by 90 degrees
+			rotate shape {_star} around y axis by a random number between 0 and 360 degrees
+			rotate shape {_star} around z axis by a random number between 0 and 360 degrees
+
+			draw shape {_star} at {_newLoc} for 0.25 seconds
+
+	else:
+		draw 1 of (rgb(168, 134, 240) dust particle of size 1) at {_loc}
+
 function CelestialAlignmentVisual(p: player):
-	set {_loc} to location 2.5 above {_p}
-	if {_p}'s horizontal facing is south:
-		set {_loc1} to location 2 east of {_loc}
-		set {_loc2} to location 2 west of {_loc}
-	set {_v} to vector between {_loc1} and {_loc2}
-	loop round(distance between {_loc1} and {_loc2}) / 0.1 times:
-		if loop-number < 20:
-			set {_v} to vector between {_loc1} and {_loc}
-		set vector length of {_v} to loop-value * 0.1
-		draw 1 of (rgb(255-loop-number, 255-loop-number, 255-loop-number) dust particle of size 1) at {_loc1} ~ {_v}
+	set {_variant} to getCurrentVariant({_p}, "Cresselia")
+	
+	if {_variant} = "Arctic Lights":
+
+		loop 42 times:
+			set {_origin} to location 8.5 above {_p}
+			set {_progress} to loop-number / 42
+			set {_sweep} to (loop-number - 21) * 0.22
+
+			loop 5 times:
+				set {_strand} to loop-number-2
+				set {_planeLoc} to {_origin}
+
+				add ({_sweep} + (sin(loop-number-2 * 0.32 + {_strand} * 1.7) * 1.35)) to x of {_planeLoc}
+				add (sin(loop-number-2 * 0.22 + {_strand}) * 0.75) to y of {_planeLoc}
+				add ((({_strand} - 3) * 1.15) + (cos(loop-number-2 * 0.29 + {_strand} * 1.4) * 0.9)) to z of {_planeLoc}
+
+				if {_strand} = 1:
+					draw 3 of (rgb(50, 255, 80) dust particle of size 1.45 with an extra value of 0.06) with offset vector(0.16, 0.08, 0.16) at {_planeLoc}
+					draw 1 lime wool item particle with offset random vector at {_planeLoc}
+				else if {_strand} = 2:
+					draw 3 of (rgb(0, 255, 180) dust particle of size 1.35 with an extra value of 0.06) with offset vector(0.16, 0.08, 0.16) at {_planeLoc}
+					draw 1 cyan wool item particle with offset random vector at {_planeLoc}
+				else if {_strand} = 3:
+					draw 3 of (rgb(0, 240, 255) dust particle of size 1.25 with an extra value of 0.06) with offset vector(0.16, 0.08, 0.16) at {_planeLoc}
+					draw 1 light blue wool item particle with offset random vector at {_planeLoc}
+				else if {_strand} = 4:
+					draw 2 of (rgb(40, 100, 255) dust particle of size 1.15 with an extra value of 0.06) with offset vector(0.16, 0.08, 0.16) at {_planeLoc}
+					draw 1 blue wool item particle with offset random vector at {_planeLoc}
+				else:
+					draw 2 of (rgb(252, 43, 120) dust particle of size 1.0 with an extra value of 0.06) with offset vector(0.16, 0.08, 0.16) at {_planeLoc}
+					draw 1 magenta wool item particle with offset random vector at {_planeLoc}
+
+				if loop-number-1 is divisible by 5:
+					draw 1 end rod particle with offset vector(0.12, 0.05, 0.12) at {_planeLoc}
+
+			if loop-number is divisible by 2:
+				set {_starLoc} to location 8.5 above {_p}
+				add a random number between -5.5 and 5.5 to x of {_starLoc}
+				add a random number between -0.8 and 1.3 to y of {_starLoc}
+				add a random number between -3.2 and 3.2 to z of {_starLoc}
+
+				set {_star} to a star with 5 points, inner radius 0.08, and outer radius 0.35
+
+				set {_c} to a random integer between 1 and 6
+				if {_c} = 1:
+					set particle of {_star} to (rgb(50, 255, 80) dust particle of size 0.8 with an extra value of 0.03)
+				else if {_c} = 2:
+					set particle of {_star} to (rgb(125, 255, 129) dust particle of size 0.8 with an extra value of 0.03)
+				else if {_c} = 3:
+					set particle of {_star} to (rgb(0, 255, 180) dust particle of size 0.8 with an extra value of 0.03)
+				else if {_c} = 4:
+					set particle of {_star} to (rgb(0, 240, 255) dust particle of size 0.8 with an extra value of 0.03)
+				else if {_c} = 5:
+					set particle of {_star} to (rgb(40, 100, 255) dust particle of size 0.8 with an extra value of 0.03)
+				else:
+					set particle of {_star} to (rgb(252, 43, 120) dust particle of size 0.75 with an extra value of 0.03)
+
+				rotate shape {_star} around x axis by a random number between 0 and 360 degrees
+				rotate shape {_star} around y axis by a random number between 0 and 360 degrees
+				rotate shape {_star} around z axis by a random number between 0 and 360 degrees
+				draw shape {_star} at {_starLoc}
+
+			if loop-number is divisible by 6:
+				wait 1 tick
+
+		loop 18 times:
+			set {_center} to location 7.8 above {_p}
+
+			loop 3 times:
+				set {_sigilLoc} to {_center}
+				add a random number between -4.5 and 4.5 to x of {_sigilLoc}
+				add a random number between -0.6 and 1.1 to y of {_sigilLoc}
+				add a random number between -2.8 and 2.8 to z of {_sigilLoc}
+
+				set {_r} to a random number between 0.45 and 1.25
+				set {_sigil} to a circle of radius {_r}
+
+				set {_c} to a random integer between 1 and 4
+				if {_c} = 1:
+					set particle of {_sigil} to (rgb(0, 255, 180) dust particle of size 0.85 with an extra value of 0.035)
+				else if {_c} = 2:
+					set particle of {_sigil} to (rgb(0, 240, 255) dust particle of size 0.85 with an extra value of 0.035)
+				else if {_c} = 3:
+					set particle of {_sigil} to (rgb(125, 255, 129) dust particle of size 0.85 with an extra value of 0.035)
+				else:
+					set particle of {_sigil} to (rgb(252, 43, 120) dust particle of size 0.75 with an extra value of 0.035)
+
+				rotate shape {_sigil} around x axis by a random number between 55 and 125 degrees
+				rotate shape {_sigil} around y axis by a random number between 0 and 360 degrees
+				rotate shape {_sigil} around z axis by a random number between 0 and 360 degrees
+				draw shape {_sigil} at {_sigilLoc}
+
+				if loop-number-2 is 2:
+					set {_tri} to a triangle with radius ({_r} * 0.85)
+					set particle of {_tri} to (rgb(255, 255, 255) dust particle of size 0.65 with an extra value of 0.02)
+					rotate shape {_tri} around x axis by a random number between 0 and 360 degrees
+					rotate shape {_tri} around y axis by a random number between 0 and 360 degrees
+					rotate shape {_tri} around z axis by a random number between 0 and 360 degrees
+					draw shape {_tri} at {_sigilLoc}
+
+			wait 1 tick
+
+		loop 24 times:
+			set {_fallOrigin} to location 10 above {_p}
+
+			loop 4 times:
+				set {_fallLoc} to {_fallOrigin}
+				add a random number between -5.5 and 5.5 to x of {_fallLoc}
+				add a random number between -0.4 and 1.4 to y of {_fallLoc}
+				add a random number between -3.5 and 3.5 to z of {_fallLoc}
+
+				set {_lowerLoc} to {_fallLoc}
+				remove (loop-number-2 * 0.08) from y of {_lowerLoc}
+
+				draw 2 of (rgb(255, 255, 255) dust particle of size 0.65 with an extra value of 0.015) with offset vector(0.04, 0.04, 0.04) at {_lowerLoc}
+
+				set {_tailLoc} to {_lowerLoc}
+				add a random number between -0.2 and 0.2 to x of {_tailLoc}
+				add a random number between -0.2 and 0.2 to z of {_tailLoc}
+
+				if loop-number-2 = 1:
+					draw 2 of (rgb(50, 255, 80) dust particle of size 1.1 with an extra value of 0.04) with offset vector(0.08, 0.08, 0.08) at {_tailLoc}
+				else if loop-number-2 = 2:
+					draw 2 of (rgb(0, 255, 180) dust particle of size 1.1 with an extra value of 0.04) with offset vector(0.08, 0.08, 0.08) at {_tailLoc}
+				else if loop-number-2 = 3:
+					draw 2 of (rgb(0, 240, 255) dust particle of size 1.0 with an extra value of 0.04) with offset vector(0.08, 0.08, 0.08) at {_tailLoc}
+				else:
+					draw 2 of (rgb(252, 43, 120) dust particle of size 0.9 with an extra value of 0.04) with offset vector(0.08, 0.08, 0.08) at {_tailLoc}
+
+			if loop-number is divisible by 3:
+				wait 1 tick
+
+		loop 10 times:
+			set {_burstLoc} to location 7.5 above {_p}
+			add a random number between -4.8 and 4.8 to x of {_burstLoc}
+			add a random number between -0.9 and 1.2 to y of {_burstLoc}
+			add a random number between -3.0 and 3.0 to z of {_burstLoc}
+
+			set {_burstStar} to a star with 5 points, inner radius 0.18, and outer radius 0.85
+
+			if loop-number is divisible by 2:
+				set particle of {_burstStar} to (rgb(255, 255, 255) dust particle of size 0.85 with an extra value of 0.025)
+			else:
+				set particle of {_burstStar} to (rgb(0, 255, 180) dust particle of size 1.0 with an extra value of 0.035)
+
+			rotate shape {_burstStar} around x axis by a random number between 0 and 360 degrees
+			rotate shape {_burstStar} around y axis by a random number between 0 and 360 degrees
+			rotate shape {_burstStar} around z axis by a random number between 0 and 360 degrees
+			draw shape {_burstStar} at {_burstLoc}
+
+			draw 8 of (end rod particle with an extra value of 0.025) with offset vector(0.5, 0.25, 0.5) at {_burstLoc}
+
+			wait 1 tick
+
+		loop 7 times:
+			set {_waveLoc} to location 8.2 above {_p}
+
+			set {_wave} to a circle of radius (1.6 + loop-number * 0.85)
+
+			if loop-number <= 2:
+				set particle of {_wave} to (rgb(50, 255, 80) dust particle of size 1.25 with an extra value of 0.045)
+			else if loop-number <= 4:
+				set particle of {_wave} to (rgb(0, 240, 255) dust particle of size 1.15 with an extra value of 0.045)
+			else:
+				set particle of {_wave} to (rgb(252, 43, 120) dust particle of size 0.95 with an extra value of 0.045)
+
+			rotate shape {_wave} around x axis by a random number between 65 and 115 degrees
+			rotate shape {_wave} around y axis by a random number between 0 and 360 degrees
+			rotate shape {_wave} around z axis by a random number between 0 and 360 degrees
+
+			draw shape {_wave} at {_waveLoc}
+
+			draw 10 of (rgb(255, 255, 255) dust particle of size 0.8 with an extra value of 0.015) with offset vector(2.8, 0.35, 2.0) at {_waveLoc}
+
+			wait 1 tick
+
+		loop 24 times:
+			set {_finalLoc} to location 8 above {_p}
+			add a random number between -5.5 and 5.5 to x of {_finalLoc}
+			add a random number between -0.9 and 1.5 to y of {_finalLoc}
+			add a random number between -3.4 and 3.4 to z of {_finalLoc}
+
+			draw 3 of (rgb(50, 255, 80) dust particle of size 1.35 with an extra value of 0.05) with offset vector(0.2, 0.12, 0.2) at {_finalLoc}
+			draw 2 of (rgb(0, 255, 180) dust particle of size 1.25 with an extra value of 0.05) with offset vector(0.18, 0.1, 0.18) at {_finalLoc}
+			draw 2 of (rgb(0, 240, 255) dust particle of size 1.15 with an extra value of 0.05) with offset vector(0.16, 0.1, 0.16) at {_finalLoc}
+
+			if loop-number is divisible by 3:
+				draw 1 magenta wool item particle with offset random vector at {_finalLoc}
+			else if loop-number is divisible by 2:
+				draw 1 cyan wool item particle with offset random vector at {_finalLoc}
+			else:
+				draw 1 lime wool item particle with offset random vector at {_finalLoc}
+
+	else:
+		set {_loc} to location 2.5 above {_p}
+		if {_p}'s horizontal facing is south:
+			set {_loc1} to location 2 east of {_loc}
+			set {_loc2} to location 2 west of {_loc}
+		set {_v} to vector between {_loc1} and {_loc2}
+		loop round(distance between {_loc1} and {_loc2}) / 0.1 times:
+			if loop-number < 20:
+				set {_v} to vector between {_loc1} and {_loc}
+			set vector length of {_v} to loop-value * 0.1
+			draw 1 of (rgb(255-loop-number, 255-loop-number, 255-loop-number) dust particle of size 1) at {_loc1} ~ {_v}
 
 function Solstice(p: player):
 	if metadata value "Solstice" of {_p} is not set:
@@ -1198,6 +1578,8 @@ function FullMoon(p: player, target: entity, effectiveness: number = 1):
 			set {_loc} to location of {_e}
 			add 3 to y of {_loc}
 			draw 1 of (rgb(252, 240, 204) dust particle of size 1) at {_loc}
+			shootingStarsVisual({_p}, {_loc})
+
 			draw 1 of end rod particle at {_e}
 		set vector length of {_vec} to {_count} * {_moonSpeed}
 		teleport {_e} to {_locMoon} ~ {_vec}
@@ -1363,16 +1745,21 @@ function StellarCommand(p: player, target: entity):
 function PrimordialArcanicPulsar(p: player, astralPowerCost: number):
 	set {_astralPowerTrigger} to 400
 	set {_CADuration} to 9 seconds
+
 	if metadata value "PrimordialArcanicPulsar" of {_p} is not set:
 		set metadata value "PrimordialArcanicPulsar" of {_p} to 0
 
-	set metadata value "PrimordialArcanicPulsar" of {_p} to (metadata value "PrimordialArcanicPulsar" of {_p} + {_astralPowerCost})
-	if metadata value "PrimordialArcanicPulsar" of {_p} >= {_astralPowerTrigger}:
-		set metadata value "PrimordialArcanicPulsar" of {_p} to 0
+	set {_arcanicPulsar} to metadata value "PrimordialArcanicPulsar" of {_p}
+
+	set {_arcanicPulsar} to ({_arcanicPulsar} + {_astralPowerCost})
+
+	if {_arcanicPulsar} >= {_astralPowerTrigger}:
+		set {_arcanicPulsar} to {_arcanicPulsar} - {_astralPowerTrigger}
 		CelestialAlignment({_p}, {_CADuration})
 
-	set {_pulsar} to metadata value "PrimordialArcanicPulsar" of {_p}
-	buffRegister({_p}, "Pulsar", 1, "", "Value", "%{_pulsar}% AP", "-")
+	set metadata value "PrimordialArcanicPulsar" of {_p} to {_arcanicPulsar}
+
+	buffRegister({_p}, "Pulsar", 1, "", "Value", "%{_arcanicPulsar}% AP", "-")
 
 function caBezier(start: location, control: location, end: location, t: number) :: location:
     set {_u} to (1 - {_t})
@@ -1433,93 +1820,95 @@ function caBurst(loc: location):
     draw 1 white flash particle at {_loc}
 
 function celestialAlignmentVisual(p: player):
-    set {_baseLoc} to location of {_p}
-    set {_radius} to 1.5
-    set {_height} to 1
+	set {_baseLoc} to location of {_p}
+	set {_radius} to 1.5
+	set {_height} to 1
 
-    set {_leftX} to (0 - {_radius})
-    set {_rightX} to {_radius}
+	set {_leftX} to (0 - {_radius})
+	set {_rightX} to {_radius}
 
-    set {_moonStart} to ({_baseLoc} ~ vector({_leftX}, {_height}, 0))
-    set {_starStart} to ({_baseLoc} ~ vector({_rightX}, {_height}, 0))
+	set {_moonStart} to ({_baseLoc} ~ vector({_leftX}, {_height}, 0))
+	set {_starStart} to ({_baseLoc} ~ vector({_rightX}, {_height}, 0))
 
-    set {_standNBT} to "{Invulnerable:1b,Invisible:1b,NoGravity:1b,Silent:1b,Marker:1b}"
+	set {_standNBT} to "{Invulnerable:1b,Invisible:1b,NoGravity:1b,Silent:1b,Marker:1b}"
 
-    spawn an armor stand at {_moonStart} with nbt from {_standNBT}
-    set {_moon} to last spawned armor stand
-    set name of {_moon} to "FullMoon"
-    modelApply({_moon}, "fullmoon", 0.5)
+	CelestialAlignmentVisual({_p})
 
-    spawn an armor stand at {_starStart} with nbt from {_standNBT}
-    set {_star} to last spawned armor stand
-    set name of {_star} to "ShootingStar"
-    modelApply({_star}, "shootingstar", 1)
+	spawn an armor stand at {_moonStart} with nbt from {_standNBT}
+	set {_moon} to last spawned armor stand
+	set name of {_moon} to "FullMoon"
+	modelApply({_moon}, "fullmoon", 0.5)
 
-    set {_orbitTicks} to 40
+	spawn an armor stand at {_starStart} with nbt from {_standNBT}
+	set {_star} to last spawned armor stand
+	set name of {_star} to "ShootingStar"
+	modelApply({_star}, "shootingstar", 1)
 
-    set boolean tag "Invisible" of nbt of {_moonStart} to false
-    set boolean tag "Invisible" of nbt of {_starStart} to false
+	set {_orbitTicks} to 40
 
-    loop {_orbitTicks} times:
-        set {_baseLoc} to location of {_p}
-        set {_progress} to ((loop-value - 1) / {_orbitTicks})
+	set boolean tag "Invisible" of nbt of {_moonStart} to false
+	set boolean tag "Invisible" of nbt of {_starStart} to false
 
-        set {_moonAngle} to (180 - ({_progress} * 360))
-        set {_starAngle} to (0 - ({_progress} * 360))
+	loop {_orbitTicks} times:
+		set {_baseLoc} to location of {_p}
+		set {_progress} to ((loop-value - 1) / {_orbitTicks})
 
-        set {_moonX} to ((cos({_moonAngle})) * {_radius})
-        set {_moonZ} to ((sin({_moonAngle})) * {_radius})
+		set {_moonAngle} to (180 - ({_progress} * 360))
+		set {_starAngle} to (0 - ({_progress} * 360))
 
-        set {_starX} to ((cos({_starAngle})) * {_radius})
-        set {_starZ} to ((sin({_starAngle})) * {_radius})
+		set {_moonX} to ((cos({_moonAngle})) * {_radius})
+		set {_moonZ} to ((sin({_moonAngle})) * {_radius})
 
-        set {_moonPos} to ({_baseLoc} ~ vector({_moonX}, {_height}, {_moonZ}))
-        set {_starPos} to ({_baseLoc} ~ vector({_starX}, {_height}, {_starZ}))
+		set {_starX} to ((cos({_starAngle})) * {_radius})
+		set {_starZ} to ((sin({_starAngle})) * {_radius})
 
-        teleport {_moon} to {_moonPos}
-        teleport {_star} to {_starPos}
+		set {_moonPos} to ({_baseLoc} ~ vector({_moonX}, {_height}, {_moonZ}))
+		set {_starPos} to ({_baseLoc} ~ vector({_starX}, {_height}, {_starZ}))
 
-        caMoonTrail({_moonPos}, 2)
-        caStarTrail({_starPos}, 2)
+		teleport {_moon} to {_moonPos}
+		teleport {_star} to {_starPos}
 
-        if loop-counter is divisible by 2:
-            wait 1 tick
+		caMoonTrail({_moonPos}, 2)
+		caStarTrail({_starPos}, 2)
 
-    set {_moonArcStart} to location of {_moon}
-    set {_starArcStart} to location of {_star}
-    set {_meetPoint} to ((location of {_p}) ~ vector(0, 3.5, 0))
+		if loop-counter is divisible by 2:
+			wait 1 tick
 
-    set {_moonControl} to caMidControl({_moonArcStart}, {_meetPoint}, 1.5)
-    set {_starControl} to caMidControl({_starArcStart}, {_meetPoint}, 1.5)
+	set {_moonArcStart} to location of {_moon}
+	set {_starArcStart} to location of {_star}
+	set {_meetPoint} to ((location of {_p}) ~ vector(0, 3.5, 0))
 
-    set {_arcTicks} to 10
+	set {_moonControl} to caMidControl({_moonArcStart}, {_meetPoint}, 1.5)
+	set {_starControl} to caMidControl({_starArcStart}, {_meetPoint}, 1.5)
 
-    loop {_arcTicks} times:
-        set {_t} to ((loop-value - 1) / {_arcTicks})
+	set {_arcTicks} to 10
 
-        set {_moonPos} to caBezier({_moonArcStart}, {_moonControl}, {_meetPoint}, {_t})
-        set {_starPos} to caBezier({_starArcStart}, {_starControl}, {_meetPoint}, {_t})
+	loop {_arcTicks} times:
+		set {_t} to ((loop-value - 1) / {_arcTicks})
 
-        teleport {_moon} to {_moonPos}
-        teleport {_star} to {_starPos}
+		set {_moonPos} to caBezier({_moonArcStart}, {_moonControl}, {_meetPoint}, {_t})
+		set {_starPos} to caBezier({_starArcStart}, {_starControl}, {_meetPoint}, {_t})
 
-        set {_densityRaw} to ({_t} * 3)
-        set {_trailDensity} to (2 + round({_densityRaw}))
+		teleport {_moon} to {_moonPos}
+		teleport {_star} to {_starPos}
 
-        caMoonTrail({_moonPos}, {_trailDensity})
-        caStarTrail({_starPos}, {_trailDensity})
+		set {_densityRaw} to ({_t} * 3)
+		set {_trailDensity} to (2 + round({_densityRaw}))
 
-        wait 1 tick
+		caMoonTrail({_moonPos}, {_trailDensity})
+		caStarTrail({_starPos}, {_trailDensity})
 
-    teleport {_moon} to {_meetPoint}
-    teleport {_star} to {_meetPoint}
+		wait 1 tick
 
-    caBurst({_meetPoint})
+	teleport {_moon} to {_meetPoint}
+	teleport {_star} to {_meetPoint}
 
-    wait 10 ticks
+	caBurst({_meetPoint})
 
-    kill {_moon}
-    kill {_star}
+	wait 10 ticks
+
+	kill {_moon}
+	kill {_star}
 	
 #on rightclick:
 #	set {_shape} to a star with 5 points, inner radius 0.25, and outer radius 2
