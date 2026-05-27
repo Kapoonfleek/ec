@@ -213,7 +213,7 @@ function GearLoreUpdate(item: item) :: string:
         set {_primaryStat} to string tag "PrimaryStat" of {_customnbt}
         set {_primaryStatFormatted} to getFormattedStat({_primaryStat})
         set {_primaryStatValue} to int tag "Stats;%{_primaryStat}%" of {_customnbt}
-        replace all "{VALUE}" in {_primaryStatFormatted} with "%{_primaryStatValue}%"
+        replace all "{VALUE}" in {_primaryStatFormatted} with "+%{_primaryStatValue}%"
         set {_lore} to "%{_lore}%%nl%%{_primaryStatFormatted}%"
     set {_lore} to "%{_lore}%%nl%<#c0ff02> +%{_health}% Health"
 
@@ -280,9 +280,10 @@ function GearLoreUpdate(item: item) :: string:
         if {_socketsFilled} = {_socketAmount}:
             set {_socketBonusUnlocked} to true
 
-        set {_socketBonuses::*} to yaml node keys "Gear.%{_source}%.%{_gearItem}%.Socket Bonus.Stats" in "GearList"
+        set {_socketBonuses::*} to nbt tags of (compound tag "SocketBonus" of {_customnbt})
         loop {_socketBonuses::*}:
             set {_socketBonusValue} to int tag "SocketBonus;%loop-value%" of {_customnbt}
+            broadcast loop-value and int tag "SocketBonus;%loop-value%" of {_customnbt}
             set {_formattedStat} to getFormattedStat(loop-value)
             replace "{VALUE}" in {_formattedStat} with "+%{_socketBonusValue}%"
             if {_socketBonusUnlocked} = true:
@@ -291,11 +292,21 @@ function GearLoreUpdate(item: item) :: string:
                 set {_formattedStat} to unformatted {_formattedStat}
                 set {_lore} to "%{_lore}%%nl%&7Socket Bonus: %{_formattedStat}%"
 
-    if yaml value "Gear.%{_source}%.%{_gearItem}%.2Set.Name" in "GearList" is set:
+    if string tag "2Set;Name" of {_customnbt} is set:
+        set {_2setItemBonus} to string tag "2Set;Name" of {_customnbt}
+    else if yaml value "Gear.%{_source}%.%{_gearItem}%.2Set.Name" in "GearList" is set:
         set {_2setItemBonus} to yaml value "Gear.%{_source}%.%{_gearItem}%.2Set.Name" in "GearList"
-        set {_2setDescription} to yaml value "Gear.%{_source}%.%{_gearItem}%.2Set.Description" in "GearList"
 
-        set {_lore} to "%{_lore}%%nl% %nl%&7%{_2setItemBonus}% Set%nl%&72 Set Bonus: %{_2setDescription}%"
+    if {_2setItemBonus} is set:
+        set {_lore} to "%{_lore}%%nl% %nl%&7%{_2setItemBonus}% Set"
+
+        if yaml value "Set Bonuses.%{_2setItemBonus}%.2Set.Description" in "GearList" is set:
+            set {_desc} to GearSetDescription({_2setItemBonus}, "2Set", false)
+            set {_lore} to "%{_lore}%%nl%&72 Set Bonus: %{_desc}%"
+
+        if yaml value "Set Bonuses.%{_2setItemBonus}%.4Set.Description" in "GearList" is set:
+            set {_desc} to GearSetDescription({_2setItemBonus}, "4Set", false)
+            set {_lore} to "%{_lore}%%nl%&74 Set Bonus: %{_desc}%"
 
     if yaml value "Gear.%{_source}%.%{_gearItem}%.Flavour Text" in "GearList" is set:
         set {_flavourText} to yaml value "Gear.%{_source}%.%{_gearItem}%.Flavour Text" in "GearList"
@@ -351,7 +362,7 @@ function Gear(gearItem: string, itemType: string, itemLevel: integer, rarity: st
     set {_stats} to "%{_rarityString}%%nl%&fBinds when equipped%nl%<#fdd002>Item Level %{_itemLevel}%%nl%"
 
     if yaml value "Gear.%{_source}%.%{_gearItem}%.Primary Stat" in "GearList" = true:
-        set {_stats} to "%{_primaryIcon}% +%round({_primaryStat}, 0)% %{_gearType}%%nl%"
+        set {_stats} to "%{_stats}%%{_primaryIcon}% +%round({_primaryStat}, 0)% %{_gearType}%%nl%"
         set int tag "Stats;%{_gearType}%" of (custom nbt of {_item}) to round({_primaryStat}, 0)
         set string tag "PrimaryStat" of (custom nbt of {_item}) to {_gearType}
 
@@ -427,13 +438,26 @@ function Gear(gearItem: string, itemType: string, itemLevel: integer, rarity: st
 
     if yaml value "Gear.%{_source}%.%{_gearItem}%.2Set.Name" in "GearList" is set:
         set {_2setItemBonus} to yaml value "Gear.%{_source}%.%{_gearItem}%.2Set.Name" in "GearList"
-        set {_2setDescription} to yaml value "Gear.%{_source}%.%{_gearItem}%.2Set.Description" in "GearList"
         set string tag "2Set;Name" of (custom nbt of {_item}) to {_2setItemBonus}
-        loop yaml node keys "Gear.%{_source}%.%{_gearItem}%.2Set.Stats" in "GearList":
-            set {_2SetStat} to yaml value "Gear.%{_source}%.%{_gearItem}%.2Set.Stats.%loop-value%" in "GearList"
-            set string tag "2Set;Stats;%loop-value%" of (custom nbt of {_item}) to {_2SetStat}
 
-        set {_stats} to "%{_stats}%%nl% %nl%&7%{_2setItemBonus}% Set%nl%&72 Set Bonus: %{_2setDescription}%"
+        loop yaml node keys "Set Bonuses.%{_2setItemBonus}%.2Set.Stats" in "GearList":
+            set {_2SetStat} to yaml value "Set Bonuses.%{_2setItemBonus}%.2Set.Stats.%loop-value%" in "GearList"
+            set int tag "2Set;Stats;%loop-value%" of (custom nbt of {_item}) to {_2SetStat}
+
+        if yaml value "Set Bonuses.%{_2setItemBonus}%.4Set.Stats" in "GearList" is set:
+            loop yaml node keys "Set Bonuses.%{_2setItemBonus}%.4Set.Stats" in "GearList":
+                set {_4SetStat} to yaml value "Set Bonuses.%{_2setItemBonus}%.4Set.Stats.%loop-value%" in "GearList"
+                set int tag "4Set;Stats;%loop-value%" of (custom nbt of {_item}) to {_4SetStat}
+
+        set {_stats} to "%{_stats}%%nl% %nl%&7%{_2setItemBonus}% Set"
+
+        if yaml value "Set Bonuses.%{_2setItemBonus}%.2Set.Description" in "GearList" is set:
+            set {_desc} to GearSetDescription({_2setItemBonus}, "2Set", false)
+            set {_stats} to "%{_stats}%%nl%&72 Set Bonus: %{_desc}%"
+
+        if yaml value "Set Bonuses.%{_2setItemBonus}%.4Set.Description" in "GearList" is set:
+            set {_desc} to GearSetDescription({_2setItemBonus}, "4Set", false)
+            set {_stats} to "%{_stats}%%nl%&74 Set Bonus: %{_desc}%"
     
     if yaml value "Gear.%{_source}%.%{_gearItem}%.Flavour Text" in "GearList" is set:
         set {_flavourText} to yaml value "Gear.%{_source}%.%{_gearItem}%.Flavour Text" in "GearList"
@@ -453,6 +477,9 @@ function Gear(gearItem: string, itemType: string, itemLevel: integer, rarity: st
 
     set {_item} to {_item} with item flag hide attributes
     set max stack size component of {_item} to 1
+
+    if string tag "GearId" of (custom nbt of {_item}) is not set:
+        set string tag "GearId" of (custom nbt of {_item}) to "%random uuid%"
 
     return {_item}
 
@@ -557,7 +584,9 @@ on inventory click:
                                 set string tag "Cardbound" of {_customNbtGear} to {_id}
                             set {_card} to {kartaname::%player%}	
 
-                            giveItem(player, event-slot)
+                            set {_returnItem} to event-slot
+                            set lore of {_returnItem} to GearLoreUpdate({_returnItem})
+                            giveItem(player, {_returnItem})
 
                             loop yaml nodes with keys "Card.Gear.%{_gearSlot}%.Stats" from "activeCard-%player%":
                                 set {_loopStatAmount} to yaml value "Card.Gear.%{_gearSlot}%.Stats.%loop-value%" in "activeCard-%player%"
@@ -575,22 +604,23 @@ on inventory click:
                                 set {_sockets::*} to nbt tags of compound tag "Socket" of {_customNbtGear}
                                 loop {_sockets::*}:
                                     set {_statsType::*} to nbt tags of (compound tag "Socket;%loop-value%;Gem;Stats" of {_customNbtGear})
+                                    
+                                    if yaml value "Card.Gear.%{_gearSlot}%.Socket.%loop-value-1%.Gem" in "activeCard-%player%" is set:
+                                        clear yaml value "Card.Gear.%{_gearSlot}%.Socket.%loop-value-1%.Gem" in "activeCard-%player%"
 
-                                    clear yaml value "Card.Gear.%{_gearSlot}%.Socket.%loop-value-1%.Gem" in "activeCard-%player%"
+                                        loop {_statsType::*}:
+                                            set {_value} to int tag "Socket;%loop-value-1%;Gem;Stats;%loop-value-2%" of {_customNbtGear}
+                                            set yaml value "Card.Gear.%{_gearSlot}%.Socket.%loop-value-1%.Gem.Stats.%loop-value-2%" in "activeCard-%player%" to {_value}
 
-                                    loop {_statsType::*}:
-                                        set {_value} to int tag "Socket;%loop-value-1%;Gem;Stats;%loop-value-2%" of {_customNbtGear}
-                                        set yaml value "Card.Gear.%{_gearSlot}%.Socket.%loop-value-1%.Gem.Stats.%loop-value-2%" in "activeCard-%player%" to {_value}
-
-                                        set {_statNbt} to int tag "Stats;%loop-value-2%" of ({_customNbtItem})
-                                        set {_statNbt} to {_statNbt} - {_value}
-                                        set int tag "Stats;%loop-value-2%" of ({_customNbtItem}) to {_statNbt}
-                                        set {_statNbtTotal} to int tag "Stats;Total" of ({_customNbtItem})
-                                        set {_statNbtTotal} to {_statNbtTotal} - {_value}
-                                        set int tag "Stats;Total" of ({_customNbtItem}) to {_statNbtTotal}
-                                        set {_statNbtTotalGear} to int tag "Stats;GearTotal" of ({_customNbtItem})
-                                        set {_statNbtTotalGear} to {_statNbtTotalGear} - {_value}
-                                        set int tag "Stats;GearTotal" of ({_customNbtItem}) to {_statNbtTotalGear}
+                                            set {_statNbt} to int tag "Stats;%loop-value-2%" of ({_customNbtItem})
+                                            set {_statNbt} to {_statNbt} - {_value}
+                                            set int tag "Stats;%loop-value-2%" of ({_customNbtItem}) to {_statNbt}
+                                            set {_statNbtTotal} to int tag "Stats;Total" of ({_customNbtItem})
+                                            set {_statNbtTotal} to {_statNbtTotal} - {_value}
+                                            set int tag "Stats;Total" of ({_customNbtItem}) to {_statNbtTotal}
+                                            set {_statNbtTotalGear} to int tag "Stats;GearTotal" of ({_customNbtItem})
+                                            set {_statNbtTotalGear} to {_statNbtTotalGear} - {_value}
+                                            set int tag "Stats;GearTotal" of ({_customNbtItem}) to {_statNbtTotalGear}
 
                                 set {_socketAmount} to int tag "Sockets" of {_customNbtGear}
                                 loop {_socketAmount} times:
@@ -612,7 +642,6 @@ on inventory click:
                                         set {_statNbtTotalGear} to int tag "Stats;GearTotal" of ({_customNbtItem})
                                         set {_statNbtTotalGear} to {_statNbtTotalGear} - {_value}
                                         set int tag "Stats;GearTotal" of ({_customNbtItem}) to {_statNbtTotalGear}
-                                    
 
                             loop yaml nodes with keys "Card.Gear.%{_gearSlot}%.Enchant.Stats" from "activeCard-%player%":
                                 set {_loopStatAmount} to yaml value "Card.Gear.%{_gearSlot}%.Enchant.Stats.%loop-value%" in "activeCard-%player%"
@@ -625,15 +654,27 @@ on inventory click:
                                 set int tag "Stats;Total" of ({_customNbtItem}) to {_statNbtTotal}
                                 set {_statNbtTotalGear} to int tag "Stats;GearTotal" of ({_customNbtItem})
                                 set {_statNbtTotalGear} to {_statNbtTotalGear} - {_loopStatAmount}
-                                set int tag "Stats;GearTotal" of ({_customNbtItem}) to {_statNbtTotalGear}    
+                                set int tag "Stats;GearTotal" of ({_customNbtItem}) to {_statNbtTotalGear} 
+                            
+                            set {_runes::*} to nbt tags of (compound tag "Runes" of {_customNbtGear})
+                            if {_runes::*} is set:
+                                loop {_runes::*}:
+                                    set {_runeValue} to double tag "Runes;%loop-value%;Value" of {_customNbtGear}
+                                    set {_runicPower} to double tag "Runes;%loop-value%;Runic Power" of {_customNbtGear}
+
+                                    removeRune(player, player's tool, loop-value, {_runeValue}, {_runicPower})
+                                
                             clear yaml value "Card.Gear.%{_gearSlot}%" in "activeCard-%player%"
                             clear yaml value "Gear.%{_gearSlot}%" in "activeCard-%player%"
-                save yaml "activeCard-%player%"
+                    
+                RecalculateRegularGearSets(player)
+
                 UpdateCard(player)
                 CardStatUpdate(player)
                 set max health of player to 25 + ({health::%player%}/5)
                 set scaled health of player to 20
                 heal the player
+                save yaml "activeCard-%player%"
 
     else if player's current inventory = (metadata value "CardGearSlot" of player):
         if event-slot is between 0 and 8:
@@ -653,6 +694,9 @@ on inventory click:
                 loop all items in the player's inventory:
                     if (item amount of loop-item) = 1:
                         set {_customNbt} to custom nbt of loop-item
+                        if string tag "GearId" of {_customNbt} is not set:
+                            set string tag "GearId" of {_customNbt} to "%random uuid%"
+
                         if {_eventSlotType} does not contain "Artifact":
                             if {_eventSlotType} contains (string tag "GearSlot" of {_customNbt}):
                                 set {_item} to loop-item
@@ -713,6 +757,7 @@ on inventory click:
         if boolean tag "CanInteract" of (custom nbt of event-slot) is set:
             clear boolean tag "CanInteract" of (custom nbt of event-slot)
             set {_slot} to event-slot
+            set metadata value "GearItemToEquip" of player to event-slot
             loop lore of {_slot}:
                 if loop-counter < (size of (lore of {_slot}) - 1):
                     add loop-value to {_lore::*}
@@ -733,7 +778,9 @@ on inventory click:
                 set line 2 of lore of (slot 11 of metadata tag "GearConfirm" of player) to "&fCardbound: %{_id}%"
 
             set {_gearItem} to slot 11 of metadata tag "GearConfirm" of player
-            set {_gearItemRemove} to slot 11 of metadata tag "GearConfirm" of player
+            
+            set {_gearId} to string tag "GearId" of (custom nbt of {_gearItem})
+
             if string tag "ArtifactType" of (custom nbt of {_gearItem}) is not set:
                 if line 1 of lore of {_gearItem} contains "Flower Artifact":
                     set string tag "ArtifactType" of (custom nbt of {_gearItem}) to "Flower Artifact"
@@ -744,7 +791,14 @@ on inventory click:
                 else if line 1 of lore of {_gearItem} contains "Scroll Artifact":
                     set string tag "ArtifactType" of (custom nbt of {_gearItem}) to "Scroll Artifact"
             clear metadata tag "GearConfirm" of player
-            remove {_gearItemRemove} from player
+            
+            loop all items in player's inventory:
+                if string tag "GearId" of (custom nbt of loop-item) = {_gearId}:
+                    remove 1 of loop-item from player's inventory
+                    stop loop
+
+            clear metadata value "GearItemToEquip" of player
+
             close player's inventory
             play sound "block.chest.close" with volume 2 and pitch 1.3 to player
             play sound "entity.player.levelup" with volume 2 and pitch 0.15 to player
@@ -782,7 +836,9 @@ on inventory click:
                     set yaml value "Card.Artifact Sets.%{_artifactSet}%" in "activeCard-%player%" to {_artifactSetCount}
 
                 if {_checkSlot} != air:
-                    giveItem(player, {_checkSlot})
+                    set {_returnItem} to {_checkSlot}
+                    set lore of {_returnItem} to GearLoreUpdate({_returnItem})
+                    giveItem(player, {_returnItem})
                     if boolean tag "Artifact" of (custom nbt of {_checkSlot}) is set:
                         if string tag "ArtifactSet" of (custom nbt of {_checkSlot}) is set:
                             set {_artifactSet} to string tag "ArtifactSet" of (custom nbt of {_checkSlot})
@@ -831,8 +887,12 @@ on inventory click:
                     set {_value} to int tag "Stats;%loop-value%" of {_customNbtGear}
                     add {_value} to {_statsValue::*}
 
-                set yaml value "Card.Gear.%{_gearSlot}%.Name" in "activeCard-%player%" to uncolored name of {_gearItem}
-                set yaml value "Card.Gear.%{_gearSlot}%.Item Level" in "activeCard-%player%" to int tag "ItemLevel" of {_customNbtGear}
+                set yaml value "Card.Gear.%{_gearSlot}%.Name" in "activeCard-%player%" to (uncolored (name of {_gearItem}))
+                set yaml value "Card.Gear.%{_gearSlot}%.Item Level" in "activeCard-%player%" to (int tag "ItemLevel" of {_customNbtGear})
+
+                if string tag "2Set;Name" of {_customNbtGear} is set:
+                    set {_setName} to string tag "2Set;Name" of {_customNbtGear}
+                    set yaml value "Card.Gear.%{_gearSlot}%.2Set.Name" in "activeCard-%player%" to {_setName}
 
                 loop {_statsType::*}:
                     set yaml value "Card.Gear.%{_gearSlot}%.Stats.%loop-value%" in "activeCard-%player%" to {_statsValue::%loop-index%}
@@ -849,31 +909,32 @@ on inventory click:
                 if compound tag "Socket" of {_customNbtGear} is set:
                     set {_sockets::*} to nbt tags of compound tag "Socket" of {_customNbtGear}
                     loop {_sockets::*}:
-                        set {_statsType::*} to nbt tags of (compound tag "Socket;%loop-value%;Gem;Stats" of {_customNbtGear})
+                        if loop-value is set:
+                            set {_statsType::*} to nbt tags of (compound tag "Socket;%loop-value%;Gem;Stats" of {_customNbtGear})
 
-                        set {_gemIcon} to string tag "Socket;%loop-value%;Gem;Icon" of (custom nbt of {_customNbtGear})
-                        set {_gemName} to string tag "Socket;%loop-value%;Gem;Name" of (custom nbt of {_customNbtGear})
-                        set {_gemRank} to int tag "Socket;%loop-value%;Gem;Quality" of (custom nbt of {_customNbtGear})
-                        set {_gemType} to string tag "Socket;%loop-value%;Gem;Type" of (custom nbt of {_customNbtGear})
+                            set {_gemIcon} to string tag "Socket;%loop-value%;Gem;Icon" of (custom nbt of {_customNbtGear})
+                            set {_gemName} to string tag "Socket;%loop-value%;Gem;Name" of (custom nbt of {_customNbtGear})
+                            set {_gemRank} to int tag "Socket;%loop-value%;Gem;Quality" of (custom nbt of {_customNbtGear})
+                            set {_gemType} to string tag "Socket;%loop-value%;Gem;Type" of (custom nbt of {_customNbtGear})
 
-                        set yaml value "Card.Gear.%{_gearSlot}%.Socket.%loop-value-1%.Gem.Name" in "activeCard-%player%" to {_gemName}
-                        set yaml value "Card.Gear.%{_gearSlot}%.Socket.%loop-value-1%.Gem.Icon" in "activeCard-%player%" to {_gemIcon}
-                        set yaml value "Card.Gear.%{_gearSlot}%.Socket.%loop-value-1%.Gem.Rank" in "activeCard-%player%" to {_gemRank}
-                        set yaml value "Card.Gear.%{_gearSlot}%.Socket.%loop-value-1%.Gem.Type" in "activeCard-%player%" to {_gemType}
+                            set yaml value "Card.Gear.%{_gearSlot}%.Socket.%loop-value-1%.Gem.Name" in "activeCard-%player%" to {_gemName}
+                            set yaml value "Card.Gear.%{_gearSlot}%.Socket.%loop-value-1%.Gem.Icon" in "activeCard-%player%" to {_gemIcon}
+                            set yaml value "Card.Gear.%{_gearSlot}%.Socket.%loop-value-1%.Gem.Rank" in "activeCard-%player%" to {_gemRank}
+                            set yaml value "Card.Gear.%{_gearSlot}%.Socket.%loop-value-1%.Gem.Type" in "activeCard-%player%" to {_gemType}
 
-                        loop {_statsType::*}:
-                            set {_value} to int tag "Socket;%loop-value-1%;Gem;Stats;%loop-value-2%" of {_customNbtGear}
-                            set yaml value "Card.Gear.%{_gearSlot}%.Socket.%loop-value-1%.Gem.Stats.%loop-value-2%" in "activeCard-%player%" to {_value}
+                            loop {_statsType::*}:
+                                set {_value} to int tag "Socket;%loop-value-1%;Gem;Stats;%loop-value-2%" of {_customNbtGear}
+                                set yaml value "Card.Gear.%{_gearSlot}%.Socket.%loop-value-1%.Gem.Stats.%loop-value-2%" in "activeCard-%player%" to {_value}
 
-                            set {_statNbt} to int tag "Stats;%loop-value-2%" of ({_customNbtItem})
-                            set {_statNbt} to {_statNbt} + {_value}
-                            set int tag "Stats;%loop-value-2%" of ({_customNbtItem}) to {_statNbt}
-                            set {_statNbtTotal} to int tag "Stats;Total" of ({_customNbtItem})
-                            set {_statNbtTotal} to {_statNbtTotal} + {_value}
-                            set int tag "Stats;Total" of ({_customNbtItem}) to {_statNbtTotal}
-                            set {_statNbtTotalGear} to int tag "Stats;GearTotal" of ({_customNbtItem})
-                            set {_statNbtTotalGear} to {_statNbtTotalGear} + {_value}
-                            set int tag "Stats;GearTotal" of ({_customNbtItem}) to {_statNbtTotalGear}
+                                set {_statNbt} to int tag "Stats;%loop-value-2%" of ({_customNbtItem})
+                                set {_statNbt} to {_statNbt} + {_value}
+                                set int tag "Stats;%loop-value-2%" of ({_customNbtItem}) to {_statNbt}
+                                set {_statNbtTotal} to int tag "Stats;Total" of ({_customNbtItem})
+                                set {_statNbtTotal} to {_statNbtTotal} + {_value}
+                                set int tag "Stats;Total" of ({_customNbtItem}) to {_statNbtTotal}
+                                set {_statNbtTotalGear} to int tag "Stats;GearTotal" of ({_customNbtItem})
+                                set {_statNbtTotalGear} to {_statNbtTotalGear} + {_value}
+                                set int tag "Stats;GearTotal" of ({_customNbtItem}) to {_statNbtTotalGear}
 
                     set {_socketAmount} to int tag "Sockets" of {_customNbtGear}
                     loop {_socketAmount} times:
@@ -911,10 +972,10 @@ on inventory click:
                         set int tag "Stats;%loop-value%" of ({_customNbtItem}) to {_statNbt}
 
                         set {_statNbtTotal} to int tag "Stats;Total" of ({_customNbtItem})
-                        set {_statNbtTotal} to {_statNbtTotal} + {_loopStatAmount}
+                        set {_statNbtTotal} to {_statNbtTotal} + {_enchantStatAmount}
                         set int tag "Stats;Total" of ({_customNbtItem}) to {_statNbtTotal}
                         set {_statNbtTotalGear} to int tag "Stats;GearTotal" of ({_customNbtItem})
-                        set {_statNbtTotalGear} to {_statNbtTotalGear} + {_loopStatAmount}
+                        set {_statNbtTotalGear} to {_statNbtTotalGear} + {_enchantStatAmount}
                         set int tag "Stats;GearTotal" of ({_customNbtItem}) to {_statNbtTotalGear}
 
                 set {_runes::*} to nbt tags of (compound tag "Runes" of {_customNbtGear})
@@ -926,15 +987,20 @@ on inventory click:
                         set yaml value "Card.Gear.%{_gearSlot}%.Runes.%loop-value%.Value" in "activeCard-%player%" to {_runeValue}
                         set yaml value "Card.Gear.%{_gearSlot}%.Runes.%loop-value%.Runic Power" in "activeCard-%player%" to {_runicPower}
 
-                set yaml value "Gear.%{_gearSlot}%" in "activeCard-%player%" to {_gearItem}
+                        applyRune(player, player's tool, loop-value, {_runeValue}, {_runicPower})
 
-            save yaml "activeCard-%player%"
+                set yaml value "Gear.%{_gearSlot}%" in "activeCard-%player%" to {_gearItem}
+            
+            RecalculateRegularGearSets(player)
+
             UpdateCard(player)
             CardStatUpdate(player)
             set max health of player to 25 + ({health::%player%}/5)
             set scaled health of player to 20
             heal the player
             close player's inventory
+
+            save yaml "activeCard-%player%"
 
             #Add stats...
             #Update lore
@@ -948,6 +1014,125 @@ function Marksmanship4Set(p: player) :: boolean:
         if {_setCount} >= 4:
             set {_bool} to true
     return {_bool}
+
+function GearSetDescription(setName: text, tier: text, active: boolean = false) :: text:
+    if {_active} = true:
+        set {_description} to formatted (yaml value "Set Bonuses.%{_setName}%.%{_tier}%.Active Description" in "GearList")
+    if {_description} is not set:
+        set {_description} to formatted (yaml value "Set Bonuses.%{_setName}%.%{_tier}%.Description" in "GearList")
+
+    loop yaml node keys "Set Bonuses.%{_setName}%.%{_tier}%.Stats" in "GearList":
+        set {_value} to yaml value "Set Bonuses.%{_setName}%.%{_tier}%.Stats.%loop-value%" in "GearList"
+        replace all "{%loop-value%}" in {_description} with "%{_value}%"
+
+    return {_description}
+
+function RecalculateRegularGearSets(p: player):
+    set {_customNbtItem} to custom nbt of {_p}'s tool
+
+    loop yaml node keys "Card.Gear Set Bonuses" in "activeCard-%{_p}%":
+        set {_setName} to loop-value
+        loop yaml node keys "Card.Gear Set Bonuses.%{_setName}%" in "activeCard-%{_p}%":
+            set {_tier} to loop-value-2
+            loop yaml node keys "Card.Gear Set Bonuses.%{_setName}%.%{_tier}%.Stats" in "activeCard-%{_p}%":
+                set {_stat} to loop-value-3
+                set {_value} to yaml value "Card.Gear Set Bonuses.%{_setName}%.%{_tier}%.Stats.%{_stat}%" in "activeCard-%{_p}%"
+
+                remove {_value} from int tag "Stats;%{_stat}%" of {_customNbtItem}
+                remove {_value} from int tag "Stats;Total" of {_customNbtItem}
+                remove {_value} from int tag "Stats;GearTotal" of {_customNbtItem}
+
+                if int tag "Stats;%{_stat}%" of {_customNbtItem} < 0:
+                    set int tag "Stats;%{_stat}%" of {_customNbtItem} to 0
+                if int tag "Stats;Total" of {_customNbtItem} < 0:
+                    set int tag "Stats;Total" of {_customNbtItem} to 0
+                if int tag "Stats;GearTotal" of {_customNbtItem} < 0:
+                    set int tag "Stats;GearTotal" of {_customNbtItem} to 0
+
+    clear yaml value "Card.Gear Set Bonuses" in "activeCard-%{_p}%"
+
+    loop yaml node keys "Card.Gear" in "activeCard-%{_p}%":
+        if yaml value "Card.Gear.%loop-value%.2Set.Name" in "activeCard-%{_p}%" is set:
+            set {_setName} to yaml value "Card.Gear.%loop-value%.2Set.Name" in "activeCard-%{_p}%"
+            add 1 to {_setCount::%{_setName}%}
+
+    loop indices of {_setCount::*}:
+        set {_setName} to loop-value
+
+        if {_setCount::%{_setName}%} >= 2:
+            set yaml value "Card.Gear Set Bonuses.%{_setName}%.2Set.Active" in "activeCard-%{_p}%" to true
+            loop yaml node keys "Set Bonuses.%{_setName}%.2Set.Stats" in "GearList":
+                set {_stat} to loop-value-2
+                set {_value} to yaml value "Set Bonuses.%{_setName}%.2Set.Stats.%{_stat}%" in "GearList"
+
+                set yaml value "Card.Gear Set Bonuses.%{_setName}%.2Set.Stats.%{_stat}%" in "activeCard-%{_p}%" to {_value}
+
+                add {_value} to int tag "Stats;%{_stat}%" of {_customNbtItem}
+                add {_value} to int tag "Stats;Total" of {_customNbtItem}
+                add {_value} to int tag "Stats;GearTotal" of {_customNbtItem}
+
+        if {_setCount::%{_setName}%} >= 4:
+            set yaml value "Card.Gear Set Bonuses.%{_setName}%.4Set.Active" in "activeCard-%{_p}%" to true
+            loop yaml node keys "Set Bonuses.%{_setName}%.4Set.Stats" in "GearList":
+                set {_stat} to loop-value-2
+                set {_value} to yaml value "Set Bonuses.%{_setName}%.4Set.Stats.%{_stat}%" in "GearList"
+
+                set yaml value "Card.Gear Set Bonuses.%{_setName}%.4Set.Stats.%{_stat}%" in "activeCard-%{_p}%" to {_value}
+
+                add {_value} to int tag "Stats;%{_stat}%" of {_customNbtItem}
+                add {_value} to int tag "Stats;Total" of {_customNbtItem}
+                add {_value} to int tag "Stats;GearTotal" of {_customNbtItem}
+
+function EquippedGearLoreUpdate(p: player, item: item) :: text:
+    set {_lore} to GearLoreUpdate({_item})
+    set {_customNbt} to custom nbt of {_item}
+
+    if string tag "2Set;Name" of {_customNbt} is not set:
+        return {_lore}
+
+    set {_setName} to string tag "2Set;Name" of {_customNbt}
+    set {_setCount} to 0
+
+    loop yaml node keys "Card.Gear" in "activeCard-%{_p}%":
+        if yaml value "Card.Gear.%loop-value%.2Set.Name" in "activeCard-%{_p}%" = {_setName}:
+            set {_setCount} to {_setCount} + 1
+
+    set {_inactiveBlock} to "%nl% %nl%&7%{_setName}% Set"
+
+    if yaml value "Set Bonuses.%{_setName}%.2Set.Description" in "GearList" is set:
+        set {_desc} to GearSetDescription({_setName}, "2Set", false)
+        set {_inactiveBlock} to "%{_inactiveBlock}%%nl%&72 Set Bonus: %{_desc}%"
+
+    if yaml value "Set Bonuses.%{_setName}%.4Set.Description" in "GearList" is set:
+        set {_desc} to GearSetDescription({_setName}, "4Set", false)
+        set {_inactiveBlock} to "%{_inactiveBlock}%%nl%&74 Set Bonus: %{_desc}%"
+
+    if {_setCount} >= 2:
+        set {_setColour} to coloured (yaml value "Set Bonuses.%{_setName}%.Colour" in "GearList")
+    else:
+        set {_setColour} to "&7"
+
+    set {_activeBlock} to "%nl% %nl%%{_setColour}%%{_setName}% Set"
+
+    if yaml value "Set Bonuses.%{_setName}%.2Set.Description" in "GearList" is set:
+        if {_setCount} >= 2:
+            set {_desc} to GearSetDescription({_setName}, "2Set", true)
+            set {_activeBlock} to "%{_activeBlock}%%nl%&f2 Set Bonus: %{_desc}%"
+        else:
+            set {_desc} to GearSetDescription({_setName}, "2Set", false)
+            set {_activeBlock} to "%{_activeBlock}%%nl%&72 Set Bonus: %{_desc}%"
+
+    if yaml value "Set Bonuses.%{_setName}%.4Set.Description" in "GearList" is set:
+        if {_setCount} >= 4:
+            set {_desc} to GearSetDescription({_setName}, "4Set", true)
+            set {_activeBlock} to "%{_activeBlock}%%nl%&f4 Set Bonus: %{_desc}%"
+        else:
+            set {_desc} to GearSetDescription({_setName}, "4Set", false)
+            set {_activeBlock} to "%{_activeBlock}%%nl%&74 Set Bonus: %{_desc}%"
+
+    replace all {_inactiveBlock} in {_lore} with {_activeBlock}
+
+    return {_lore}
 
 function StatBarUpdate(p: player, statAmount: number, line: integer, statEN: string, statPL: string, colour: string):
     set {_kwadraciki} to (rounded down {_statAmount}/50)
