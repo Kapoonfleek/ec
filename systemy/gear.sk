@@ -283,7 +283,6 @@ function GearLoreUpdate(item: item) :: string:
         set {_socketBonuses::*} to nbt tags of (compound tag "SocketBonus" of {_customnbt})
         loop {_socketBonuses::*}:
             set {_socketBonusValue} to int tag "SocketBonus;%loop-value%" of {_customnbt}
-            broadcast loop-value and int tag "SocketBonus;%loop-value%" of {_customnbt}
             set {_formattedStat} to getFormattedStat(loop-value)
             replace "{VALUE}" in {_formattedStat} with "+%{_socketBonusValue}%"
             if {_socketBonusUnlocked} = true:
@@ -1037,7 +1036,7 @@ function RecalculateRegularGearSets(p: player):
             loop yaml node keys "Card.Gear Set Bonuses.%{_setName}%.%{_tier}%.Stats" in "activeCard-%{_p}%":
                 set {_stat} to loop-value-3
                 set {_value} to yaml value "Card.Gear Set Bonuses.%{_setName}%.%{_tier}%.Stats.%{_stat}%" in "activeCard-%{_p}%"
-
+                
                 remove {_value} from int tag "Stats;%{_stat}%" of {_customNbtItem}
                 remove {_value} from int tag "Stats;Total" of {_customNbtItem}
                 remove {_value} from int tag "Stats;GearTotal" of {_customNbtItem}
@@ -1054,10 +1053,10 @@ function RecalculateRegularGearSets(p: player):
     loop yaml node keys "Card.Gear" in "activeCard-%{_p}%":
         if yaml value "Card.Gear.%loop-value%.2Set.Name" in "activeCard-%{_p}%" is set:
             set {_setName} to yaml value "Card.Gear.%loop-value%.2Set.Name" in "activeCard-%{_p}%"
-            add 1 to {_setCount::%{_setName}%}
+            set {_setCount::%{_setName}%} to {_setCount::%{_setName}%} + 1
 
     loop indices of {_setCount::*}:
-        set {_setName} to loop-value
+        set {_setName} to loop-value in strict proper case
 
         if {_setCount::%{_setName}%} >= 2:
             set yaml value "Card.Gear Set Bonuses.%{_setName}%.2Set.Active" in "activeCard-%{_p}%" to true
@@ -1082,6 +1081,8 @@ function RecalculateRegularGearSets(p: player):
                 add {_value} to int tag "Stats;%{_stat}%" of {_customNbtItem}
                 add {_value} to int tag "Stats;Total" of {_customNbtItem}
                 add {_value} to int tag "Stats;GearTotal" of {_customNbtItem}
+
+    save yaml "activeCard-%{_p}%"
 
 function EquippedGearLoreUpdate(p: player, item: item) :: text:
     set {_lore} to GearLoreUpdate({_item})
