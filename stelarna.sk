@@ -186,13 +186,13 @@ function StellarPoolItems(p: player) :: items:
     set {_fated} to StellarFatedCard({_p})
     if {_fated} is set:
         if {_fated} != "":
-            set {_item} to StellarCardItem({_fated})
+            set {_item} to StellarReelCardItem({_p}, {_fated})
             if {_item} is set:
                 set {_pool::*} to {_pool::*} and {_item}
 
     set {_weekly} to StellarWeeklyCard()
     if {_weekly} is set:
-        set {_item} to StellarCardItem({_weekly})
+        set {_item} to StellarReelCardItem({_p}, {_fated})
         if {_item} is set:
             set {_pool::*} to {_pool::*} and {_item}
 
@@ -222,63 +222,75 @@ function StellarFatedCardMenu(p: player):
     open {_m} to {_p}
 
 function StellarSpinAnimation(p: player, finalItem: item):
-    set {_inv} to metadata tag "stelarnaskrzynka" of {_p}
-    open {_inv} to {_p}
+	set {_inv} to metadata tag "stelarnaskrzynka" of {_p}
+	open {_inv} to {_p}
 
-    set {_pool::*} to StellarPoolItems({_p})
-    if {_pool::*} is not set:
-        set {_pool::*} to {_finalItem}
+	set {stellarSkip::%{_p}%} to false
+	set metadata value "StellarFinalReward" of {_p} to {_finalItem}
 
-    set slots integers between 0 and 8 of {_inv} to red stained glass pane named " "
-    set slots integers between 18 and 26 of {_inv} to red stained glass pane named " "
-    set slots 4 and 22 of {_inv} to white stained glass pane named " "
+	set {_pool::*} to StellarPoolItems({_p})
+	if {_pool::*} is not set:
+		set {_pool::*} to {_finalItem}
 
-    set {_frames} to 52
-    set {_reelSize} to {_frames} + 8
+	set slots integers between 0 and 8 of {_inv} to red stained glass pane named " "
+	set slots integers between 18 and 26 of {_inv} to red stained glass pane named " "
+	set slots 4 and 22 of {_inv} to white stained glass pane named "&fSkip Animation" with lore "&7Click to instantly claim your reward."
 
-    loop {_reelSize} times:
-        set {_reel::%loop-number%} to a random element of {_pool::*}
+	set {_frames} to 52
+	set {_reelSize} to {_frames} + 8
 
-    set {_reel::5} to {_finalItem}
+	loop {_reelSize} times:
+		set {_reel::%loop-number%} to a random element of {_pool::*}
+		if {stellarSkip::%{_p}%} = true:
+			stop loop
 
-    loop {_frames} times:
-        set {_frame} to loop-number
-        set {_slot} to 9
+	set {_reel::5} to {_finalItem}
 
-        loop 9 times:
-            set {_index} to ({_frames} - {_frame}) + loop-number-2
-            set slot {_slot} of {_inv} to {_reel::%{_index}%}
-            set {_slot} to {_slot} + 1
+	loop {_frames} times:
+		if {stellarSkip::%{_p}%} = true:
+			stop loop
+		set {_frame} to loop-number
+		set {_slot} to 9
 
-        play sound "block.small_amethyst_bud.break" with volume 2 and pitch 2 to {_p}
-        play sound "block.small_amethyst_cluster.break" with volume 2 and pitch 1.5 to {_p}
+		loop 9 times:
+			set {_index} to ({_frames} - {_frame}) + loop-number-2
+			set slot {_slot} of {_inv} to {_reel::%{_index}%}
+			set {_slot} to {_slot} + 1
 
-        if {_frame} <= 20:
-            wait 1 tick
-        else if {_frame} <= 34:
-            wait 2 ticks
-        else if {_frame} <= 44:
-            wait 3 ticks
-        else:
-            wait 5 ticks
+		play sound "block.small_amethyst_bud.break" with volume 2 and pitch 2 to {_p}
+		play sound "block.small_amethyst_cluster.break" with volume 2 and pitch 1.5 to {_p}
 
-    set slot 13 of {_inv} to {_finalItem}
-    play sound "entity.experience_orb.pickup" with volume 2 and pitch 1.3 to {_p}
+		if {_frame} <= 20:
+			wait 1 tick
+		else if {_frame} <= 34:
+			wait 2 ticks
+		else if {_frame} <= 44:
+			wait 3 ticks
+		else:
+			wait 5 ticks
 
-    wait 10 ticks
+	set slot 13 of {_inv} to {_finalItem}
+	play sound "entity.experience_orb.pickup" with volume 2 and pitch 1.3 to {_p}
 
-    set metadata tag "stelarnaskrzynkaopen" of {_p} to chest inventory with 3 rows named "Stelarna Skrzynka"
-    set {_openInv} to metadata tag "stelarnaskrzynkaopen" of {_p}
+	wait 10 ticks
 
-    set slots integers between 9 and 12 of {_openInv} to white stained glass pane
-    set slots integers between 14 and 17 of {_openInv} to white stained glass pane
-    set slots integers between 0 and 8 of {_openInv} to red stained glass pane named " "
-    set slots integers between 18 and 26 of {_openInv} to red stained glass pane named " "
+	if {stellarSkip::%{_p}%} = true:
+		stop
 
-    set slot 13 of {_openInv} to {_finalItem}
-    open {_openInv} to {_p}
+	set metadata tag "stelarnaskrzynkaopen" of {_p} to chest inventory with 3 rows named "Stelarna Skrzynka"
+	set {_openInv} to metadata tag "stelarnaskrzynkaopen" of {_p}
 
-    clear {stellaropening::%{_p}%}
+	set slots integers between 9 and 12 of {_openInv} to white stained glass pane
+	set slots integers between 14 and 17 of {_openInv} to white stained glass pane
+	set slots integers between 0 and 8 of {_openInv} to red stained glass pane named " "
+	set slots integers between 18 and 26 of {_openInv} to red stained glass pane named " "
+
+	set slot 13 of {_openInv} to {_finalItem}
+	open {_openInv} to {_p}
+
+	clear {stellaropening::%{_p}%}
+	clear {stellarSkip::%{_p}%}
+	clear metadata value "StellarFinalReward" of {_p}
 
 function StellarPrepareCard(p: player, card: text) :: item:
     set {_it} to StellarCardItem({_card})
@@ -317,6 +329,21 @@ function StellarBlankStats(primaryStat: text) :: text:
     set {_stats} to "%{_stats}%%nl%&7Avoidance: <#2154ad>&7■■■■■■■■■■ &7(<#2154ad>0&7)"
 
     return {_stats}
+
+function StellarReelCardItem(p: player, card: text) :: item:
+    set {_item} to StellarCardItem({_card})
+
+    set {_primaryStat} to string tag "PrimaryStat" of nbt of {_item}
+    set {_statsCard} to "&7Level: %last string color code of name of {_item}%0 &7| &7Exp: %last string color code of name of {_item}%0"
+    set {_statsCard} to "%{_statsCard}%%StellarBlankStats({_primaryStat})%"
+
+    set {_subtitle} to yaml value "Cards.%{_card}%.Subtitle" in "StellarChestList"
+    set {_elementString} to yaml value "Cards.%{_card}%.Element String" in "StellarChestList"
+    set {_sourceString} to yaml value "Cards.%{_card}%.Source String" in "StellarChestList"
+
+    set lore of {_item} to {_subtitle}, {_statsCard}, {_elementString} and {_sourceString}
+
+    return {_item}
 
 on load:
 	set {_x} to block at location(-1209.5, 96, -1815, world "world")
@@ -390,6 +417,28 @@ on inventory click:
 				close player's inventory
 	if player's current inventory = metadata tag "stelarnaskrzynka" of player:
 		cancel event
+
+		if name of clicked slot contains "Skip Animation":
+			set {stellarSkip::%player%} to true
+
+			set {_reward} to metadata value "StellarFinalReward" of player
+
+			if {_reward} is set:
+				if player can hold {_reward}:
+					give {_reward} to player
+				else:
+					drop {_reward} at player
+
+			send "&cStellar Chest >>> &fCongratulations! You receive: %{nagrodastelarna::%player%}%&f!" to player
+
+			clear {stellaropening::%player%}
+			clear {stellarSkip::%player%}
+			clear metadata value "StellarFinalReward" of player
+			clear {nagrodastelarna::%player%}
+
+			close player's inventory
+			stop
+
 		set {_slots::*} to lime stained glass pane named "&aClick here to open" and lime stained glass pane named "&aKliknij tutaj, by otworzyć"
 		if {_slots::*} contains clicked slot:
 			set {_shard} to 1 of player's tool
@@ -501,10 +550,27 @@ on leftclick on red stained glass:
 			else:
 				set {_preview} to StellarCardPreview({_fated})
 				if {_preview} is set:
-					set slot 0 of {_menu} to {_preview}
+					set slot 0 of {_menu} to {_preview} with lore (coloured lore of {_preview}) and "%nl%&d✨ Fated Card"
 			set {_weeklyPreview} to StellarCardPreview({_weekly})
 			if {_weeklyPreview} is set:
-				set slot 8 of {_menu} to {_weeklyPreview} with lore (lore of {_weeklyPreview}) and "%nl%&7Weekly Rotation Card"
+				set slot 8 of {_menu} to {_weeklyPreview} with lore (coloured lore of {_weeklyPreview}) and "%nl%&5✨ Weekly Rotation Card"
+
+			set {_pityStellar} to yaml value "Player.Stellar Pity" in "data-%player%"
+
+			if {_pityStellar} is not set:
+				set {_pityStellar} to 0
+
+			set {_dr1} to StellarPityChance(player)
+			set {_fated} to StellarFatedCard(player)
+			set {_weekly} to StellarWeeklyCard()
+
+			if {_fated} is not set:
+				set {_fated} to "Not selected"
+			if {_fated} = "":
+				set {_fated} to "Not selected"
+
+			set slot 13 of {_menu} to gray stained glass pane named "&8Info" with lore "&7Check back later for%nl%&7new rewards!%nl% %nl%&7&oFated Cards and weekly rotation%nl%&7&ocards reset weekly.%nl%&7Pity required to strongly favor a Card%nl%&7amounts &f40&7.%nl% %nl%&f&oWhen a Card drops, it has a &f50%%&f&o chance%nl%&f&oto be your Fated Card and a &f50%%&f&o chance%nl%&f&oto be the weekly rotation Card.%nl% %nl%&7Fated Card: &f%{_fated}%%nl%&7Weekly Card: &f%{_weekly}%%nl% %nl%&7Pity: &f%{_pityStellar}%%nl%&7Chance to drop Card: &f%{_dr1}%%%"
+			
 			open {_menu} to player
 
 on inventory click:
