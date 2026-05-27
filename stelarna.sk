@@ -65,12 +65,12 @@ function StellarDroppedCard(p: player) :: text:
 
 function StellarCardItem(card: text) :: item:
 	set {_material} to yaml value "Cards.%{_card}%.Material" in "StellarChestList"
-	set {_name} to yaml value "Cards.%{_card}%.Name" in "StellarChestList"
+	set {_name} to coloured (yaml value "Cards.%{_card}%.Name" in "StellarChestList")
 	set {_subtitle} to yaml value "Cards.%{_card}%.Subtitle" in "StellarChestList"
 	set {_primaryStat} to yaml value "Cards.%{_card}%.Primary Stat" in "StellarChestList"
-	set {_element} to yaml value "Cards.%{_card}%.Element" in "StellarChestList"
-	set {_elementString} to yaml value "Cards.%{_card}%.Element String" in "StellarChestList"
-	set {_sourceString} to yaml value "Cards.%{_card}%.Source String" in "StellarChestList"
+	set {_element} to coloured (yaml value "Cards.%{_card}%.Element" in "StellarChestList")
+	set {_elementString} to coloured (yaml value "Cards.%{_card}%.Element String" in "StellarChestList")
+	set {_sourceString} to coloured (yaml value "Cards.%{_card}%.Source String" in "StellarChestList")
 	set {_cmd} to yaml value "Cards.%{_card}%.CustomModelData" in "StellarChestList"
 
 	if {_material} is not set:
@@ -156,8 +156,8 @@ function StellarRewardItem(reward: text, p: player) :: item:
 function StellarRewardDisplay(reward: text, item: item) :: text:
 	set {_display} to yaml value "Rewards.%{_reward}%.Display" in "StellarChestList"
 	if {_display} is not set:
-		set {_display} to name of {_item}
-	replace all "{ITEM}" in {_display} with name of {_item}
+		set {_display} to coloured (name of {_item})
+	replace all "{ITEM}" in {_display} with (coloured name of {_item})
 	return {_display}
 
 function StellarRollReward() :: text:
@@ -178,15 +178,25 @@ function StellarRollReward() :: text:
 	return {_fallback::1}
 
 function StellarPoolItems(p: player) :: items:
-	loop yaml node keys "Rewards" in "StellarChestList":
-		set {_item} to StellarRewardItem(loop-value, {_p})
-		if {_item} is set:
-			set {_pool::*} to {_pool::*} and {_item}
-	loop yaml list "Weekly Rotation.Cards" in "StellarChestList":
-		set {_item} to StellarCardPreview(loop-value)
-		if {_item} is set:
-			set {_pool::*} to {_pool::*} and {_item}
-	return {_pool::*}
+    loop yaml node keys "Rewards" in "StellarChestList":
+        set {_item} to StellarRewardItem(loop-value, {_p})
+        if {_item} is set:
+            set {_pool::*} to {_pool::*} and {_item}
+
+    set {_fated} to StellarFatedCard({_p})
+    if {_fated} is set:
+        if {_fated} != "":
+            set {_item} to StellarCardItem({_fated})
+            if {_item} is set:
+                set {_pool::*} to {_pool::*} and {_item}
+
+    set {_weekly} to StellarWeeklyCard()
+    if {_weekly} is set:
+        set {_item} to StellarCardItem({_weekly})
+        if {_item} is set:
+            set {_pool::*} to {_pool::*} and {_item}
+
+    return {_pool::*}
 
 function StellarFatedCardMenu(p: player):
     set metadata tag "stelarnaskrzynkacardcourse" of {_p} to chest inventory with 3 rows named "Choose Fated Card"
@@ -212,35 +222,63 @@ function StellarFatedCardMenu(p: player):
     open {_m} to {_p}
 
 function StellarSpinAnimation(p: player, finalItem: item):
-	set {_inv} to metadata tag "stelarnaskrzynka" of {_p}
-	set {_pool::*} to StellarPoolItems({_p})
-	if {_pool::*} is not set:
-		set {_pool::*} to {_finalItem}
-	set slots integers between 0 and 8 of {_inv} to red stained glass pane named " "
-	set slots integers between 18 and 26 of {_inv} to red stained glass pane named " "
-	set slots 4 and 22 of {_inv} to white stained glass pane named " "
-	set {_poolIndex} to 1
-	loop 50 times:
-		set {_slot} to 9
-		loop 9 times:
-			set slot {_slot} of {_inv} to {_pool::%{_poolIndex}%}
-			set {_poolIndex} to {_poolIndex} + 1
-			if {_poolIndex} > size of {_pool::*}:
-				set {_poolIndex} to 1
-			set {_slot} to {_slot} + 1
-		play sound "block.small_amethyst_bud.break" with volume 2 and pitch 2 to {_p}
-		play sound "block.small_amethyst_cluster.break" with volume 2 and pitch 1.5 to {_p}
-		if loop-number <= 18:
-			wait 1 tick
-		else if loop-number <= 30:
-			wait 2 ticks
-		else if loop-number <= 40:
-			wait 3 ticks
-		else:
-			wait 4 ticks
-	set slots integers between 9 and 17 of {_inv} to red stained glass pane named " "
-	set slot 13 of {_inv} to {_finalItem}
-	play sound "entity.experience_orb.pickup" with volume 2 and pitch 1.3 to {_p}
+    set {_inv} to metadata tag "stelarnaskrzynka" of {_p}
+    open {_inv} to {_p}
+
+    set {_pool::*} to StellarPoolItems({_p})
+    if {_pool::*} is not set:
+        set {_pool::*} to {_finalItem}
+
+    set slots integers between 0 and 8 of {_inv} to red stained glass pane named " "
+    set slots integers between 18 and 26 of {_inv} to red stained glass pane named " "
+    set slots 4 and 22 of {_inv} to white stained glass pane named " "
+
+    set {_frames} to 52
+    set {_reelSize} to {_frames} + 8
+
+    loop {_reelSize} times:
+        set {_reel::%loop-number%} to a random element of {_pool::*}
+
+    set {_reel::5} to {_finalItem}
+
+    loop {_frames} times:
+        set {_frame} to loop-number
+        set {_slot} to 9
+
+        loop 9 times:
+            set {_index} to ({_frames} - {_frame}) + loop-number-2
+            set slot {_slot} of {_inv} to {_reel::%{_index}%}
+            set {_slot} to {_slot} + 1
+
+        play sound "block.small_amethyst_bud.break" with volume 2 and pitch 2 to {_p}
+        play sound "block.small_amethyst_cluster.break" with volume 2 and pitch 1.5 to {_p}
+
+        if {_frame} <= 20:
+            wait 1 tick
+        else if {_frame} <= 34:
+            wait 2 ticks
+        else if {_frame} <= 44:
+            wait 3 ticks
+        else:
+            wait 5 ticks
+
+    set slot 13 of {_inv} to {_finalItem}
+    play sound "entity.experience_orb.pickup" with volume 2 and pitch 1.3 to {_p}
+
+    wait 10 ticks
+
+    set metadata tag "stelarnaskrzynkaopen" of {_p} to chest inventory with 3 rows named "Stelarna Skrzynka"
+    set {_openInv} to metadata tag "stelarnaskrzynkaopen" of {_p}
+
+    set slots integers between 9 and 12 of {_openInv} to white stained glass pane
+    set slots integers between 14 and 17 of {_openInv} to white stained glass pane
+    set slots integers between 0 and 8 of {_openInv} to red stained glass pane named " "
+    set slots integers between 18 and 26 of {_openInv} to red stained glass pane named " "
+
+    set slot 13 of {_openInv} to {_finalItem}
+    open {_openInv} to {_p}
+
+    clear {stellaropening::%{_p}%}
 
 function StellarPrepareCard(p: player, card: text) :: item:
     set {_it} to StellarCardItem({_card})
@@ -374,7 +412,7 @@ on inventory click:
 			if {_num} <= {_dr1}:
 				set {_droppedCard} to StellarDroppedCard(player)
 				set {_it} to StellarPrepareCard(player, {_droppedCard})
-				set {nagrodastelarna::%player%} to name of {_it}
+				set {nagrodastelarna::%player%} to coloured (name of {_it})
 				set {_cardName} to uncolored name of {_it}
 				set {%{_cardName}%::collected::%player%} to {%{_cardName}%::collected::%player%} + 1
 				if {%{_cardName}%::collected::%player%} = 1:
@@ -421,29 +459,29 @@ on inventory click:
 			set {_totalDrops} to {_totalDrops} + 1
 			set yaml value "Player.Stellar Total Drops" in "data-%player%" to {_totalDrops}
 			save yaml "data-%player%"
+
 			StellarSpinAnimation(player, {_it})
-			set metadata tag "stelarnaskrzynkaopen" of player to chest inventory with 3 rows named "Stelarna Skrzynka"
-			set slots integers between 9 and 12 of metadata tag "stelarnaskrzynkaopen" of player to white stained glass pane
-			set slots integers between 14 and 17 of metadata tag "stelarnaskrzynkaopen" of player to white stained glass pane
-			set slots integers between 0 and 8 of metadata tag "stelarnaskrzynkaopen" of player to red stained glass pane named " "
-			set slots integers between 18 and 26 of metadata tag "stelarnaskrzynkaopen" of player to red stained glass pane named " "
-			set slot 13 of metadata tag "stelarnaskrzynkaopen" of player to {_it}
-			open metadata tag "stelarnaskrzynkaopen" of player to player
-			clear {stellaropening::%player%}
 
 on inventory close:
 	if player's current inventory = metadata tag "stelarnaskrzynkaopen" of player:
-		if slot 13 of metadata tag "stelarnaskrzynkaopen" of player is air:
+		if {stellarRewardClaimed::%player%} is true:
+			stop
+		set {stellarRewardClaimed::%player%} to true
+
+		if (slot 13 of metadata tag "stelarnaskrzynkaopen" of player) is air:
 			set {_message} to "&cStellar Chest >>> &fCongratulations! You receive: %{nagrodastelarna::%player%}%&f!"
 			send {_message} to player
 		else:
-			if player can hold slot 13 of metadata tag "stelarnaskrzynkaopen" of player:
-				give slot 13 of metadata tag "stelarnaskrzynkaopen" of player to player
-			else:
-				drop slot 13 of metadata tag "stelarnaskrzynkaopen" of player at player
+			set {_item} to slot 13 of metadata tag "stelarnaskrzynkaopen" of player
+			giveItem(player, {_item})
+
+			set slot 13 of metadata tag "stelarnaskrzynkaopen" of player to air
+
 			set {_message} to "&cStellar Chest >>> &fCongratulations! You receive: %{nagrodastelarna::%player%}%&f!"
 			send {_message} to player
+
 		clear {nagrodastelarna::%player%}
+		clear {stellarRewardClaimed::%player%}
 
 on rightclick on armor stand:
 	loop all blocks in radius 1.5 around clicked armor stand:
