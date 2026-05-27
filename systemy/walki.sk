@@ -10,6 +10,7 @@ on heal:
 
 on death:
 	if boolean tag "ECMob" of (custom nbt of victim) is set:
+		onECMobDeath(victim)
 		clear metadata value "ECPulled" of victim
 		clear drops
 
@@ -162,7 +163,7 @@ on death:
 		if boolean tag "ECAbility" of (custom nbt of victim) is not set:
 			if boolean tag "RemoveOnReset" of (custom nbt of victim) is not set:
 				if victim is not an armor stand:
-					show flash at victim
+					draw 1 white flash particle at victim
 			else:
 				clear drops
 
@@ -697,6 +698,10 @@ on damage:
 							set {_damageRepeat} to 0.08*damage
 							MoonlightEcho(attacker, victim, {_damageRepeat}, "Dark")
 
+		else if {kartaname::%attacker%} = "Cresselia":
+			if metadata value "CelestialAlignment" of attacker is set:
+				set damage to damage * (1 + getRunePower(attacker, "Moonlit Authority") / 100)
+
 	if int tag "StellarPower" of custom nbt of {karta::%attacker%} > 0:
 		set {_stellarPower} to 1 + (int tag "StellarPower" of custom nbt of {karta::%attacker%})/100
 		set damage to damage * {_stellarPower}
@@ -711,10 +716,12 @@ on damage:
 			set {_damagered} to (({_damagered}-1) * (1-{_ignoreResistanceAmount})) + 1
 
 		set damage to damage * {_elementModifier}
-
-		set {_partyMembersNames::*} to (party members of (party of attacker)) where [input is online]
-		loop {_partyMembersNames::*}:
-			set {_partyMembers::%loop-counter%} to "%loop-value%" parsed as player
+		
+		if attacker is a player:
+			if party of attacker is set:
+				set {_partyMembersNames::*} to (party members of (party of attacker)) where [input is online]
+				loop {_partyMembersNames::*}:
+					set {_partyMembers::%loop-counter%} to "%loop-value%" parsed as player
 		
 		set {_effectiveDamage::*} to "super strong", "strong", "moderately strong"
 		set {_ineffectiveDamage::*} to "super weak", "weak", "mildly weak"
@@ -724,21 +731,21 @@ on damage:
 				if metadata value "LastDamageCause" of victim = "<##f8fff5>Air Slash":
 					set damage to damage*1.2
 			
-			loop {_partyMembers::*}:
-				if {kartaname::%loop-value%} = "Vaporeon":
-					if boolean tag "Constellation;Restorative Droplets" of (custom nbt of {karta::%loop-value%}):
-						broadcast "A"
-						if cooldown "RestorativeDroplets%attacker%-%loop-value%" is finished:
-							set {_haste} to Haste(loop-value)
-							set {_cdDroplets} to "%3/{_haste}% seconds" parsed as timespan
-							create cooldown "RestorativeDroplets%attacker%-%loop-value%" for {_cdDroplets}
+			if metadata value "LastDamageCause" of victim != "<#7cafbf>Hydrodance":
+				loop {_partyMembers::*}:
+					if {kartaname::%loop-value%} = "Vaporeon":
+						if boolean tag "Constellation;Restorative Droplets" of (custom nbt of {karta::%loop-value%}):
+							if cooldown "RestorativeDroplets%attacker%-%loop-value%" is finished:
+								set {_haste} to Haste(loop-value)
+								set {_cdDroplets} to "%3/{_haste}% seconds" parsed as timespan
+								create cooldown "RestorativeDroplets%attacker%-%loop-value%" for {_cdDroplets}
 
-							set {_mult} to 1
-							if {kartaname::%attacker%} is "Vaporeon":
-								if boolean tag "Constellation;Restorative Droplets" of (custom nbt of {karta::%attacker%}):
-									set {_mult} to 3
+								set {_mult} to 1
+								if {kartaname::%attacker%} is "Vaporeon":
+									if boolean tag "Constellation;Restorative Droplets" of (custom nbt of {karta::%attacker%}):
+										set {_mult} to 3
 
-							RestorativeDroplets(loop-value, attacker, {_mult}, {_partyMembers::*})
+								RestorativeDroplets(loop-value, attacker, {_mult}, {_partyMembers::*}, victim)
 
 		else if {_ineffectiveDamage::*} contains {_elementEffect}:
 			if {kartaname::%attacker%} = "Buckshot":

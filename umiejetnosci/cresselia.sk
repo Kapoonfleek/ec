@@ -5,7 +5,7 @@ function ShootingStars(p: player):
 	wait 1 tick
 	while metadata value "ECEngaged" of {_p} is set:
 		if {_p} is alive:
-			set {_chance} to 8
+			set {_chance} to 8 + getRunePower({_p}, "Astral Cascade")
 			if boolean tag "Constellation;Stellar Command" of (custom nbt of {karta::%{_p}%}) is set:
 				set {_chance} to {_chance} + 2
 			if metadata value "CelestialAlignment" of {_p} is set:
@@ -24,10 +24,10 @@ function ShootingStar(p: player):
 
 	set {_loops} to 1
 	set {_astralInvocationChance} to 10
-	set {_damage} to (0.8 + (({damage::%{_p}%}/61) + (Versatility({_p})/183) + {primarystat::%{_p}%}/30.5)) * (1 + (Mastery({_p})/60))
+	set {_damage} to (0.8 + (({damage::%{_p}%}/61) + (Versatility({_p})/183) + {primarystat::%{_p}%}/30.5)) * (1 + (Mastery({_p})/108))
 	if string tag "Talents;Row 2" of (custom nbt of {karta::%{_p}%}) = "Crashing Star":
 		chance of 15%:
-			set {_damage} to (2.4 + (({damage::%{_p}%}/41) + (Versatility({_p})/123) + {primarystat::%{_p}%}/20.5)) * (1 + (Mastery({_p})/60))
+			set {_damage} to (2.4 + (({damage::%{_p}%}/41) + (Versatility({_p})/123) + {primarystat::%{_p}%}/20.5)) * (1 + (Mastery({_p})/108))
 			set {_crashingStar} to true
 			set {_astralInvocationChance} to 20
 	set {_crit} to 0 + (CriticalHit({_p})/10)
@@ -81,7 +81,10 @@ function ShootingStar(p: player):
 		if metadata value "Solstice" of {_p} is set:
 			set {_chanceShooting} to {_chanceShooting}*3
 
-		set {_loreShootingStars} to "&8Mastery Bonus%nl%&fNo cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fPASSIVE%nl%%{_primCol}%Every %{_secCol}%second%{_primCol}%, you have a &f%{_chanceShooting}%%% %{_secCol}%chance %{_primCol}%to call%nl%%{_primCol}%down a &f %{_secCol}%Shooting Star%{_primCol}%, dealing &f%{_damage}% <#a99afc>Astral %{_primCol}%damage%nl%%{_primCol}%to the enemy and generating &f %{_astralpower}% %{_secCol}%Astral Power%{_primCol}%.%nl% %nl%%{_primCol}%This effect can only trigger when you have%nl%%{_secCol}%attacked a target %{_primCol}%through a different damage%nl%%{_primCol}%source than &f %{_secCol}%Shooting Stars %{_primCol}%in the last &f20 sec%{_primCol}%."
+		set {_valueNames::*} to "CHANCE", "DAMAGE", "ASTRALPOWER"
+		set {_values::*} to {_chanceShooting}, {_damage}, {_astralpower}
+		set {_loreShootingStars} to GetAbilityDescription({_p}, "Cresselia", "Shooting Stars", {_valueNames::*}, {_values::*})
+		set {_lore} to {_loreShootingStars}
 
 		if {_crashingStar} is true:
 			set {_starSpeed} to 0.2*{_haste}
@@ -89,7 +92,9 @@ function ShootingStar(p: player):
 			set {_shootingStar} to ShootingStarSpawn({_target}, true)
 			set {_pitch} to 0.25
 			set {_bonusY} to 1.8
-			set {_lore} to "&8Passive Ability%nl%&fInstant cast%nl%&7Cooldown: &fnone%nl%&7Use: &fPassive%nl%%{_primCol}%Shooting Stars have a &f15%% &7chance to instead call%nl%&7down a %{_primCol}%Crashing Star&7, causing &f%{_damage}% <#a99afc>Astral &7damage%nl%&7to the target and generating &fdouble Astral Power&7.%nl%%{_primCol}%Crashing Stars &7have &fdouble &7the chance of granting%nl%&7you <#cab8e3>Astral Invocation&7."
+			set {_valueNames::*} to "CHANCE", "DAMAGE"
+			set {_values::*} to 15, {_damage}
+			set {_lore} to GetAbilityDescription({_p}, "Cresselia", "Crashing Star", {_valueNames::*}, {_values::*})
 			play sound "entity.ender_dragon.shoot" with volume 4 and pitch 0 at location of {_target}
 		else:
 			set {_starSpeed} to 0.45*{_haste}
@@ -99,6 +104,7 @@ function ShootingStar(p: player):
 			set {_bonusY} to 0.9
 			set {_lore} to {_loreShootingStars}
 			CresseliaShootingStarSound({_p}, {_target})
+			LoreUpdate({_p}, "Shooting Stars", {_lore})
 
 		set {_y} to 0
 		set {_locStar} to location of {_shootingStar}
@@ -137,8 +143,6 @@ function ShootingStar(p: player):
 		set {_critModifier} to 2
 		if boolean tag "Constellation;The Eternal Moon" of (custom nbt of {karta::%{_p}%}) is set:
 			set {_critModifier} to {_critModifier} + 0.2
-
-		LoreUpdate({_p}, "Shooting Stars", {_lore})
 		
 		loop {_loops} times:
 			set {_shootingStarsDamage} to {_damage}
@@ -181,7 +185,7 @@ function ShootingStar(p: player):
 function ShootingStarSpawn(target: entity, crashingStar: boolean = false) :: entity:
 	set {_randomYcoordinate} to a random number between 8 and 35
 	set {_l} to location of block {_randomYcoordinate} blocks above {_target}
-	spawn an armor stand at {_l} with nbt from "{Invulnerable:1b,NoGravity:1b,Silent:1b,Pose:{Head:[180.0f,0.0f,0.0f]}}"
+	spawn an armor stand at {_l} with nbt from "{Invulnerable:1b,Invisible:1b,NoGravity:1b,Silent:1b,Pose:{Head:[180.0f,0.0f,0.0f]}}"
 	set boolean tag "RemoveOnReset" of (custom nbt of last spawned armor stand) to true
 	if {_crashingStar} = true:
 		modelApply(last spawned armor stand, "shootingstar", 4.0)
@@ -204,9 +208,10 @@ function AstralPower(p: player):
 		set {_astralPowerCap} to 120
 	while metadata value "ECEngaged" of {_p} is set:
 		if {_p} is alive:
-			set {_astralpower} to 2
+			set {_astralpower} to 2 * (1 + getRunePower({_p}, "Astral Flow") / 100)
+
 			if {astralpower::%{_p}%} + {_astralpower} <= {_astralPowerCap}:
-				set {astralpower::%{_p}%} to {astralpower::%{_p}%} + 2
+				set {astralpower::%{_p}%} to {astralpower::%{_p}%} + {_astralpower}
 			else:
 				set {astralpower::%{_p}%} to {_astralPowerCap}
 			AstralPowerUpdate({_p})
@@ -226,9 +231,14 @@ function AstralPowerUpdate(p: player):
 			set {_message} to "%{_message}% &f| %{_CAIcon}% %{_primCol}%CA: &f%{_remainingCADuration}%"
 		send action bar {_message} to {_p}
 	
-	set {_passiveGen} to 3/Haste({_p})
-	set {_lore} to  "&8Passive Ability%nl%&fNo cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fPASSIVE%nl%%{_secCol}%Cresselia %{_primCol}%uses &f %{_secCol}%Astral Power %{_primCol}%to cast powerful%nl%%{_primCol}%spells in &f %{_secCol}%Starsurge %{_primCol}%and &f %{_secCol}%Starfall%{_primCol}%.%nl% %nl%&f %{_secCol}%Astral Power %{_primCol}%can be %{_secCol}%generated %{_primCol}%through her other%nl%%{_primCol}%abilities, including &f %{_secCol}%Starfire %{_primCol}%and &f %{_secCol}%Shooting Stars%{_primCol}%.%nl% %nl%%{_primCol}%Additionally, %{_secCol}%Cresselia %{_primCol}%passively %{_secCol}%generates &f 2 %{_secCol}%Astral%nl%%{_secCol}%Power %{_primCol}%every &f%{_passiveGen}% sec %{_primCol}%in combat, and &f %{_secCol}%Astral Power%nl%%{_secCol}%rebalances %{_primCol}%to &fhalf %{_primCol}%of the %{_secCol}%maximum %{_primCol}%while out of combat.%nl% %nl%&f <#cab8e3>Astral Invocation%nl%%{_primCol}%When &f %{_secCol}%Shooting Stars %{_primCol}%hit a target, you have a &f10%%%nl%%{_secCol}%chance %{_primCol}%to trigger &f <#cab8e3>Astral Invocation %{_primCol}%and make your%nl%%{_primCol}%next &f %{_secCol}%Starfire %{_primCol}%instant%{_primCol}%."
-	LoreUpdate({_p}, "Astral Power", {_lore})
+	set {_apGen} to 3/Haste({_p})
+	set {_ap} to 2 * (1 + getRunePower({_p}, "Astral Flow") / 100)
+	set {_invocChance} to 10
+
+	set {_valueNames::*} to "APGEN", "AP", "INVOCATIONCHANCE"
+	set {_values::*} to {_apGen}, {_ap}, {_invocChance}
+	set {_lore} to GetAbilityDescription({_p}, "Cresselia", "Boundless Moonlight", {_valueNames::*}, {_values::*})
+	LoreUpdate({_p}, "Boundless Moonlight", {_lore})
 
 function AstralPowerAdd(p: player, astralPower: number):
 	if string tag "Talents;Row 2" of (custom nbt of {karta::%{_p}%}) = "Astral Communion":
@@ -330,7 +340,7 @@ on rightclick:
 
 									set {_starsurgeStacks} to metadata value "StarsurgeStacks%player%" of {_target}
 
-									set {_starsurgeMultiplier} to 0.15 + (0.25 * (Haste(player) - 1))
+									set {_starsurgeMultiplier} to (0.15 + getRunePower(player, "Stellar Compression")) + (0.25 * (Haste(player) - 1))
 
 									set {_starsurgeBonus} to 1+({_starsurgeMultiplier}*{_starsurgeStacks})
 									set {_damage} to {_damage}*{_starsurgeBonus}
@@ -351,7 +361,11 @@ on rightclick:
 										set {_critModifier} to {_critModifier} + 0.2
 									
 									set {_target}'s last damage cause to sweep attack
-									set {_lore} to "&8Basic Ability%nl%&fInstant cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fRMB%nl%&7Cost: &f %{_astralPowerCost}% Astral Power%nl%%{_primCol}%Launches a surge of stellar energies at the%nl%%{_primCol}%target, dealing &f%{_damage}% <#a99afc>Astral %{_primCol}%damage and empowering%nl%%{_secCol}%subsequent %{_primCol}%uses of &f %{_secCol}%Starsurge %{_primCol}%within &f12 sec%nl%%{_primCol}%on the target by &f%({_starsurgeMultiplier}*100)%%%%{_primCol}%, increased by <#19943e> Haste%{_primCol}%.%nl% %nl%%{_primCol}%This effect stacks up to &f2 %{_primCol}%times."
+									
+									set {_valueNames::*} to "COST", "DAMAGE", "AMP", "MAXSTACKS"
+									set {_values::*} to {_astralPowerCost}, {_damage}, ({_starsurgeMultiplier}*100), {_starsurgeBonusMax}
+									set {_lore} to GetAbilityDescription(player, "Cresselia", "Starsurge", {_valueNames::*}, {_values::*})
+
 									set metadata value "LastDamageCause" of {_target} to "%{_primCol}%Starsurge"
 									set metadata value "LastDamageCauseLore" of {_target} to {_lore}
 									
@@ -551,8 +565,9 @@ on rightclick:
 
 					celestialAlignmentVisual(player)
 
-					set {_lore} to "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown: &8 &f%{_cd}%%nl%&7Use: &fRMB%nl%%{_primCol}%%{_primCol}%Celestial bodies align, granting &f 40 %{_secCol}%Astral Power%nl%%{_primCol}%and increasing %{_secCol}%spell damage %{_primCol}%and the chance to%nl%<#fca417> Critically Strike %{_primCol}%by &f15%% %{_primCol}%for &f20 sec%{_primCol}%.%nl% %nl%%{_primCol}%While &f %{_secCol}%Celestial Alignment %{_primCol}%is active, &f %{_secCol}%Shooting%nl%%{_secCol}%Stars %{_primCol}%fall &f100%% %{_primCol}%more often and %{_primCol}%deal &f600%% %{_primCol}%more%nl%%{_primCol}%damage."
-
+					set {_valueNames::*} to "COOLDOWN", "ASTRALPOWER", "CRIT", "DURATION", "SHOOTINGSTARSFREQUENCY", "SHOOTINGSTARSDAMAGE"
+					set {_values::*} to {_cd}, 40, 15, 20, 100, 600
+					set {_lore} to GetAbilityDescription(player, "Cresselia", "Celestial Alignment", {_valueNames::*}, {_values::*})
 					LoreUpdate(player, "Celestial Alignment", {_lore})
 
 			else:
@@ -611,8 +626,9 @@ on rightclick:
 							AstralPowerAdd(player, {_astralPower})
 							AstralPowerUpdate(player)
 
-							set {_lore} to "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown: &8 &f3 minutes%nl%&7Use: &fRMB%nl%%{_primCol}%Infuse a %{_secCol}%friendly target %{_primCol}%with energy, reducing%nl%%{_primCol}%the cooldown of their %{_secCol}%last used spell %{_primCol}%by &f40 sec%{_primCol}%.%nl%%{_primCol}%If this ability %{_secCol}%fails %{_primCol}%or is used on %{_secCol}%self%{_primCol}%, reduce the%nl%%{_secCol}%cooldown %{_primCol}%of &f %{_secCol}%Celestial Alignment %{_primCol}%by &f30 sec%{_primCol}%.%nl% %nl%%{_primCol}%Generates &f100  %{_secCol}%Astral Power%{_primCol}%."
-
+							set {_valueNames::*} to "COOLDOWN", "ALLYCDREDUCTION", "SELFCDREDUCTION", "ASTRALPOWER"
+							set {_values::*} to {_cd}, 40, 30, 100
+							set {_lore} to GetAbilityDescription(player, "Cresselia", "Innervate", {_valueNames::*}, {_values::*})
 							LoreUpdate(player, "Innervate", {_lore})
 					else: 
 						cancel event
@@ -698,7 +714,11 @@ function Starfire(p: player, target: entity, astronomicalImpact: boolean = false
 			StarfireVisual({_p}, loop-value)
 		else:
 			StarfireVisual({_p}, loop-value, true)
-		set {_lore} to "&8Basic Ability%nl%&f%{_casttime}% second cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fRMB%nl%%{_primCol}%Calls down a burst of star energy, causing%nl%&f%{_damageMainTarget}% <#a99afc>Astral %{_primCol}%damage to the target, and &f%({_damageAoeMod}*{_damage})% <#a99afc>Astral%nl%%{_primCol}%damage to all other enemies in a short radius.%nl% %nl%%{_primCol}%Generates &f 8 %{_secCol}%Astral Power%{_primCol}%."
+		
+		set {_valueNames::*} to "CASTTIME", "DAMAGE", "AOEDAMAGE"
+		set {_values::*} to ({_baseCastTime}/Haste({_p})), {_damageMainTarget}, ({_damageAoeMod}*{_damage})
+		set {_lore} to GetAbilityDescription({_p}, "Cresselia", "Starfire", {_valueNames::*}, {_values::*})
+
 		set loop-value's last damage cause to sweep attack
 		set metadata value "LastDamageCause" of loop-value to "%{_primCol}%Starfire"
 		set metadata value "LastDamageCauseLore" of loop-value to {_lore}
@@ -862,8 +882,10 @@ function StarfireVisual(p: player, target: entity, mainTarget: boolean = false):
 function Starfall(p: player, effectiveness: number, astralPowerCost: number = 0):
 	if string tag "Talents;Row 5" of (custom nbt of {karta::%{_p}%}) = "Primordial Arcanic Pulsar":
 		PrimordialArcanicPulsar({_p}, {_astralPowerCost})
+	
+	set {_astralRain} to "%getRunePower({_p}, "Astral Rain")% seconds" parsed as timespan
+	set {_starfallDuration} to 8 seconds + {_astralRain}
 
-	set {_starfallDuration} to 8 seconds
 	if string tag "Talents;Row 4" of (custom nbt of {karta::%{_p}%}) = "Hail of Stars":
 		set {_pospiech} to Haste({_p}, 3.6)
 		set {_starfallDuration} to {_starfallDuration} + 3 seconds
@@ -941,7 +963,10 @@ function Starfall(p: player, effectiveness: number, astralPowerCost: number = 0)
 		set {_starfallDamage} to {_starfallDamage}*1.08
 
 	set {_starfallDamage} to {_starfallDamage} * rounded ({_starfallDurationSeconds}/(1/{_pospiech}))
-	set {_lore} to "&8Basic Ability%nl%&fInstant cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fRMB%nl%&7Cost: &f %{_astralPowerCost}% Astral Power%nl%%{_primCol}%Calls down waves of falling stars upon enemies%nl%%{_primCol}%within a %{_secCol}%huge radius%{_primCol}%, dealing &f%{_starfallDamage}% <#a99afc>Astral %{_primCol}%damage%nl%%{_primCol}%over &f%{_starfallDurationSeconds}% sec %{_primCol}%to targets at random and &f40%% %{_primCol}%of%nl%%{_primCol}%the damage to nearby enemies.%nl% %nl%%{_primCol}%Multiple uses of this ability may overlap."
+
+	set {_valueNames::*} to "COST", "DAMAGE", "DURATION"
+	set {_values::*} to {_astralPowerCost}, {_starfallDamage}, {_starfallDurationSeconds}
+	set {_lore} to GetAbilityDescription({_p}, "Cresselia", "Starfall", {_valueNames::*}, {_values::*})
 	LoreUpdate({_p}, "Starfall", {_lore})
 
 
@@ -960,7 +985,7 @@ function Starfall(p: player, effectiveness: number, astralPowerCost: number = 0)
 			set {_loc} to location of {_randomEnemy}
 			set y of {_loc} to (y of (location at {_randomEnemy}) + {_randomIncrease})
 
-			spawn an armor stand at {_loc} with nbt from "{Invulnerable:1b,Silent:1b,NoGravity:1b,Pose:{Head:[180.0f,0.0f,0.0f]}}"
+			spawn an armor stand at {_loc} with nbt from "{Invulnerable:1b,Invisible:1b,Silent:1b,NoGravity:1b,Pose:{Head:[180.0f,0.0f,0.0f]}}"
 			set boolean tag "RemoveOnReset" of (custom nbt of last spawned armor stand) to true
 			set {_starfallStar} to last spawned armor stand
 			modelApply({_starfallStar}, "starfallmodel", 1)
@@ -1201,8 +1226,10 @@ function StarfallStarTravel(p: player, e: entity, target: entity, duration: time
 			set {_loc} to location of {_e}
 			add 2.5 to y of {_loc}
 			draw 1 firework particle at {_loc}
+		
 		set vector length of {_vec} to {_count} * {_starSpeed}
 		teleport {_e} to {_locStar} ~ {_vec}
+		add nbt from "{Rotation:[%{_y}-5%f,%{_y}-5%.0f]}" to nbt of {_e}
 
 		if distance between {_e} and {_target} < 1:
 			set {_hit} to true
@@ -1211,6 +1238,7 @@ function StarfallStarTravel(p: player, e: entity, target: entity, duration: time
 		wait 1 tick
 		set {_count} to {_count} + 1
 		set {_y} to {_y} + 10
+
 	kill {_e}
 
 	stop if {_hit} != true
@@ -1245,7 +1273,11 @@ function StarfallStarTravel(p: player, e: entity, target: entity, duration: time
 			CresseliaStarfallHitSound({_p}, loop-value)
 
 			set loop-value's last damage cause to sweep attack
-			set {_lore} to "&8Basic Ability%nl%&fInstant cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fRMB%nl%&7Cost: &f %{_astralPowerCost}% Astral Power%nl%%{_primCol}%Calls down waves of falling stars upon enemies%nl%%{_primCol}%within a %{_secCol}%huge radius%{_primCol}%, dealing &f%{_damage}% <#a99afc>Astral %{_primCol}%damage%nl%%{_primCol}%over &f%{_starfallDuration}% %{_primCol}%to targets at random and &f40%% %{_primCol}%of%nl%%{_primCol}%the damage to nearby enemies.%nl% %nl%%{_primCol}%Multiple uses of this ability may overlap."
+			
+			set {_valueNames::*} to "COST", "DAMAGE", "DURATION"
+			set {_values::*} to {_astralPowerCost}, {_damage}, {_starfallDuration}
+			set {_lore} to GetAbilityDescription({_p}, "Cresselia", "Starfall", {_valueNames::*}, {_values::*})
+
 			set metadata value "LastDamageCause" of loop-value to "%{_primCol}%Starfall"
 			set metadata value "LastDamageCauseLore" of loop-value to {_lore}
 			set metadata value "Element" of {_p} to "Astral"
@@ -1558,7 +1590,7 @@ function FullMoon(p: player, target: entity, effectiveness: number = 1):
 	set {_randomIncrease} to a random number between 10 and 40
 	set {_loc} to location of {_target}
 	set y of {_loc} to (y of (location at {_target}) + {_randomIncrease})
-	spawn an armor stand at {_loc} with nbt from "{Invulnerable:1b,NoGravity:1b,Silent:1b,Pose:{Head:[180.0f,0.0f,0.0f]}}"
+	spawn an armor stand at {_loc} with nbt from "{Invulnerable:1b,Invisible:1b,NoGravity:1b,Silent:1b,Pose:{Head:[180.0f,0.0f,0.0f]}}"
 	set boolean tag "RemoveOnReset" of (custom nbt of last spawned armor stand) to true
 
 	modelApply(last spawned armor stand, "fullmoon", 2.0)
@@ -1618,9 +1650,12 @@ function FullMoon(p: player, target: entity, effectiveness: number = 1):
 	set {_primCol} to coloured getPrimaryCardColour({_p})
 	set {_secCol} to coloured getSecondaryCardColour({_p})
 	
-	set {_damageFullMoon} to (13 + (({damage::%{_p}%}/6.5) + (Versatility({_p})/19.5) + {primarystat::%{_p}%}/3.25)) * (1 + (Mastery({_p})/60))
+	set {_damageFullMoon} to (13 + (({damage::%{_p}%}/6.5) + (Versatility({_p})/19.5) + {primarystat::%{_p}%}/3.25)) * (1 + (Mastery({_p})/108))
 	set {_damageFullMoon} to {_damageFullMoon}*{_effectiveness}
-	set {_lore} to "&f %{_primCol}%Full Moon%nl%&7Deals &f%{_damageFullMoon}% <#a99afc>Astral &7damage &7to the target and%nl%&f%{_damageFullMoon}*0.4% <#a99afc>Astral &7damage to all enemies around%nl%&7and generates &f40  %{_primCol}%Astral Power&7."
+	
+	set {_valueNames::*} to "DAMAGE", "AOEDAMAGE", "ASTRALPOWER"
+	set {_values::*} to {_damageFullMoon}, ({_damageFullMoon}*0.4), {_astralpower}
+	set {_lore} to GetAbilityDescription({_p}, "Cresselia", "Full Moon", {_valueNames::*}, {_values::*})
 	
 	set {_critModifier} to 2
 	if boolean tag "Constellation;The Eternal Moon" of (custom nbt of {karta::%{_p}%}) is set:
