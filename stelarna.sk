@@ -75,27 +75,25 @@ function StellarDroppedCard(p: player) :: text:
 
 function StellarCardItem(card: text) :: item:
 	set {_material} to yaml value "Cards.%{_card}%.Material" in "StellarChestList"
-	set {_name} to yaml value "Cards.%{_card}%.Name" in "StellarChestList"
-	set {_subtitle} to yaml value "Cards.%{_card}%.Subtitle" in "StellarChestList"
+	set {_name} to coloured (yaml value "Cards.%{_card}%.Name" in "StellarChestList")
+	set {_subtitle} to coloured (yaml value "Cards.%{_card}%.Subtitle" in "StellarChestList")
 	set {_primaryStat} to yaml value "Cards.%{_card}%.Primary Stat" in "StellarChestList"
 	set {_element} to yaml value "Cards.%{_card}%.Element" in "StellarChestList"
-	set {_elementString} to yaml value "Cards.%{_card}%.Element String" in "StellarChestList"
-	set {_sourceString} to yaml value "Cards.%{_card}%.Source String" in "StellarChestList"
+	set {_elementString} to coloured (yaml value "Cards.%{_card}%.Element String" in "StellarChestList")
+	set {_sourceString} to coloured (yaml value "Cards.%{_card}%.Source String" in "StellarChestList")
 	set {_cmd} to yaml value "Cards.%{_card}%.CustomModelData" in "StellarChestList"
-
 	if {_material} is not set:
 		return barrier named "&cMissing card material: %{_card}%"
-
 	set {_itemType} to {_material} parsed as item type
 	set {_cardColour} to last string color code of {_name}
+	if {_cardColour} is not set:
+		set {_cardColour} to "&f"
 	set {_statsCard} to "&7Level: %{_cardColour}%0 &7| &7Exp: %{_cardColour}%0"
-
-	set {_item} to {_itemType} named (coloured {_name}) with lore {_subtitle} and {_statsCard} and {_elementString} and {_sourceString} with nbt compound from "{""minecraft:custom_model_data"":{floats:[%{_cmd}%.0f]}}"
+	set {_statsCard} to "%{_statsCard}%%StellarBlankStats({_primaryStat})%"
+	set {_item} to {_itemType} named {_name} with lore {_subtitle} and {_statsCard} and {_elementString} and {_sourceString} with nbt compound from "{""minecraft:custom_model_data"":{floats:[%{_cmd}%.0f]}}"
 	set lore of {_item} to coloured (lore of {_item})
-
 	set string tag "PrimaryStat" of (custom nbt of {_item}) to {_primaryStat}
 	set string tag "Element" of (custom nbt of {_item}) to {_element}
-
 	return {_item}
 
 function StellarCardPreview(card: text) :: item:
@@ -203,7 +201,7 @@ function StellarPoolItems(p: player) :: items:
 
     set {_weekly} to StellarWeeklyCard()
     if {_weekly} is set:
-        set {_item} to StellarReelCardItem({_p}, {_fated})
+        set {_item} to StellarReelCardItem({_p}, {_weekly})
         if {_item} is set:
             set {_pool::*} to {_pool::*} and {_item}
 
@@ -235,43 +233,37 @@ function StellarFatedCardMenu(p: player):
 function StellarSpinAnimation(p: player, finalItem: item):
 	set {_inv} to metadata tag "stelarnaskrzynka" of {_p}
 	open {_inv} to {_p}
-
 	set {stellarSkip::%{_p}%} to false
+	set {stellarRewardClaimed::%{_p}%} to false
 	set metadata value "StellarFinalReward" of {_p} to {_finalItem}
-
 	set {_pool::*} to StellarPoolItems({_p})
 	if {_pool::*} is not set:
 		set {_pool::*} to {_finalItem}
-
 	set slots integers between 0 and 8 of {_inv} to red stained glass pane named " "
 	set slots integers between 18 and 26 of {_inv} to red stained glass pane named " "
 	set slots 4 and 22 of {_inv} to white stained glass pane named "&fSkip Animation" with lore "&7Click to instantly claim your reward."
-
 	set {_frames} to 52
 	set {_reelSize} to {_frames} + 8
-
 	loop {_reelSize} times:
 		if {stellarSkip::%{_p}%} = true:
 			stop
+		if {stellarRewardClaimed::%{_p}%} is true:
+			stop
 		set {_reel::%loop-number%} to a random element of {_pool::*}
-
 	set {_reel::5} to {_finalItem}
-
 	loop {_frames} times:
 		if {stellarSkip::%{_p}%} = true:
 			stop
-
+		if {stellarRewardClaimed::%{_p}%} is true:
+			stop
 		set {_frame} to loop-number
 		set {_slot} to 9
-
 		loop 9 times:
 			set {_index} to ({_frames} - {_frame}) + loop-number-2
 			set slot {_slot} of {_inv} to {_reel::%{_index}%}
 			set {_slot} to {_slot} + 1
-
 		play sound "block.small_amethyst_bud.break" with volume 2 and pitch 2 to {_p}
 		play sound "block.small_amethyst_cluster.break" with volume 2 and pitch 1.5 to {_p}
-
 		if {_frame} <= 18:
 			wait 1 tick
 		else if {_frame} <= 30:
@@ -280,45 +272,84 @@ function StellarSpinAnimation(p: player, finalItem: item):
 			wait 3 ticks
 		else:
 			wait 4 ticks
-
+		if {stellarSkip::%{_p}%} = true:
+			stop
+		if {stellarRewardClaimed::%{_p}%} is true:
+			stop
 	if {stellarSkip::%{_p}%} = true:
 		stop
-
+	if {stellarRewardClaimed::%{_p}%} is true:
+		stop
 	set slot 13 of {_inv} to {_finalItem}
 	play sound "entity.experience_orb.pickup" with volume 2 and pitch 1.3 to {_p}
-
 	wait 10 ticks
-
 	if {stellarSkip::%{_p}%} = true:
 		stop
-
+	if {stellarRewardClaimed::%{_p}%} is true:
+		stop
 	set metadata tag "stelarnaskrzynkaopen" of {_p} to chest inventory with 3 rows named "Stelarna Skrzynka"
 	set {_openInv} to metadata tag "stelarnaskrzynkaopen" of {_p}
-
 	set slots integers between 9 and 12 of {_openInv} to white stained glass pane
 	set slots integers between 14 and 17 of {_openInv} to white stained glass pane
 	set slots integers between 0 and 8 of {_openInv} to red stained glass pane named " "
 	set slots integers between 18 and 26 of {_openInv} to red stained glass pane named " "
-
 	set slot 13 of {_openInv} to {_finalItem}
 	open {_openInv} to {_p}
-
 	clear {stellaropening::%{_p}%}
 	clear {stellarSkip::%{_p}%}
 	clear metadata value "StellarFinalReward" of {_p}
+
+function StellarClaimReward(p: player, reward: item):
+	if {stellarRewardClaimed::%{_p}%} is true:
+		stop
+	set {stellarRewardClaimed::%{_p}%} to true
+	if {_reward} is set:
+		if {_p} can hold {_reward}:
+			give {_reward} to {_p}
+		else:
+			drop {_reward} at {_p}
+	play sound "entity.experience_orb.pickup" with volume 2 and pitch 1.3 to {_p}
+	play sound "entity.player.levelup" with volume 5 and pitch 1.3 to {_p}
+	if {stellarDroppedCard::%{_p}%} is set:
+		loop all players:
+			play sound "entity.ender_dragon.death" with volume 3 and pitch 1 to loop-player
+			send "&c&kSTELARNA SKRZYNKA STELARNA SKRZYNKA STELARNA SKRZYNKA" to loop-player
+			send "&f&l%{_p}% &cdropped %coloured {nagrodastelarna::%{_p}%}% &cfrom the &c&lStellar Chest!" to loop-player
+			send "&c&kSTELARNA SKRZYNKA STELARNA SKRZYNKA STELARNA SKRZYNKA" to loop-player
+		StellarCardDiscord({_p}, {stellarDroppedCard::%{_p}%})
+		clear {stellarDroppedCard::%{_p}%}
+	send "&cStellar Chest >>> &fCongratulations! You receive: %coloured {nagrodastelarna::%{_p}%}%&f!" to {_p}
+	clear {stellaropening::%{_p}%}
+	clear metadata value "StellarFinalReward" of {_p}
+	clear {nagrodastelarna::%{_p}%}
+
+	if metadata value "StellarPendingAchievement" of {_p} is set:
+		set {_cardName} to metadata value "StellarPendingAchievement" of {_p}
+		set {_yamlValue} to "Achievement.Card Collection.%{_cardName}%"
+		achievementYaml({_p}, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, {_cardName}, "Obtain the %{_cardName}% Card.")
+		clear metadata value "StellarPendingAchievement" of {_p}
 
 function StellarPrepareCard(p: player, card: text) :: item:
     set {_it} to StellarCardItem({_card})
     set {_y} to data()
     set {_id} to random 8 char string from charset `0-9` `a-z`
-
     add "&8Id: %{_id}%" to lore of {_it}
     add "&8Dropped: %{_y}%" to lore of {_it}
-
     set {_primaryStat} to string tag "PrimaryStat" of (custom nbt of {_it})
-
-    add nbt from "{Stats:{%{_primaryStat}%:0,Health:0,Damage:0,Resistance:0,Mobility:0,Utility:0,'Crowd Control':0,Versatility:0,Mastery:0,'Critical Hit':0,Element:0,Haste:0,Avoidance:0,Total:0}}" to nbt of {_it}
-
+    set int tag "Stats;%{_primaryStat}%" of (custom nbt of {_it}) to 0
+    set int tag "Stats;Health" of (custom nbt of {_it}) to 0
+    set int tag "Stats;Damage" of (custom nbt of {_it}) to 0
+    set int tag "Stats;Resistance" of (custom nbt of {_it}) to 0
+    set int tag "Stats;Mobility" of (custom nbt of {_it}) to 0
+    set int tag "Stats;Utility" of (custom nbt of {_it}) to 0
+    set int tag "Stats;Crowd Control" of (custom nbt of {_it}) to 0
+    set int tag "Stats;Versatility" of (custom nbt of {_it}) to 0
+    set int tag "Stats;Mastery" of (custom nbt of {_it}) to 0
+    set int tag "Stats;Critical Hit" of (custom nbt of {_it}) to 0
+    set int tag "Stats;Element" of (custom nbt of {_it}) to 0
+    set int tag "Stats;Haste" of (custom nbt of {_it}) to 0
+    set int tag "Stats;Avoidance" of (custom nbt of {_it}) to 0
+    set int tag "Stats;Total" of (custom nbt of {_it}) to 0
     return {_it}
 
 function StellarBlankStats(primaryStat: text) :: text:
@@ -347,17 +378,19 @@ function StellarBlankStats(primaryStat: text) :: text:
 
 function StellarReelCardItem(p: player, card: text) :: item:
     set {_item} to StellarCardItem({_card})
-
-    set {_primaryStat} to string tag "PrimaryStat" of (custom nbt of {_item})
-    set {_statsCard} to "&7Level: %last string color code of name of {_item}%0 &7| &7Exp: %last string color code of name of {_item}%0"
+    set {_primaryStat} to yaml value "Cards.%{_card}%.Primary Stat" in "StellarChestList"
+    if {_primaryStat} is not set:
+        set {_primaryStat} to "Intellect"
+    set {_cardColour} to last string color code of name of {_item}
+    if {_cardColour} is not set:
+        set {_cardColour} to "&f"
+    set {_statsCard} to "&7Level: %{_cardColour}%0 &7| &7Exp: %{_cardColour}%0"
     set {_statsCard} to "%{_statsCard}%%StellarBlankStats({_primaryStat})%"
-
-    set {_subtitle} to yaml value "Cards.%{_card}%.Subtitle" in "StellarChestList"
-    set {_elementString} to yaml value "Cards.%{_card}%.Element String" in "StellarChestList"
-    set {_sourceString} to yaml value "Cards.%{_card}%.Source String" in "StellarChestList"
-
+    set {_subtitle} to coloured (yaml value "Cards.%{_card}%.Subtitle" in "StellarChestList")
+    set {_elementString} to coloured (yaml value "Cards.%{_card}%.Element String" in "StellarChestList")
+    set {_sourceString} to coloured (yaml value "Cards.%{_card}%.Source String" in "StellarChestList")
     set lore of {_item} to {_subtitle}, {_statsCard}, {_elementString} and {_sourceString}
-
+    set lore of {_item} to coloured (lore of {_item})
     return {_item}
 
 on load:
@@ -436,26 +469,9 @@ on inventory click:
 		if clicked slot is not air:
 			if name of clicked slot contains "Skip Animation":
 				set {stellarSkip::%player%} to true
-
 				set {_reward} to metadata value "StellarFinalReward" of player
-
-				if {_reward} is set:
-					giveItem(player, {_reward})
-
-				play sound "entity.experience_orb.pickup" with volume 2 and pitch 1.3 to player
-				play sound "entity.player.levelup" with volume 5 and pitch 1.3 to player
-
-				send "&cStellar Chest >>> &fCongratulations! You receive: %coloured {nagrodastelarna::%player%}%&f!" to player
-
-				clear {stellaropening::%player%}
-				clear metadata value "StellarFinalReward" of player
-				clear {nagrodastelarna::%player%}
-
+				StellarClaimReward(player, {_reward})
 				close player's inventory
-
-				wait 2 seconds
-				clear {stellarSkip::%player%}
-
 				stop
 
 		set {_slots::*} to lime stained glass pane named "&aClick here to open" and lime stained glass pane named "&aKliknij tutaj, by otworzyć"
@@ -470,10 +486,9 @@ on inventory click:
 			else if {stellarchestsOpened::%player%} = 100:
 				set {_yamlValue} to "Achievement.Stellar Chest.Open.100"
 				achievementYaml(player, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Stellar Chest: 100", "Open the Stellar Chest 100 times.")
-			if {language::%player%} = "English":
-				set metadata tag "stelarnaskrzynka" of player to chest inventory with 3 rows named "Stellar Chest"
-			else:
-				set metadata tag "stelarnaskrzynka" of player to chest inventory with 3 rows named "Stelarna Skrzynka"
+
+			set metadata tag "stelarnaskrzynka" of player to chest inventory with 3 rows named "Stellar Chest"
+
 			open metadata tag "stelarnaskrzynka" of player to player
 			set {_num} to a random number between 1 and 100
 			set {_dr1} to StellarPityChance(player)
@@ -483,16 +498,13 @@ on inventory click:
 				set {nagrodastelarna::%player%} to coloured (name of {_it})
 				set {_cardName} to uncolored name of {_it}
 				set {%{_cardName}%::collected::%player%} to {%{_cardName}%::collected::%player%} + 1
+
 				if {%{_cardName}%::collected::%player%} = 1:
-					set {_yamlValue} to "Achievement.Card Collection.%{_cardName}%"
-					achievementYaml(player, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, {_cardName}, "Obtain the %{_cardName}% Card.")
+					set metadata value "StellarPendingAchievement" of player to {_cardName}
+
 				if {kolekcja::karty::%player%::*} does not contain uncolored name of {_it}:
 					set {kolekcja::karty::%player%::*} to {kolekcja::karty::%player%::*} and uncolored name of {_it}
-				loop all players:
-					play sound "entity.ender_dragon.death" with volume 3 and pitch 1 to loop-player
-					send "&c&kSTELARNA SKRZYNKA STELARNA SKRZYNKA STELARNA SKRZYNKA" to loop-player
-					send "&f&l%player% &cdropped %{nagrodastelarna::%player%}% &cfrom the &c&lStellar Chest!" to loop-player
-					send "&c&kSTELARNA SKRZYNKA STELARNA SKRZYNKA STELARNA SKRZYNKA" to loop-player
+				set {stellarDroppedCard::%player%} to uncolored name of {_it}
 				set {_pityBefore} to yaml value "Player.Stellar Pity" in "data-%player%"
 				if {_dr1} > 2.5:
 					set {_sPD} to yaml value "Player.Stellar Pity Drops" in "data-%player%"
@@ -509,7 +521,6 @@ on inventory click:
 					set yaml value "Player.Stellar Normal Drops" in "data-%player%" to {_sPD}
 					log "%data()% %player% Dropped %uncolored name of {_it}%! (Normal Drop)" to "logi/stellarchest/carddrops.log"
 				set yaml value "Player.Stellar Pity" in "data-%player%" to 0
-				StellarCardDiscord(player, uncolored name of {_it})
 			else:
 				set {_pityStellar} to yaml value "Player.Stellar Pity" in "data-%player%"
 				if {_pityStellar} is set:
@@ -532,24 +543,9 @@ on inventory click:
 
 on inventory close:
 	if player's current inventory = metadata tag "stelarnaskrzynkaopen" of player:
-		if {stellarRewardClaimed::%player%} is true:
-			stop
-		set {stellarRewardClaimed::%player%} to true
-
-		if (slot 13 of metadata tag "stelarnaskrzynkaopen" of player) is air:
-			set {_message} to "&cStellar Chest >>> &fCongratulations! You receive: %coloured {nagrodastelarna::%player%}%&f!"
-			send {_message} to player
-		else:
-			set {_item} to slot 13 of metadata tag "stelarnaskrzynkaopen" of player
-			giveItem(player, {_item})
-
-			set slot 13 of metadata tag "stelarnaskrzynkaopen" of player to air
-
-			set {_message} to "&cStellar Chest >>> &fCongratulations! You receive: %coloured {nagrodastelarna::%player%}%&f!"
-			send {_message} to player
-
-		clear {nagrodastelarna::%player%}
-		clear {stellarRewardClaimed::%player%}
+		set {_reward} to slot 13 of metadata tag "stelarnaskrzynkaopen" of player
+		set slot 13 of metadata tag "stelarnaskrzynkaopen" of player to air
+		StellarClaimReward(player, {_reward})
 
 on rightclick on armor stand:
 	loop all blocks in radius 1.5 around clicked armor stand:
