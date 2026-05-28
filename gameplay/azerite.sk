@@ -63,9 +63,12 @@ on inventory click:
                     send "&cThis item is Soulbound to &f%{_Soulbound}%&c." to player
                     play sound "block.glass.break" with volume 1 and pitch 2 to player
                 else:
-                    set {_rings} to int tag "Rings" of (custom nbt of event-slot)
-                    set {_itemLevel} to int tag "ItemLevel" of (custom nbt of event-slot)
-                    set metadata tag "AzeriteArmor" of player to chest inventory with {_rings} rows named (unformatted name of event-slot)
+                    set {_armorPiece} to event-slot
+                    wait 1 tick #remove if problematic, this is to prevent ghost armor client-side
+                    
+                    set {_rings} to int tag "Rings" of (custom nbt of {_armorPiece})
+                    set {_itemLevel} to int tag "ItemLevel" of (custom nbt of {_armorPiece})
+                    set metadata tag "AzeriteArmor" of player to chest inventory with {_rings} rows named (unformatted name of {_armorPiece})
                     set {_azeriteGUI} to metadata tag "AzeriteArmor" of player 
                     if {_rings} = 4:
                         set {_width} to 3
@@ -81,10 +84,10 @@ on inventory click:
                         set {_traitsCardRing2} to 3
                     set {_id} to random 8 char string from charset `0-9` `a-z`
                     set {_lowestIlvl} to yaml value "Azerite Armor.Minimum Values.Item Level" in "AzeriteArmorSources"
-                    if boolean tag "AzeriteTraitsDefined" of (custom nbt of event-slot) is not set:
+                    if boolean tag "AzeriteTraitsDefined" of (custom nbt of {_armorPiece}) is not set:
                         play sound "azerite.rotate" with volume 5 and pitch 1 to player
                         play sound "azerite.rotate_stop" with volume 1 and pitch 1 to player
-                        set {_cards::*} to string list tag "Cards" of (custom nbt of event-slot)
+                        set {_cards::*} to string list tag "Cards" of (custom nbt of {_armorPiece})
                         set {_cards::*} to shuffled {_cards::*}
                         set {_index} to 0
                         loop {_rings} times:
@@ -102,11 +105,11 @@ on inventory click:
                                         set {_randomTrait} to a random element of {_traits::*}
                                         remove {_randomTrait} from {_traits::*}
 
-                                        set {_traitList::*} to string list tag "TraitList;Row 1" of (custom nbt of event-slot)
+                                        set {_traitList::*} to string list tag "TraitList;Row 1" of (custom nbt of {_armorPiece})
                                         set {_traitList::*} to {_traitList::*} and {_randomTrait}
-                                        set string list tag "TraitList;Row 1" of (custom nbt of event-slot) to {_traitList::*}
-                                        set string tag "AvailableTraits;Row 1;%{_randomTrait}%;Type" of (custom nbt of event-slot) to "Offensive"
-                                        set string tag "AvailableTraits;Row 1;%{_randomTrait}%;Card" of (custom nbt of event-slot) to loop-value-2
+                                        set string list tag "TraitList;Row 1" of (custom nbt of {_armorPiece}) to {_traitList::*}
+                                        set string tag "AvailableTraits;Row 1;%{_randomTrait}%;Type" of (custom nbt of {_armorPiece}) to "Offensive"
+                                        set string tag "AvailableTraits;Row 1;%{_randomTrait}%;Card" of (custom nbt of {_armorPiece}) to loop-value-2
                                     remove {_cardLoops} from {_traitsLeft}
                             #Card-specific traits and generic dps traits (1 or 3 depending on item rarity)
                             else if loop-counter = 2:
@@ -118,16 +121,16 @@ on inventory click:
                                     loop {_cards::*}:
                                         add 1 to {_index}
                                         set {_traits::*} to yaml node keys "%loop-value-2%.Offensive" in "TraitList"
-                                        set {_traitList::*} to string list tag "TraitList;Row 1" of (custom nbt of event-slot)
+                                        set {_traitList::*} to string list tag "TraitList;Row 1" of (custom nbt of {_armorPiece})
                                         loop {_traitList::*}:
                                             remove "%loop-value-3%" from {_traits::*}
                                         set {_randomTrait} to a random element of {_traits::*}
-                                        set {_traitList::*} to string list tag "TraitList;Row 2" of (custom nbt of event-slot)
+                                        set {_traitList::*} to string list tag "TraitList;Row 2" of (custom nbt of {_armorPiece})
                                         set {_traitList::*} to {_traitList::*} and {_randomTrait}
-                                        set string list tag "TraitList;Row 2" of (custom nbt of event-slot) to {_traitList::*}
+                                        set string list tag "TraitList;Row 2" of (custom nbt of {_armorPiece}) to {_traitList::*}
                                         
-                                        set string tag "AvailableTraits;Row 2;%{_randomTrait}%;Type" of (custom nbt of event-slot) to "Offensive"
-                                        set string tag "AvailableTraits;Row 2;%{_randomTrait}%;Card" of (custom nbt of event-slot) to loop-value-2
+                                        set string tag "AvailableTraits;Row 2;%{_randomTrait}%;Type" of (custom nbt of {_armorPiece}) to "Offensive"
+                                        set string tag "AvailableTraits;Row 2;%{_randomTrait}%;Card" of (custom nbt of {_armorPiece}) to loop-value-2
                                         set {_traitsCardRing2} to {_traitsCardRing2} - 1
                                         set {_traitsLeft} to {_traitsLeft} - 1
                                         stop loop if {_traitsCardRing2} = 0
@@ -135,19 +138,19 @@ on inventory click:
                                         add 1 to {_index}
                                         set {_randomTrait} to a random element of {_offensiveTraits::*}
                                         remove {_randomTrait} from {_offensiveTraits::*}
-                                        set {_traitList::*} to string list tag "TraitList;Row 2" of (custom nbt of event-slot)
+                                        set {_traitList::*} to string list tag "TraitList;Row 2" of (custom nbt of {_armorPiece})
                                         set {_traitList::*} to {_traitList::*} and {_randomTrait}
-                                        set string list tag "TraitList;Row 2" of (custom nbt of event-slot) to {_traitList::*}
-                                        set string tag "AvailableTraits;Row 2;%{_randomTrait}%;Type" of (custom nbt of event-slot) to "Offensive"
+                                        set string list tag "TraitList;Row 2" of (custom nbt of {_armorPiece}) to {_traitList::*}
+                                        set string tag "AvailableTraits;Row 2;%{_randomTrait}%;Type" of (custom nbt of {_armorPiece}) to "Offensive"
                                 else:
                                     loop {_traitsLeft} times:
                                         add 1 to {_index}
                                         set {_randomTrait} to a random element of {_offensiveTraits::*}
                                         remove {_randomTrait} from {_offensiveTraits::*}
-                                        set {_traitList::*} to string list tag "TraitList;Row 2" of (custom nbt of event-slot)
+                                        set {_traitList::*} to string list tag "TraitList;Row 2" of (custom nbt of {_armorPiece})
                                         set {_traitList::*} to {_traitList::*} and {_randomTrait}
-                                        set string list tag "TraitList;Row 2" of (custom nbt of event-slot) to {_traitList::*}
-                                        set string tag "AvailableTraits;Row 2;%{_randomTrait}%;Type" of (custom nbt of event-slot) to "Offensive"
+                                        set string list tag "TraitList;Row 2" of (custom nbt of {_armorPiece}) to {_traitList::*}
+                                        set string tag "AvailableTraits;Row 2;%{_randomTrait}%;Type" of (custom nbt of {_armorPiece}) to "Offensive"
                                         set {_traitsLeft} to {_traitsLeft} - 1
                             #Generic dps traits for armor with 5 rings, utility for armor with 4 rings
                             else if loop-counter = 3:
@@ -160,10 +163,10 @@ on inventory click:
                                     add 1 to {_index}
                                     set {_randomTrait} to a random element of {_%{_traitType}%Traits::*}
                                     remove {_randomTrait} from {_%{_traitType}%Traits::*}
-                                    set {_traitList::*} to string list tag "TraitList;Row 3" of (custom nbt of event-slot)
+                                    set {_traitList::*} to string list tag "TraitList;Row 3" of (custom nbt of {_armorPiece})
                                     set {_traitList::*} to {_traitList::*} and {_randomTrait}
-                                    set string list tag "TraitList;Row 3" of (custom nbt of event-slot) to {_traitList::*}
-                                    set string tag "AvailableTraits;Row 3;%{_randomTrait}%;Type" of (custom nbt of event-slot) to {_traitType}
+                                    set string list tag "TraitList;Row 3" of (custom nbt of {_armorPiece}) to {_traitList::*}
+                                    set string tag "AvailableTraits;Row 3;%{_randomTrait}%;Type" of (custom nbt of {_armorPiece}) to {_traitType}
                                     set {_traitsLeft} to {_traitsLeft} - 1
                             else if loop-counter = 4:     
                                 if {_rings} = 5:
@@ -172,10 +175,10 @@ on inventory click:
                                         add 1 to {_index}
                                         set {_randomTrait} to a random element of {_utilityTraits::*}
                                         remove {_randomTrait} from {_utilityTraits::*}
-                                        set {_traitList::*} to string list tag "TraitList;Row 4" of (custom nbt of event-slot)
+                                        set {_traitList::*} to string list tag "TraitList;Row 4" of (custom nbt of {_armorPiece})
                                         set {_traitList::*} to {_traitList::*} and {_randomTrait}
-                                        set string list tag "TraitList;Row 4" of (custom nbt of event-slot) to {_traitList::*}
-                                        set string tag "AvailableTraits;Row 4;%{_randomTrait}%;Type" of (custom nbt of event-slot) to "Utility"
+                                        set string list tag "TraitList;Row 4" of (custom nbt of {_armorPiece}) to {_traitList::*}
+                                        set string tag "AvailableTraits;Row 4;%{_randomTrait}%;Type" of (custom nbt of {_armorPiece}) to "Utility"
                                         set {_traitsLeft} to {_traitsLeft} - 1
                         open {_azeriteGUI} to player
                         set {_index} to 0
@@ -186,7 +189,7 @@ on inventory click:
                             if loop-counter = {_rings}:
                                 set {_item} to yellow stained glass pane named "&fAzerite Empowered"
                             else:
-                                if boolean tag "Ring;%loop-counter%;Unlocked" of (custom nbt of event-slot) = true:
+                                if boolean tag "Ring;%loop-counter%;Unlocked" of (custom nbt of {_armorPiece}) = true:
                                     set {_item} to blue stained glass pane
                                 else:
                                     set {_item} to gray stained glass pane
@@ -212,26 +215,26 @@ on inventory click:
                             loop {_rings} times:
                                 if loop-counter-2 = {_rings}:
                                     set {_item} to yellow stained glass pane named "&fAzerite Empowered"
-                                    if boolean tag "Ring;%loop-counter-2%;Unlocked" of (custom nbt of event-slot) != true:
-                                        set {_reqLvl} to int tag "Ring;%loop-counter-2%;Level" of (custom nbt of event-slot)
+                                    if boolean tag "Ring;%loop-counter-2%;Unlocked" of (custom nbt of {_armorPiece}) != true:
+                                        set {_reqLvl} to int tag "Ring;%loop-counter-2%;Level" of (custom nbt of {_armorPiece})
                                         set {_unlockedAtEmp} to "%nl%&cUnlocked at Heart Level %{_reqLvl}%."
                                 else:
-                                    if boolean tag "Ring;%loop-counter-2%;Unlocked" of (custom nbt of event-slot) = true:
+                                    if boolean tag "Ring;%loop-counter-2%;Unlocked" of (custom nbt of {_armorPiece}) = true:
                                         set {_item} to blue stained glass pane
                                     else:
                                         set {_item} to gray stained glass pane
-                                        set {_reqLvl} to int tag "Ring;%loop-counter-2%;Level" of (custom nbt of event-slot)
+                                        set {_reqLvl} to int tag "Ring;%loop-counter-2%;Level" of (custom nbt of {_armorPiece})
                                         set {_unlockedAt} to "%nl%&cUnlocked at Heart Level %{_reqLvl}%."
 
                                 if loop-counter-1 = 1:
-                                    set boolean tag "AzeriteTraitsDefined" of (custom nbt of event-slot) to true
+                                    set boolean tag "AzeriteTraitsDefined" of (custom nbt of {_armorPiece}) to true
                                     if {_rings} > loop-counter-2:
                                         loop {_width} times:
                                             add 1 to {_index}
                                             set (slot {_baseSlot} + (loop-counter-3)-1 of {_azeriteGUI}) to white stained glass pane named "&fDiscovering Azerite Trait..." with lore "&8Row %loop-counter-2%%nl%&7Azerite Power%nl%<#fdd002>Calibrating..."
                                         wait 3 ticks
                                 else:
-                                    if boolean tag "Ring;%loop-counter-2%;Unlocked" of (custom nbt of event-slot) = true:
+                                    if boolean tag "Ring;%loop-counter-2%;Unlocked" of (custom nbt of {_armorPiece}) = true:
                                         set {_colourRing} to "<#fdd002>"
                                     else:
                                         set {_colourRing} to "&8"
@@ -244,11 +247,11 @@ on inventory click:
                                             set boolean tag "AzeriteEmpoweredArmorUI" of (custom nbt of (slot ({_slotCount}) of {_azeriteGUI})) to true
                                             set int tag "Row" of (custom nbt of (slot ({_slotCount}) of {_azeriteGUI})) to loop-counter-2
                                         else:
-                                            set {_traitList::*} to string list tag "TraitList;Row %loop-counter-2%" of (custom nbt of event-slot)
+                                            set {_traitList::*} to string list tag "TraitList;Row %loop-counter-2%" of (custom nbt of {_armorPiece})
                                             set {_trait} to {_traitList::%loop-counter-3%}
-                                            set {_traitType} to string tag "AvailableTraits;Row %loop-counter-2%;%{_trait}%;Type" of (custom nbt of event-slot)
-                                            if string tag "AvailableTraits;Row %loop-value-2%;%{_trait}%;Card" of (custom nbt of event-slot) is set:
-                                                set {_traitCard} to string tag "AvailableTraits;Row %loop-counter-2%;%{_trait}%;Card" of (custom nbt of event-slot)
+                                            set {_traitType} to string tag "AvailableTraits;Row %loop-counter-2%;%{_trait}%;Type" of (custom nbt of {_armorPiece})
+                                            if string tag "AvailableTraits;Row %loop-value-2%;%{_trait}%;Card" of (custom nbt of {_armorPiece}) is set:
+                                                set {_traitCard} to string tag "AvailableTraits;Row %loop-counter-2%;%{_trait}%;Card" of (custom nbt of {_armorPiece})
                                                 set {_yaml} to "%{_traitCard}%.%{_traitType}%.%{_trait}%"
                                                 set {_description} to yaml value "%{_traitCard}%.%{_traitType}%.%{_trait}%.Description" in "TraitList"
                                                 set {_icon} to yaml value "%{_traitCard}%.%{_traitType}%.%{_trait}%.Icon" in "TraitList"
@@ -257,8 +260,8 @@ on inventory click:
                                                 set {_description} to yaml value "Generic.%{_traitType}%.%{_trait}%.Description" in "TraitList"
                                                 set {_icon} to yaml value "Generic.%{_traitType}%.%{_trait}%.Icon" in "TraitList"
 
-                                            set {_description} to updateDescriptionAzerite({_description}, {_yaml}, {_id}, {_itemLevel}, {_lowestILvl}, event-slot)
-                                            set {_description} to join wrapAzeriteText({_description}, {_colourRing}, 40) by nl
+                                            set {_description} to updateDescriptionAzerite({_description}, {_yaml}, {_id}, {_itemLevel}, {_lowestILvl}, {_armorPiece})
+                                            set {_description} to join wrapAzeriteText({_description}, {_colourRing}, 45) by nl
 
                                             set (slot {_slotCount} of {_azeriteGUI}) to {_item} named "&f%{_icon}% %{_trait}%" with lore "&8Row %loop-counter-2%%nl%&7Azerite Power%nl%%{_description}%"
                                             set string tag "Trait" of (custom nbt of (slot ({_slotCount}) of {_azeriteGUI})) to {_trait}
@@ -287,17 +290,17 @@ on inventory click:
                             loop {_rings} times:
                                 if loop-counter-2 = {_rings}:
                                     set {_item} to yellow stained glass pane named "&fAzerite Empowered"
-                                    if boolean tag "Ring;%loop-counter-2%;Unlocked" of (custom nbt of event-slot) != true:
-                                        set {_reqLvl} to int tag "Ring;%loop-counter-2%;Level" of (custom nbt of event-slot)
+                                    if boolean tag "Ring;%loop-counter-2%;Unlocked" of (custom nbt of {_armorPiece}) != true:
+                                        set {_reqLvl} to int tag "Ring;%loop-counter-2%;Level" of (custom nbt of {_armorPiece})
                                         set {_unlockedAtEmp} to "%nl%&cUnlocked at Heart Level %{_reqLvl}%."
                                 else:
-                                    if boolean tag "Ring;%loop-counter-2%;Unlocked" of (custom nbt of event-slot) = true:
+                                    if boolean tag "Ring;%loop-counter-2%;Unlocked" of (custom nbt of {_armorPiece}) = true:
                                         set {_item} to blue stained glass pane
                                     else:
                                         set {_item} to gray stained glass pane
-                                        set {_reqLvl} to int tag "Ring;%loop-counter-2%;Level" of (custom nbt of event-slot)
+                                        set {_reqLvl} to int tag "Ring;%loop-counter-2%;Level" of (custom nbt of {_armorPiece})
                                         set {_unlockedAt} to "%nl%&cUnlocked at Heart Level %{_reqLvl}%."
-                                if boolean tag "Ring;%loop-counter-2%;Unlocked" of (custom nbt of event-slot) = true:
+                                if boolean tag "Ring;%loop-counter-2%;Unlocked" of (custom nbt of {_armorPiece}) = true:
                                     set {_colourRing} to "<#fdd002>"
                                 else:
                                     set {_colourRing} to "&8"
@@ -307,11 +310,11 @@ on inventory click:
                                     if loop-counter-2 = {_rings}:
                                         set slot {_slotCount} of {_azeriteGUI} to {_item} with lore "&8Row %loop-counter-2%%nl%&7Azerite Power%nl%<#fdd002>Increases Item Level by 5 and increases%nl%<#fdd002>the potency of all Azerite powers granted%nl%<#fdd002>by this item."
                                         loop {_rings} times:
-                                            if string tag "SelectedTraits;%loop-counter-4%" of (custom nbt of event-slot) != "Not selected":
-                                                set {_traitEmpowerment} to string tag "SelectedTraits;%loop-counter-4%" of (custom nbt of event-slot)
-                                                set {_traitTypeEmp} to string tag "AvailableTraits;Row %loop-counter-4%;%{_traitEmpowerment}%;Type" of (custom nbt of event-slot)
-                                                if string tag "AvailableTraits;Row %loop-counter-4%;%{_traitEmpowerment}%;Card" of (custom nbt of event-slot) is set:
-                                                    set {_traitCardEmp} to string tag "AvailableTraits;Row %loop-counter-4%;%{_traitEmpowerment}%;Card" of (custom nbt of event-slot)
+                                            if string tag "SelectedTraits;%loop-counter-4%" of (custom nbt of {_armorPiece}) != "Not selected":
+                                                set {_traitEmpowerment} to string tag "SelectedTraits;%loop-counter-4%" of (custom nbt of {_armorPiece})
+                                                set {_traitTypeEmp} to string tag "AvailableTraits;Row %loop-counter-4%;%{_traitEmpowerment}%;Type" of (custom nbt of {_armorPiece})
+                                                if string tag "AvailableTraits;Row %loop-counter-4%;%{_traitEmpowerment}%;Card" of (custom nbt of {_armorPiece}) is set:
+                                                    set {_traitCardEmp} to string tag "AvailableTraits;Row %loop-counter-4%;%{_traitEmpowerment}%;Card" of (custom nbt of {_armorPiece})
                                                     set {_yaml} to "%{_traitCardEmp}%.%{_traitTypeEmp}%.%{_traitEmpowerment}%"
                                                     set {_descriptionEmp} to yaml value "%{_traitCardEmp}%.%{_traitTypeEmp}%.%{_traitEmpowerment}%.Description" in "TraitList"
                                                     set {_iconEmp} to yaml value "%{_traitCardEmp}%.%{_traitTypeEmp}%.%{_traitEmpowerment}%.Icon" in "TraitList"
@@ -320,8 +323,8 @@ on inventory click:
                                                     set {_descriptionEmp} to yaml value "Generic.%{_traitTypeEmp}%.%{_traitEmpowerment}%.Description" in "TraitList"
                                                     set {_iconEmp} to yaml value "Generic.%{_traitTypeEmp}%.%{_traitEmpowerment}%.Icon" in "TraitList"
 
-                                                set {_descriptionEmp} to updateDescriptionAzerite({_descriptionEmp}, {_yaml}, {_id}, {_itemLevel}+5, {_lowestILvl}, event-slot, "<#fdd002>")
-                                                set {_descriptionEmp} to join wrapAzeriteText({_descriptionEmp}, "<#fdd002>", 40) by nl
+                                                set {_descriptionEmp} to updateDescriptionAzerite({_descriptionEmp}, {_yaml}, {_id}, {_itemLevel}+5, {_lowestILvl}, {_armorPiece}, "<#fdd002>")
+                                                set {_descriptionEmp} to join wrapAzeriteText({_descriptionEmp}, "<#fdd002>", 45) by nl
 
                                                 add "%nl% &f- %{_iconEmp}% %{_traitEmpowerment}%" to lore of slot {_baseSlot} + (loop-counter-3)-1 of {_azeriteGUI}
                                                 add {_descriptionEmp} to lore of slot {_baseSlot} + (loop-counter-3)-1 of {_azeriteGUI}
@@ -330,11 +333,11 @@ on inventory click:
                                         set boolean tag "AzeriteEmpoweredArmorUI" of (custom nbt of (slot ({_slotCount}) of {_azeriteGUI})) to true
                                         set int tag "Row" of (custom nbt of (slot ({_slotCount}) of {_azeriteGUI})) to loop-counter-2
                                     else:
-                                        set {_traitList::*} to string list tag "TraitList;Row %loop-counter-2%" of (custom nbt of event-slot)
+                                        set {_traitList::*} to string list tag "TraitList;Row %loop-counter-2%" of (custom nbt of {_armorPiece})
                                         set {_trait} to {_traitList::%loop-counter-3%}
-                                        set {_traitType} to string tag "AvailableTraits;Row %loop-counter-2%;%{_trait}%;Type" of (custom nbt of event-slot)
-                                        if string tag "AvailableTraits;Row %loop-value-2%;%{_trait}%;Card" of (custom nbt of event-slot) is set:
-                                            set {_traitCard} to string tag "AvailableTraits;Row %loop-counter-2%;%{_trait}%;Card" of (custom nbt of event-slot)
+                                        set {_traitType} to string tag "AvailableTraits;Row %loop-counter-2%;%{_trait}%;Type" of (custom nbt of {_armorPiece})
+                                        if string tag "AvailableTraits;Row %loop-value-2%;%{_trait}%;Card" of (custom nbt of {_armorPiece}) is set:
+                                            set {_traitCard} to string tag "AvailableTraits;Row %loop-counter-2%;%{_trait}%;Card" of (custom nbt of {_armorPiece})
                                             set {_yaml} to "%{_traitCard}%.%{_traitType}%.%{_trait}%"
                                             set {_description} to yaml value "%{_traitCard}%.%{_traitType}%.%{_trait}%.Description" in "TraitList"
                                             set {_icon} to yaml value "%{_traitCard}%.%{_traitType}%.%{_trait}%.Icon" in "TraitList"
@@ -342,16 +345,16 @@ on inventory click:
                                             set {_yaml} to "Generic.%{_traitType}%.%{_trait}%"
                                             set {_description} to yaml value "Generic.%{_traitType}%.%{_trait}%.Description" in "TraitList"
                                             set {_icon} to yaml value "Generic.%{_traitType}%.%{_trait}%.Icon" in "TraitList"
-                                        if string tag "SelectedTraits;%loop-counter-2%" of (custom nbt of event-slot) != "Not selected":
-                                            if string tag "SelectedTraits;%loop-counter-2%" of (custom nbt of event-slot) != {_trait}:
+                                        if string tag "SelectedTraits;%loop-counter-2%" of (custom nbt of {_armorPiece}) != "Not selected":
+                                            if string tag "SelectedTraits;%loop-counter-2%" of (custom nbt of {_armorPiece}) != {_trait}:
                                                 set {_item} to light gray stained glass pane
                                                 set {_colourRing} to "&8"
                                             else:
                                                 set {_item} to blue stained glass pane
                                                 set {_colourRing} to "<#fdd002>"
 
-                                        set {_description} to updateDescriptionAzerite({_description}, {_yaml}, {_id}, {_itemLevel}, {_lowestILvl}, event-slot) 
-                                        set {_description} to join wrapAzeriteText({_description}, {_colourRing}, 40) by nl
+                                        set {_description} to updateDescriptionAzerite({_description}, {_yaml}, {_id}, {_itemLevel}, {_lowestILvl}, {_armorPiece}) 
+                                        set {_description} to join wrapAzeriteText({_description}, {_colourRing}, 45) by nl
 
                                         set (slot {_slotCount} of {_azeriteGUI}) to {_item} named "&f%{_icon}% %{_trait}%" with lore "&8Row %loop-counter-2%%nl%&7Azerite Power%nl%%{_description}%"
                                         set string tag "Trait" of (custom nbt of (slot ({_slotCount}) of {_azeriteGUI})) to {_trait}
@@ -363,7 +366,7 @@ on inventory click:
                                 add 9 to {_baseSlot}
                                 clear {_unlockedAt}
                     set metadata value "AzeriteGearMenuOpen" of player to event-item
-
+            
     else if boolean tag "HeartOfEarthcraft" of custom nbt of {_slot} = true:
         if metadata value "ECEngaged" of player is set:
             cancel event
@@ -420,9 +423,10 @@ on inventory click:
                                     set {_descriptionEmp} to yaml value "Generic.%{_traitTypeEmp}%.%{_traitEmpowerment}%.Description" in "TraitList"
                                     set {_iconEmp} to yaml value "Generic.%{_traitTypeEmp}%.%{_traitEmpowerment}%.Icon" in "TraitList"
                             
-                                set {_descriptionEmp} to updateDescriptionAzerite({_descriptionEmp}, {_yaml}, {_id}, {_itemLevel}+5, {_lowestILvl}, {_armorpiece}, "<#fdd002>")
-                                set {_descriptionEmp} to "  <#fdd002>%{_descriptionEmp}%"
-                                replace all "[N]" in {_descriptionEmp} with "%nl%  <#fdd002>"
+                                set {_descriptionEmp} to updateDescriptionAzerite({_descriptionEmp}, {_yaml}, {_id}, {_itemLevel}+5, {_lowestILvl}, event-slot, "<#fdd002>")
+                                set {_descriptionEmp::*} to wrapAzeriteText({_descriptionEmp}, "<#fdd002>", 45)
+                                set {_descriptionEmp} to join {_descriptionEmp::*} by "%nl%  "
+                                set {_descriptionEmp} to "  %{_descriptionEmp}%"
                             add 1 to {_traitCount}
 
                         loop all items in player's current inventory:
@@ -685,15 +689,15 @@ function updateAzeriteArmorLore(p: player):
                                 set {_description} to yaml value "%{_yaml}%.Description" in "TraitList"
 
                                 set {_description} to updateDescriptionAzerite({_description}, {_yaml}, {_id}, {_itemLevel}, {_lowestILvl}, loop-item)
-
+                                set {_description::*} to wrapAzeriteText({_description}, {_colourDesc}, 45)
+                                set {_description} to join {_description::*} by "%nl%  "
                                 set {_description} to "%nl%  %{_description}%"
-                                replace all "[N]" in {_description} with "%nl%  "
-                                replace all nl in {_description} with "%nl%%{_colourDesc}%"
+
                             else:
                                 set {_colourDesc} to "&8"
                                 set {_colourSign} to "&f"
                             
-                            set {_azeritePowerDesc::%loop-counter-2%} to " %{_colourSign}%- %{_traitIcon}% %{_selectedTraits::%loop-counter-2%}%%{_description}%"
+                            set {_azeritePowerDesc::%loop-counter-2%} to coloured " %{_colourSign}%- %{_traitIcon}% %{_selectedTraits::%loop-counter-2%}%%{_description}%"
                             clear {_trait}
                             clear {_cardTrait}
                             clear {_type}
@@ -703,9 +707,9 @@ function updateAzeriteArmorLore(p: player):
                                 set {_availableDesc} to "Azerite Empowered is available."
                             else:
                                 set {_availableDesc} to "A new power is available."
-                            set {_azeritePowerDesc::%loop-counter-2%} to " %{_colourAvailable}%- %{_availableDesc}%"
+                            set {_azeritePowerDesc::%loop-counter-2%} to coloured " %{_colourAvailable}%- %{_availableDesc}%"
                 else:
-                    set {_azeritePowerDesc::%loop-counter-2%} to " %{_colourAction}%- Unlocks at Heart Level %loop-value-2%."
+                    set {_azeritePowerDesc::%loop-counter-2%} to coloured " %{_colourAction}%- Unlocks at Heart Level %loop-value-2%."
 
             add {_azeritePowerDesc::*} to lore of loop-item
             add "%nl%<#fdd002><Shift + RMB to view Azerite Powers>" to lore of loop-item
