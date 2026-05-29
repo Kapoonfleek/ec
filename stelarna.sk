@@ -139,13 +139,16 @@ function StellarRandomBooster(amount: number) :: item:
 	set {_item} to {_amount} of {_booster}
 	return {_item}
 
-function StellarRewardItem(reward: text, p: player) :: item:
+function StellarRewardItem(reward: text, p: player, preview: boolean = false) :: item:
 	set {_type} to yaml value "Rewards.%{_reward}%.Type" in "StellarChestList"
 	set {_amount} to yaml value "Rewards.%{_reward}%.Amount" in "StellarChestList"
 	if {_amount} is not set:
 		set {_amount} to 1
 	if {_type} = "RandomBooster":
-		set {_item} to StellarRandomBooster({_amount})
+		if {_preview}:
+			set {_item} to StellarRandomBooster({_amount}) named "&5Random &9Booster"
+		else:
+			set {_item} to StellarRandomBooster({_amount})
 	else if {_type} = "Klejnot":
 		set {_item} to 1 of emerald named "<#b5e550>%{_amount}%x Klejnot" with lore "&7Bring this item to Agnes the Cow" and "&7at spawn in order to exchange it."
 	else if {_type} = "DiamondShard":
@@ -208,27 +211,27 @@ function StellarPoolItems(p: player) :: items:
     return {_pool::*}
 
 function StellarFatedCardMenu(p: player):
-    set metadata tag "stelarnaskrzynkacardcourse" of {_p} to chest inventory with 3 rows named "Choose Fated Card"
-    set {_m} to metadata tag "stelarnaskrzynkacardcourse" of {_p}
-    set {_slot} to 10
+	set metadata tag "stelarnaskrzynkacardcourse" of {_p} to chest inventory with 3 rows named "Choose Fated Card"
+	set {_m} to metadata tag "stelarnaskrzynkacardcourse" of {_p}
+	set {_slot} to 10
 
-    loop yaml list "Weekly Rotation.Cards" in "StellarChestList":
-        set {_preview} to StellarCardPreview(loop-value)
-        if {_preview} is set:
-            set {_selectLore::*} to colored lore of {_preview}
-            set {_selectLore::*} to {_selectLore::*} and " "
-            set {_selectLore::*} to {_selectLore::*} and "&2&l(&a!&2&l) &aClick here to choose this Card"
-            set {_selectLore::*} to {_selectLore::*} and "&aas your Fated Card for this Stellar cycle."
-            set lore of {_preview} to {_selectLore::*}
+	loop yaml list "Weekly Rotation.Cards" in "StellarChestList":
+		set {_preview} to StellarCardPreview(loop-value)
+		if {_preview} is set:
+			set {_selectLore::*} to colored lore of {_preview}
+			set {_selectLore::*} to {_selectLore::*} and " "
+			set {_selectLore::*} to {_selectLore::*} and "&2&l(&a!&2&l) &aClick here to choose this Card"
+			set {_selectLore::*} to {_selectLore::*} and "&aas your Fated Card for this Stellar cycle."
+			set lore of {_preview} to {_selectLore::*}
 
-            set string tag "StellarCard" of (custom nbt of {_preview}) to loop-value
-            set slot {_slot} of {_m} to {_preview}
+			set string tag "StellarCard" of (custom nbt of {_preview}) to loop-value
+			set slot {_slot} of {_m} to {_preview}
 
-            set {_slot} to {_slot} + 1
-            if {_slot} = 17:
-                set {_slot} to 22
+			set {_slot} to {_slot} + 1
+			if {_slot} = 17:
+				set {_slot} to 22
 
-    open {_m} to {_p}
+	open {_m} to {_p}
 
 function StellarSpinAnimation(p: player, finalItem: item):
 	set {_inv} to metadata tag "stelarnaskrzynka" of {_p}
@@ -330,27 +333,14 @@ function StellarClaimReward(p: player, reward: item):
 		clear metadata value "StellarPendingAchievement" of {_p}
 
 function StellarPrepareCard(p: player, card: text) :: item:
-    set {_it} to StellarCardItem({_card})
-    set {_y} to data()
-    set {_id} to random 8 char string from charset `0-9` `a-z`
-    add "&8Id: %{_id}%" to lore of {_it}
-    add "&8Dropped: %{_y}%" to lore of {_it}
-    set {_primaryStat} to string tag "PrimaryStat" of (custom nbt of {_it})
-    set int tag "Stats;%{_primaryStat}%" of (custom nbt of {_it}) to 0
-    set int tag "Stats;Health" of (custom nbt of {_it}) to 0
-    set int tag "Stats;Damage" of (custom nbt of {_it}) to 0
-    set int tag "Stats;Resistance" of (custom nbt of {_it}) to 0
-    set int tag "Stats;Mobility" of (custom nbt of {_it}) to 0
-    set int tag "Stats;Utility" of (custom nbt of {_it}) to 0
-    set int tag "Stats;Crowd Control" of (custom nbt of {_it}) to 0
-    set int tag "Stats;Versatility" of (custom nbt of {_it}) to 0
-    set int tag "Stats;Mastery" of (custom nbt of {_it}) to 0
-    set int tag "Stats;Critical Hit" of (custom nbt of {_it}) to 0
-    set int tag "Stats;Element" of (custom nbt of {_it}) to 0
-    set int tag "Stats;Haste" of (custom nbt of {_it}) to 0
-    set int tag "Stats;Avoidance" of (custom nbt of {_it}) to 0
-    set int tag "Stats;Total" of (custom nbt of {_it}) to 0
-    return {_it}
+	set {_it} to StellarCardItem({_card})
+
+	set {_primaryStat} to string tag "PrimaryStat" of (custom nbt of {_it})
+	set {_element} to string tag "Element" of (custom nbt of {_it})
+
+	set {_it} to newCardAssignments({_p}, {_card}, {_element}, {_primaryStat})
+
+	return {_it}
 
 function StellarBlankStats(primaryStat: text) :: text:
     if {_primaryStat} = "Intellect":
@@ -394,30 +384,33 @@ function StellarReelCardItem(p: player, card: text) :: item:
     return {_item}
 
 on load:
-	set {_x} to block at location(-1209.5, 96, -1815, world "world")
-	while {_x} is set:
+	loop {stellarChests::*}:
+		StellarChestParticles(loop-value)
+		StellarChestParticlesExtra(loop-value)
+
+function StellarChestParticles(loc: location):
+	while {_loc} is set:
 		loop 2250 times:
-			if chunk at {_x} is loaded:
-				draw 15 of (red dust particles of size 1 that transitions to white) with offset vector(0.6, 0.3, 0.6) at location of {_x}
+			if chunk at {_loc} is loaded:
+				draw 15 of (red dust particles of size 1 that transitions to white) with offset vector(0.6, 0.3, 0.6) at location of {_loc}
 				wait 1.6 second
 		wait 1 hour
 
-on load:
-	set {_x} to block at location(-1209.5, 96, -1815, world "world")
-	while {_x} is set:
+function StellarChestParticlesExtra(loc: location):
+	while {_loc} is set:
 		set {_y} to 0
 		loop 600 times:
-			if chunk at {_x} is loaded:
+			if chunk at {_loc} is loaded:
 				loop 120 times:
 					set {_v} to vector(1, 0, 1)
 					rotate {_v} around y-axis by {_y}
 					set {_y} to {_y} + 4
-					draw 1 of (red dust particle of size 1) at {_x} ~ {_v}
+					draw 1 of (red dust particle of size 1) at {_loc} ~ {_v}
 					wait 1 tick
 		wait 1 hour
 
 on rightclick on red stained glass:
-	if "%region at event-block%" contains "klifywyniesienia":
+	if {stellarChests::*} contains (location of event-block):
 		if {dailyResetSoon} is not set:
 			play sound "block.amethyst_block.resonate" with volume 5 and pitch 2 to player
 			if StellarFatedCard(player) = "":
@@ -554,7 +547,7 @@ on rightclick on armor stand:
 				cancel event
 
 on leftclick on red stained glass:
-	if "%region at event-block%" contains "klifywyniesienia":
+	if {stellarChests::*} contains (location of event-block):
 		if player is alive:
 			play sound "block.amethyst_block.resonate" with volume 5 and pitch 2 to player
 			set metadata tag "stelarnaskrzynkapreview" of player to chest inventory with 2 rows named "Stellar Chest"
@@ -570,6 +563,21 @@ on leftclick on red stained glass:
 			set {_weeklyPreview} to StellarCardPreview({_weekly})
 			if {_weeklyPreview} is set:
 				set slot 8 of {_menu} to {_weeklyPreview} with lore (coloured lore of {_weeklyPreview}) and "%nl%&5✨ Weekly Rotation Card"
+
+			set {_rewardSlot} to 1
+			loop yaml node keys "Rewards" in "StellarChestList":
+				set {_rewardItem} to StellarRewardItem(loop-value, player, true)
+				if {_rewardItem} is set:
+					set {_chance} to yaml value "Rewards.%loop-value%.Chance" in "StellarChestList"
+					set {_display} to StellarRewardDisplay(loop-value, {_rewardItem})
+					set name of {_rewardItem} to colored {_display}
+					set lore of {_rewardItem} to colored "&7Drop probability: &f%{_chance}%%%"
+					if {_rewardSlot} = 8:
+						set {_rewardSlot} to 9
+					if {_rewardSlot} = 13:
+						set {_rewardSlot} to 14
+					set slot {_rewardSlot} of {_menu} to {_rewardItem}
+					set {_rewardSlot} to {_rewardSlot} + 1
 
 			set {_pityStellar} to yaml value "Player.Stellar Pity" in "data-%player%"
 
@@ -592,3 +600,72 @@ on leftclick on red stained glass:
 on inventory click:
 	if player's current inventory = metadata tag "stelarnaskrzynkapreview" of player:
 		cancel event
+		
+function StellarCardDiscord(p: player, card: string):
+    set {_bot} to bot named "Earthcraft"
+
+    if {_bot} is not set:
+        send "[StellarCardDiscord] Earthcraft bot is not loaded." to console
+        stop
+
+    set {_cardImage} to yaml value "Cards.%{_card}%.Discord Image" in "StellarChestList"
+
+    make embed:
+        set author of embed to "%{_p}% dropped %{_card}%"
+        set embed color of the embed to red
+        set description of embed to "%{_p}% just dropped %{_card}% from the Stellar Chest!"
+
+        if {_cardImage} is set:
+            set thumbnail of embed to {_cardImage}
+
+        set {_playerIcon} to "https://mc-heads.net/avatar/%{_p}%"
+        set author icon of embed to {_playerIcon}
+
+        set {_data::*} to data() split at " "
+        set footer of embed to first element of {_data::*}
+
+    post last embed to channel with id "900397064251379752" using {_bot}
+
+function stellarChestAnimate(loc: location):
+    wait 1 tick
+    set {_rotate1} to 0
+    set {_rotate2} to 90
+    set {_rotate3} to 180
+
+    set {_raw} to "✨ Stellar Chest ✨"
+    set {_length} to length of {_raw}
+    set {_direction} to 1
+
+    while amount of online players > 0:
+        set {_i} to {_i} + {_direction}
+        if {_i} >= {_length}-2:
+            set {_i} to {_length}-2
+            set {_direction} to -1
+        else if {_i} <= 1:
+            set {_i} to 1
+            set {_direction} to 1
+        set {_start} to ""
+        set {_end} to ""
+        set {_char} to character at {_i} in {_raw}
+        
+        if {_i} > 1:
+            set {_start} to subtext of {_raw} from characters 1 to ({_i} - 1)
+
+            if {_i} < {_length}:
+                set {_end} to subtext of {_raw} from characters ({_i} + 1) to {_length}
+
+            set {_animated} to mini message from "<gradient:#ed1f4f:#f93d3d:#fb6969:#f37290><bold>%{_start}%<bold>%{_char}%</gradient><gradient:#ed1f4f:#f93d3d:#fb6969:#f37290><bold>%{_end}%"
+            
+            set {_display} to {displayText::StellarChest} parsed as entity
+            set display text of {_display} to {_animated}
+
+        loop 3 times:
+            set {_counter} to loop-counter-2
+            set {_v%{_counter}%} to vector 1, 0, 1
+            rotate {_v%{_counter}%} around y-axis by {_rotate%{_counter}%}
+
+            set {_rotate%{_counter}%} to {_rotate%{_counter}%} + 4
+
+            draw 1 of red dust particle at {_loc} ~ {_v%{_counter}%}
+
+        wait 2 ticks

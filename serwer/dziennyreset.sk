@@ -117,6 +117,7 @@ on skript start:
 	load yaml "plugins/Skript/azeritearmor/TraitList" as "TraitList"
 	load yaml "plugins/Skript/azeritearmor/Sources" as "AzeriteArmorSources"
 	load yaml "plugins/Skript/lists/DiscordList" as "DiscordList"
+	load yaml "plugins/Skript/lists/StellarChestList" as "StellarChestList"
 	if {dziennyreset} is true:
 		set {dziennyreset} to false
 		send "Dzienny reset nastąpił!" to console
@@ -220,14 +221,27 @@ on skript start:
 		set {_datadzien} to join {_datadzien::*} with "."
 		set {datatydzien2} to "%{_day}%.%{_datadzien}%"
 
+		set {_cards::*} to yaml list "Weekly Rotation.Cards" in "StellarChestList"
+		set {_index} to yaml value "Weekly Rotation.Current Index" in "StellarChestList"
+		if {_index} is not set:
+			set {_index} to 1
+		set {_index} to {_index} + 1
+		if {_index} > size of {_cards::*}:
+			set {_index} to 1
+		set yaml value "Weekly Rotation.Current Index" in "StellarChestList" to {_index}
+
+		set {_cycle} to yaml value "Settings.Cycle" in "StellarChestList"
+		if {_cycle} is not set:
+			set {_cycle} to 1
+		set {_cycle} to {_cycle} + 1
+		set yaml value "Settings.Cycle" in "StellarChestList" to {_cycle}
+
+		save yaml "StellarChestList"
+
 	UpdateTopDungeons({topKeystones::1}, {topKeystonesPath::1}, "top")
 	UpdateTopDungeons({mostRecentKeystone}, {mostRecentKeystonePath}, "recent")
 	clear {dmgdealt::*}
 	clear {dailyResetSoon}
-
-	wait 5 seconds
-	BetterModel.plugin().modelManager().reload(null, null)
-	betterModelWarmup()
 			
 on skript stop:
 	clear {discordCodes::*}
@@ -300,8 +314,9 @@ on join:
 	if online player count = 1:
 		chamberOfHeartAmbience()
 		diamondChestAnimate()
-		stellarChestAnimate()
 		dailyRewardAnimate()
+		loop {stellarChests::*}:
+			stellarChestAnimate(loop-value)
 	if {kartaname::%player%} = "Umbreon":
 		if boolean tag "Constellation;Featherfoot" of (custom nbt of {karta::%player%}) is set:
 			if (time in world "world") is between 10:00 PM and 4:00 AM:
