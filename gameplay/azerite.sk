@@ -23,6 +23,7 @@ command /azgear:
         set tooltip style of {_item} to "azerite"   
         set int tag "Stats;Health" of (custom nbt of {_item}) to {_health}
         set int tag "Stats;Intellect" of (custom nbt of {_item}) to {_primaryStat}
+        set string tag "PrimaryStat" of (custom nbt of {_item}) to "Intellect"
         set int tag "ItemLevel" of (custom nbt of {_item}) to {_itemLevel}
         set int tag "Rings" of (custom nbt of {_item}) to 4
         set string tag "Rarity" of (custom nbt of {_item}) to "Rare"
@@ -260,7 +261,7 @@ on inventory click:
                                                 set {_description} to yaml value "Generic.%{_traitType}%.%{_trait}%.Description" in "TraitList"
                                                 set {_icon} to yaml value "Generic.%{_traitType}%.%{_trait}%.Icon" in "TraitList"
 
-                                            set {_description} to updateDescriptionAzerite({_description}, {_yaml}, {_id}, {_itemLevel}, {_lowestILvl}, {_armorPiece})
+                                            set {_description} to updateDescriptionAzerite({_description}, {_yaml}, {_id}, {_itemLevel}, {_lowestILvl}, {_armorPiece}, player)
                                             set {_description} to join wrapAzeriteText({_description}, {_colourRing}, 45) by nl
 
                                             set (slot {_slotCount} of {_azeriteGUI}) to {_item} named "&f%{_icon}% %{_trait}%" with lore "&8Row %loop-counter-2%%nl%&7Azerite Power%nl%%{_description}%"
@@ -309,7 +310,7 @@ on inventory click:
                                     set {_slotCount} to {_baseSlot} + ((loop-counter-3)-1)
                                     if loop-counter-2 = {_rings}:
                                         set slot {_slotCount} of {_azeriteGUI} to {_item} with lore "&8Row %loop-counter-2%%nl%&7Azerite Power%nl%<#fdd002>Increases Item Level by 5 and increases%nl%<#fdd002>the potency of all Azerite powers granted%nl%<#fdd002>by this item."
-                                        loop {_rings} times:
+                                        loop ({_rings}-1) times:
                                             if string tag "SelectedTraits;%loop-counter-4%" of (custom nbt of {_armorPiece}) != "Not selected":
                                                 set {_traitEmpowerment} to string tag "SelectedTraits;%loop-counter-4%" of (custom nbt of {_armorPiece})
                                                 set {_traitTypeEmp} to string tag "AvailableTraits;Row %loop-counter-4%;%{_traitEmpowerment}%;Type" of (custom nbt of {_armorPiece})
@@ -323,10 +324,13 @@ on inventory click:
                                                     set {_descriptionEmp} to yaml value "Generic.%{_traitTypeEmp}%.%{_traitEmpowerment}%.Description" in "TraitList"
                                                     set {_iconEmp} to yaml value "Generic.%{_traitTypeEmp}%.%{_traitEmpowerment}%.Icon" in "TraitList"
 
-                                                set {_descriptionEmp} to updateDescriptionAzerite({_descriptionEmp}, {_yaml}, {_id}, {_itemLevel}+5, {_lowestILvl}, {_armorPiece}, "<#fdd002>")
-                                                set {_descriptionEmp} to join wrapAzeriteText({_descriptionEmp}, "<#fdd002>", 45) by nl
+                                                set {_descriptionEmp} to updateDescriptionAzerite({_descriptionEmp}, {_yaml}, {_id}, {_itemLevel}+5, {_lowestILvl}, {_armorPiece}, player, "<#fdd002>")
+                                                clear {_descriptionEmpList::*}
+                                                set {_descriptionEmpList::*} to wrapAzeriteText({_descriptionEmp}, "<#fdd002>", 45)
+                                                set {_descriptionEmp} to join {_descriptionEmpList::*} by "%nl%  "
+                                                set {_descriptionEmp} to "  %{_descriptionEmp}%"
 
-                                                add "%nl% &f- %{_iconEmp}% %{_traitEmpowerment}%" to lore of slot {_baseSlot} + (loop-counter-3)-1 of {_azeriteGUI}
+                                                add "%nl% &f- %{_iconEmp}% %{_traitEmpowerment}%" to lore of slot {_baseSlot} + (loop-counter-3)-1 of {_azeriteGUI}
                                                 add {_descriptionEmp} to lore of slot {_baseSlot} + (loop-counter-3)-1 of {_azeriteGUI}
 
                                         add {_unlockedAtEmp} to lore of (slot ({_slotCount}) of {_azeriteGUI}) if {_unlockedAtEmp} is set
@@ -353,7 +357,7 @@ on inventory click:
                                                 set {_item} to blue stained glass pane
                                                 set {_colourRing} to "<#fdd002>"
 
-                                        set {_description} to updateDescriptionAzerite({_description}, {_yaml}, {_id}, {_itemLevel}, {_lowestILvl}, {_armorPiece}) 
+                                        set {_description} to updateDescriptionAzerite({_description}, {_yaml}, {_id}, {_itemLevel}, {_lowestILvl}, {_armorPiece}, player) 
                                         set {_description} to join wrapAzeriteText({_description}, {_colourRing}, 45) by nl
 
                                         set (slot {_slotCount} of {_azeriteGUI}) to {_item} named "&f%{_icon}% %{_trait}%" with lore "&8Row %loop-counter-2%%nl%&7Azerite Power%nl%%{_description}%"
@@ -365,7 +369,8 @@ on inventory click:
                                         add {_unlockedAt} to (lore of (slot ({_slotCount}) of {_azeriteGUI}))
                                 add 9 to {_baseSlot}
                                 clear {_unlockedAt}
-                    set metadata value "AzeriteGearMenuOpen" of player to event-item
+                    set event-slot to {_armorPiece}
+                    set metadata value "AzeriteGearMenuOpen" of player to {_armorPiece}
             
     else if boolean tag "HeartOfEarthcraft" of custom nbt of {_slot} = true:
         if metadata value "ECEngaged" of player is set:
@@ -409,32 +414,38 @@ on inventory click:
                         set {_itemLevel} to int tag "ItemLevel" of (custom nbt of {_armorPiece})
                         set {_lowestIlvl} to yaml value "Azerite Armor.Minimum Values.Item Level" in "AzeriteArmorSources"
 
-                        loop {_rings} times:
-                            if string tag "SelectedTraits;%loop-counter%" of (custom nbt of {_armorPiece}) != "Not selected":
-                                set {_traitEmpowerment} to string tag "SelectedTraits;%loop-counter%" of (custom nbt of {_armorPiece})
-                                set {_traitTypeEmp} to string tag "AvailableTraits;Row %loop-counter%;%{_traitEmpowerment}%;Type" of (custom nbt of {_armorPiece})
-                                if string tag "AvailableTraits;Row %loop-counter%;%{_traitEmpowerment}%;Card" of (custom nbt of {_armorPiece}) is set:
-                                    set {_traitCardEmp} to string tag "AvailableTraits;Row %loop-counter%;%{_traitEmpowerment}%;Card" of (custom nbt of {_armorPiece})
-                                    set {_yaml} to "%{_traitCardEmp}%.%{_traitTypeEmp}%.%{_traitEmpowerment}%"
-                                    set {_descriptionEmp} to yaml value "%{_traitCardEmp}%.%{_traitTypeEmp}%.%{_traitEmpowerment}%.Description" in "TraitList"
-                                    set {_iconEmp} to yaml value "%{_traitCardEmp}%.%{_traitTypeEmp}%.%{_traitEmpowerment}%.Icon" in "TraitList"
-                                else:
-                                    set {_yaml} to "Generic.%{_traitTypeEmp}%.%{_traitEmpowerment}%"
-                                    set {_descriptionEmp} to yaml value "Generic.%{_traitTypeEmp}%.%{_traitEmpowerment}%.Description" in "TraitList"
-                                    set {_iconEmp} to yaml value "Generic.%{_traitTypeEmp}%.%{_traitEmpowerment}%.Icon" in "TraitList"
-                            
-                                set {_descriptionEmp} to updateDescriptionAzerite({_descriptionEmp}, {_yaml}, {_id}, {_itemLevel}+5, {_lowestILvl}, event-slot, "<#fdd002>")
-                                set {_descriptionEmp::*} to wrapAzeriteText({_descriptionEmp}, "<#fdd002>", 45)
-                                set {_descriptionEmp} to join {_descriptionEmp::*} by "%nl%  "
-                                set {_descriptionEmp} to "  %{_descriptionEmp}%"
-                            add 1 to {_traitCount}
-
                         loop all items in player's current inventory:
                             if boolean tag "AzeriteEmpoweredArmorUI" of (custom nbt of loop-item) = true:
-                                add "%nl% &f- %{_iconEmp}% %{_traitEmpowerment}%" to lore of loop-item
-                                add {_descriptionEmp} to lore of loop-item
-                            if {_traitCount} = ({_rings}-1):
-                                add "&fClick here to Empower this Azerite Armor piece." to lore of loop-item
+                                set {_empPaneSlot} to index of loop-item
+                                set {_empPane} to loop-item
+                                set lore of {_empPane} to "&8Row %{_rings}%%nl%&7Azerite Power%nl%<#fdd002>Increases Item Level by 5 and increases%nl%<#fdd002>the potency of all Azerite powers granted%nl%<#fdd002>by this item."
+                                set {_traitCount} to 0
+                                loop ({_rings}-1) times:
+                                    if string tag "SelectedTraits;%loop-counter-2%" of (custom nbt of {_armorPiece}) != "Not selected":
+                                        set {_traitEmpowerment} to string tag "SelectedTraits;%loop-counter-2%" of (custom nbt of {_armorPiece})
+                                        set {_traitTypeEmp} to string tag "AvailableTraits;Row %loop-counter-2%;%{_traitEmpowerment}%;Type" of (custom nbt of {_armorPiece})
+                                        if string tag "AvailableTraits;Row %loop-counter-2%;%{_traitEmpowerment}%;Card" of (custom nbt of {_armorPiece}) is set:
+                                            set {_traitCardEmp} to string tag "AvailableTraits;Row %loop-counter-2%;%{_traitEmpowerment}%;Card" of (custom nbt of {_armorPiece})
+                                            set {_yaml} to "%{_traitCardEmp}%.%{_traitTypeEmp}%.%{_traitEmpowerment}%"
+                                            set {_descriptionEmp} to yaml value "%{_traitCardEmp}%.%{_traitTypeEmp}%.%{_traitEmpowerment}%.Description" in "TraitList"
+                                            set {_iconEmp} to yaml value "%{_traitCardEmp}%.%{_traitTypeEmp}%.%{_traitEmpowerment}%.Icon" in "TraitList"
+                                        else:
+                                            set {_yaml} to "Generic.%{_traitTypeEmp}%.%{_traitEmpowerment}%"
+                                            set {_descriptionEmp} to yaml value "Generic.%{_traitTypeEmp}%.%{_traitEmpowerment}%.Description" in "TraitList"
+                                            set {_iconEmp} to yaml value "Generic.%{_traitTypeEmp}%.%{_traitEmpowerment}%.Icon" in "TraitList"
+                                        
+                                        set {_descriptionEmp} to updateDescriptionAzerite({_descriptionEmp}, {_yaml}, {_id}, {_itemLevel}+5, {_lowestILvl}, {_armorPiece}, player, "<#fdd002>")
+                                        clear {_descriptionEmpList::*}
+                                        set {_descriptionEmpList::*} to wrapAzeriteText({_descriptionEmp}, "<#fdd002>", 45)
+                                        set {_descriptionEmp} to join {_descriptionEmpList::*} by "%nl%  "
+                                        set {_descriptionEmp} to "  %{_descriptionEmp}%"
+                                        
+                                        add "%nl% &f- %{_iconEmp}% %{_traitEmpowerment}%" to lore of {_empPane}
+                                        add {_descriptionEmp} to lore of {_empPane}
+                                        add 1 to {_traitCount}
+                                if {_traitCount} = ({_rings}-1):
+                                    add "%nl%&fClick here to Empower this Azerite Armor piece." to lore of {_empPane}
+                                set slot {_empPaneSlot} of {_azeriteGUI} to {_empPane}
                 else:
                     play sound "block.glass.break" with volume 2 and pitch 2 to player
             else:
@@ -688,9 +699,10 @@ function updateAzeriteArmorLore(p: player):
                                 set {_traitIcon} to yaml value "%{_yaml}%.Icon" in "TraitList"
                                 set {_description} to yaml value "%{_yaml}%.Description" in "TraitList"
 
-                                set {_description} to updateDescriptionAzerite({_description}, {_yaml}, {_id}, {_itemLevel}, {_lowestILvl}, loop-item)
-                                set {_description::*} to wrapAzeriteText({_description}, {_colourDesc}, 45)
-                                set {_description} to join {_description::*} by "%nl%  "
+                                set {_description} to updateDescriptionAzerite({_description}, {_yaml}, {_id}, {_itemLevel}, {_lowestILvl}, loop-item, {_p})
+                                clear {_descriptionList::*}
+                                set {_descriptionList::*} to wrapAzeriteText({_description}, {_colourDesc}, 45)
+                                set {_description} to join {_descriptionList::*} by "%nl%  "
                                 set {_description} to "%nl%  %{_description}%"
 
                             else:
@@ -718,7 +730,7 @@ function updateAzeriteArmorLore(p: player):
             clear {_azeritePowerDesc::*}
             clear {_selectedTraits::*}
 
-function updateDescriptionAzerite(description: string, yaml: string, id: string, itemLevel: int, lowestILvl: int, item: item, colourOG: string = "") :: string:
+function updateDescriptionAzerite(description: string, yaml: string, id: string, itemLevel: int, lowestILvl: int, item: item, p: player, colourOG: string = "") :: string:
     if {_colourOG} != "":
         set {_colour} to "<#00ff00>"
     else:
@@ -777,16 +789,30 @@ function updateDescriptionAzerite(description: string, yaml: string, id: string,
         else:
             set {_stop} to true
 
-    replace all "{PRIMARY}" in {_description} with (string tag "PrimaryStat" of (custom nbt of {_item}))
+    set {_primaryStat} to string tag "PrimaryStat" of (custom nbt of {_item})
+    if {_primaryStat} is not set:
+        if int tag "Stats;Intellect" of (custom nbt of {_item}) is set:
+            set {_primaryStat} to "Intellect"
+        else if int tag "Stats;Agility" of (custom nbt of {_item}) is set:
+            set {_primaryStat} to "Agility"
+        else if int tag "Stats;Strength" of (custom nbt of {_item}) is set:
+            set {_primaryStat} to "Strength"
+            
+    set {_primaryStatIcon} to yaml value "Primary Stats.%{_primaryStat}%.Icon" in "PrimaryStatList"
+    set {_primaryStatColour} to formatted yaml value "Primary Stats.%{_primaryStat}%.Colour" in "PrimaryStatList"
+    replace all "{PRIMARY}" in {_description} with "%{_primaryStatColour}%%{_primaryStatIcon}% %{_primaryStat}%%{_colourOG}%"
+
 
     if yaml value "%{_yaml}%.Talent" in "TraitList" is set:
         set {_talent::*} to (yaml value "%{_yaml}%.Talent" in "TraitList") split at "/"
         set {_talentRows} to yaml value "Talent Config.Rows" in "TalentList"
         loop {_talent::*}:
             loop {_talentRows} times:
-                if string tag "Talents;Row %loop-counter-2%" of (custom nbt of {karta::%{_p}%}) = "%loop-value-1%":
-                    set {_talent} to loop-value-1
-                    stop loop
+                set {_cardTalent} to string tag "Talents;Row %loop-counter-2%" of (custom nbt of {karta::%{_p}%})
+                if {_cardTalent} is set:
+                    if loop-value-1 contains {_cardTalent}:
+                        set {_talent} to loop-value-1
+                        stop loop
         set {_talent} to {_talent::1} if {_talent} is not set
         replace all "{TALENT}" in {_description} with "%{_talent}%"
 
@@ -794,7 +820,6 @@ function updateDescriptionAzerite(description: string, yaml: string, id: string,
           
 on armor change:
     if "%event-equipment slot%" = (string tag "EquipmentSlotArmor" of (custom nbt of future event-item)):
-        broadcast "YA"
         if boolean tag "AzeriteArmor" of (custom nbt of future event-item stack) is set:
             if player's gamemode != creative:
                 if metadata value "ECEngaged" of player is not set:
@@ -837,28 +862,34 @@ function getTrait(p: player, trait: string) :: integers:
     return {_itemLevels::*}
 
 function offensiveTrait(p: player, card: string, trait: string) :: number:
-    set {_itemLevels::*} to getTrait({_p}, {_trait})
-    if {_itemLevels::*} is set:
-        set {_lowestIlvl} to yaml value "Azerite Armor.Minimum Values.Item Level" in "AzeriteArmorSources"
-        set {_damage} to yaml value "%{_card}%.Offensive.%{_trait}%.Damage" in "TraitList"
-        set {_scaling} to yaml value "%{_card}%.Offensive.%{_trait}%.Damage Scaling" in "TraitList"
-        loop {_itemLevels::*}:
-            if loop-value > {_lowestIlvl}:
-                add ((loop-value-{_lowestIlvl})*{_scaling}) to {_damage}
-    set {_damage} to 0 if {_damage} is not set
-    return {_damage}
+	set {_itemLevels::*} to getTrait({_p}, {_trait})
+	set {_damage} to 0
+	if {_itemLevels::*} is set:
+		set {_lowestIlvl} to yaml value "Azerite Armor.Minimum Values.Item Level" in "AzeriteArmorSources"
+		set {_base} to yaml value "%{_card}%.Offensive.%{_trait}%.Damage" in "TraitList"
+		set {_scaling} to yaml value "%{_card}%.Offensive.%{_trait}%.Damage Scaling" in "TraitList"
+		if {_scaling} is not set:
+			set {_scaling} to 0
+		loop {_itemLevels::*}:
+			set {_damage} to {_damage} + {_base}
+			if loop-value > {_lowestIlvl}:
+				set {_damage} to {_damage} + ((loop-value-{_lowestIlvl})*{_scaling})
+	return {_damage}
 
 function statTrait(p: player, card: string, trait: string) :: number:
-    set {_itemLevels::*} to getTrait({_p}, {_trait})
-    if {_itemLevels::*} is set:
-        set {_lowestIlvl} to yaml value "Azerite Armor.Minimum Values.Item Level" in "AzeriteArmorSources"
-        set {_stat} to yaml value "%{_card}%.Offensive.%{_trait}%.Stat" in "TraitList"
-        set {_scaling} to yaml value "%{_card}%.Offensive.%{_trait}%.Stat Scaling" in "TraitList"
-        loop {_itemLevels::*}:
-            if loop-value > {_lowestIlvl}:
-                add ((loop-value-{_lowestIlvl})*{_scaling}) to {_stat}
-    set {_stat} to 0 if {_stat} is not set
-    return {_stat}
+	set {_itemLevels::*} to getTrait({_p}, {_trait})
+	set {_stat} to 0
+	if {_itemLevels::*} is set:
+		set {_lowestIlvl} to yaml value "Azerite Armor.Minimum Values.Item Level" in "AzeriteArmorSources"
+		set {_base} to yaml value "%{_card}%.Offensive.%{_trait}%.Stat" in "TraitList"
+		set {_scaling} to yaml value "%{_card}%.Offensive.%{_trait}%.Stat Scaling" in "TraitList"
+		if {_scaling} is not set:
+			set {_scaling} to 0
+		loop {_itemLevels::*}:
+			set {_stat} to {_stat} + {_base}
+			if loop-value > {_lowestIlvl}:
+				set {_stat} to {_stat} + ((loop-value-{_lowestIlvl})*{_scaling})
+	return {_stat}
 
 function wrapAzeriteText(text: string, colour: string, limit: integer = 100) :: strings:
     replace all "[N]" in {_text} with " "
