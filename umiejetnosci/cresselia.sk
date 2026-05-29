@@ -1,3 +1,21 @@
+function CresseliaSpendAstralPower(p: player, amount: number):
+	set {_dmg} to offensiveTrait({_p}, "Cresselia", "Lunar Firmament")
+	if {_dmg} > 0:
+		if metadata value "LunarFirmamentAPSpent%{_p}%" of {_p} is not set:
+			set metadata value "LunarFirmamentAPSpent%{_p}%" of {_p} to 0
+		set {_spent} to metadata value "LunarFirmamentAPSpent%{_p}%" of {_p}
+		set {_spent} to {_spent} + {_amount}
+		while {_spent} >= 50:
+			set {_spent} to {_spent} - 50
+			if metadata value "LunarFirmamentStacks%{_p}%" of {_p} is not set:
+				set metadata value "LunarFirmamentStacks%{_p}%" of {_p} to 0
+			set metadata value "LunarFirmamentStacks%{_p}%" of {_p} to (metadata value "LunarFirmamentStacks%{_p}%" of {_p} + 1)
+		set metadata value "LunarFirmamentAPSpent%{_p}%" of {_p} to {_spent}
+
+function CresseliaAstralPowerGen(p: player, amount: number) :: number:
+	if metadata value "SurgingRhythmPrimary" of {_p} is set:
+		set {_amount} to {_amount} * 1.3
+	return {_amount}
 variables:
 	{astralpower::%player%} = 50
 
@@ -24,10 +42,10 @@ function ShootingStar(p: player):
 
 	set {_loops} to 1
 	set {_astralInvocationChance} to 10
-	set {_damage} to (0.8 + (({damage::%{_p}%}/61) + (Versatility({_p})/183) + {primarystat::%{_p}%}/30.5)) * (1 + (Mastery({_p})/108))
+	set {_damage} to (0.8 + (({damage::%{_p}%}/61) + (Versatility({_p})/183) + PrimaryStat({_p})/30.5)) * (1 + (Mastery({_p})/108))
 	if string tag "Talents;Row 2" of (custom nbt of {karta::%{_p}%}) = "Crashing Star":
 		chance of 15%:
-			set {_damage} to (2.4 + (({damage::%{_p}%}/41) + (Versatility({_p})/123) + {primarystat::%{_p}%}/20.5)) * (1 + (Mastery({_p})/108))
+			set {_damage} to (2.4 + (({damage::%{_p}%}/41) + (Versatility({_p})/123) + PrimaryStat({_p})/20.5)) * (1 + (Mastery({_p})/108))
 			set {_crashingStar} to true
 			set {_astralInvocationChance} to 20
 	set {_crit} to 0 + (CriticalHit({_p})/10)
@@ -143,6 +161,9 @@ function ShootingStar(p: player):
 		set {_critModifier} to 2
 		if boolean tag "Constellation;The Eternal Moon" of (custom nbt of {karta::%{_p}%}) is set:
 			set {_critModifier} to {_critModifier} + 0.2
+
+		set {_primCol} to coloured getPrimaryCardColour({_p})
+		set {_secCol} to coloured getSecondaryCardColour({_p})
 		
 		loop {_loops} times:
 			set {_shootingStarsDamage} to {_damage}
@@ -153,6 +174,19 @@ function ShootingStar(p: player):
 			set {_shootingStarsDamage} to Crit({_p}, {_target}, {_crit}, {_shootingStarsDamage}, {_critModifier})
 			make {_p} damage {_target} by {_shootingStarsDamage}
 
+			if metadata value "StarfallActive%{_p}%" of {_p} > 0:
+				set {_shrapnelDmg} to offensiveTrait({_p}, "Cresselia", "Lunar Shrapnel")
+				if {_shrapnelDmg} > 0.000001:
+					set {_shrapnelDmgFinal} to Crit({_p}, {_target}, {_crit}, {_shrapnelDmg}, {_critModifier})
+					loop LoopEntitiesAroundTarget({_target}, 4, false):
+						set (loop-value-2)'s last damage cause to sweep attack
+						set metadata value "LastDamageCause" of (loop-value-2) to "%{_primCol}%Lunar Shrapnel"
+						set metadata value "LastDamageCauseLore" of loop-value-2 to "Lunar Shrapnel"
+						set metadata value "Element" of {_p} to "Astral"
+						make {_p} damage (loop-value-2) by {_shrapnelDmgFinal}
+						shootingStarsVisual({_p}, (location 0.5 above loop-value-2))
+
+
 			chance of {_astralInvocationChance}%:
 				AstralInvocation({_p})
 
@@ -161,6 +195,7 @@ function ShootingStar(p: player):
 			else:
 				set {_astralPowerCap} to 100
 
+			set {_astralpower} to CresseliaAstralPowerGen({_p}, {_astralpower})
 			if {astralpower::%{_p}%} + {_astralpower} <= {_astralPowerCap}:
 				set {astralpower::%{_p}%} to {astralpower::%{_p}%} + {_astralpower}
 			else:
@@ -178,6 +213,7 @@ function ShootingStar(p: player):
 				if {_orbitBreaker} >= 30:
 					set {_orbitBreaker} to 0
 					FullMoon({_p}, {_target})
+					broadcast "as"
 				set metadata value "OrbitBreaker" of {_p} to {_orbitBreaker}
 			wait 1 tick
 		clear {_enti::*}
@@ -210,6 +246,7 @@ function AstralPower(p: player):
 		if {_p} is alive:
 			set {_astralpower} to 2 * (1 + getRunePower({_p}, "Astral Flow") / 100)
 
+			set {_astralpower} to CresseliaAstralPowerGen({_p}, {_astralpower})
 			if {astralpower::%{_p}%} + {_astralpower} <= {_astralPowerCap}:
 				set {astralpower::%{_p}%} to {astralpower::%{_p}%} + {_astralpower}
 			else:
@@ -245,6 +282,7 @@ function AstralPowerAdd(p: player, astralPower: number):
 		set {_astralPowerCap} to 120
 	else:
 		set {_astralPowerCap} to 100
+	set {_astralPower} to CresseliaAstralPowerGen({_p}, {_astralPower})
 	if {astralpower::%{_p}%} + {_astralPower} <= {_astralPowerCap}:
 		set {astralpower::%{_p}%} to {astralpower::%{_p}%} + {_astralPower}
 	else:
@@ -268,7 +306,7 @@ on rightclick:
 									if metadata value "CelestialAlignment" of player is set:
 										set {_astralPowerCost} to 20
 
-								set {_damage} to 5.5 + ({damage::%player%}/12) + (Versatility(player)/36) + ({primarystat::%player%}/6)
+								set {_damage} to 5.5 + ({damage::%player%}/12) + (Versatility(player)/36) + (PrimaryStat(player)/6)
 
 								if boolean tag "Constellation;Rattle the Stars" of (custom nbt of {karta::%player%}) is set:
 									set {_astralPowerCost} to {_astralPowerCost}*0.9
@@ -286,9 +324,12 @@ on rightclick:
 
 								if ({astralpower::%player%} >= {_astralPowerCost}):
 									set {astralpower::%player%} to {astralpower::%player%} - {_astralPowerCost}
+									CresseliaSpendAstralPower(player, {_astralPowerCost})
 
 									AstralPowerUpdate(player)
 									AbilityUse(player, "Starsurge")
+									CresseliaCosmicRipple(player)
+									CresseliaStreakingStars(player, {_target}, "Starsurge")
 									
 									CresseliaStarsurgeCastSound(player)
 
@@ -415,9 +456,12 @@ on rightclick:
 
 							if ({astralpower::%player%} >= {_astralPowerCost}):
 								set {astralpower::%player%} to {astralpower::%player%} - {_astralPowerCost}
+								CresseliaSpendAstralPower(player, {_astralPowerCost})
 								
 								AstralPowerUpdate(player)
 								AbilityUse(player, "Starfall")
+								set {_lastDamagedTarget} to (metadata value "MostRecentlyDamagedEnemy" of player)
+								CresseliaStreakingStars(player, {_lastDamagedTarget}, "Starfall")
 								CresseliaStarfallSound(player)
 
 								Starfall(player, 1, {_astralPowerCost})
@@ -445,6 +489,10 @@ on rightclick:
 								if boolean tag "Constellation;The Eternal Moon" of (custom nbt of {karta::%player%}) is set:
 									if metadata value "CelestialAlignment" of player is set:
 										set {_baseCastTime} to {_baseCastTime} - 0.25
+
+								set {_dh} to statTrait(player, "Cresselia", "Dawning Horizon")
+								if {_dh} > 0:
+									set {_baseCastTime} to {_baseCastTime} * 0.85
 
 								if metadata value "AstronomicalImpact" of player is set:
 									set {_astronomicalImpact} to true
@@ -507,6 +555,7 @@ on rightclick:
 									Starfire(player, {_target})
 
 								AbilityUse(player, "Starfire")
+								CresseliaStreakingStars(player, {_target}, "Starfire")
 
 							else:
 								if {tekstcd::%player%} = true:
@@ -530,6 +579,7 @@ on rightclick:
 										Starfire(player, {_target})
 
 									AbilityUse(player, "Starfire")
+									CresseliaStreakingStars(player, {_target}, "Starfire")
 									
 									clear metadata value "AstralInvocation" of player
 									clear metadata value "AstralInvocationUUID" of player
@@ -590,6 +640,7 @@ on rightclick:
 
 							set {_target} to FriendlyTarget(player, 100, false, true)
 							AbilityUse(player, "Innervate")
+							CresseliaSurgingRhythm(player)
 							if {_target} != player:
 								set {_cdReduction} to 40 seconds
 								set {_lastusedability} to metadata value "lastspell" of {_target}
@@ -670,6 +721,7 @@ function Starfire(p: player, target: entity, astronomicalImpact: boolean = false
 			set {_soulOfTheCosmos} to 1 + (0.2 * {_extraTargets})
 			set {_astralPower} to {_astralPower} * {_soulOfTheCosmos}
 
+	set {_astralPower} to CresseliaAstralPowerGen({_p}, {_astralPower})
 	if {astralpower::%{_p}%} + {_astralPower} <= {_astralPowerCap}:
 		set {astralpower::%{_p}%} to {astralpower::%{_p}%} + {_astralPower}
 	else:
@@ -677,9 +729,15 @@ function Starfire(p: player, target: entity, astronomicalImpact: boolean = false
 	AstralPowerUpdate({_p})
 	
 	set {_baseCastTime} to 2.25
+	
 	if boolean tag "Constellation;The Eternal Moon" of (custom nbt of {karta::%{_p}%}) is set:
 		if metadata value "CelestialAlignment" of {_p} is set:
 			set {_baseCastTime} to {_baseCastTime} - 0.25
+
+	set {_dh} to statTrait({_p}, "Cresselia", "Dawning Horizon")
+	if {_dh} > 0:
+		set {_baseCastTime} to {_baseCastTime} * 0.85
+
 	set {_haste} to Haste({_p})
 	if metadata value "AstronomicalImpact" of {_p} is set:
 		set {_baseCastTime} to {_baseCastTime}/1.6
@@ -692,7 +750,7 @@ function Starfire(p: player, target: entity, astronomicalImpact: boolean = false
 	set {_damageAoeMod} to 0.6
 
 	loop {_enemies::*}:
-		set {_damage} to 1.5 + (({damage::%{_p}%}/30) + (Versatility({_p})/90) + {primarystat::%{_p}%}/15)
+		set {_damage} to 1.5 + (({damage::%{_p}%}/30) + (Versatility({_p})/90) + PrimaryStat({_p})/15)
 		set {_crit} to 0 + (CriticalHit({_p})/10)
 		if metadata value "CelestialAlignment" of {_p} is set:
 			if string tag "Talents;Row 3" of (custom nbt of {karta::%{_p}%}) = "Aetherial Kindling":
@@ -723,12 +781,14 @@ function Starfire(p: player, target: entity, astronomicalImpact: boolean = false
 		set metadata value "LastDamageCause" of loop-value to "%{_primCol}%Starfire"
 		set metadata value "LastDamageCauseLore" of loop-value to {_lore}
 		set metadata value "Element" of {_p} to "Astral"
+		set {_damageBeforeCrit} to {_damage}
 		set {_damage} to Crit({_p}, loop-value, {_crit}, {_damage}, {_critModifier})
 		make {_p} damage loop-value by {_damage}
 
-		LoreUpdate({_p}, "Starfire", {_lore})
+		if {_damage} != {_damageBeforeCrit}:
+			CresseliaDawningHorizon({_p})
 
-	play sound "entity.player.hurt" with volume 0.5 and pitch 1 at location of {_target}
+		LoreUpdate({_p}, "Starfire", {_lore})
 
 function StarfireVisual(p: player, target: entity, mainTarget: boolean = false):
 	set {_l} to location 8 above {_target}
@@ -948,7 +1008,7 @@ function Starfall(p: player, effectiveness: number, astralPowerCost: number = 0)
 					set {_enemies::*} to {_enemies::*} and {_entity}
 
 
-	set {_starfallDamage} to (1 + ((({damage::%{_p}%}/48) + (Versatility({_p})/144) + {primarystat::%{_p}%}/24)))
+	set {_starfallDamage} to (1 + ((({damage::%{_p}%}/48) + (Versatility({_p})/144) + PrimaryStat({_p})/24)))
 
 	set {_primCol} to coloured getPrimaryCardColour({_p})
 	set {_secCol} to coloured getSecondaryCardColour({_p})
@@ -977,6 +1037,11 @@ function Starfall(p: player, effectiveness: number, astralPowerCost: number = 0)
 		if string tag "Talents;Row 2" of (custom nbt of {karta::%{_p}%}) = "Stellar Drift":
 			StellarDrift({_p}, {_starfallDuration})
 
+		if metadata value "StarfallActive%{_p}%" of {_p} is not set:
+			set metadata value "StarfallActive%{_p}%" of {_p} to 0
+
+		set metadata value "StarfallActive%{_p}%" of {_p} to (metadata value "StarfallActive%{_p}%" of {_p} + 1)
+
 		while (difference between {_duration} and now) < {_starfallDuration}:
 			#15.08.2024 -> Maybe increase the amount of stars falling based on amount enemies in the list?
 			#starfall would scale with the amount of enemies dynamically
@@ -994,8 +1059,11 @@ function Starfall(p: player, effectiveness: number, astralPowerCost: number = 0)
 
 			wait {_wait}
 			stop loop if (difference between {_duration} and now) >= {_starfallDuration}
+			stop loop if metadata value "ECEngaged" of {_p} is not set
 			#WSZYSCY LOSOWO
 		
+		set metadata value "StarfallActive%{_p}%" of {_p} to (metadata value "StarfallActive%{_p}%" of {_p} - 1)
+
 function StarsurgeBonus(p: player, target: entity):
 	if metadata value "StarsurgeBonus%{_p}%" of {_target} = true:
 		set metadata value "StarsurgeBonus%{_p}%" of {_target} to false
@@ -1092,8 +1160,6 @@ function CresseliaStarfallSound(p: player):
 function CresseliaStarfallHitSound(p: player, target: entity):
 	if getCurrentVariant({_p}, "Cresselia") = "Arctic Lights":
 		play sound "skill.cresselia.starfall_hit.arcticlights" with volume 1.5 and pitch 1 at location of {_target}
-	else:
-		play sound "entity.player.hurt" with volume 1.5 and pitch 1 at location of {_target}
 
 function CresseliaStarfirePrecastSoundStop(p: player):
 	stop sound "skill.cresselia.starfire_precast" for {_p}
@@ -1247,11 +1313,14 @@ function StarfallStarTravel(p: player, e: entity, target: entity, duration: time
 	if boolean tag "Constellation;The Eternal Moon" of (custom nbt of {karta::%{_p}%}) is set:
 		set {_critModifier} to {_critModifier} + 0.2
 
+	set {_primCol} to coloured getPrimaryCardColour({_p})
+	set {_secCol} to coloured getSecondaryCardColour({_p})
+
 	if {_particle} != true:
 		set {_enemies::*} to LoopEntitiesAroundTarget({_target}, 3, true)
 		loop {_enemies::*}:
 			set {_crit} to 0 + (CriticalHit({_p})/10)
-			set {_damage} to (1 + (({damage::%{_p}%}/63) + (Versatility({_p})/189) + {primarystat::%{_p}%}/31.5)) * {_effectiveness}
+			set {_damage} to (1 + (({damage::%{_p}%}/63) + (Versatility({_p})/189) + PrimaryStat({_p})/31.5)) * {_effectiveness}
 
 			set {_damage} to {_damage} * {_starfallScalar}
 
@@ -1586,6 +1655,7 @@ function Solstice(p: player):
 
 function FullMoon(p: player, target: entity, effectiveness: number = 1):
 	play sound "skill.cresselia.fullmoon_cast" with volume 3 and pitch 1 at location of {_target}
+	CresseliaStreakingStars({_p}, {_target}, "Full Moon")
 	set {_haste} to Haste({_p})
 	set {_randomIncrease} to a random number between 10 and 40
 	set {_loc} to location of {_target}
@@ -1639,6 +1709,7 @@ function FullMoon(p: player, target: entity, effectiveness: number = 1):
 		set {_astralPowerCap} to 120
 	else:
 		set {_astralPowerCap} to 100
+	set {_astralpower} to CresseliaAstralPowerGen({_p}, {_astralpower})
 	if {_astralPowerCap} >= {astralpower::%{_p}%} + {_astralpower}:
 		set {astralpower::%{_p}%} to {astralpower::%{_p}%} + {_astralpower} 
 	else:
@@ -1650,9 +1721,15 @@ function FullMoon(p: player, target: entity, effectiveness: number = 1):
 	set {_primCol} to coloured getPrimaryCardColour({_p})
 	set {_secCol} to coloured getSecondaryCardColour({_p})
 	
-	set {_damageFullMoon} to (13 + (({damage::%{_p}%}/6.5) + (Versatility({_p})/19.5) + {primarystat::%{_p}%}/3.25)) * (1 + (Mastery({_p})/108))
+	set {_damageFullMoon} to (13 + (({damage::%{_p}%}/6.5) + (Versatility({_p})/19.5) + PrimaryStat({_p})/3.25)) * (1 + (Mastery({_p})/108))
 	set {_damageFullMoon} to {_damageFullMoon}*{_effectiveness}
-	
+	set {_lunarFirmamentDmg} to offensiveTrait({_p}, "Cresselia", "Lunar Firmament")
+	if {_lunarFirmamentDmg} > 0:
+		if metadata value "LunarFirmamentStacks%{_p}%" of {_p} is set:
+			set {_stacks} to metadata value "LunarFirmamentStacks%{_p}%" of {_p}
+			set {_damageFullMoon} to {_damageFullMoon} + ({_lunarFirmamentDmg} * {_stacks})
+			clear metadata value "LunarFirmamentStacks%{_p}%" of {_p}
+
 	set {_valueNames::*} to "DAMAGE", "AOEDAMAGE", "ASTRALPOWER"
 	set {_values::*} to {_damageFullMoon}, ({_damageFullMoon}*0.4), {_astralpower}
 	set {_lore} to GetAbilityDescription({_p}, "Cresselia", "Full Moon", {_valueNames::*}, {_values::*})
@@ -1945,11 +2022,159 @@ function celestialAlignmentVisual(p: player):
 	kill {_moon}
 	kill {_star}
 	
-#on rightclick:
-#	set {_shape} to a star with 5 points, inner radius 0.25, and outer radius 2
-#	set particle of {_shape} to flame
-#	set {_x} to vector of player
-#	set {_p} to player's direction
-	#rotate shape {_shape} around vector(1, 1, 1) by 2 radians
-	#draw {_shape} at location 3.5 above player
-	#gradient podobny do procu nad graczem
+function CresseliaCosmicRipple(p: player):
+	set {_stat} to statTrait({_p}, "Cresselia", "Cosmic Ripple")
+	if {_stat} > 0:
+		if metadata value "CosmicRippleStacks%{_p}%" of {_p} is not set:
+			set metadata value "CosmicRippleStacks%{_p}%" of {_p} to 0
+		set {_stacks} to metadata value "CosmicRippleStacks%{_p}%" of {_p}
+		if {_stacks} < 3:
+			set {_stacks} to {_stacks} + 1
+			set metadata value "CosmicRippleStacks%{_p}%" of {_p} to {_stacks}
+		
+		set metadata value "CosmicRippleHaste" of {_p} to {_stat} * {_stacks}
+		set {_hasteGranted} to metadata value "CosmicRippleHaste" of {_p}
+		buffRegister({_p}, "Ripple", 2, "", "Stacks", "<#19943e> &f%(round({_hasteGranted}, 0))% &7| &f%{_stacks}%", "8 sec")
+		
+		set metadata value "CosmicRippleTime%{_p}%" of {_p} to 8
+
+		if metadata value "CosmicRippleLoop%{_p}%" of {_p} is not set:
+			set metadata value "CosmicRippleLoop%{_p}%" of {_p} to true
+			while metadata value "CosmicRippleTime%{_p}%" of {_p} > 0:
+				wait 1 second
+				if metadata value "CosmicRippleTime%{_p}%" of {_p} is set:
+					set {_t} to metadata value "CosmicRippleTime%{_p}%" of {_p}
+					set {_t} to {_t} - 1
+					set metadata value "CosmicRippleTime%{_p}%" of {_p} to {_t}
+					if {_t} > 0:
+						set {_ripple} to metadata value "CosmicRippleStacks%{_p}%" of {_p}
+						set {_hasteGranted} to metadata value "CosmicRippleHaste" of {_p}
+						buffRegister({_p}, "Ripple", 2, "", "Stacks", "<#19943e> &f%(round({_hasteGranted}, 0))% &7| &f%{_ripple}%", "%{_t}% sec")
+			clear metadata value "CosmicRippleLoop%{_p}%" of {_p}
+			clear metadata value "CosmicRippleStacks%{_p}%" of {_p}
+			clear metadata value "CosmicRippleHaste" of {_p}
+			buffClear({_p}, "Ripple")
+
+function CresseliaSurgingRhythm(p: player):
+	broadcast "?"
+	set {_stat} to statTrait({_p}, "Cresselia", "Surging Rhythm")
+	if {_stat} > 0:
+		set metadata value "SurgingRhythmPrimary" of {_p} to {_stat}
+		buffRegister({_p}, "Rhythm", 3, "", "Stacks", "<##59c1e3> &f%{_stat}%", "10 sec")
+
+		set metadata value "SurgingRhythmTime%{_p}%" of {_p} to 10
+		if metadata value "SurgingRhythmLoop%{_p}%" of {_p} is not set:
+			set metadata value "SurgingRhythmLoop%{_p}%" of {_p} to true
+			while metadata value "SurgingRhythmTime%{_p}%" of {_p} > 0:
+				wait 1 second
+				if metadata value "SurgingRhythmTime%{_p}%" of {_p} is set:
+					set {_t} to metadata value "SurgingRhythmTime%{_p}%" of {_p}
+					set {_t} to {_t} - 1
+					set metadata value "SurgingRhythmTime%{_p}%" of {_p} to {_t}
+					if {_t} > 0:
+						set {_rhythm} to metadata value "SurgingRhythmPrimary" of {_p}
+						buffRegister({_p}, "Rhythm", 3, "", "Stacks", "<##59c1e3> &f%{_rhythm}%", "%{_t}% sec")
+			clear metadata value "SurgingRhythmLoop%{_p}%" of {_p}
+			clear metadata value "SurgingRhythmPrimary" of {_p}
+			buffClear({_p}, "Rhythm")
+		else:
+			set metadata value "SurgingRhythmTime%{_p}%" of {_p} to 10
+
+function CresseliaDawningHorizon(p: player):
+	set {_stat} to statTrait({_p}, "Cresselia", "Dawning Horizon")
+	if {_stat} > 0:
+		if metadata value "DawningHorizonStacks%{_p}%" of {_p} is not set:
+			set metadata value "DawningHorizonStacks%{_p}%" of {_p} to 0
+		set {_stacks} to metadata value "DawningHorizonStacks%{_p}%" of {_p}
+		if {_stacks} < 5:
+			set {_stacks} to {_stacks} + 1
+			set metadata value "DawningHorizonStacks%{_p}%" of {_p} to {_stacks}
+		
+		set metadata value "DawningHorizonMastery" of {_p} to {_stat} * {_stacks}
+		set {_horizon} to metadata value "DawningHorizonStacks%{_p}%" of {_p}
+		set {_masteryGranted} to metadata value "DawningHorizonMastery" of {_p}
+		buffRegister({_p}, "Horizon", 2, "", "Stacks", "<#f53b98> &f%(round({_masteryGranted}, 0))% &7| &f%{_horizon}%", "8 sec")
+		
+		set metadata value "DawningHorizonTime%{_p}%" of {_p} to 8
+		if metadata value "DawningHorizonLoop%{_p}%" of {_p} is not set:
+			set metadata value "DawningHorizonLoop%{_p}%" of {_p} to true
+			while metadata value "DawningHorizonTime%{_p}%" of {_p} > 0:
+				wait 1 second
+				if metadata value "DawningHorizonTime%{_p}%" of {_p} is set:
+					set {_t} to metadata value "DawningHorizonTime%{_p}%" of {_p}
+					set {_t} to {_t} - 1
+					set metadata value "DawningHorizonTime%{_p}%" of {_p} to {_t}
+
+					if {_t} > 0:
+						set {_horizon} to metadata value "DawningHorizonStacks%{_p}%" of {_p}
+						set {_masteryGranted} to metadata value "DawningHorizonMastery" of {_p}
+						buffRegister({_p}, "Horizon", 2, "", "Stacks", "<#f53b98> &f%(round({_masteryGranted}, 0))% &7| &f%{_horizon}%", "%{_t}% sec")
+
+			clear metadata value "DawningHorizonLoop%{_p}%" of {_p}
+			clear metadata value "DawningHorizonStacks%{_p}%" of {_p}
+			clear metadata value "DawningHorizonMastery" of {_p}
+			buffClear({_p}, "Horizon")
+		else:
+			set metadata value "DawningHorizonTime%{_p}%" of {_p} to 8
+
+function CresseliaStreakingStars(p: player, target: entity, spell: string):
+	if metadata value "CelestialAlignment" of {_p} is set:
+		set {_damage} to offensiveTrait({_p}, "Cresselia", "Streaking Stars")
+		if {_damage} > 0:
+			if metadata value "StreakingStarsLastSpell%{_p}%" of {_p} != {_spell}:
+				set metadata value "StreakingStarsLastSpell%{_p}%" of {_p} to {_spell}
+
+				set {_primCol} to coloured getPrimaryCardColour({_p})
+				set {_secCol} to coloured getSecondaryCardColour({_p})
+				
+				set {_loc} to location of block 15 blocks above {_target}
+				spawn an armor stand at {_loc} with nbt from "{Invulnerable:1b,Invisible:1b,NoGravity:1b,Silent:1b,Pose:{Head:[180.0f,0.0f,0.0f]}}"
+				set boolean tag "RemoveOnReset" of (custom nbt of last spawned armor stand) to true
+				set {_star} to last spawned armor stand
+				
+				modelApply({_star}, "starfallmodel", 0.6)
+				
+				CresseliaShootingStarSound({_p}, {_target})
+				
+				set {_y} to 0
+				set {_locStar} to location of {_star}
+				set {_count} to 0
+				set {_starSpeed} to 0.7
+				
+				while {_star} is alive:
+					set {_targetLoc} to location 0.5 below {_target}
+					set {_vec} to vector between {_locStar} and {_targetLoc}
+					set vector length of {_vec} to {_count} * {_starSpeed}
+					teleport {_star} to {_locStar} ~ {_vec}
+					add nbt from "{Rotation:[%{_y}-5%f,%{_y}-5%.0f]}" to nbt of {_star}
+					
+					if distance between {_star} and {_target} < 1.5:
+						kill {_star}
+						set {_hit} to true
+						stop loop
+						
+					wait 1 tick
+					set {_count} to {_count} + 1
+					set {_y} to {_y} + 25
+					
+					if {_count} > 60:
+						kill {_star}
+						stop loop
+						
+				if {_hit} is true:
+					set {_crit} to (CriticalHit({_p})/10) + 15
+					set {_critMod} to 2
+					if boolean tag "Constellation;The Eternal Moon" of (custom nbt of {karta::%{_p}%}) is set:
+						set {_critMod} to {_critMod} + 0.2
+						
+					set {_finalDmg} to Crit({_p}, {_target}, {_crit}, {_damage}, {_critMod})
+					
+					set {_target}'s last damage cause to sweep attack
+					set metadata value "LastDamageCause" of {_target} to "%{_primCol}%Streaking Star"
+					set metadata value "LastDamageCauseLore" of {_target} to "Streaking Star"
+					set metadata value "Element" of {_p} to "Astral"
+					make {_p} damage {_target} by {_finalDmg}
+					
+					shootingStarsVisual({_p}, (location 0.5 above {_target}))
+					play sound "entity.armadillo.brush" with volume 1.5 and pitch 1.5 at location of {_target}
+
