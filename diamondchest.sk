@@ -1,297 +1,873 @@
-#PREVIEW OF REWARDS
-#RELIC CALCULATION
-#5* RELIC 45/RELIC MAX STAT * 8,3 = % ELEMENTAL DAMAGE   ELEMENTAL DAMAGE*1,1084 = CRIT DAMAGE
-#5* ARTIFACT 120/ARTIFACT MAX STAT * 13,0 = % ELEMENTAL DAMAGE    ELEMENTAL DAMAGE*1,1084 = CRIT DAMAGE
-#4* RELIC 45/RELIC MAX STAT * 0,7 * 8,3 = % ELEMENTAL DAMAGE
-#4* ARTIFACT = 120/ARTIFACT MAX STAT*0,7 = 70* OF 5* VALUE
-#3* ARTIFACT = 45/RELIC MAX STAT*0,4 = 40% OF 5* VALUE
-#MIN VALUE OF STAT = (5/45)*max
+function DiamondCurrentCycle() :: number:
+	set {_cycle} to yaml value "Settings.Cycle" in "StellarChestList"
+	if {_cycle} is not set:
+		set {_cycle} to 1
+	return {_cycle}
 
+function DiamondWeeklyCard() :: text:
+	set {_cards::*} to yaml list "Weekly Rotation.Cards" in "StellarChestList"
+	if {_cards::*} is not set:
+		return "Brother Therold"
+	set {_index} to yaml value "Weekly Rotation.Current Index" in "StellarChestList"
+	if {_index} is not set:
+		set {_index} to 1
+	set {_index} to rounded down {_index}
+	if {_index} < 1:
+		set {_index} to 1
+	if {_index} > size of {_cards::*}:
+		set {_index} to 1
+	if {_cards::%{_index}%} is not set:
+		return "Brother Therold"
+	return {_cards::%{_index}%}
 
+function DiamondFatedCard(p: player) :: text:
+	set {_cycle} to DiamondCurrentCycle()
+	set {_playerCycle} to yaml value "Player.Fated Card Cycle" in "data-%{_p}%"
+	if {_playerCycle} != {_cycle}:
+		clear yaml value "Player.Fated Card" in "data-%{_p}%"
+		clear yaml value "Player.Fated Card Cycle" in "data-%{_p}%"
+		save yaml "data-%{_p}%"
+		return ""
+	set {_card} to yaml value "Player.Fated Card" in "data-%{_p}%"
+	if {_card} is not set:
+		return ""
+	return {_card}
 
-command /dm:
-    trigger:
-        if yaml "TierSetList" is loaded:
-            unload yaml "TierSetList"
-            broadcast "unloaded"
-        else:
-            load yaml "plugins/Skript/lists/TierSetList" as "TierSetList"
-            broadcast "loaded"
+function DiamondSetFatedCard(p: player, card: text):
+	set yaml value "Player.Fated Card" in "data-%{_p}%" to {_card}
+	set yaml value "Player.Fated Card Cycle" in "data-%{_p}%" to DiamondCurrentCycle()
+	save yaml "data-%{_p}%"
 
-# "<gradient:#02a7d9:#ffffff:#42d3ff:#99bdff><bold>✨ Diamond Chest ✨"
-    
-on rightclick:
-    if clicked block is light blue stained glass:
-        set metadata tag "diamondchest" of player to chest inventory with 3 rows named "Diamond Chest"
-        set {_x} to metadata tag "diamondchest" of player
-        broadcast {_x}
-        set {_lore} to "&7Probabilities for each Star Level:%nl%&7(Per Rank)%nl%<##8cf0ff>5* Relic &7- 0.7%%%nl%<##61b09b>4* Relic &7- 6%%%nl%&e3* Relic&7- 93.3%%%nl% %nl%&7Upgrade range for each Star Level:%nl%<##8cf0ff>5* Relic &7- +25%nl%<##61b09b>4* Relic &7- +20%nl%&e3* Relic &7- +15"
-        
-        set {_specialEffect} to "&f✨ <##613E82>Special Effect:%nl%&f <##8165a6>Harbinger's Hunger"
-        set {_specialEffectLength} to length of uncolored {_specialEffect}
-        set {_separator} to "-" repeated {_specialEffectLength} times
+function DiamondSyncTierCycle(p: player):
+	set {_cycle} to DiamondCurrentCycle()
+	set {_playerCycle} to yaml value "Player.Diamond Tier Cycle" in "data-%{_p}%"
+	if {_playerCycle} != {_cycle}:
+		clear yaml value "Player.Diamond Preferred Tiers" in "data-%{_p}%"
+		set yaml value "Player.Diamond Tier Cycle" in "data-%{_p}%" to {_cycle}
+		save yaml "data-%{_p}%"
 
-        set {_xalatath} to netherite sword named "<##613E82>Xal'Atath" with lore "<##ff8000>Legendary Brother Therold Relic%nl%<##fdd002>Item Level 1%nl%&7Card Relic%nl% %nl%&b 4 Intellect%nl%<##f53b98> 8 Mastery%nl%<##19943e> 8 Haste%nl% %nl%%{_specialEffect}%%nl%   <##613E82>Every &f1 sec<##613E82>, &f <##8165a6>Voidform <##613E82>increases damage%nl%   <##613E82>dealt by &f <##8165a6>Shadow Word: Pain <##613E82>and &f <##8165a6>Vampiric%nl%   <##613E82>Touch by &f2%%<##613E82>, stacking until &f <##8165a6>Voidform <##613E82>ends.%nl% %nl%&7&o""Xal'atath has a mind of its own. Ignore its%nl%&7&omaddening whispers. Do not trust the lies it%nl%&7&ospins. Take from it what you need, but always%nl%&7&oremember that the dark presence in the blade is%nl%&7&onot your ally.""%nl% %nl%&fUpgraded: +0 | Enhanced: +0%nl%&m&8---------------------------------------------%nl%&7Star Level: &e★★★★★%nl%&8&o(!) This Relic can only be equipped by Brother Therold.%nl%&8&oUpgrading this item will increase its combat potential.%nl%&8&oEnhancing this Relic will increase the effectiveness%nl%&8&oof its Special Effect. The Item Level of this item scales%nl%&8&owith the average Item Level of your equipped gear." with nbt from "{""minecraft:custom_model_data"":{floats:[1.0f]}}" with item flag hide attributes
-        set {_icebreaker} to diamond sword named "&bIcebreaker" with lore "x" with nbt from "{""minecraft:custom_model_data"":{floats:[1.0f]}}"
-        set {_peacemaker} to diamond sword named "&2Peacemaker" with lore "y" with nbt from "{""minecraft:custom_model_data"":{floats:[3.0f]}}"
-        set {_lavasword} to diamond sword named "&4Lava Sword" with lore "z" with nbt from "{""minecraft:custom_model_data"":{floats:[2.0f]}}"
-        set {_tideriser} to bow named "&9Tideriser" with lore "a" with nbt from "{""minecraft:custom_model_data"":{floats:[1.0f]}}"
-        set {_staffofnightmares} to bone named "&7Staff of Nightmares" with lore "&fOnce a beacon of Dreamcatcher's power.%nl%&fNow a cursed relic and a symbol of her deeds." with nbt from "{""minecraft:custom_model_data"":{floats:[2.0f]}}"
-        set {_5star::*} to {_icebreaker}, {_peacemaker}, {_lavasword}, {_tideriser} and {_staffofnightmares}
-        set slots integers between 0 and 8 of {_x} to light blue stained glass pane named "&bInfo" with lore {_lore}
-        set slot 13 of {_x} to {_xalatath}
-        set slots integers between 18 and 26 of {_x} to light blue stained glass pane named "&bInfo" with lore {_lore}
-        set slots 4 and 22 of {_x} to purple stained glass pane named " "
-        set slots 5 and 23 of {_x} to white stained glass pane named " "
+function DiamondCardTiers(card: text) :: texts:
+	set {_tiers::*} to yaml node keys "%{_card}%" in "TierSetList"
+	return {_tiers::*}
 
-        set {_sigil} to mini message from "<color:#99f2c8>✨ Starforged Sigil"
-        set {_cards::*} to "Delphox" and "Brother Therold" #Change this to rotational card + player's chosen card later
-        set {_generalDescription} to "&7Infuse a Helmet, Chestplate, Leggings or Boots%nl%&7gear piece with this item to <#99f2c8>&o✨ Starforge &7it, imbuing%nl%&7the equipment with a unique effect.%nl% %nl%&7Aligning &f2 &7and &f4-piece &7thresholds of the same set%nl%&7will activate its combat potential, unlocking a%nl%&7powerful effect exclusive to"
+function DiamondPreferredTier(p: player, card: text) :: text:
+	DiamondSyncTierCycle({_p})
+	set {_tiers::*} to DiamondCardTiers({_card})
+	if {_tiers::*} is not set:
+		return ""
+	set {_tier} to yaml value "Player.Diamond Preferred Tiers.%{_card}%" in "data-%{_p}%"
+	if {_tier} is not set:
+		return {_tiers::1}
+	if {_tiers::*} does not contain {_tier}:
+		return {_tiers::1}
+	return {_tier}
 
-        set {_baseSlot} to 9
-        open {_x} to player
+function DiamondSetPreferredTier(p: player, card: text, tier: text):
+	DiamondSyncTierCycle({_p})
+	set {_tiers::*} to DiamondCardTiers({_card})
+	if {_tiers::*} contains {_tier}:
+		set yaml value "Player.Diamond Preferred Tiers.%{_card}%" in "data-%{_p}%" to {_tier}
+		set yaml value "Player.Diamond Tier Cycle" in "data-%{_p}%" to DiamondCurrentCycle()
+		save yaml "data-%{_p}%"
 
-        loop {_cards::*}:
-            set {_card} to loop-value 
-            set {_tiers::*} to yaml node keys {_card} in "TierSetList"
+function DiamondPityChance(p: player) :: number:
+	set {_pityDiamond} to yaml value "Player.Diamond Pity" in "data-%{_p}%"
+	if {_pityDiamond} is not set:
+		set {_pityDiamond} to 0
+	set {_chance} to yaml value "Settings.Base Featured Chance" in "DiamondChestList"
+	if {_chance} is not set:
+		set {_chance} to yaml value "Settings.Base Relic Chance" in "DiamondChestList"
+	if {_chance} is not set:
+		set {_chance} to 2.5
+	set {_starts} to yaml value "Settings.Pity Starts At" in "DiamondChestList"
+	if {_starts} is not set:
+		set {_starts} to 30
+	if {_pityDiamond} >= {_starts}:
+		set {_step} to ({_pityDiamond} - {_starts}) + 1
+		if {_step} <= 2:
+			set {_chance} to {_chance} + ({_step} * 2.5)
+		else:
+			set {_chance} to {_chance} + 5 + (({_step} - 2) * 3.5)
+	if {_chance} > 100:
+		set {_chance} to 100
+	return {_chance}
 
-            loop {_tiers::*}:
-                set {_tier} to loop-value-2
-                set {_setBonus} to yaml value "%{_card}%.%{_tier}%.Name" in "TierSetList"
-                set {_setBonusDetail} to mini message from yaml value "%{_card}%.%{_tier}%.Gradient Name" in "TierSetList"
-                set {_description} to yaml value "%{_card}%.%{_tier}%.Description" in "TierSetList"
-                set {_item} to yaml value "%{_card}%.%{_tier}%.Item" in "TierSetList"
-                set {_CustomModelData} to yaml value "%{_card}%.%{_tier}%.CustomModelData" in "TierSetList"
-                set {_item} to {_item} parsed as item type
+function DiamondCardPreview(card: text) :: item:
+	set {_material} to yaml value "Cards.%{_card}%.Material" in "StellarChestList"
+	set {_name} to yaml value "Cards.%{_card}%.Name" in "StellarChestList"
+	set {_cmd} to yaml value "Cards.%{_card}%.CustomModelData" in "StellarChestList"
+	set {_previewType} to yaml value "Cards.%{_card}%.Preview Type" in "StellarChestList"
+	set {_description::*} to yaml list "Cards.%{_card}%.Preview Description" in "StellarChestList"
+	set {_difficulty} to yaml value "Cards.%{_card}%.Difficulty" in "StellarChestList"
+	set {_abilities::*} to yaml list "Cards.%{_card}%.Preview Abilities" in "StellarChestList"
+	if {_material} is not set:
+		return barrier named "&cMissing card material: %{_card}%"
+	set {_itemType} to {_material} parsed as item type
+	set {_item} to {_itemType} named (colored {_name}) with nbt compound from "{""minecraft:custom_model_data"":{floats:[%{_cmd}%.0f]}}"
+	set {_lore::*} to {_previewType}
+	loop {_description::*}:
+		set {_lore::*} to {_lore::*} and loop-value
+	set {_lore::*} to {_lore::*} and " "
+	set {_lore::*} to {_lore::*} and {_difficulty}
+	set {_lore::*} to {_lore::*} and " "
+	set {_lore::*} to {_lore::*} and "&7Abilities:"
+	loop {_abilities::*}:
+		set {_lore::*} to {_lore::*} and loop-value
+	set lore of {_item} to {_lore::*}
+	return {_item}
 
-                set {_setBonusLength} to length of uncoloured {_setBonusDetail}
-                set {_underline} to "-" repeated {_setBonusLength} times
+function DiamondCardName(card: text) :: text:
+	set {_name} to coloured (yaml value "Cards.%{_card}%.Name" in "StellarChestList")
+	if {_name} is not set:
+		set {_name} to {_card}
+	return {_name}
 
-                set {_flavourText} to join wrapText("&8""%{_description}%""", 55) by "%nl%&8"
+function DiamondAllCards() :: texts:
+	set {_cards::*} to yaml node keys "Cards" in "StellarChestList"
+	return {_cards::*}
 
-                set {_setValues::*} to yaml node keys "%{_card}%.%{_tier}%" in "TierSetList"
-                set {_2setFiltered} to size of ({_setValues::*} where [input contains "2SETVALUE"])
-                set {_4setFiltered} to size of ({_setValues::*} where [input contains "4SETVALUE"])
+function DiamondCardHasRelic(card: text) :: boolean:
+	set {_enabled} to yaml value "Cards.%{_card}%.Relic.Enabled" in "DiamondChestList"
+	if {_enabled} is set:
+		return {_enabled}
+	if {_card} = "Brother Therold":
+		return true
+	return false
 
-                set {_2Set} to formatted yaml value "%{_card}%.%{_tier}%.2SET" in "TierSetList"
-                set {_4Set} to formatted yaml value "%{_card}%.%{_tier}%.4SET" in "TierSetList"
+function DiamondMissingRelic(card: text) :: item:
+	set {_cardName} to DiamondCardName({_card})
+	return gray stained glass pane named "&8Pending Relic" with lore "&7A specialized Relic for %{_cardName}%&7" and "&7has not been implemented yet."
 
-                loop {_2setFiltered} times:
-                    set {_value} to (yaml value "%{_card}%.%{_tier}%.2SETVALUE%loop-number%" in "TierSetList")
-                    replace all "{2SETVALUE%loop-number%}" in {_2Set} with "%{_value}%"
-                    replace all "{NL}" in {_2Set} with nl
+function DiamondRelicItem(card: text, preview: boolean = false) :: item:
+	if DiamondCardHasRelic({_card}) is false:
+		return DiamondMissingRelic({_card})
+	if {_card} = "Brother Therold":
+		set {_specialEffect} to "&f✨ <#613E82>Special Effect:%nl%&f <#8165a6>Harbinger's Hunger"
+		set {_item} to netherite sword named "<#613E82>Xal'Atath" with lore "<#ff8000>Legendary Brother Therold Relic%nl%<#fdd002>Item Level 1%nl%&7Card Relic%nl% %nl%<#59c1e3> +4 Intellect%nl%<#f53b98> +8 Mastery%nl%<#19943e> +8 Haste%nl% %nl%%{_specialEffect}%%nl%   <#613E82>Every &f1 sec<#613E82>, &f <#8165a6>Voidform <#613E82>increases damage%nl%   <#613E82>dealt by &f <#8165a6>Shadow Word: Pain <#613E82>and &f <#8165a6>Vampiric%nl%   <#613E82>Touch by &f2%%<#613E82>, stacking until &f <#8165a6>Voidform <#613E82>ends.%nl% %nl%&7&o""Xal'atath has a mind of its own. Ignore its%nl%&7&omaddening whispers. Do not trust the lies it%nl%&7&ospins. Take from it what you need, but always%nl%&7&oremember that the dark presence in the blade is%nl%&7&onot your ally.""%nl% %nl%&fUpgraded: +0 | Enhanced: +0%nl%&m&8---------------------------------------------%nl%&7Star Level: &e★★★★★%nl%&8&o(!) This Relic can only be equipped by Brother Therold.%nl%&8&oUpgrading this item will increase its combat potential.%nl%&8&oEnhancing this Relic will increase the effectiveness%nl%&8&oof its Special Effect. The Item Level of this item scales%nl%&8&owith the average Item Level of your equipped gear." with nbt from "{""minecraft:custom_model_data"":{floats:[1.0f]}}" with item flag hide attributes
+		set string tag "DiamondFeaturedType" of (custom nbt of {_item}) to "Relic"
+		set string tag "DiamondSourceCard" of (custom nbt of {_item}) to {_card}
+		return {_item}
+	return DiamondMissingRelic({_card})
 
-                loop {_4setFiltered} times:
-                    set {_value} to (yaml value "%{_card}%.%{_tier}%.4SETVALUE%loop-number%" in "TierSetList")
-                    replace all "{4SETVALUE%loop-number%}" in {_4Set} with "%{_value}%"
-                    replace all "{NL}" in {_4Set} with nl
+function DiamondTierSetAvailable(card: text) :: boolean:
+	set {_tiers::*} to DiamondCardTiers({_card})
+	if {_tiers::*} is set:
+		return true
+	return false
 
-                set {_tierSet} to {_item} named "<#99f2c8>%{_tier}%: %{_setBonusDetail}%" with lore "<##e64c49>%{_card}% Set Bonus%nl%%{_sigil}%%nl% %nl%%{_generalDescription}% &f%{_card}%&7.%nl% %nl%&8%{_underline}%%nl%%{_setBonusDetail}%%nl%&8%{_underline}%%nl%<#99f2c8>✨ 2-set Effect:%nl%  %{_2Set}%%nl% %nl%<#99f2c8>✨ 4-set Effect:%nl%  %{_4Set}%%nl% %nl%%{_flavourText}%%nl% %nl%&7Drop chance: &f0.5%%" with nbt from "{""minecraft:custom_model_data"":{floats:[%{_CustomModelData}%.0f]}}"
-                set {_tierSetList::*} to {_tierSetList::*} and {_tierSet}
+function DiamondMissingTierSet(card: text) :: item:
+	set {_cardName} to DiamondCardName({_card})
+	return gray stained glass pane named "&8Pending Starforged Sigil" with lore "&7A Starforged Sigil for %{_cardName}%&7" and "&7is not available yet."
 
-            cycleTierSets(player, {_x}, {_baseSlot}, {_tierSetList::*})
-            clear {_tierSetList::*}
-            set {_baseSlot} to {_baseSlot} + 1
+#alternative Starforged colour: <#99f2c8>
 
-        play sound "block.amethyst_cluster.break" with volume 5 and pitch 0.6 to player
-        cycleTierSets(player, {_x}, 14, {_5star::*})
-        
-function cycleTierSets(p: player, inv: inventory, slot: integer, items: items):
-    while {_p}'s current inventory is {_inv}:
-        stop if {_items::*} is not set
-        stop if yaml "TierSetList" is not loaded
-        loop {_items::*}:
-            set slot {_slot} of {_inv} to loop-value
-            wait 60 ticks
+function DiamondTierSetItem(card: text, tier: text) :: item:
+	if {_tier} = "":
+		return DiamondMissingTierSet({_card})
+	set {_setBonus} to yaml value "%{_card}%.%{_tier}%.Name" in "TierSetList"
+	set {_setBonusDetailRaw} to yaml value "%{_card}%.%{_tier}%.Gradient Name" in "TierSetList"
+	set {_description} to yaml value "%{_card}%.%{_tier}%.Description" in "TierSetList"
+	set {_itemTypeRaw} to yaml value "%{_card}%.%{_tier}%.Item" in "TierSetList"
+	set {_customModelData} to yaml value "%{_card}%.%{_tier}%.CustomModelData" in "TierSetList"
+	if {_itemTypeRaw} is not set:
+		return DiamondMissingTierSet({_card})
+	if {_setBonus} is not set:
+		set {_setBonus} to {_tier}
+	if {_setBonusDetailRaw} is not set:
+		set {_setBonusDetailRaw} to {_setBonus}
+	if {_description} is not set:
+		set {_description} to ""
+	set {_itemType} to {_itemTypeRaw} parsed as item type
+	set {_cardName} to DiamondCardName({_card})
+	set {_cardColour} to last string colour code of {_cardName}
+	
+	set {_sigil} to mini message from "<color:#9fe7ff>✨ Starforged Sigil"
+	set {_generalDescription} to "&7Infuse a Helmet, Chestplate, Leggings or Boots%nl%&7gear piece with this item to <#9fe7ff>&o✨ Starforge &7it, imbuing%nl%&7the equipment with a unique effect.%nl% %nl%&7Aligning &f2 &7and &f4-piece &7thresholds of the same set%nl%&7will activate its combat potential, unlocking a%nl%&7powerful effect exclusive to"
+	set {_setBonusDetail} to mini message from {_setBonusDetailRaw}
+	set {_setBonusLength} to length of uncoloured {_setBonusDetail}
+	set {_underline} to "-" repeated {_setBonusLength} times
+	set {_flavourText} to join wrapText("&8""%{_description}%""", 55) by "%nl%&8"
+
+	set {_setValues::*} to yaml node keys "%{_card}%.%{_tier}%" in "TierSetList"
+	set {_2setFiltered} to size of ({_setValues::*} where [input contains "2SETVALUE"])
+	set {_4setFiltered} to size of ({_setValues::*} where [input contains "4SETVALUE"])
+	set {_2Set} to formatted yaml value "%{_card}%.%{_tier}%.2SET" in "TierSetList"
+	set {_4Set} to formatted yaml value "%{_card}%.%{_tier}%.4SET" in "TierSetList"
+	loop {_2setFiltered} times:
+		set {_value} to yaml value "%{_card}%.%{_tier}%.2SETVALUE%loop-number%" in "TierSetList"
+		replace all "{2SETVALUE%loop-number%}" in {_2Set} with "%{_value}%"
+		replace all "{NL}" in {_2Set} with nl
+	loop {_4setFiltered} times:
+		set {_value} to yaml value "%{_card}%.%{_tier}%.4SETVALUE%loop-number%" in "TierSetList"
+		replace all "{4SETVALUE%loop-number%}" in {_4Set} with "%{_value}%"
+		replace all "{NL}" in {_4Set} with nl
+	if {_customModelData} is set:
+		set {_item} to {_itemType} named "<#9fe7ff>%{_tier}%: %{_setBonusDetail}%" with lore "<#78e4ff>%{_cardName}% Set Bonus%nl%%{_sigil}%%nl% %nl%%{_generalDescription}% &f%{_cardName}%&7.%nl% %nl%&8%{_underline}%%nl%%{_setBonusDetail}%%nl%&8%{_underline}%%nl%%{_cardColour}%✨ 2-set Effect:%nl%  %{_2Set}%%nl% %nl%%{_cardColour}%✨ 4-set Effect:%nl%  %{_4Set}%%nl% %nl%%{_flavourText}%" with nbt from "{""minecraft:custom_model_data"":{floats:[%{_customModelData}%.0f]}}"
+	else:
+		set {_item} to {_itemType} named "<#9fe7ff>%{_tier}%: %{_setBonusDetail}%" with lore "<#78e4ff>%{_cardName}% Set Bonus%nl%%{_sigil}%%nl% %nl%%{_generalDescription}% &f%{_cardName}%&7.%nl% %nl%&8%{_underline}%%nl%%{_setBonusDetail}%%nl%&8%{_underline}%%nl%%{_cardColour}%✨ 2-set Effect:%nl%  %{_2Set}%%nl% %nl%%{_cardColour}%✨ 4-set Effect:%nl%  %{_4Set}%%nl% %nl%%{_flavourText}%"
+	set string tag "DiamondFeaturedType" of (custom nbt of {_item}) to "TierSet"
+	set string tag "DiamondSourceCard" of (custom nbt of {_item}) to {_card}
+	set string tag "DiamondSourceTier" of (custom nbt of {_item}) to {_tier}
+	return {_item}
+
+function DiamondTierSetForPlayer(p: player, card: text) :: item:
+	if DiamondTierSetAvailable({_card}) is false:
+		return DiamondMissingTierSet({_card})
+	set {_tier} to DiamondPreferredTier({_p}, {_card})
+	if {_tier} = "":
+		return DiamondMissingTierSet({_card})
+	return DiamondTierSetItem({_card}, {_tier})
+
+function DiamondFeaturedTypeAvailable(card: text, type: text) :: boolean:
+	if {_type} contains "Relic":
+		return DiamondCardHasRelic({_card})
+	if {_type} contains "Tier":
+		return DiamondTierSetAvailable({_card})
+	if {_type} contains "Sigil":
+		return DiamondTierSetAvailable({_card})
+	return false
+
+function DiamondCardHasFeaturedRewards(card: text) :: boolean:
+	if {_card} is not set:
+		return false
+	if {_card} = "":
+		return false
+	loop yaml node keys "Featured Rewards" in "DiamondChestList":
+		set {_type} to yaml value "Featured Rewards.%loop-value%.Type" in "DiamondChestList"
+		if DiamondFeaturedTypeAvailable({_card}, {_type}) is true:
+			return true
+	return false
+
+function DiamondDroppedCard(p: player) :: text:
+	set {_fated} to DiamondFatedCard({_p})
+	set {_weekly} to DiamondWeeklyCard()
+	set {_weeklyAvailable} to DiamondCardHasFeaturedRewards({_weekly})
+	set {_fatedAvailable} to false
+	if {_fated} is set:
+		if {_fated} != "":
+			set {_fatedAvailable} to DiamondCardHasFeaturedRewards({_fated})
+	if all:
+		{_weeklyAvailable} is false
+		{_fatedAvailable} is false
+	then:
+		return ""
+	else if all:
+		{_weeklyAvailable} is true
+		{_fatedAvailable} is false
+	then:
+		return {_weekly}
+	else if all:
+		{_weeklyAvailable} is false
+		{_fatedAvailable} is true
+	then:
+		return {_fated}
+
+	set {_preferredChance} to yaml value "Settings.Preferred Chance" in "DiamondChestList"
+	set {_rotationChance} to yaml value "Settings.Rotation Chance" in "DiamondChestList"
+	if {_preferredChance} is not set:
+		set {_preferredChance} to 50
+	if {_rotationChance} is not set:
+		set {_rotationChance} to 50
+	set {_total} to {_preferredChance} + {_rotationChance}
+	if {_total} <= 0:
+		set {_preferredChance} to 50
+		set {_rotationChance} to 50
+		set {_total} to 100
+	set {_preferredRoll} to ({_preferredChance} / {_total}) * 100
+	chance of {_preferredRoll}%:
+		return {_fated}
+	return {_weekly}
+
+function DiamondRollFeaturedType(card: text) :: text:
+	set {_total} to 0
+	loop yaml node keys "Featured Rewards" in "DiamondChestList":
+		set {_type} to yaml value "Featured Rewards.%loop-value%.Type" in "DiamondChestList"
+		if DiamondFeaturedTypeAvailable({_card}, {_type}) is true:
+			set {_chance} to yaml value "Featured Rewards.%loop-value%.Chance" in "DiamondChestList"
+			if {_chance} is set:
+				set {_total} to {_total} + {_chance}
+	if {_total} <= 0:
+		return ""
+	set {_roll} to a random number between 0 and {_total}
+	set {_current} to 0
+	loop yaml node keys "Featured Rewards" in "DiamondChestList":
+		set {_type} to yaml value "Featured Rewards.%loop-value%.Type" in "DiamondChestList"
+		if DiamondFeaturedTypeAvailable({_card}, {_type}) is true:
+			set {_chance} to yaml value "Featured Rewards.%loop-value%.Chance" in "DiamondChestList"
+			if {_chance} is set:
+				set {_current} to {_current} + {_chance}
+				if {_roll} <= {_current}:
+					return {_type}
+	return ""
+
+function DiamondFeaturedItem(type: text, p: player, card: text, preview: boolean = false) :: item:
+	if {_type} contains "Relic":
+		return DiamondRelicItem({_card}, {_preview})
+	if {_type} contains "Tier":
+		if {_preview} is true:
+			return DiamondTierSetForPlayer({_p}, {_card})
+		return DiamondTierSetForPlayer({_p}, {_card})
+	if {_type} contains "Sigil":
+		if {_preview} is true:
+			return DiamondTierSetForPlayer({_p}, {_card})
+		return DiamondTierSetForPlayer({_p}, {_card})
+	return barrier named "&cUnknown featured reward type"
+
+function DiamondRandomCardstoneCard() :: text:
+	set {_cards::*} to DiamondAllCards()
+	if {_cards::*} is not set:
+		return "Brother Therold"
+	return a random element of {_cards::*}
+
+function DiamondCardstoneItem(card: text, amount: number) :: item:
+	set {_cardName} to DiamondCardName({_card})
+	set {_item} to amethyst shard named "<#78e4ff>%{_amount}%x %{_cardName}% <#9fe7ff>Cardstones" with lore "&8Cardstones" and "&7Specialized stones resonating with %{_cardName}%&7." and "&7Obtained from the &bDiamond Chest&7."
+	set string tag "DiamondRewardType" of (custom nbt of {_item}) to "Cardstone"
+	set string tag "DiamondCardstoneCard" of (custom nbt of {_item}) to {_card}
+	set int tag "DiamondCardstoneAmount" of (custom nbt of {_item}) to {_amount}
+	return {_item}
+
+function DiamondCardstonePreviewItem(amount: number) :: item:
+	return amethyst shard named "<#78e4ff>%{_amount}%x Random <#9fe7ff>Cardstones" with lore "&8Cardstones" and "&7Drops for a random Card from the full pool."
+
+function DiamondRewardItem(reward: text, p: player, preview: boolean = false) :: item:
+	set {_type} to yaml value "Rewards.%{_reward}%.Type" in "DiamondChestList"
+	set {_amount} to yaml value "Rewards.%{_reward}%.Amount" in "DiamondChestList"
+	if {_amount} is not set:
+		set {_amount} to 1
+	if {_type} = "Cardstone":
+		if {_preview} is true:
+			set {_item} to DiamondCardstonePreviewItem({_amount})
+		else:
+			set {_item} to DiamondCardstoneItem(DiamondRandomCardstoneCard(), {_amount})
+	else if {_type} = "Stardust":
+		set {_item} to 1 of {stardust} named "&e%{_amount}% %{stardust}'s name%" with lore "&7Bring this item to Agnes the Cow" and "&7at spawn in order to exchange it."
+	else:
+		set {_item} to barrier named "&cUnknown reward: %{_reward}%"
+	return {_item}
+
+function DiamondRewardDisplay(reward: text, item: item) :: text:
+	set {_display} to yaml value "Rewards.%{_reward}%.Display" in "DiamondChestList"
+	if {_display} is not set:
+		set {_display} to coloured (name of {_item})
+	replace all "{ITEM}" in {_display} with (coloured name of {_item})
+	return {_display}
+
+function DiamondRollReward() :: text:
+	set {_total} to 0
+	loop yaml node keys "Rewards" in "DiamondChestList":
+		set {_chance} to yaml value "Rewards.%loop-value%.Chance" in "DiamondChestList"
+		if {_chance} is set:
+			set {_total} to {_total} + {_chance}
+	if {_total} <= 0:
+		return ""
+	set {_roll} to a random number between 0 and {_total}
+	set {_current} to 0
+	loop yaml node keys "Rewards" in "DiamondChestList":
+		set {_chance} to yaml value "Rewards.%loop-value%.Chance" in "DiamondChestList"
+		if {_chance} is set:
+			set {_current} to {_current} + {_chance}
+			if {_roll} <= {_current}:
+				return loop-value
+	return ""
+
+function DiamondPoolItems(p: player) :: items:
+	loop yaml node keys "Rewards" in "DiamondChestList":
+		set {_item} to DiamondRewardItem(loop-value, {_p})
+		if {_item} is set:
+			set {_pool::*} to {_pool::*} and {_item}
+	set {_weekly} to DiamondWeeklyCard()
+	if DiamondCardHasRelic({_weekly}) is true:
+		set {_item} to DiamondRelicItem({_weekly})
+		if {_item} is set:
+			set {_pool::*} to {_pool::*} and {_item}
+	if DiamondTierSetAvailable({_weekly}) is true:
+		set {_item} to DiamondTierSetForPlayer({_p}, {_weekly})
+		if {_item} is set:
+			set {_pool::*} to {_pool::*} and {_item}
+	set {_fated} to DiamondFatedCard({_p})
+	if {_fated} is set:
+		if {_fated} != "":
+			if DiamondCardHasRelic({_fated}) is true:
+				set {_item} to DiamondRelicItem({_fated})
+				if {_item} is set:
+					set {_pool::*} to {_pool::*} and {_item}
+			if DiamondTierSetAvailable({_fated}) is true:
+				set {_item} to DiamondTierSetForPlayer({_p}, {_fated})
+				if {_item} is set:
+					set {_pool::*} to {_pool::*} and {_item}
+	return {_pool::*}
+
+function DiamondInfoItem(p: player) :: item:
+	set {_fated} to DiamondFatedCard({_p})
+	set {_weekly} to DiamondWeeklyCard()
+	set {_pity} to yaml value "Player.Diamond Pity" in "data-%{_p}%"
+	if {_pity} is not set:
+		set {_pity} to 0
+	set {_featuredChance} to DiamondPityChance({_p})
+	set {_preferredChance} to yaml value "Settings.Preferred Chance" in "DiamondChestList"
+	set {_rotationChance} to yaml value "Settings.Rotation Chance" in "DiamondChestList"
+	if {_preferredChance} is not set:
+		set {_preferredChance} to 50
+	if {_rotationChance} is not set:
+		set {_rotationChance} to 50
+	if {_fated} is not set:
+		set {_fated} to "Not selected"
+	if {_fated} = "":
+		set {_fated} to "Not selected"
+	if DiamondTierSetAvailable({_weekly}) is true:
+		set {_weeklyTier} to DiamondPreferredTier({_p}, {_weekly})
+	else:
+		set {_weeklyTier} to "Unavailable"
+	if {_fated} != "Not selected":
+		if DiamondTierSetAvailable({_fated}) is true:
+			set {_fatedTier} to DiamondPreferredTier({_p}, {_fated})
+		else:
+			set {_fatedTier} to "Unavailable"
+	else:
+		set {_fatedTier} to "Unavailable"
+	set {_item} to gray stained glass pane named "&8Info"
+	set lore of {_item} to "&7Diamond-exclusive rewards use a featured%nl%&7drop chance with pity protection.%nl% %nl%&7Weekly Card: &f%{_weekly}%%nl%&7Fated Card: &f%{_fated}%%nl%&7Weekly Starforged Tier: &f%{_weeklyTier}%%nl%&7Fated Starforged Tier: &f%{_fatedTier}%%nl% %nl%&7Preferred Chance: &f%{_preferredChance}%%%%nl%&7Rotation Chance: &f%{_rotationChance}%%%%nl%&7Pity: &f%{_pity}%%nl%&7Featured Drop Chance: &f%{_featuredChance}%%%%nl% %nl%&7Cardstones always roll from the full%nl%&7available Card pool."
+	return {_item}
+
+function DiamondFatedCardMenu(p: player):
+	set metadata tag "diamondchestfated" of {_p} to chest inventory with 3 rows named "Choose Fated Card"
+	set {_m} to metadata tag "diamondchestfated" of {_p}
+	set {_slot} to 10
+	loop yaml list "Weekly Rotation.Cards" in "StellarChestList":
+		set {_preview} to DiamondCardPreview(loop-value)
+		if {_preview} is set:
+			set {_selectLore::*} to colored lore of {_preview}
+			set {_selectLore::*} to {_selectLore::*} and " "
+			set {_selectLore::*} to {_selectLore::*} and "&b&l(&f!&b&l) &bClick here to choose this Card"
+			set {_selectLore::*} to {_selectLore::*} and "&bas your Fated Card for this cycle."
+			set lore of {_preview} to {_selectLore::*}
+			set string tag "DiamondFatedCard" of (custom nbt of {_preview}) to loop-value
+			set slot {_slot} of {_m} to {_preview}
+			set {_slot} to {_slot} + 1
+	open {_m} to {_p}
+
+function DiamondTierCardMenu(p: player):
+	DiamondSyncTierCycle({_p})
+	set metadata tag "diamondchesttiercards" of {_p} to chest inventory with 3 rows named "Tier Preferences"
+	set {_m} to metadata tag "diamondchesttiercards" of {_p}
+	set {_slot} to 10
+	loop yaml list "Weekly Rotation.Cards" in "StellarChestList":
+		set {_preview} to DiamondCardPreview(loop-value)
+		if {_preview} is set:
+			set {_preferredTier} to DiamondPreferredTier({_p}, loop-value)
+			if {_preferredTier} = "":
+				set {_preferredTier} to "Unavailable"
+			set {_selectLore::*} to colored lore of {_preview}
+			set {_selectLore::*} to {_selectLore::*} and " "
+			set {_selectLore::*} to {_selectLore::*} and "&7Preferred Tier: &f%{_preferredTier}%"
+			set {_selectLore::*} to {_selectLore::*} and "&bClick here to adjust this Card's preferred Tier."
+			set lore of {_preview} to {_selectLore::*}
+			set string tag "DiamondTierCard" of (custom nbt of {_preview}) to loop-value
+			set slot {_slot} of {_m} to {_preview}
+			set {_slot} to {_slot} + 1
+	open {_m} to {_p}
+
+function DiamondTierSelectionMenu(p: player, card: text):
+	set metadata tag "diamondchesttiers" of {_p} to chest inventory with 3 rows named "Choose Tier"
+	set {_m} to metadata tag "diamondchesttiers" of {_p}
+	set {_currentTier} to DiamondPreferredTier({_p}, {_card})
+	set {_cardPreview} to DiamondCardPreview({_card})
+	if {_cardPreview} is set:
+		set slot 4 of {_m} to {_cardPreview} with lore (colored lore of {_cardPreview}) and "%nl%&7Current Tier: &f%{_currentTier}%"
+	set {_back} to light blue stained glass pane named "&bBack" with lore "&7Return to the Card list."
+	set string tag "DiamondMenuAction" of (custom nbt of {_back}) to "TierBack"
+	set slot 22 of {_m} to {_back}
+	set {_slot} to 10
+	set {_tiers::*} to DiamondCardTiers({_card})
+	if {_tiers::*} is not set:
+		set slot 13 of {_m} to DiamondMissingTierSet({_card})
+		open {_m} to {_p}
+		stop
+	loop {_tiers::*}:
+		set {_item} to DiamondTierSetItem({_card}, loop-value)
+		set {_selectLore::*} to colored lore of {_item}
+		set {_selectLore::*} to {_selectLore::*} and " "
+		if loop-value = {_currentTier}:
+			set {_selectLore::*} to {_selectLore::*} and "&aCurrently selected Tier"
+		else:
+			set {_selectLore::*} to {_selectLore::*} and "&bClick here to choose this Tier"
+		set lore of {_item} to {_selectLore::*}
+		set string tag "DiamondTierCard" of (custom nbt of {_item}) to {_card}
+		set string tag "DiamondTierValue" of (custom nbt of {_item}) to loop-value
+		set slot {_slot} of {_m} to {_item}
+		set {_slot} to {_slot} + 1
+	open {_m} to {_p}
+
+function DiamondPreviewMenu(p: player):
+	set metadata tag "diamondchestpreview" of {_p} to chest inventory with 3 rows named "Diamond Chest"
+	set {_menu} to metadata tag "diamondchestpreview" of {_p}
+	set {_weekly} to DiamondWeeklyCard()
+	set {_fated} to DiamondFatedCard({_p})
+	if {_fated} = "":
+		set slot 0 of {_menu} to gray stained glass pane named "&8No Fated Card" with lore "&7You have not yet chosen your%nl%&7Fated Card for this cycle.%nl%&7Right-click the Diamond Chest to do it."
+	else:
+		set {_preview} to DiamondCardPreview({_fated})
+		if {_preview} is set:
+			set slot 0 of {_menu} to {_preview} with lore (colored lore of {_preview}) and "%nl%&b✨ Fated Card"
+	set {_weeklyPreview} to DiamondCardPreview({_weekly})
+	if {_weeklyPreview} is set:
+		set slot 8 of {_menu} to {_weeklyPreview} with lore (colored lore of {_weeklyPreview}) and "%nl%&b✨ Weekly Rotation Card"
+	set {_chooseFated} to light blue stained glass pane named "&bChoose Fated Card" with lore "&7Choose or change the Fated Card" and "&7shared with the Stellar Chest."
+	set string tag "DiamondMenuAction" of (custom nbt of {_chooseFated}) to "ChooseFated"
+	set slot 1 of {_menu} to {_chooseFated}
+	set {_tierPreferences} to light blue stained glass pane named "&bTier Preferences" with lore "&7Select a preferred Tier per Card." and "&7These preferences reset every cycle."
+	set string tag "DiamondMenuAction" of (custom nbt of {_tierPreferences}) to "TierPreferences"
+	set slot 22 of {_menu} to {_tierPreferences}
+	set {_weeklyRelic} to DiamondRelicItem({_weekly}, true)
+	set lore of {_weeklyRelic} to (colored lore of {_weeklyRelic}) and "%nl%&b✨ Weekly Featured Relic"
+	set slot 3 of {_menu} to {_weeklyRelic}
+	set {_weeklySigil} to DiamondTierSetForPlayer({_p}, {_weekly})
+	set {_weeklyTier} to DiamondPreferredTier({_p}, {_weekly})
+	if {_weeklyTier} = "":
+		set {_weeklyTier} to "Unavailable"
+	set lore of {_weeklySigil} to (colored lore of {_weeklySigil}) and "%nl%&b✨ Weekly Starforged Sigil" and "&7Preferred Tier: &f%{_weeklyTier}%"
+	set slot 4 of {_menu} to {_weeklySigil}
+	if {_fated} = "":
+		set slot 5 of {_menu} to gray stained glass pane named "&8No Fated Card" with lore "&7Choose a Fated Card to preview" and "&7its featured Starforged Sigil."
+		set slot 6 of {_menu} to gray stained glass pane named "&8No Fated Card" with lore "&7Choose a Fated Card to preview" and "&7its featured Relic."
+	else:
+		set {_fatedSigil} to DiamondTierSetForPlayer({_p}, {_fated})
+		set {_fatedTier} to DiamondPreferredTier({_p}, {_fated})
+		if {_fatedTier} = "":
+			set {_fatedTier} to "Unavailable"
+		set lore of {_fatedSigil} to (colored lore of {_fatedSigil}) and "%nl%&b✨ Fated Starforged Sigil" and "&7Preferred Tier: &f%{_fatedTier}%"
+		set slot 5 of {_menu} to {_fatedSigil}
+		set {_fatedRelic} to DiamondRelicItem({_fated}, true)
+		set lore of {_fatedRelic} to (colored lore of {_fatedRelic}) and "%nl%&b✨ Fated Featured Relic"
+		set slot 6 of {_menu} to {_fatedRelic}
+	set slot 13 of {_menu} to DiamondInfoItem({_p})
+	set {_previewSlots::*} to 9, 10, 11, 12, 14, 15, 16, 17, 18, 19, 20, 21, 23, 24, 25 and 26
+	set {_slotIndex} to 1
+	loop yaml node keys "Rewards" in "DiamondChestList":
+		set {_rewardItem} to DiamondRewardItem(loop-value, {_p}, true)
+		if {_rewardItem} is set:
+			set {_chance} to yaml value "Rewards.%loop-value%.Chance" in "DiamondChestList"
+			set {_display} to DiamondRewardDisplay(loop-value, {_rewardItem})
+			set name of {_rewardItem} to colored {_display}
+			set lore of {_rewardItem} to colored "&7Drop probability: &f%{_chance}%%%"
+			if {_previewSlots::%{_slotIndex}%} is set:
+				set slot {_previewSlots::%{_slotIndex}%} of {_menu} to {_rewardItem}
+				set {_slotIndex} to {_slotIndex} + 1
+	open {_menu} to {_p}
+
+function DiamondSpinAnimation(p: player, finalItem: item):
+	set {_inv} to metadata tag "diamondchest" of {_p}
+	open {_inv} to {_p}
+	set {diamondSkip::%{_p}%} to false
+	set {diamondRewardClaimed::%{_p}%} to false
+	set metadata value "DiamondFinalReward" of {_p} to {_finalItem}
+	set {_pool::*} to DiamondPoolItems({_p})
+	if {_pool::*} is not set:
+		set {_pool::*} to {_finalItem}
+	set slots integers between 0 and 8 of {_inv} to light blue stained glass pane named " "
+	set slots integers between 18 and 26 of {_inv} to light blue stained glass pane named " "
+	set slots 4 and 22 of {_inv} to white stained glass pane named "&fSkip Animation" with lore "&7Click to instantly claim your reward."
+	set {_frames} to 52
+	set {_reelSize} to {_frames} + 8
+	loop {_reelSize} times:
+		if {diamondSkip::%{_p}%} = true:
+			stop
+		if {diamondRewardClaimed::%{_p}%} is true:
+			stop
+		set {_reel::%loop-number%} to a random element of {_pool::*}
+	set {_reel::5} to {_finalItem}
+	loop {_frames} times:
+		if {diamondSkip::%{_p}%} = true:
+			stop
+		if {diamondRewardClaimed::%{_p}%} is true:
+			stop
+		set {_frame} to loop-number
+		set {_slot} to 9
+		loop 9 times:
+			set {_index} to ({_frames} - {_frame}) + loop-number-2
+			set slot {_slot} of {_inv} to {_reel::%{_index}%}
+			set {_slot} to {_slot} + 1
+		play sound "block.small_amethyst_bud.break" with volume 2 and pitch 2 to {_p}
+		play sound "block.small_amethyst_cluster.break" with volume 2 and pitch 1.6 to {_p}
+		if {_frame} <= 18:
+			wait 1 tick
+		else if {_frame} <= 30:
+			wait 2 ticks
+		else if {_frame} <= 40:
+			wait 3 ticks
+		else:
+			wait 4 ticks
+		if {diamondSkip::%{_p}%} = true:
+			stop
+		if {diamondRewardClaimed::%{_p}%} is true:
+			stop
+	if {diamondSkip::%{_p}%} = true:
+		stop
+	if {diamondRewardClaimed::%{_p}%} is true:
+		stop
+	set slot 13 of {_inv} to {_finalItem}
+	play sound "entity.experience_orb.pickup" with volume 2 and pitch 1.3 to {_p}
+	wait 10 ticks
+	if {diamondSkip::%{_p}%} = true:
+		stop
+	if {diamondRewardClaimed::%{_p}%} is true:
+		stop
+	set metadata tag "diamondchestopen" of {_p} to chest inventory with 3 rows named "Diamond Chest"
+	set {_openInv} to metadata tag "diamondchestopen" of {_p}
+	set slots integers between 9 and 12 of {_openInv} to white stained glass pane
+	set slots integers between 14 and 17 of {_openInv} to white stained glass pane
+	set slots integers between 0 and 8 of {_openInv} to light blue stained glass pane named " "
+	set slots integers between 18 and 26 of {_openInv} to light blue stained glass pane named " "
+	set slot 13 of {_openInv} to {_finalItem}
+	open {_openInv} to {_p}
+	clear {diamondopening::%{_p}%}
+	clear {diamondSkip::%{_p}%}
+	clear metadata value "DiamondFinalReward" of {_p}
+
+function DiamondClaimReward(p: player, reward: item):
+	if {diamondRewardClaimed::%{_p}%} is true:
+		stop
+	set {diamondRewardClaimed::%{_p}%} to true
+	if {_reward} is air:
+		clear {diamondopening::%{_p}%}
+		clear metadata value "DiamondFinalReward" of {_p}
+		clear {nagrodadiamentowa::%{_p}%}
+		stop
+	if {_reward} is set:
+		if {_p} can hold {_reward}:
+			give {_reward} to {_p}
+		else:
+			drop {_reward} at {_p}
+	play sound "entity.experience_orb.pickup" with volume 2 and pitch 1.3 to {_p}
+	play sound "entity.player.levelup" with volume 5 and pitch 1.3 to {_p}
+	if {diamondDroppedFeatured::%{_p}%} is true:
+		loop all players:
+			play sound "entity.ender_dragon.death" with volume 3 and pitch 1 to loop-player
+			send "&9&kDIAMOND CHEST DIAMOND CHEST DIAMOND CHEST" to loop-player
+			send "&f&l%{_p}% &bdropped %coloured {nagrodadiamentowa::%{_p}%}% &bfrom the &b&lDiamond Chest!" to loop-player
+			send "&9&kDIAMOND CHEST DIAMOND CHEST DIAMOND CHEST" to loop-player
+		clear {diamondDroppedFeatured::%{_p}%}
+	send "&bDiamond Chest >>> &fCongratulations! You receive: %coloured {nagrodadiamentowa::%{_p}%}%&f!" to {_p}
+	clear {diamondopening::%{_p}%}
+	clear metadata value "DiamondFinalReward" of {_p}
+	clear {nagrodadiamentowa::%{_p}%}
+
 
 on rightclick on light blue stained glass:
-    if "%region at player%" contains "spawn":
-        stop
-        if {diamondchest::%clicked block%} is true:
-            if player's tool is {diamondshard} or {diamondshardEN}:
-                remove 1 of player's tool from player
-                add 1 to {diamentoweskrzynki::%player%}
-                achievement("diamentoweskrzynki", player, 1, "osiagniecie.diamond1", "Otwórz Diamond Skrzynkę", "Diamentowa Skrzynka", "Open the Diamond Chest", "Diamond Chest")
-                achievement("diamentoweskrzynki", player, 100, "osiagniecie.diamond100", "Otwórz Diamond Skrzynkę 100 razy.", "Diamentowa Skrzynka: 100", "Open the Diamond Chest 100 times.", "Diamond Chest: 100")
-                loop 20 times:
-                    play sound "block.note_block.basedrum" with volume 5 and pitch 1 at player
-                    wait 0.5 seconds
-                    if loop-number is divisible by 2:
-                        play sound "entity.experience_orb.pickup" with volume 5 and pitch 1 at player
-                    if loop-number is divisible by 4:
-                        play sound "block.amethyst_cluster.break" with volume 5 and pitch 0.7 at player
-                    if loop-number is divisible by 6:
-                        play sound "block.glass.break" with volume 5 and pitch 1.9 at player
-                play sound "item.bottle.fill_dragonbreath" with volume 5 and pitch 2 at player
-                set {_drop} to a random integer between 1 and 100000
-                #5 STAR
-                if {pity::%player%} >= 70:
-                    set {_drop} to a random integer between 1 and 700
-                    if {language::%player%} = "English":
-                        send "&9&l(&b&l!&9&l) &bDiamond Chest: (Pity)" to player
-                    else:
-                        send "&9&l(&b&l!&9&l) &bDiamentowa Skrzynka: (Pity)" to player
-                if {_drop} is between 1 and 700:
-                    if {_drop} is between 1 and 70:
-                        set {_item} to {crownoftheiceking}
-                        drop RelicSetStats({_item}, "<##add8e6>+8.3%% Ice damage", 9.2, 5, 45, 0) at block above clicked block
-                    else if {_drop} is between 71 and 140:
-                        set {_item} to {frozenamulet}
-                        drop RelicSetStats({_item}, "<##add8e6>+5.6%% Ice damage", 6.2, 7, 67, 0) at block above clicked block
-                    else if {_drop} is between 141 and 210:
-                        set {_item} to {beaconofthefrostlands}
-                        drop RelicSetStats({_item}, "<##add8e6>+4.4%% Ice damage", 4.9, 9, 85, 0) at block above clicked block
-                    else if {_drop} is between 211 and 280:
-                        set {_item} to {frostwalkersboots}
-                        drop RelicSetStats({_item}, "<##add8e6>+11.1%% Ice damage", 12.3, 3, 30, 0) at block above clicked block
-                    else if {_drop} is between 281 and 350:
-                        set {_item} to {lavamancersmittens}
-                        drop RelicSetStats({_item}, "<##ff3014>+13.3%% Lava damage", 14.7, 3, 28, 0) at block above clicked block
-                    else if {_drop} is between 351 and 420:
-                        set {_item} to {livingheat}
-                        drop RelicSetStats({_item}, "<##ff3014>+7.2%% Lava damage", 8.0, 6, 52, 0) at block above clicked block
-                    else if {_drop} is between 421 and 490:
-                        set {_item} to {heartofthevolcano}
-                        drop RelicSetStats({_item}, "<##ff3014>+3.7%% Lava damage", 4.1, 11, 102, 0) at block above clicked block
-                    else if {_drop} is between 491 and 560:
-                        set {_item} to {idolofathousandburns}
-                        drop RelicSetStats({_item}, "<##ff3014>+5.3%% Lava damage", 5.9, 8, 70, 0) at block above clicked block
-                    else if {_drop} is between 561 and 630:
-                        set {_item} to {icebreaker}
-                        drop ArtifactSetStats({_item}, "<##add8e6>+13.0%% Ice damage", 14.4, 30, 120, 0) at block above clicked block
-                    else if {_drop} is between 631 and 700:
-                        set {_item} to {lavamancerspride}
-                        drop ArtifactSetStats({_item}, "<##ff3014>+17.3%% Lava damage", 19.2, 23, 90, 0) at block above clicked block
-                    clear {pity::%player%}
-                    loop all players:
-                        play sound "entity.ender_dragon.growl" with volume 5 and pitch 1.4 to loop-player
-                        if {language::%loop-player%} = "English":
-                            send "&9&l(&b&l!&9&l) &bDiamond Chest: &9%player% &bdropped &9%name of {_item}%&b!" to loop-player
-                        else:
-                            send "&9&l(&b&l!&9&l) &bDiamentowa Skrzynka: &bGracz &9%player% &bwydropił &9%name of {_item}%&b!" to loop-player
-                #4 STAR
-                if {4starpity::%player%} >= 10:
-                    set {_drop} to a random integer between 701 and 6700
-                    if {language::%player%} = "English":
-                        send "&9&l(&b&l!&9&l) &bDiamond Chest: (Pity)" to player
-                    else:
-                        send "&9&l(&b&l!&9&l) &bDiamentowa Skrzynka: (Pity)" to player
-                if {_drop} is between 701 and 6700:
-                    if {_drop} is between 701 and 1300:
-                        set {_item} to {frozencompass}
-                        drop RelicSetStats({_item}, "<##add8e6>+5.0%% Ice damage", 5.6, 6, 52, 0) at block above clicked block
-                    if {_drop} is between 1301 and 1900:
-                        set {_item} to {icefragments}
-                        drop RelicSetStats({_item}, "<##add8e6>+6.5%% Ice damage", 7.2, 4, 40, 0) at block above clicked block
-                    if {_drop} is between 1901 and 2500:
-                        set {_item} to {chilledcrystal}
-                        drop RelicSetStats({_item}, "<##add8e6>+4.3%% Ice damage", 4.8, 7, 61, 0) at block above clicked block
-                    if {_drop} is between 2501 and 3100:
-                        set {_item} to {everfrostsnowball}
-                        drop RelicSetStats({_item}, "<##add8e6>+8.7%% Ice damage", 9.7, 3, 30, 0) at block above clicked block
-                    if {_drop} is between 3101 and 3700:
-                        set {_item} to {volcanicremnant}
-                        drop RelicSetStats({_item}, "<##ff3014>+5.6%% Lava damage", 6.2, 5, 47, 0) at block above clicked block
-                    if {_drop} is between 3701 and 4300:
-                        set {_item} to {earthscorcherscuirass}
-                        drop RelicSetStats({_item}, "<##ff3014>+15.4%% Lava damage", 17.1, 2, 17, 0) at block above clicked block
-                    if {_drop} is between 4301 and 4900:
-                        set {_item} to {burntjewel}
-                        drop RelicSetStats({_item}, "<##ff3014>+4.7%% Lava damage", 5.2, 6, 56, 0) at block above clicked block
-                    if {_drop} is between 4901 and 5500:
-                        set {_item} to {magmaconduit}
-                        drop RelicSetStats({_item}, "<##ff3014>+3.2%% Lava damage", 3.5, 9, 83, 0) at block above clicked block
-                    if {_drop} is between 5501 and 6100:
-                        set {_item} to {frozenclaws}
-                        drop ArtifactSetStats({_item}, "<##add8e6>+15.6%% Ice damage", 17.3, 18, 70, 0) at block above clicked block
-                    if {_drop} is between 6101 and 6700:
-                        set {_item} to {igneouslavastone}
-                        drop ArtifactSetStats({_item}, "<##ff3014>+15.2%% Lava damage", 16.8, 18, 72, 0) at block above clicked block
-                    add 1 to {pity::%player%}
-                    clear {4starpity::%player%}
-                    play sound "entity.player.levelup" with volume 5 and pitch 2 to player
-                    if {language::%player%} = "English":
-                        send "&9&l(&b&l!&9&l) &bDiamond Chest: &9%player% &bdropped &9%name of {_item}%&b!" to player
-                    else:
-                        send "&9&l(&b&l!&9&l) &bDiamentowa Skrzynka: &bGracz &9%player% &bwydropił &9%name of {_item}%&b!" to player
-                #3 STAR
-                if {_drop} is between 6701 and 100000:
-                    if {_drop} is between 6701 and 30025:
-                        set {_item} to {glacialorb}
-                        drop ArtifactSetStats({_item}, "<##add8e6>+12.5%% Ice damage", 13.8, 13, 50, 0) at block above clicked block
-                    if {_drop} is between 30026 and 53350:
-                        set {_item} to {frozenarrow}
-                        drop ArtifactSetStats({_item}, "<##add8e6>+23.1%% Ice damage", 25.6, 7, 27, 0) at block above clicked block
-                    if {_drop} is between 53351 and 76675:
-                        set {_item} to {scorchedtome}
-                        drop ArtifactSetStats({_item}, "<##ff3014>+13.6%% Lava damage", 15.0, 12, 46, 0) at block above clicked block
-                    if {_drop} is between 76676 and 100000:
-                        set {_item} to {obsidianbattleaxe}
-                        drop ArtifactSetStats({_item}, "<##ff3014>+29.7%% Lava damage", 32.9, 5, 21, 0) at block above clicked block
-                    add 1 to {pity::%player%}
-                    add 1 to {4starpity::%player%}
-                    play sound "entity.experience_orb.pickup" with volume 5 and pitch 2 to player
-                    if {language::%player%} = "English":
-                        send "&9&l(&b&l!&9&l) &bDiamond Chest: &9%player% &bdropped &9%name of {_item}%&b!" to player
-                    else:
-                        send "&9&l(&b&l!&9&l) &bDiamentowa Skrzynka: &bGracz &9%player% &bwydropił &9%name of {_item}%&b!" to player
-                    
-    
-on inventory click:
-    if player's current inventory = metadata tag "diamondchest" of player:
-        cancel event
+	if {diamondChests::*} contains (location of event-block):
+		if {dailyResetSoon} is not set:
+			play sound "block.amethyst_block.resonate" with volume 5 and pitch 2 to player
+			if DiamondFatedCard(player) = "":
+				DiamondFatedCardMenu(player)
+				stop
+			set {_shards::*} to {diamondshard}
+			if {diamondshardEN} is set:
+				set {_shards::*} to {_shards::*} and {diamondshardEN}
+			if {_shards::*} contains 1 of player's held item:
+				if player is alive:
+					if {diamondopening::%player%} is not set:
+						set metadata tag "diamondchest" of player to chest inventory with 3 rows named "Open?"
+						set slot 12 of metadata tag "diamondchest" of player to 1 of player's tool with lore (lore of player's held item) and "%nl%&7You have this item."
+						set slot 14 of metadata tag "diamondchest" of player to lime stained glass pane named "&aClick here to open" with lore "&7Click here to spend 1 &bDiamond Shard%nl%&7and open the &bDiamond Chest&7."
+						open metadata tag "diamondchest" of player to player
+						loop 3 times:
+							play sound "block.amethyst_block.resonate" with volume 5 and pitch 2 to player
+							wait 0.1 second
+						play sound "block.amethyst_cluster.break" with volume 5 and pitch 1.8 to player
+					else:
+						send "&c&oYou are currently opening the Diamond Chest. You must wait until the process has ended to open the chest again." to player
+						play sound "block.beacon.deactivate" with volume 2 and pitch 0 to player
+			else:
+				send "&bThe Diamond Chest doesn't respond..." to player
+				play sound "block.beacon.deactivate" with volume 2 and pitch 0 to player
+		else:
+			send "&bThe Diamond Chest lies dormant." to player
+			send "&bPlease wait until the server reset (6:00AM server time) to open the Diamond Chest." to player
+			play sound "block.beacon.deactivate" with volume 2 and pitch 0 to player
 
-on break of light blue glass:
-    if {diamondchest::%event-block%} is true:
-        cancel event
-on leftclick on light blue glass:
-    if {diamondchest::%clicked block%} is true:
-        cancel event
-on rightclick on light blue glass:
-    if {diamondchest::%clicked block%} is true:
-        cancel event
+on inventory click:
+	if player's current inventory = metadata tag "diamondchestopen" of player:
+		if index of event-slot is 13:
+			if event-slot is not air:
+				play sound "entity.player.levelup" with volume 5 and pitch 1.3 at player
+		else:
+			if clicked slot is not air:
+				cancel event
+	else if player's current inventory = metadata tag "diamondchestfated" of player:
+		cancel event
+		if clicked slot is not air:
+			set {_card} to string tag "DiamondFatedCard" of custom nbt of clicked slot
+			if {_card} is set:
+				DiamondSetFatedCard(player, {_card})
+				send "&9&l(&b!&9&l) &bYou chose &f%{_card}% &bas your shared Fated Card for this cycle!" to player
+				play sound "entity.player.levelup" with volume 3 and pitch 1.45 to player
+				close player's inventory
+	else if player's current inventory = metadata tag "diamondchesttiercards" of player:
+		cancel event
+		if clicked slot is not air:
+			set {_card} to string tag "DiamondTierCard" of custom nbt of clicked slot
+			if {_card} is set:
+				DiamondTierSelectionMenu(player, {_card})
+	else if player's current inventory = metadata tag "diamondchesttiers" of player:
+		cancel event
+		if clicked slot is not air:
+			set {_action} to string tag "DiamondMenuAction" of custom nbt of clicked slot
+			if {_action} = "TierBack":
+				DiamondTierCardMenu(player)
+				stop
+			set {_card} to string tag "DiamondTierCard" of custom nbt of clicked slot
+			set {_tier} to string tag "DiamondTierValue" of custom nbt of clicked slot
+			if {_card} is set:
+				if {_tier} is set:
+					DiamondSetPreferredTier(player, {_card}, {_tier})
+					send "&9&l(&b!&9&l) &bYour preferred Tier for &f%{_card}% &bis now &f%{_tier}%&b." to player
+					play sound "entity.player.levelup" with volume 3 and pitch 1.45 to player
+					DiamondTierSelectionMenu(player, {_card})
+	if player's current inventory = metadata tag "diamondchestpreview" of player:
+		cancel event
+		if clicked slot is not air:
+			set {_action} to string tag "DiamondMenuAction" of custom nbt of clicked slot
+			if {_action} = "ChooseFated":
+				DiamondFatedCardMenu(player)
+			else if {_action} = "TierPreferences":
+				DiamondTierCardMenu(player)
+	if player's current inventory = metadata tag "diamondchest" of player:
+		cancel event
+		if clicked slot is not air:
+			if name of clicked slot contains "Skip Animation":
+				set {diamondSkip::%player%} to true
+				set {_reward} to metadata value "DiamondFinalReward" of player
+				DiamondClaimReward(player, {_reward})
+				close player's inventory
+				stop
+		set {_slots::*} to lime stained glass pane named "&aClick here to open"
+		if {_slots::*} contains clicked slot:
+			remove 1 of player's tool from player
+
+			achievement("diamentoweskrzynki", player, 1, "osiagniecie.diamond1", "Otwórz Diamond Skrzynkę", "Diamentowa Skrzynka", "Open the Diamond Chest", "Diamond Chest")
+			achievement("diamentoweskrzynki", player, 100, "osiagniecie.diamond100", "Otwórz Diamond Skrzynkę 100 razy.", "Diamentowa Skrzynka: 100", "Open the Diamond Chest 100 times.", "Diamond Chest: 100")
+
+			set {diamondopening::%player%} to true
+			set metadata tag "diamondchest" of player to chest inventory with 3 rows named "Diamond Chest"
+			open metadata tag "diamondchest" of player to player
+			set {_roll} to a random number between 0 and 100
+			set {_featuredChance} to DiamondPityChance(player)
+			set {_featuredCard} to DiamondDroppedCard(player)
+			if {_roll} <= {_featuredChance}:
+				if {_featuredCard} is not set:
+					set {_featuredCard} to ""
+				if {_featuredCard} != "":
+					set {_featuredType} to DiamondRollFeaturedType({_featuredCard})
+					if {_featuredType} != "":
+						set {_it} to DiamondFeaturedItem({_featuredType}, player, {_featuredCard})
+						set {nagrodadiamentowa::%player%} to coloured (name of {_it})
+						set {diamondDroppedFeatured::%player%} to true
+						set {_dPD} to yaml value "Player.Diamond Featured Drops" in "data-%player%"
+						if {_dPD} is not set:
+							set {_dPD} to 0
+						set {_dPD} to {_dPD} + 1
+						set yaml value "Player.Diamond Featured Drops" in "data-%player%" to {_dPD}
+						set yaml value "Player.Diamond Pity" in "data-%player%" to 0
+					else:
+						set {_reward} to DiamondRollReward()
+						set {_it} to DiamondRewardItem({_reward}, player)
+						set {nagrodadiamentowa::%player%} to DiamondRewardDisplay({_reward}, {_it})
+						set {_pityDiamond} to yaml value "Player.Diamond Pity" in "data-%player%"
+						if {_pityDiamond} is set:
+							set {_pityDiamond} to {_pityDiamond} + 1
+						else:
+							set {_pityDiamond} to 1
+						set yaml value "Player.Diamond Pity" in "data-%player%" to {_pityDiamond}
+				else:
+					set {_reward} to DiamondRollReward()
+					set {_it} to DiamondRewardItem({_reward}, player)
+					set {nagrodadiamentowa::%player%} to DiamondRewardDisplay({_reward}, {_it})
+					set {_pityDiamond} to yaml value "Player.Diamond Pity" in "data-%player%"
+					if {_pityDiamond} is set:
+						set {_pityDiamond} to {_pityDiamond} + 1
+					else:
+						set {_pityDiamond} to 1
+					set yaml value "Player.Diamond Pity" in "data-%player%" to {_pityDiamond}
+			else:
+				set {_reward} to DiamondRollReward()
+				set {_it} to DiamondRewardItem({_reward}, player)
+				set {nagrodadiamentowa::%player%} to DiamondRewardDisplay({_reward}, {_it})
+				set {_pityDiamond} to yaml value "Player.Diamond Pity" in "data-%player%"
+				if {_pityDiamond} is set:
+					set {_pityDiamond} to {_pityDiamond} + 1
+				else:
+					set {_pityDiamond} to 1
+				set yaml value "Player.Diamond Pity" in "data-%player%" to {_pityDiamond}
+			if {diamondDroppedFeatured::%player%} is not true:
+				set {_dND} to yaml value "Player.Diamond Normal Drops" in "data-%player%"
+				if {_dND} is not set:
+					set {_dND} to 0
+				set {_dND} to {_dND} + 1
+				set yaml value "Player.Diamond Normal Drops" in "data-%player%" to {_dND}
+			set {_totalDrops} to yaml value "Player.Diamond Total Drops" in "data-%player%"
+			if {_totalDrops} is not set:
+				set {_totalDrops} to 0
+			set {_totalDrops} to {_totalDrops} + 1
+			set yaml value "Player.Diamond Total Drops" in "data-%player%" to {_totalDrops}
+			save yaml "data-%player%"
+			DiamondSpinAnimation(player, {_it})
+
+on inventory close:
+	if player's current inventory = metadata tag "diamondchestopen" of player:
+		set {_reward} to slot 13 of metadata tag "diamondchestopen" of player
+		set slot 13 of metadata tag "diamondchestopen" of player to air
+		DiamondClaimReward(player, {_reward})
+
+on break of light blue stained glass:
+	if {diamondChests::*} contains (location of event-block):
+		cancel event
+
+on leftclick on light blue stained glass:
+	if {diamondChests::*} contains (location of event-block):
+		cancel event
+		if player is alive:
+			play sound "block.amethyst_block.resonate" with volume 5 and pitch 2 to player
+			DiamondPreviewMenu(player)
+
+on rightclick on armor stand:
+	loop all blocks in radius 2 around clicked armor stand:
+		if loop-block is light blue stained glass:
+			if {diamondchest::%loop-block%} is true:
+				cancel event
 
 function diamondChestAnimate():
-    wait 1 tick
-    set {_x} to block at location(9241, 70, 1645, world "world")
-    set {_rotate1} to 0
-    set {_rotate2} to 90
-    set {_rotate3} to 180
-
-    set {_raw} to "✨ Diamond Chest ✨"
-    set {_length} to length of {_raw}
-    set {_direction} to 1
-
-    while amount of online players > 0:
-        set {_i} to {_i} + {_direction}
-        if {_i} >= {_length}-2:
-            set {_i} to {_length}-2
-            set {_direction} to -1
-        else if {_i} <= 1:
-            set {_i} to 1
-            set {_direction} to 1
-        set {_start} to ""
-        set {_end} to ""
-        set {_char} to character at {_i} in {_raw}
-        
-        if {_i} > 1:
-            set {_start} to subtext of {_raw} from characters 1 to ({_i} - 1)
-
-            if {_i} < {_length}:
-                set {_end} to subtext of {_raw} from characters ({_i} + 1) to {_length}
-
-            set {_animated} to mini message from "<gradient:#02a7d9:#ffffff:#42d3ff:#99bdff><bold>%{_start}%<bold>%{_char}%<gradient:#02a7d9:#42d3ff:#99bdff><bold>%{_end}%"
-            
-            set {_display} to {displayText::DiamondChest} parsed as entity
-            set display text of {_display} to {_animated}
-
-        loop 3 times:
-            set {_counter} to loop-counter-2
-            set {_v%{_counter}%} to vector 1, 0, 1
-            rotate {_v%{_counter}%} around y-axis by {_rotate%{_counter}%}
-
-            set {_rotate%{_counter}%} to {_rotate%{_counter}%} + 4
-
-            draw 1 of light blue dust particle at {_x} ~ {_v%{_counter}%}
-
-        wait 2 ticks
+	wait 1 tick
+	set {_x} to block at location(9241, 70, 1645, world "world")
+	set {_rotate1} to 0
+	set {_rotate2} to 90
+	set {_rotate3} to 180
+	set {_raw} to "✨ Diamond Chest ✨"
+	set {_length} to length of {_raw}
+	set {_direction} to 1
+	while amount of online players > 0:
+		set {_i} to {_i} + {_direction}
+		if {_i} >= {_length}-2:
+			set {_i} to {_length}-2
+			set {_direction} to -1
+		else if {_i} <= 1:
+			set {_i} to 1
+			set {_direction} to 1
+		set {_start} to ""
+		set {_end} to ""
+		set {_char} to character at {_i} in {_raw}
+		if {_i} > 1:
+			set {_start} to subtext of {_raw} from characters 1 to ({_i} - 1)
+			if {_i} < {_length}:
+				set {_end} to subtext of {_raw} from characters ({_i} + 1) to {_length}
+			set {_animated} to mini message from "<gradient:#02a7d9:#ffffff:#42d3ff:#99bdff><bold>%{_start}%<bold>%{_char}%<gradient:#02a7d9:#42d3ff:#99bdff><bold>%{_end}%"
+			set {_display} to {displayText::DiamondChest} parsed as entity
+			set display text of {_display} to {_animated}
+		loop 3 times:
+			set {_counter} to loop-counter-2
+			set {_v%{_counter}%} to vector 1, 0, 1
+			rotate {_v%{_counter}%} around y-axis by {_rotate%{_counter}%}
+			set {_rotate%{_counter}%} to {_rotate%{_counter}%} + 4
+			draw 1 of light blue dust particle at {_x} ~ {_v%{_counter}%}
+			
+		wait 2 ticks
