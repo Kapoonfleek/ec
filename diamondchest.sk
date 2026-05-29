@@ -857,46 +857,60 @@ on inventory click:
 			open metadata tag "diamondchest" of player to player
 			set {_roll} to a random number between 0 and 100
 			set {_featuredChance} to DiamondPityChance(player)
-			set {_featuredCard} to DiamondDroppedCard(player)
-			if {_featuredChance} >= {_roll}:
+			set {_featuredSuccess} to false
+
+			if {_roll} <= {_featuredChance}:
+				set {_featuredCard} to DiamondDroppedCard(player)
+
 				if {_featuredCard} is not set:
 					set {_featuredCard} to ""
-				if {_featuredCard} != "":
-					set {_featuredType} to DiamondRollFeaturedType({_featuredCard})
-					if {_featuredType} != "":
-						set {_it} to DiamondFeaturedItem({_featuredType}, player, {_featuredCard})
-						set {nagrodadiamentowa::%player%} to coloured (name of {_it})
-						set {diamondDroppedFeatured::%player%} to true
-						set {_dPD} to yaml value "Player.Diamond Featured Drops" in "data-%player%"
-						if {_dPD} is not set:
-							set {_dPD} to 0
-						set {_dPD} to {_dPD} + 1
-						set yaml value "Player.Diamond Featured Drops" in "data-%player%" to {_dPD}
-						set yaml value "Player.Diamond Pity" in "data-%player%" to 0
-					else:
-						set {_reward} to DiamondRollReward()
-						set {_it} to DiamondRewardItem({_reward}, player)
-						set {nagrodadiamentowa::%player%} to DiamondRewardDisplay({_reward}, {_it})
-						set {_pityDiamond} to yaml value "Player.Diamond Pity" in "data-%player%"
-						if {_pityDiamond} is set:
-							set {_pityDiamond} to {_pityDiamond} + 1
-						else:
-							set {_pityDiamond} to 1
-						set yaml value "Player.Diamond Pity" in "data-%player%" to {_pityDiamond}
-				else:
-					set {_reward} to DiamondRollReward()
-					set {_it} to DiamondRewardItem({_reward}, player)
-					set {nagrodadiamentowa::%player%} to DiamondRewardDisplay({_reward}, {_it})
-					set {_pityDiamond} to yaml value "Player.Diamond Pity" in "data-%player%"
-					if {_pityDiamond} is set:
-						set {_pityDiamond} to {_pityDiamond} + 1
-					else:
-						set {_pityDiamond} to 1
-					set yaml value "Player.Diamond Pity" in "data-%player%" to {_pityDiamond}
-			else:
+				if {_featuredCard} = "":
+					set {_featuredCard} to DiamondWeeklyCard()
+					if {_featuredCard} is not set:
+						set {_featuredCard} to DiamondFatedCard(player)
+
+				if {_featuredCard} is set:
+					if {_featuredCard} != "":
+						set {_featuredType} to DiamondRollFeaturedType({_featuredCard})
+
+						if {_featuredType} is not set:
+							set {_featuredType} to ""
+						if {_featuredType} = "":
+							if all:
+								DiamondCardHasRelic({_featuredCard}) is true
+								DiamondTierSetAvailable({_featuredCard}) is true
+							then:
+								set {_relicChanceYaml} to yaml value "Featured Rewards.Relic.Chance" in "DiamondChestList"
+								set {_sigilChanceYaml} to yaml value "Featured Rewards.Starforged Sigil.Chance" in "DiamondChestList"
+								chance of ({_relicChanceYaml}/{_sigilChanceYaml})%:
+									set {_featuredType} to "Relic"
+								else:
+									set {_featuredType} to "TierSet"
+							else if DiamondCardHasRelic({_featuredCard}) is true:
+								set {_featuredType} to "Relic"
+							else if DiamondTierSetAvailable({_featuredCard}) is true:
+								set {_featuredType} to "TierSet"
+
+						if {_featuredType} is set:
+							if {_featuredType} != "":
+								set {_it} to DiamondFeaturedItem({_featuredType}, player, {_featuredCard})
+								set {nagrodadiamentowa::%player%} to coloured (name of {_it})
+								set {diamondDroppedFeatured::%player%} to true
+
+								set {_dPD} to yaml value "Player.Diamond Featured Drops" in "data-%player%"
+								if {_dPD} is not set:
+									set {_dPD} to 0
+								set {_dPD} to {_dPD} + 1
+								set yaml value "Player.Diamond Featured Drops" in "data-%player%" to {_dPD}
+
+								set yaml value "Player.Diamond Pity" in "data-%player%" to 0
+								set {_featuredSuccess} to true
+
+			if {_featuredSuccess} is false:
 				set {_reward} to DiamondRollReward()
 				set {_it} to DiamondRewardItem({_reward}, player)
 				set {nagrodadiamentowa::%player%} to DiamondRewardDisplay({_reward}, {_it})
+
 				set {_pityDiamond} to yaml value "Player.Diamond Pity" in "data-%player%"
 				if {_pityDiamond} is set:
 					set {_pityDiamond} to {_pityDiamond} + 1
