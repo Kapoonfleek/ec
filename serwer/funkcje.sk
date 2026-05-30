@@ -529,10 +529,8 @@ function newCard(lang: string, name: string, description: string, rarity: string
 			set {_stat12} to "<##2154ad>%{_unc}%"
 		add 1 to {_count}
 
-	if {_lang} = "English":
-		set {_desc} to "%{_description}%%nl%&7Statistics:%nl%&7Health: %{_stat1}%%nl%&7Damage: %{_stat2}%%nl%&7Resistance: %{_stat3}%%nl%&7Mobility: %{_stat4}%%nl%&7Utility: %{_stat5}%%nl%&7Crowd Control: %{_stat6}%%nl%&7Versatility: %{_stat7}%%nl%&7Mastery: %{_stat8}%%nl%&7Critical Hit: %{_stat9}%%nl%&7Element: %{_stat10}%%nl%&7Haste: %{_stat11}%%nl%&7Avoidance: %{_stat12}%%nl%&7Element: %{_element}%%nl%&7Source: &f%{_booster}%%nl%&7Rarity: %{_rarity}%"
-	else:
-		set {_desc} to "%{_description}%%nl%&7Statystyki:%nl%&7Zdrowie: %{_stat1}%%nl%&7Obrażenia: %{_stat2}%%nl%&7Wytrzymałość: %{_stat3}%%nl%&7Mobilność: %{_stat4}%%nl%&7Użyteczność: %{_stat5}%%nl%&7Kontrola Tłumu: %{_stat6}%%nl%&7Uniwersalność: %{_stat7}%%nl%&7Mistrzostwo: %{_stat8}%%nl%&7Cios Krytyczny: %{_stat9}%%nl%&7Żywioł: %{_stat10}%%nl%&7Pośpiech: %{_stat11}%%nl%&7Unik: %{_stat12}%%nl%&7Żywioł: %{_element}%%nl%&7Źródło: &f%{_booster}%%nl%&7Rzadkość: %{_rarity}%"
+	set {_desc} to "%{_description}%%nl%&7Statistics:%nl%&7Health: %{_stat1}%%nl%&7Damage: %{_stat2}%%nl%&7Resistance: %{_stat3}%%nl%&7Mobility: %{_stat4}%%nl%&7Utility: %{_stat5}%%nl%&7Crowd Control: %{_stat6}%%nl%&7Versatility: %{_stat7}%%nl%&7Mastery: %{_stat8}%%nl%&7Critical Hit: %{_stat9}%%nl%&7Element: %{_stat10}%%nl%&7Haste: %{_stat11}%%nl%&7Avoidance: %{_stat12}%%nl%&7Element: %{_element}%%nl%&7Source: &f%{_booster}%%nl%&7Rarity: %{_rarity}%"
+
 	set {_card} to {_item} named {_name} with lore {_desc} with nbt from "{""minecraft:custom_model_data"":{floats:[%{_cmd}%f]}"
 
 	return {_card}
@@ -967,6 +965,23 @@ function InterruptHideCastBar(e: entity):
 	wait 1 second
 	kill {_e}
 
+function HasStarforgedBonus(p: player, card: text, tier: text, setTier: text) :: boolean:
+	if yaml value "Card.Starforged Bonus.%{_card}%.%{_tier}%.%{_setTier}%.Active" in "activeCard-%{_p}%" is true:
+		return true
+	return false
+
+function ActiveStarforgedTier(p: player, card: text, setTier: text) :: text:
+	loop yaml node keys "Card.Starforged Bonus.%{_card}%" in "activeCard-%{_p}%":
+		if yaml value "Card.Starforged Bonus.%{_card}%.%loop-value%.%{_setTier}%.Active" in "activeCard-%{_p}%" is true:
+			return loop-value
+	return ""
+
+function StarforgedSetCount(p: player, card: text, tier: text) :: integer:
+	set {_count} to yaml value "Card.Starforged Bonus.%{_card}%.%{_tier}%.Count" in "activeCard-%{_p}%"
+	if {_count} is not set:
+		set {_count} to 0
+	return {_count}
+
 function GetAbilityDescription(p: player, card: text, ability: text, valueNames: texts, values: objects) :: text:
 	set {_description::*} to yaml list "%{_card}%.%{_ability}%.Description" in "AbilityDescriptionList"
 	set {_description} to (join {_description::*} by nl)
@@ -979,7 +994,15 @@ function GetAbilityDescription(p: player, card: text, ability: text, valueNames:
 
 	loop {_valueNames::*}:
 		if loop-value = "COOLDOWN":
-			set {_timespan} to "%{_values::%loop-counter%}% seconds" parsed as timespan
+			set {_cooldownRaw} to "%{_values::%loop-counter%}%"
+			if any:
+				{_cooldownRaw} contains "second"
+				{_cooldownRaw} contains "minute"
+				{_cooldownRaw} contains "hour"
+			then:
+				set {_timespan} to {_cooldownRaw} parsed as timespan
+			else:
+				set {_timespan} to "%{_cooldownRaw}% seconds" parsed as timespan
 			replace all "{COOLDOWN}" in {_description} with "%{_timespan}%"
 		else:
 			replace all "{%loop-value%}" in {_description} with "%{_values::%loop-counter%}%"
