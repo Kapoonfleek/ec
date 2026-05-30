@@ -665,6 +665,39 @@ function CircleOfWaterDetonate(p: player, x: entity, effectiveness: number = 1):
 	play sound "entity.player.splash.high_speed" with volume 3 and pitch 1 at location of {_x}
 	draw 3 of (heart particle) with offset vector(0.6, 0.9, 0.6) at location 0.5 above {_x}
 	
+function SyncCardHealingYaml(p: player, spell: text, amount: number):
+	if {_amount} <= 0:
+		stop
+	if yaml "activeCard-%{_p}%" is loaded:
+		set {_totalHealing} to yaml value "Combat Data.Total Healing Done" in "activeCard-%{_p}%"
+		if {_totalHealing} is not set:
+			set {_totalHealing} to 0
+		add {_amount} to {_totalHealing}
+		set yaml value "Combat Data.Total Healing Done" in "activeCard-%{_p}%" to {_totalHealing}
+		set {_spellHealing} to yaml value "Combat Data.By Source.%{_spell}%.Healing Done" in "activeCard-%{_p}%"
+		if {_spellHealing} is not set:
+			set {_spellHealing} to 0
+		add {_amount} to {_spellHealing}
+		set yaml value "Combat Data.By Source.%{_spell}%.Healing Done" in "activeCard-%{_p}%" to {_spellHealing}
+		save yaml "activeCard-%{_p}%"
+
+function SyncCardShieldYaml(p: player, spell: text, amount: number):
+	if {_amount} <= 0:
+		stop
+	if yaml "activeCard-%{_p}%" is loaded:
+		set {_totalShielded} to yaml value "Combat Data.Total Damage Shielded" in "activeCard-%{_p}%"
+		if {_totalShielded} is not set:
+			set {_totalShielded} to 0
+		add {_amount} to {_totalShielded}
+		set yaml value "Combat Data.Total Damage Shielded" in "activeCard-%{_p}%" to {_totalShielded}
+		set {_spellShielded} to yaml value "Combat Data.By Source.%{_spell}%.Damage Shielded" in "activeCard-%{_p}%"
+		if {_spellShielded} is not set:
+			set {_spellShielded} to 0
+		add {_amount} to {_spellShielded}
+		set yaml value "Combat Data.By Source.%{_spell}%.Damage Shielded" in "activeCard-%{_p}%" to {_spellShielded}
+		save yaml "activeCard-%{_p}%"
+	SyncCardHealingYaml({_p}, {_spell}, {_amount})
+
 function Heal(p: player, x: entity, heal: number, spell: text, col: text, lore: text, sendMessage: boolean = true):
 	if {_x} is alive:
 		set {_id} to cardId({_p})
@@ -697,6 +730,7 @@ function Heal(p: player, x: entity, heal: number, spell: text, col: text, lore: 
 			set {healtotal::%{_p}%} to {healtotal::%{_p}%} + {_heal}
 			set {healcard::%{kartaname::%{_p}%}%::%{_id}%} to {healcard::%{kartaname::%{_p}%}%::%{_id}%} + {_heal}
 			set {healcard::%{kartaname::%{_p}%}%::%{_id}%::%{_spell}%} to {healcard::%{kartaname::%{_p}%}%::%{_id}%::%{_spell}%} + {_heal}
+			SyncCardHealingYaml({_p}, {_spell}, {_heal})
 
 function cardHealModifiers(p: player, x: entity, heal: number, spell: text) :: number:
 	set {_healBeforeModifiers} to {_heal}
@@ -971,6 +1005,7 @@ function shieldDamageEvent(x: entity, dmg: number) :: number:
 			set {shieldtotal::%{_shieldCaster}%} to {shieldtotal::%{_shieldCaster}%} + {_dmg}
 			set {shieldcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%} to {shieldcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%} + {_dmg}
 			set {shieldcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%::%{_shieldName}%} to {shieldcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%::%{_shieldName}%} + {_dmg}
+			SyncCardShieldYaml({_shieldCaster}, {_shieldName}, {_dmg})
 			HealAssist({_shieldCaster}, {_x})
 			HealRefresh({_shieldCaster}, {_dmg})
 		remove {_dmg} from {_shieldAmount}
@@ -988,6 +1023,7 @@ function shieldDamageEvent(x: entity, dmg: number) :: number:
 			set {shieldtotal::%{_shieldCaster}%} to {shieldtotal::%{_shieldCaster}%} + {_shieldAmount}
 			set {shieldcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%} to {shieldcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%} + {_shieldAmount}
 			set {shieldcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%::%{_shieldName}%} to {shieldcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%::%{_shieldName}%} + {_shieldAmount}
+			SyncCardShieldYaml({_shieldCaster}, {_shieldName}, {_shieldAmount})
 			HealAssist({_shieldCaster}, {_x})
 			HealRefresh({_shieldCaster}, {_shieldAmount})
 		if metadata value "DungeonInstance" of {_x} is set:

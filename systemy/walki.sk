@@ -1,3 +1,14 @@
+function CardCombatYamlAdd(p: player, yamlNode: text, amount: number):
+	if {_amount} <= 0:
+		stop
+	if yaml "activeCard-%{_p}%" is loaded:
+		set {_current} to yaml value "%{_yamlNode}%" in "activeCard-%{_p}%"
+		if {_current} is not set:
+			set {_current} to 0
+		add {_amount} to {_current}
+		set yaml value "%{_yamlNode}%" in "activeCard-%{_p}%" to {_current}
+		save yaml "activeCard-%{_p}%"
+
 
 
 on heal:
@@ -94,10 +105,6 @@ on death:
 						if boolean tag "ECBoss" of (custom nbt of victim) is set:
 							set {_xp} to {_xp}*6
 						cardLevelup({_p}, {_xp}, victim)
-						set {_assistsCard} to yaml value "Combat Data.Total Assists" in "activeCard-%{_p}%"
-						add 1 to {_assistsCard}
-						set yaml value "Combat Data.Total Assists" in "activeCard-%{_p}%" to {_assistsCard}
-						save yaml "activeCard-%{_p}%"
 			if {expAreaMayanMobs} - 1 >= 0:
 				set {expAreaMayanMobs} to {expAreaMayanMobs} - 1
 				if boolean tag "ECBoss" of (custom nbt of victim) is set:
@@ -144,6 +151,7 @@ on death:
 		set {_id} to string tag "Id" of custom nbt of {karta::%victim%}
 		add 1 to {deaths::%victim%}
 		add 1 to {deaths::%{kartaname::%victim%}%::%{_id}%}
+		CardCombatYamlAdd(victim, "Combat Data.Total Deaths", 1)
 
 		clear metadata value "Heartbeat" of victim
 
@@ -154,10 +162,14 @@ on death:
 			add 1 to {mobkills::%attacker%}
 			add 1 to {mobskilled::%{kartaname::%attacker%}%::%{_id}%}
 
-			set {_mobKillsCard} to yaml value "Combat Data.Total Killing Blows" in "activeCard-%attacker%"
-			add 1 to {_mobKillsCard}
-			set yaml value "Combat Data.Total Killing Blows" in "activeCard-%attacker%" to {_mobKillsCard}
-			save yaml "activeCard-%attacker%"
+			CardCombatYamlAdd(attacker, "Combat Data.Total Killing Blows", 1)
+			CardCombatYamlAdd(attacker, "Combat Data.Total Overall Kills", 1)
+			remove uuid of attacker from {asyst::%uuid of victim%::*}
+			if size of {asyst::%uuid of victim%::*} > 0:
+				loop {asyst::%uuid of victim%::*}:
+					set {_assistPlayer} to loop-value parsed as player
+					CardCombatYamlAdd({_assistPlayer}, "Combat Data.Total Assists", 1)
+					CardCombatYamlAdd({_assistPlayer}, "Combat Data.Total Overall Kills", 1)
 
 	if boolean tag "TowerDefenceMob" of (custom nbt of victim) is not set:
 		if boolean tag "ECAbility" of (custom nbt of victim) is not set:
@@ -1020,16 +1032,16 @@ function Heartbeat(p: entity):
 			play sound "misc.heartbeat1" with volume 5 and pitch 0 to {_p}
 		wait 5 seconds
 
-on packet event play_client_use_entity:
-	set {_field} to field 0 of event-packet
-	set {_entity} to entity from id {_field} in world of player
-	if metadata value "Lava Technique Stacks%player%" of {_entity} is set:
-		cancel event
-	else if metadata value "StarsurgeStacks%player%" of {_entity} is set:
-		cancel event
-	else if cooldown "Flamethrower%player%-%uuid of {_entity}%" > 0 seconds:
-		cancel event
-
+on player interact on entity:
+	if metadata value "ECEngaged" of player is set:
+		set {_entity} to event-entity
+		if any:
+			metadata value "Lava Technique Stacks%player%" of {_entity} is set
+			metadata value "Garrote%player%" of {_entity} is set
+			metadata value "Night Slash Vulnerability%player%" of {_entity} is set
+		then:
+			cancel event
+			
 #on heal:
 #	if {walka} is true:
 #		if heal reason is satiated or regeneration:
