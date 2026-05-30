@@ -307,6 +307,9 @@ function GearLoreUpdate(item: item) :: string:
             set {_desc} to GearSetDescription({_2setItemBonus}, "4Set", false)
             set {_lore} to "%{_lore}%%nl%&74 Set Bonus: %{_desc}%"
 
+    if StarforgeApplied({_item}) is true:
+        set {_lore} to "%{_lore}%%StarforgeInactiveBlock({_item})%"
+
     if yaml value "Gear.%{_source}%.%{_gearItem}%.Flavour Text" in "GearList" is set:
         set {_flavourText} to yaml value "Gear.%{_source}%.%{_gearItem}%.Flavour Text" in "GearList"
         replace all "{NL}" in {_flavourText} with nl
@@ -667,6 +670,7 @@ on inventory click:
                             clear yaml value "Gear.%{_gearSlot}%" in "activeCard-%player%"
                     
                 RecalculateRegularGearSets(player)
+                RecalculateStarforgedBonuses(player)
 
                 UpdateCard(player)
                 CardStatUpdate(player)
@@ -989,8 +993,10 @@ on inventory click:
                         applyRune(player, player's tool, loop-value, {_runeValue}, {_runicPower})
 
                 set yaml value "Gear.%{_gearSlot}%" in "activeCard-%player%" to {_gearItem}
+                StarforgeSaveGearYaml(player, {_gearSlot}, {_gearItem})
             
             RecalculateRegularGearSets(player)
+            RecalculateStarforgedBonuses(player)
 
             UpdateCard(player)
             CardStatUpdate(player)
@@ -1088,52 +1094,54 @@ function EquippedGearLoreUpdate(p: player, item: item) :: text:
     set {_lore} to GearLoreUpdate({_item})
     set {_customNbt} to custom nbt of {_item}
 
-    if string tag "2Set;Name" of {_customNbt} is not set:
-        return {_lore}
+    if string tag "2Set;Name" of {_customNbt} is set:
+        set {_setName} to string tag "2Set;Name" of {_customNbt}
+        set {_setCount} to 0
 
-    set {_setName} to string tag "2Set;Name" of {_customNbt}
-    set {_setCount} to 0
+        loop yaml node keys "Card.Gear" in "activeCard-%{_p}%":
+            if yaml value "Card.Gear.%loop-value%.2Set.Name" in "activeCard-%{_p}%" = {_setName}:
+                set {_setCount} to {_setCount} + 1
 
-    loop yaml node keys "Card.Gear" in "activeCard-%{_p}%":
-        if yaml value "Card.Gear.%loop-value%.2Set.Name" in "activeCard-%{_p}%" = {_setName}:
-            set {_setCount} to {_setCount} + 1
+        set {_inactiveBlock} to "%nl% %nl%&7%{_setName}% Set"
 
-    set {_inactiveBlock} to "%nl% %nl%&7%{_setName}% Set"
-
-    if yaml value "Set Bonuses.%{_setName}%.2Set.Description" in "GearList" is set:
-        set {_desc} to GearSetDescription({_setName}, "2Set", false)
-        set {_inactiveBlock} to "%{_inactiveBlock}%%nl%&72 Set Bonus: %{_desc}%"
-
-    if yaml value "Set Bonuses.%{_setName}%.4Set.Description" in "GearList" is set:
-        set {_desc} to GearSetDescription({_setName}, "4Set", false)
-        set {_inactiveBlock} to "%{_inactiveBlock}%%nl%&74 Set Bonus: %{_desc}%"
-
-    if {_setCount} >= 2:
-        set {_setColour} to coloured (yaml value "Set Bonuses.%{_setName}%.Colour" in "GearList")
-    else:
-        set {_setColour} to "&7"
-
-    set {_activeBlock} to "%nl% %nl%%{_setColour}%%{_setName}% Set"
-
-    if yaml value "Set Bonuses.%{_setName}%.2Set.Description" in "GearList" is set:
-        if {_setCount} >= 2:
-            set {_desc} to GearSetDescription({_setName}, "2Set", true)
-            set {_activeBlock} to "%{_activeBlock}%%nl%&f2 Set Bonus: %{_desc}%"
-        else:
+        if yaml value "Set Bonuses.%{_setName}%.2Set.Description" in "GearList" is set:
             set {_desc} to GearSetDescription({_setName}, "2Set", false)
-            set {_activeBlock} to "%{_activeBlock}%%nl%&72 Set Bonus: %{_desc}%"
+            set {_inactiveBlock} to "%{_inactiveBlock}%%nl%&72 Set Bonus: %{_desc}%"
 
-    if yaml value "Set Bonuses.%{_setName}%.4Set.Description" in "GearList" is set:
-        if {_setCount} >= 4:
-            set {_desc} to GearSetDescription({_setName}, "4Set", true)
-            set {_activeBlock} to "%{_activeBlock}%%nl%&f4 Set Bonus: %{_desc}%"
-        else:
+        if yaml value "Set Bonuses.%{_setName}%.4Set.Description" in "GearList" is set:
             set {_desc} to GearSetDescription({_setName}, "4Set", false)
-            set {_activeBlock} to "%{_activeBlock}%%nl%&74 Set Bonus: %{_desc}%"
+            set {_inactiveBlock} to "%{_inactiveBlock}%%nl%&74 Set Bonus: %{_desc}%"
 
-    replace all {_inactiveBlock} in {_lore} with {_activeBlock}
+        if {_setCount} >= 2:
+            set {_setColour} to coloured (yaml value "Set Bonuses.%{_setName}%.Colour" in "GearList")
+        else:
+            set {_setColour} to "&7"
+
+        set {_activeBlock} to "%nl% %nl%%{_setColour}%%{_setName}% Set"
+
+        if yaml value "Set Bonuses.%{_setName}%.2Set.Description" in "GearList" is set:
+            if {_setCount} >= 2:
+                set {_desc} to GearSetDescription({_setName}, "2Set", true)
+                set {_activeBlock} to "%{_activeBlock}%%nl%&f2 Set Bonus: %{_desc}%"
+            else:
+                set {_desc} to GearSetDescription({_setName}, "2Set", false)
+                set {_activeBlock} to "%{_activeBlock}%%nl%&72 Set Bonus: %{_desc}%"
+
+        if yaml value "Set Bonuses.%{_setName}%.4Set.Description" in "GearList" is set:
+            if {_setCount} >= 4:
+                set {_desc} to GearSetDescription({_setName}, "4Set", true)
+                set {_activeBlock} to "%{_activeBlock}%%nl%&f4 Set Bonus: %{_desc}%"
+            else:
+                set {_desc} to GearSetDescription({_setName}, "4Set", false)
+                set {_activeBlock} to "%{_activeBlock}%%nl%&74 Set Bonus: %{_desc}%"
+
+        replace all {_inactiveBlock} in {_lore} with {_activeBlock}
+
+    if StarforgeApplied({_item}) is true:
+        replace all StarforgeInactiveBlock({_item}) in {_lore} with StarforgeActiveBlock({_p}, {_item})
 
     return {_lore}
+
 
 function StatBarUpdate(p: player, statAmount: number, line: integer, statEN: string, statPL: string, colour: string):
     set {_kwadraciki} to (rounded down {_statAmount}/50)

@@ -17,12 +17,12 @@ on rightclick on a player:
         else:
             send  "&8[<#b0b0b0>NPC&8] [<#b0b0b0>Papito&8] &fHola! Anything I can do for you today?" to player
         set metadata tag "papito" of player to chest inventory with 1 row named "What would you like to do?"
-        set slot 2 of (metadata tag "papito" of player) to smoker named "&7Upgrade" with lore "&fClick here to upgrade an item."
-        set slot 3 of (metadata tag "papito" of player) to anvil named "&7Reforge" with lore "&fReforge an Artifact, re-randomizng its stats%nl%&fstat values, or both. The cost of Reforging%nl%&fincreases with each Reforge and resets%nl%&fon a weekly basis."
-        set slot 4 of (metadata tag "papito" of player) to netherite sword named "&7Enhance" with lore "&fUse up a duplicate of a Relic to further%nl%&fenhance your Relic's power."
-        set slot 5 of (metadata tag "papito" of player) to netherite helmet named "&7Socket an Item" with lore "&fClick here to add a Gem to a socket." with item flag hide attributes
-        set slot 6 of (metadata tag "papito" of player) to netherite ingot named "&7Rate an Artifact" with lore "&fClick here to have your Artifact%nl%&frated by 'Papito'."
-        set slot 7 of (metadata tag "papito" of player) to glowstone dust named "&7Starforge" with nbt from "{""minecraft:custom_model_data"":{floats:[15.0f]}}"
+        set slot 1 of (metadata tag "papito" of player) to smoker named "&7Upgrade" with lore "&fClick here to upgrade an item."
+        set slot 2 of (metadata tag "papito" of player) to anvil named "&7Reforge" with lore "&fReforge an Artifact, re-randomizng its stats,%nl%&fstat values, or both. The cost of Reforging%nl%&fincreases with each Reforge and resets%nl%&fon a weekly basis."
+        set slot 3 of (metadata tag "papito" of player) to netherite sword named "&7Enhance" with lore "&fUse up a duplicate of a Relic to further%nl%&fenhance your Relic's power." with item flag hide attributes
+        set slot 4 of (metadata tag "papito" of player) to netherite helmet named "&7Socket an Item" with lore "&fClick here to add a Gem to a socket." with item flag hide attributes
+        set slot 5 of (metadata tag "papito" of player) to netherite ingot named "&7Rate an Artifact" with lore "&fClick here to have your Artifact%nl%&frated by 'Papito'."
+        set slot 6 of (metadata tag "papito" of player) to glowstone dust named "&7Starforge" with lore "&fClick here to ✨ Starforge a Gear piece." with nbt from "{""minecraft:custom_model_data"":{floats:[15.0f]}}"
         open (metadata tag "papito" of player) to player
 on inventory click:
     if event-inventory = metadata tag "papito" of player:
@@ -489,7 +489,7 @@ on inventory click:
                             if int tag "Upgraded" of (custom nbt of {_currentArtifact}) >= 0:
                                 set {_difference} to (int tag "Upgraded" of (custom nbt of {_artifactUpgraded})) - (int tag "Upgraded" of (custom nbt of {_currentArtifact}))
                                 if {winterDelightPassLEVEL::%player%} >= 0:
-                                    getMission(player, "Upgrading Artifacts", "Ulepszanie Artefaktów", {_difference})
+                                    getMission(player, "Upgrading Artifacts%nl%Ulepszanie Artefaktów", {_difference})
                                 loop {_difference} times:
                                     if (int tag "Upgraded" of (custom nbt of {_currentArtifact})) + loop-number is divisible by 5:
                                         add 1 to {_loops}
@@ -506,7 +506,7 @@ on inventory click:
                             if {_addStat} is true:
                                 play sound "block.anvil.use" with volume 4 and pitch 1.45 at player
                                 set {_lore::*} to lore of {_artifactUpgraded}
-                                set {_stats::*} to "<#c0ff02> x Health", "<#f74428> x Damage", "<#ffef45> x Resistance", "&f x Mobility", "<#ae78d0> x Utility", "<#58c3f5> x Crowd Control", "<#e3ebff> x Versatility", "<#f53b98> x Mastery", "<#fca417> x Critical Hit", "<#d5ff57> x Element", "<#19943e> x Haste" and "<#2154ad> x Avoidance"
+                                set {_stats::*} to "<#c0ff02> x Health%nl%<#f74428> x Damage%nl%<#ffef45> x Resistance%nl%&f x Mobility%nl%<#ae78d0> x Utility%nl%<#58c3f5> x Crowd Control%nl%<#e3ebff> x Versatility%nl%<#f53b98> x Mastery%nl%<#fca417> x Critical Hit%nl%<#d5ff57> x Element%nl%<#19943e> x Haste" and "<#2154ad> x Avoidance"
                                 if string tag "SubstatAdded" of (custom nbt of {_artifactUpgraded}) is set:
                                     loop {_stats::*}:
                                         set {_stat} to uncolored loop-value-2
@@ -726,3 +726,379 @@ function findGemsByColour(gemColour: string) :: strings:
 
     return {_eligibleGems::*}
                 
+
+on inventory click:
+    if event-inventory = metadata tag "papito" of player:
+        if event-slot = 7:
+            cancel event
+            set metadata tag "papitoStarforge" of player to chest inventory with 6 rows named "Papito - Starforge"
+            set {_slotIndex} to 0
+            loop all items in the player's inventory:
+                if item amount of loop-item = 1:
+                    if StarforgeEligibleGear(loop-item) is true:
+                        set {_item} to loop-item
+                        set {_item} to StarforgeLoreUpdate(player, {_item})
+                        set slot {_slotIndex} of metadata tag "papitoStarforge" of player to {_item}
+                        add "%nl%&f&oClick here to choose a Starforged Sigil." to lore of slot {_slotIndex} of metadata tag "papitoStarforge" of player
+                        add 1 to {_slotIndex}
+            if {_slotIndex} > 0:
+                StarforgePlayMenuSound(player)
+                open metadata tag "papitoStarforge" of player to player
+            else:
+                play sound "entity.villager.no" with volume 5 and pitch 0.62 to player
+                send "&c&oThere are no eligible gear pieces in your inventory." to player
+
+on inventory click:
+    if event-inventory = metadata tag "papitoStarforge" of player:
+        cancel event
+        if event-slot is not air:
+            set {_gear} to event-slot
+            set {_gearId} to string tag "GearId" of (custom nbt of {_gear})
+            set metadata value "PapitoStarforgeGearId" of player to {_gearId}
+            set metadata value "PapitoStarforgeGear" of player to {_gear}
+            set metadata tag "papitoStarforgeSigils" of player to chest inventory with 6 rows named "Papito - Starforge - Choose Sigil"
+            set slot 49 of metadata tag "papitoStarforgeSigils" of player to StarforgeLoreUpdate(player, {_gear})
+            set {_slotIndex} to 0
+            loop all items in the player's inventory:
+                if item amount of loop-item >= 1:
+                    if StarforgeIsSigil(loop-item) is true:
+                        set {_reason} to StarforgeApplyFailure(player, {_gear}, loop-item)
+                        if {_reason} = "":
+                            set {_item} to loop-item
+                            add "%nl%&f&oClick here to apply this Starforged Sigil." to lore of {_item}
+                            set slot {_slotIndex} of metadata tag "papitoStarforgeSigils" of player to {_item}
+                            add 1 to {_slotIndex}
+            if {_slotIndex} > 0:
+                StarforgePlayMenuSound(player)
+                open metadata tag "papitoStarforgeSigils" of player to player
+            else:
+                play sound "entity.villager.no" with volume 5 and pitch 0.62 to player
+                send "&c&oThere are no applicable Starforged Sigils in your inventory." to player
+
+on inventory click:
+    if event-inventory = metadata tag "papitoStarforgeSigils" of player:
+        cancel event
+        if event-slot is not air:
+            if StarforgeIsSigil(event-slot) is true:
+                set {_gear} to metadata value "PapitoStarforgeGear" of player
+                set {_sigil} to event-slot
+                set {_reason} to StarforgeApplyFailure(player, {_gear}, {_sigil})
+                if {_reason} != "":
+                    play sound "entity.villager.no" with volume 5 and pitch 0.62 to player
+                    send {_reason} to player
+                    stop
+                set metadata value "PapitoStarforgeSigilCard" of player to string tag "DiamondSourceCard" of (custom nbt of {_sigil})
+                set metadata value "PapitoStarforgeSigilTier" of player to string tag "DiamondSourceTier" of (custom nbt of {_sigil})
+                if StarforgeApplied({_gear}) is true:
+                    set metadata tag "papitoStarforgeOverwrite" of player to chest inventory with 3 rows named "Papito - Starforge - Replace"
+                    set {_gui} to metadata tag "papitoStarforgeOverwrite" of player
+                    set slots integers between 0 and 26 of {_gui} to black stained glass pane named " "
+                    set slot 10 of {_gui} to StarforgeLoreUpdate(player, {_gear})
+                    set slot 12 of {_gui} to StarforgeDisplayItem(string tag "Starforged;Card" of (custom nbt of {_gear}), string tag "Starforged;Tier" of (custom nbt of {_gear}), true)
+                    set slot 14 of {_gui} to StarforgeDisplayItem(string tag "DiamondSourceCard" of (custom nbt of {_sigil}), string tag "DiamondSourceTier" of (custom nbt of {_sigil}), false)
+                    set slot 16 of {_gui} to lime stained glass pane named "&aConfirm Replace" with lore "&7Click here to apply the new Starforged Sigil." and "&7This will consume the selected Sigil." and " " and "&cWarning: this will replace the old" and "&cStarforged effect."
+                    StarforgePlayMenuSound(player)
+                    open {_gui} to player
+                else:
+                    set metadata tag "papitoStarforgeConfirm" of player to chest inventory with 3 rows named "Papito - Starforge - Confirm"
+                    set {_gui} to metadata tag "papitoStarforgeConfirm" of player
+                    set slots integers between 0 and 26 of {_gui} to black stained glass pane named " "
+                    set slot 10 of {_gui} to StarforgeLoreUpdate(player, {_gear})
+                    set slot 13 of {_gui} to StarforgeDisplayItem(string tag "DiamondSourceCard" of (custom nbt of {_sigil}), string tag "DiamondSourceTier" of (custom nbt of {_sigil}), false)
+                    set slot 16 of {_gui} to lime stained glass pane named "&aConfirm Starforge" with lore "&7Click here to apply the selected" and "&7Starforged Sigil to this gear piece." and "&7This will consume the selected Sigil."
+                    StarforgePlayMenuSound(player)
+                    open {_gui} to player
+
+on inventory click:
+    if event-inventory = metadata tag "papitoStarforgeConfirm" of player:
+        cancel event
+        if event-slot = 16:
+            set {_gear} to metadata value "PapitoStarforgeGear" of player
+            set {_card} to metadata value "PapitoStarforgeSigilCard" of player
+            set {_tier} to metadata value "PapitoStarforgeSigilTier" of player
+            set {_updated} to StarforgeApplyToItem(player, {_gear}, {_card}, {_tier})
+            StarforgeConsumeAndGive(player, {_updated}, {_card}, {_tier})
+            close player's inventory
+            play sound "block.amethyst_cluster.break" with volume 5 and pitch 1.25 to player
+            play sound "entity.player.levelup" with volume 4 and pitch 1.15 to player
+            send "&b✦ Successfully Starforged %name of {_updated}%&b." to player
+
+on inventory click:
+    if event-inventory = metadata tag "papitoStarforgeOverwrite" of player:
+        cancel event
+        if event-slot = 16:
+            set {_gear} to metadata value "PapitoStarforgeGear" of player
+            set {_card} to metadata value "PapitoStarforgeSigilCard" of player
+            set {_tier} to metadata value "PapitoStarforgeSigilTier" of player
+            set {_updated} to StarforgeApplyToItem(player, {_gear}, {_card}, {_tier})
+            StarforgeConsumeAndGive(player, {_updated}, {_card}, {_tier})
+            close player's inventory
+            play sound "block.amethyst_cluster.break" with volume 5 and pitch 1.1 to player
+            play sound "entity.player.levelup" with volume 4 and pitch 1.05 to player
+            send "&b✦ Successfully replaced the Starforged effect on %name of {_updated}%&b." to player
+
+on inventory open:
+    if event-inventory = metadata tag "gearcard" of player:
+        wait 1 tick
+        loop yaml node keys "Slot Map" in "GearList":
+            set {_slotIndex} to loop-value parsed as integer
+            set {_gearItem} to slot {_slotIndex} of event-inventory
+            if {_gearItem} is not air:
+                if StarforgeApplied({_gearItem}) is true:
+                    set {_gearItem} to StarforgeLoreUpdate(player, {_gearItem}, true)
+                    set slot {_slotIndex} of event-inventory to {_gearItem}
+
+on inventory click:
+    if player's current inventory = metadata tag "gearcard" of player:
+        if inventory action = instant move:
+            if event-slot is not air:
+                if StarforgeApplied(event-slot) is true:
+                    set {_gearId} to string tag "GearId" of (custom nbt of event-slot)
+                    wait 1 tick
+                    loop integers between 0 and 40:
+                        set {_item} to slot loop-value of player
+                        if {_item} is not air:
+                            if string tag "GearId" of (custom nbt of {_item}) = {_gearId}:
+                                set {_item} to StarforgeLoreUpdate(player, {_item})
+                                set slot loop-value of player to {_item}
+                                stop
+
+function StarforgePlayMenuSound(p: player):
+    play sound "block.anvil.place" with volume 5 and pitch 1.92 to {_p}
+    play sound "block.amethyst_block.resonate" with volume 4 and pitch 1.65 to {_p}
+    play sound "block.amethyst_cluster.break" with volume 4 and pitch 1.3 to {_p}
+
+function StarforgeEligibleGear(item: item) :: boolean:
+    if boolean tag "GearItem" of (custom nbt of {_item}) is not set:
+        return false
+    set {_gearSlot} to string tag "GearSlot" of (custom nbt of {_item})
+
+    set {_slots::*} to "Helmet", "Chestplate", "Leggings" and "Boots"
+
+    if {_slots::*} contains {_gearSlot}:
+        return true
+
+    return false
+
+function StarforgeIsSigil(item: item) :: boolean:
+    set {_type} to string tag "DiamondFeaturedType" of (custom nbt of {_item})
+    if {_type} = "TierSet":
+        return true
+    if {_type} = "Sigil":
+        return true
+    return false
+
+function StarforgeApplied(item: item) :: boolean:
+    if string tag "Starforged;Card" of (custom nbt of {_item}) is set:
+        return true
+    return false
+
+function StarforgeBoundCard(id: text) :: text:
+    loop yaml node keys "Card Colours" in "CardList":
+        if yaml file "plugins/Skript/playerdata/karty/%loop-value%/%{_id}%.yml" exists:
+            return loop-value
+    loop yaml node keys "Cards" in "StellarChestList":
+        if yaml file "plugins/Skript/playerdata/karty/%loop-value%/%{_id}%.yml" exists:
+            return loop-value
+    return ""
+
+function StarforgeApplyFailure(p: player, gear: item, sigil: item) :: text:
+    if StarforgeEligibleGear({_gear}) is false:
+        return "&cThis item cannot be Starforged."
+    if StarforgeIsSigil({_sigil}) is false:
+        return "&cThis item is not a Starforged Sigil."
+    set {_sigilCard} to string tag "DiamondSourceCard" of (custom nbt of {_sigil})
+    if {_sigilCard} is not set:
+        return "&cThis Sigil is missing its source Card."
+    if string tag "Cardbound" of (custom nbt of {_gear}) is set:
+        set {_boundId} to string tag "Cardbound" of (custom nbt of {_gear})
+        set {_boundCard} to StarforgeBoundCard({_boundId})
+        if {_boundCard} is set:
+            if {_boundCard} != {_sigilCard}:
+                return "&cThis gear is Cardbound to %{_boundCard}%&c."
+    return ""
+
+function StarforgeSetName(card: text, tier: text) :: text:
+    set {_name} to yaml value "%{_card}%.%{_tier}%.Name" in "TierSetList"
+    return {_name}
+
+function StarforgeSetDisplay(card: text, tier: text, active: boolean = false) :: text:
+    return StarforgeSetName({_card}, {_tier})
+
+function StarforgeSetDescription(card: text, tier: text, setTier: text, active: boolean = false) :: text:
+    set {_description} to formatted yaml value "%{_card}%.%{_tier}%.%{_setTier}%" in "TierSetList"
+
+    set {_valueNames::*} to yaml node keys "%{_card}%.%{_tier}%" in "TierSetList"
+    loop {_valueNames::*}:
+        if {_setTier} = "2SET":
+            if loop-value contains "2SETVALUE":
+                set {_value} to yaml value "%{_card}%.%{_tier}%.%loop-value%" in "TierSetList"
+                replace all "{%loop-value%}" in {_description} with "%{_value}%"
+
+        else if {_setTier} = "4SET":
+            if loop-value contains "4SETVALUE":
+                set {_value} to yaml value "%{_card}%.%{_tier}%.%loop-value%" in "TierSetList"
+                replace all "{%loop-value%}" in {_description} with "%{_value}%"
+
+    replace all "{NL}" in {_description} with nl
+
+    if {_active} is false:
+        set {_description} to uncoloured {_description}
+        replace all nl in {_description} with "%nl%&8"
+        set {_description} to "&8%{_description}%"
+
+    return {_description}
+
+function StarforgeLeadColour(card: text) :: text:
+    set {_colour} to yaml value "%{_card}%.Classic.Colour.Primary" in "VariantList"
+    return {_colour}
+
+function StarforgeInactiveBlock(item: item) :: text:
+    set {_card} to string tag "Starforged;Card" of (custom nbt of {_item})
+    set {_tier} to string tag "Starforged;Tier" of (custom nbt of {_item})
+    if {_card} is not set:
+        return ""
+    set {_name} to mini message from (yaml value "%{_card}%.%{_tier}%.Gradient Name" in "TierSetList")
+    
+    set {_twoSet} to StarforgeSetDescription({_card}, {_tier}, "2SET", false)
+    set {_fourSet} to StarforgeSetDescription({_card}, {_tier}, "4SET", false)
+    set {_block} to "%nl% %nl%<#9fe7ff>&o✨ Starforged: &f%{_name}%"
+    set {_block} to "%{_block}%%nl%&8✨ 2-set Effect: %{_twoSet}%"
+    set {_block} to "%{_block}%%nl%&8✨ 4-set Effect: %{_fourSet}%"
+    return {_block}
+
+function StarforgeActiveBlock(p: player, item: item) :: text:
+    set {_card} to string tag "Starforged;Card" of (custom nbt of {_item})
+    set {_tier} to string tag "Starforged;Tier" of (custom nbt of {_item})
+    if {_card} is not set:
+        return ""
+    set {_count} to StarforgeSetCount({_p}, {_card}, {_tier})
+    
+    set {_name} to mini message from (yaml value "%{_card}%.%{_tier}%.Gradient Name" in "TierSetList")
+
+    set {_leadColour} to StarforgeLeadColour({_card})
+    set {_block} to "%nl% %nl%<#9fe7ff>&o✨ Starforged: &f%{_name}%"
+    if {_count} >= 2:
+        set {_twoSet} to StarforgeSetDescription({_card}, {_tier}, "2SET", true)
+        set {_block} to coloured "%{_block}%%nl%%{_leadColour}%✨ 2-set Effect: %{_twoSet}%"
+    else:
+        set {_twoSet} to StarforgeSetDescription({_card}, {_tier}, "2SET", false)
+        set {_block} to "%{_block}%%nl%&8✨ 2-set Effect: %{_twoSet}%"
+    if {_count} >= 4:
+        set {_fourSet} to StarforgeSetDescription({_card}, {_tier}, "4SET", true)
+        set {_block} to coloured "%{_block}%%nl%%{_leadColour}%✨ 4-set Effect: %{_fourSet}%"
+    else:
+        set {_fourSet} to StarforgeSetDescription({_card}, {_tier}, "4SET", false)
+        set {_block} to "%{_block}%%nl%&8✨ 4-set Effect: %{_fourSet}%"
+    return {_block}
+
+function StarforgeSaveGearYaml(p: player, gearSlot: text, gear: item):
+    clear yaml value "Card.Gear.%{_gearSlot}%.Starforged" in "activeCard-%{_p}%"
+    if StarforgeApplied({_gear}) is true:
+        set {_card} to string tag "Starforged;Card" of (custom nbt of {_gear})
+        set {_tier} to string tag "Starforged;Tier" of (custom nbt of {_gear})
+        set {_name} to StarforgeSetName({_card}, {_tier})
+        set yaml value "Card.Gear.%{_gearSlot}%.Starforged.Card" in "activeCard-%{_p}%" to {_card}
+        set yaml value "Card.Gear.%{_gearSlot}%.Starforged.Tier" in "activeCard-%{_p}%" to {_tier}
+        set yaml value "Card.Gear.%{_gearSlot}%.Starforged.Name" in "activeCard-%{_p}%" to {_name}
+        set yaml value "Card.Gear.%{_gearSlot}%.Starforged Bonus.Name" in "activeCard-%{_p}%" to {_name}
+        set yaml value "Card.Gear.%{_gearSlot}%.Starforged Bonus.2Set.Description" in "activeCard-%{_p}%" to StarforgeSetDescription({_card}, {_tier}, "2SET", true)
+        set yaml value "Card.Gear.%{_gearSlot}%.Starforged Bonus.4Set.Description" in "activeCard-%{_p}%" to StarforgeSetDescription({_card}, {_tier}, "4SET", true)
+
+function RecalculateStarforgedBonuses(p: player):
+    clear yaml value "Card.Starforged Bonus" in "activeCard-%{_p}%"
+    loop yaml node keys "Card.Gear" in "activeCard-%{_p}%":
+        if yaml value "Card.Gear.%loop-value%.Starforged.Card" in "activeCard-%{_p}%" is set:
+            set {_card} to yaml value "Card.Gear.%loop-value%.Starforged.Card" in "activeCard-%{_p}%"
+            set {_tier} to yaml value "Card.Gear.%loop-value%.Starforged.Tier" in "activeCard-%{_p}%"
+            set {_count::%{_card}%::%{_tier}%} to {_count::%{_card}%::%{_tier}%} + 1
+    loop yaml node keys "Card.Gear" in "activeCard-%{_p}%":
+        clear yaml value "Card.Gear.%loop-value%.Starforged Bonus.2Set.Active" in "activeCard-%{_p}%"
+        clear yaml value "Card.Gear.%loop-value%.Starforged Bonus.4Set.Active" in "activeCard-%{_p}%"
+        if yaml value "Card.Gear.%loop-value%.Starforged.Card" in "activeCard-%{_p}%" is set:
+            set {_card} to yaml value "Card.Gear.%loop-value%.Starforged.Card" in "activeCard-%{_p}%"
+            set {_tier} to yaml value "Card.Gear.%loop-value%.Starforged.Tier" in "activeCard-%{_p}%"
+            set {_name} to yaml value "Card.Gear.%loop-value%.Starforged.Name" in "activeCard-%{_p}%"
+            set {_countValue} to {_count::%{_card}%::%{_tier}%}
+            set yaml value "Card.Gear.%loop-value%.Starforged Bonus.Name" in "activeCard-%{_p}%" to {_name}
+            set yaml value "Card.Gear.%loop-value%.Starforged Bonus.2Set.Description" in "activeCard-%{_p}%" to StarforgeSetDescription({_card}, {_tier}, "2SET", true)
+            set yaml value "Card.Gear.%loop-value%.Starforged Bonus.4Set.Description" in "activeCard-%{_p}%" to StarforgeSetDescription({_card}, {_tier}, "4SET", true)
+            set yaml value "Card.Gear.%loop-value%.Starforged Bonus.Count" in "activeCard-%{_p}%" to {_countValue}
+            set yaml value "Card.Starforged Bonus.%{_card}%.%{_tier}%.Name" in "activeCard-%{_p}%" to {_name}
+            set yaml value "Card.Starforged Bonus.%{_card}%.%{_tier}%.Count" in "activeCard-%{_p}%" to {_countValue}
+            set yaml value "Card.Starforged Bonus.%{_card}%.%{_tier}%.2Set.Description" in "activeCard-%{_p}%" to StarforgeSetDescription({_card}, {_tier}, "2SET", true)
+            set yaml value "Card.Starforged Bonus.%{_card}%.%{_tier}%.4Set.Description" in "activeCard-%{_p}%" to StarforgeSetDescription({_card}, {_tier}, "4SET", true)
+            if {_countValue} >= 2:
+                set yaml value "Card.Gear.%loop-value%.Starforged Bonus.2Set.Active" in "activeCard-%{_p}%" to true
+                set yaml value "Card.Starforged Bonus.%{_card}%.%{_tier}%.2Set.Active" in "activeCard-%{_p}%" to true
+            if {_countValue} >= 4:
+                set yaml value "Card.Gear.%loop-value%.Starforged Bonus.4Set.Active" in "activeCard-%{_p}%" to true
+                set yaml value "Card.Starforged Bonus.%{_card}%.%{_tier}%.4Set.Active" in "activeCard-%{_p}%" to true
+    save yaml "activeCard-%{_p}%"
+
+
+function StarforgeSetCount(p: player, card: text, tier: text) :: integer:
+    loop yaml node keys "Card.Gear" in "activeCard-%{_p}%":
+        if yaml value "Card.Gear.%loop-value%.Starforged.Card" in "activeCard-%{_p}%" = {_card}:
+            if yaml value "Card.Gear.%loop-value%.Starforged.Tier" in "activeCard-%{_p}%" = {_tier}:
+                add 1 to {_count}
+    return {_count}
+
+function StarforgeLoreLines(p: player, item: item, equipped: boolean = false) :: texts:
+    set {_inactive::*} to StarforgeInactiveBlock({_item}) split at nl
+    if {_equipped} is true:
+        set {_active::*} to StarforgeActiveBlock({_p}, {_item}) split at nl
+        return {_active::*}
+    return {_inactive::*}
+
+function StarforgeLoreUpdate(p: player, item: item, equipped: boolean = false) :: item:
+    set {_updated} to {_item}
+    if {_equipped} is true:
+        set lore of {_updated} to EquippedGearLoreUpdate({_p}, {_updated})
+    else:
+        set lore of {_updated} to GearLoreUpdate({_updated})
+    return {_updated}
+
+function StarforgeDisplayItem(card: text, tier: text, current: boolean = false) :: item:
+    set {_itemType} to (yaml value "%{_card}%.%{_tier}%.Item" in "TierSetList") parsed as item type
+    set {_cmd} to yaml value "%{_card}%.%{_tier}%.CustomModelData" in "TierSetList"
+    set {_name} to mini message from (yaml value "%{_card}%.%{_tier}%.Gradient Name" in "TierSetList")
+    set {_leadColour} to StarforgeLeadColour({_card})
+    if {_current} is true:
+        set {_title} to "&bCurrent Starforge"
+    else:
+        set {_title} to "&bNew Starforge"
+
+    set {_twoSet} to StarforgeSetDescription({_card}, {_tier}, "2SET", true)
+    set {_fourSet} to StarforgeSetDescription({_card}, {_tier}, "4SET", true)
+
+    if {_cmd} is set:
+        set {_item} to {_itemType} named "<#9fe7ff>%{_tier}%: &f%{_name}%" with lore coloured "%{_title}%%nl%&7Card: &f%{_card}%%nl% %nl%%{_leadColour}%✨ 2-set Effect: %{_twoSet}%%nl%%{_leadColour}%✨ 4-set Effect: %{_fourSet}%" with nbt from "{""minecraft:custom_model_data"":{floats:[%{_cmd}%.0f]}}"
+    else:
+        set {_item} to {_itemType} named "<#9fe7ff>%{_tier}%: &f%{_name}%" with lore coloured "%{_title}%%nl%&7Card: &f%{_card}%%nl% %nl%%{_leadColour}%✨ 2-set Effect: %{_twoSet}%%nl%%{_leadColour}%✨ 4-set Effect: %{_fourSet}%"
+    
+    return {_item}
+
+function StarforgeApplyToItem(p: player, gear: item, card: text, tier: text) :: item:
+    set string tag "Starforged;Card" of (custom nbt of {_gear}) to {_card}
+    set string tag "Starforged;Tier" of (custom nbt of {_gear}) to {_tier}
+    set string tag "Starforged;SetName" of (custom nbt of {_gear}) to StarforgeSetName({_card}, {_tier})
+    return StarforgeLoreUpdate({_p}, {_gear})
+
+function StarforgeConsumeAndGive(p: player, gear: item, card: text, tier: text):
+    set {_gearId} to string tag "GearId" of (custom nbt of (metadata value "PapitoStarforgeGear" of {_p}))
+    loop all items in {_p}'s inventory:
+        if string tag "GearId" of (custom nbt of loop-item) = {_gearId}:
+            remove 1 of loop-item from {_p}
+            stop loop
+    loop all items in {_p}'s inventory:
+        if StarforgeIsSigil(loop-item) is true:
+            if string tag "DiamondSourceCard" of (custom nbt of loop-item) = {_card}:
+                if string tag "DiamondSourceTier" of (custom nbt of loop-item) = {_tier}:
+                    remove 1 of loop-item from {_p}
+                    stop loop
+    giveItem({_p}, {_gear})
+    clear metadata value "PapitoStarforgeGear" of {_p}
+    clear metadata value "PapitoStarforgeGearId" of {_p}
+    clear metadata value "PapitoStarforgeSigilCard" of {_p}
+    clear metadata value "PapitoStarforgeSigilTier" of {_p}
