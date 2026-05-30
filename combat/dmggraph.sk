@@ -21,7 +21,7 @@ function CombatRefresh(v: entity, a: entity):
 					remove 1 from {_tag}
 					set metadata value "ECEngaged" of {_v} to {_tag}
 				else:
-					clearECEngaged({_v})
+					clearECEngaged({_v}, {seconds::%{_v}%})
 					loop {asyst::%uuid of {_v}%::*}:
 						set {_player} to loop-value parsed as entity
 						clear metadata value "CircleOfWater%{_player}%" of {_v}
@@ -40,7 +40,7 @@ function CombatRefresh(v: entity, a: entity):
 
 function clearCombat(e: entity):
 	LogDmgBreakdown({_e})
-	clearECEngaged({_e})
+	clearECEngaged({_e}, {seconds::%{_e}%})
 	SetPlayerStats({_e})
 	if {_e} is a player:
 		delete yaml "CombatDetails-%{_e}%"
@@ -69,6 +69,7 @@ function clearCombat(e: entity):
 	clear {icicles::%{_e}%}
 	clear {iciclehave::%{_e}%}
 	if {kartaname::%{_e}%} = "Cresselia":
+		clear metadata value "PrimordialArcanicPulsar" of {_e}
 		if string tag "Talents;Row 2" of custom nbt of {karta::%{_e}%} = "Astral Communion":
 			set {astralpower::%{_e}%} to 60
 		else:
@@ -119,7 +120,6 @@ function clearCombat(e: entity):
 	clear metadata value "TidalWaves" of {_e}
 	clear metadata value "Undercurrent" of {_e}
 	clear metadata value "Mind Transfer" of {_e}
-	clear metadata value "PrimordialArcanicPulsar" of {_e}
 	clear metadata value "BlazingTricks" of {_e}
 	clear metadata value "BlazingTricksReady" of {_e}
 	clear metadata value "BonusCritDelphox" of {_e}
@@ -131,6 +131,7 @@ function clearCombat(e: entity):
 	clear metadata value "Shotweaving-Spread ShotDuration" of {_e}
 	clear metadata value "Shotweaving-Single Shot" of {_e}
 	clear metadata value "Shotweaving-Single ShotDuration" of {_e}
+	clear metadata value "StarfallActive%{_e}%" of {_e}
 	remove {_e} from all boss bars
 	playerMoveSpeedUpdate({_e})
 	if {buckshotportals::%{_e}%::*} is set:
@@ -274,6 +275,7 @@ function combatInitiate(att: entity, vict: entity):
 			load yaml "plugins/Skript/combat/details/%uuid of {_att}%" as "CombatDetails-%{_att}%"
 			if {kartaname::%{_att}%} = "Cresselia":
 				set metadata value "OrbitBreaker" of {_att} to 0
+				set metadata value "PrimordialArcanicPulsar" of {_att} to 0
 				ShootingStars({_att})
 				AstralPower({_att})
 			else if {kartaname::%{_att}%} = "Ghazan":
@@ -346,13 +348,13 @@ function combatInitiate(att: entity, vict: entity):
 		#add 1 to {seconds::%{_att}%}
 		#wait 1 second
 
-function clearECEngaged(p: entity):
+function clearECEngaged(p: entity, seconds: number):
 	if {_p} is a player:
 		if yaml "activeCard-%{_p}%" is loaded:
 			if yaml value "Combat Data.Total Combat Time" in "activeCard-%{_p}%" is not set:
 				set {_totalCombatTime} to 0
 			
-			set {_totalCombatTime} to {_totalCombatTime} + {seconds::%{_p}%}
+			set {_totalCombatTime} to {_totalCombatTime} + {_seconds}
 			set yaml value "Combat Data.Total Combat Time" in "activeCard-%{_p}%" to {_totalCombatTime}
 			save yaml "activeCard-%{_p}%"
 	clear metadata value "ECEngaged" of {_p}
@@ -360,8 +362,7 @@ function clearECEngaged(p: entity):
 on leave:
 	wait 60 seconds
 	if player is not online:
-		clearECEngaged(player)
-		clear {seconds::%player%}
+		clearECEngaged(player, {seconds::%player%})
 		clear {seconds::%player%}
 		set {dps::%player%} to 0
 		set {dmgdealt::%player%} to 0
