@@ -93,6 +93,21 @@ on inventory click:
                 play sound "entity.villager.no" with volume 5 and pitch 0.62 to player
                 play sound "block.anvil.place" with volume 5 and pitch 1.176 to player 
                 send "&c&oThere are no Relics in your inventory." to player
+        else if event-slot = 6:
+            play sound "block.anvil.place" with volume 5 and pitch 1.48 to player
+            set metadata tag "papitoJudge" of player to chest inventory with 6 rows named "Papito - Judge"
+            set {_slotIndex} to 0
+            loop all items in the player's inventory:
+                if item amount of loop-item = 1:
+                    if boolean tag "Artifact" of (custom nbt of loop-item) is set:
+                        set slot {_slotIndex} of metadata tag "papitoJudge" of player to loop-item
+                        add "%nl%&f&oClick here to have Papito judge this Artifact." to lore of slot {_slotIndex} of metadata tag "papitoJudge" of player
+                        set {_slotIndex} to {_slotIndex} + 1
+            if {_slotIndex} > 0:
+                open metadata tag "papitoJudge" of player to player
+            else:
+                play sound "entity.villager.no" with volume 5 and pitch 0.62 to player
+                send "&c&oThere are no Artifacts in your inventory."
     else if event-inventory = metadata tag "papitoSocket" of player:
         if event-slot is between 0 and 53:
             cancel event
@@ -488,8 +503,8 @@ on inventory click:
                         if int tag "Upgraded" of (custom nbt of {_artifactUpgraded}) = 5*{_starlevel}:
                             if int tag "Upgraded" of (custom nbt of {_currentArtifact}) >= 0:
                                 set {_difference} to (int tag "Upgraded" of (custom nbt of {_artifactUpgraded})) - (int tag "Upgraded" of (custom nbt of {_currentArtifact}))
-                                if {winterDelightPassLEVEL::%player%} >= 0:
-                                    getMission(player, "Upgrading Artifacts%nl%Ulepszanie Artefaktów", {_difference})
+                                #if {winterDelightPassLEVEL::%player%} >= 0:
+                                    #getMission(player, "Upgrading Artifacts%nl%Ulepszanie Artefaktów", {_difference})
                                 loop {_difference} times:
                                     if (int tag "Upgraded" of (custom nbt of {_currentArtifact})) + loop-number is divisible by 5:
                                         add 1 to {_loops}
@@ -625,7 +640,7 @@ on inventory click:
                                 set {_itemMaxed} to yaml value "Player.Relics Times Maxed" in "data-%player%"
                                 add 1 to {_itemMaxed}
                                 set yaml value "Player.Relics Times Maxed" in "data-%player%" to {_itemMaxed}
-                    draw 20 dust using dustOption(lime, 1) at location above player with offset vector(0.3, 0.6, 0.3) with extra 0.03
+                    draw 20 of ((lime dust particle) with an extra value of 0.03) with offset vector(0.3, 0.6, 0.3) at (location above player)
                     save yaml "data-%player%"
             else:
                 play sound "block.anvil.land" with volume 5 and pitch 0.23 to player
@@ -636,12 +651,12 @@ on inventory click:
                 if lore of clicked slot does not contain "&c&oTen przedmiot został w pełni wzmocniony.":
                     set metadata value "RelicEnhanceId" of player to string tag "Id" of (custom nbt of clicked slot)
                     play sound "block.anvil.place" with volume 5 and pitch 1.55 to player
-                    set metadata tag "papitoEnhanceItem" of player to chest inventory with 5 rows named "Papito - Enhance - %name of clicked slot%"
+                    set metadata tag "papitoEnhanceItem" of player to chest inventory with 5 rows named "Papito - Enhance - %(name of clicked slot)%"
                     set slot 13 of metadata tag "papitoEnhanceItem" of player to clicked slot
                     set {_c} to last string color code of name of clicked slot
                     if uncolored (name of clicked slot) contains "Xal'Atath":
                         set {_upgrade} to long tag "EffectValue" of (custom nbt of clicked slot) + 0.5
-                        set {_upgradeText} to "%{_c}%Shadow Word: Pain and Vampiric Touch%nl%%{_c}%damage dealt increase:%nl% &f%long tag "EffectValue" of (custom nbt of clicked slot)%%% -> %{_upgrade}%%%"
+                        set {_upgradeText} to "%{_c}%Shadow Word: Pain and Vampiric Touch%nl%%{_c}%damage dealt increase:%nl% &f%(long tag "EffectValue" of (custom nbt of clicked slot))%%% -> %{_upgrade}%%%"
                     set slot 22 of metadata tag "papitoEnhanceItem" of player to anvil named "&fEnhance" with lore "&fIncreases the value of the following effect(s):%nl%%{_upgradeText}%"
                     set slot 31 of metadata tag "papitoEnhanceItem" of player to smoker named "Enhancing" with lore "&c&l(&4&l!&c&l) &cWarning: This process will destroy a%nl%&ccopy of the selected Relic.%nl%&fClick ""Enhance"" to proceed."
                     open metadata tag "papitoEnhanceItem" of player to player
@@ -711,11 +726,47 @@ on inventory click:
                 save yaml "data-%player%"
             else:
                 send "&c&oItem not found. The process has been terminated."
+    else if event-inventory = metadata tag "papitoJudge" of player:
+        cancel event
+        if clicked slot is not air:
+            if boolean tag "Artifact" of (custom nbt of clicked slot) is set:
+                play sound "block.anvil.place" with volume 5 and pitch 1.72 to player
+                set metadata tag "papitoJudgeItem" of player to chest inventory with 3 rows named "Papito - Rate Artifact"
+                set {_gui} to metadata tag "papitoJudgeItem" of player
+                set slots integers between 0 and 26 of {_gui} to black stained glass pane named " "
+                set slot 11 of {_gui} to clicked slot
+                set slot 15 of {_gui} to netherite ingot named "&7Artifact Value" with lore ArtifactJudgeValueLore(clicked slot)
+                open {_gui} to player
+    else if event-inventory = metadata tag "papitoJudgeItem" of player:
+        cancel event
+
 on inventory close:
     if event-inventory = (metadata value "papitoSocketItem" of player):
         if boolean tag "Gem" of (custom nbt of (slot 13 of event-inventory)) is set:
             giveItem(player, slot 13 of event-inventory)
             clear metadata value "papitoSocketItem" of player
+
+function ArtifactJudgeValueLore(item: item) :: texts:
+    set {_currentValue} to ArtifactCurrentValue({_item})
+    set {_maxValue} to ArtifactMaxValue({_item})
+    set {_percent} to ArtifactJudgePercent({_item})
+    set {_rollCount} to ArtifactRollCount({_item})
+    set {_starLevel} to int tag "StarLevel" of (custom nbt of {_item})
+    set {_itemLevel} to int tag "ItemLevel" of (custom nbt of {_item})
+    if {_percent} >= 95:
+        set {_rating} to "&6Transcendent"
+    else if {_percent} >= 85:
+        set {_rating} to "&dExceptional"
+    else if {_percent} >= 70:
+        set {_rating} to "&bExcellent"
+    else if {_percent} >= 55:
+        set {_rating} to "&aPromising"
+    else if {_percent} >= 40:
+        set {_rating} to "&eAverage"
+    else:
+        set {_rating} to "&cPoor"
+    set {_lore::*} to "&7Papito judges this Artifact by comparing", "&7its rolled substat value against the", "&7maximum possible roll value.", " ", "&7Star Level: &f%{_starLevel}%", "&7Item Level: &f%{_itemLevel}%", "&7Roll Count: &f%{_rollCount}%", "&7Current Value: &f%round({_currentValue}, 0)%", "&7Maximum Value: &f%round({_maxValue}, 0)%", "&7Quality: &f%{_percent}%%%", "&7Rating: %{_rating}%"
+    return {_lore::*}
 
 function findGemsByColour(gemColour: string) :: strings:
     loop yaml node keys "Gems" in "GemList":

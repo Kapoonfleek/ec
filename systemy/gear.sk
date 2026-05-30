@@ -155,6 +155,7 @@ function Artifact(artifactType: string, starLevel: integer, itemLevel: integer) 
             add loop-value to {_artifactStats::*}
     set {_lore::*} to lore of {_artifact}
     set lore of {_artifact} to {_lore::*}
+    set int tag "InitialSubstats" of (custom nbt of {_artifact}) to {_substats}
     set int tag "Upgraded" of (custom nbt of {_artifact}) to 0
     set long tag "Experience" of (custom nbt of {_artifact}) to 0
     set int tag "ItemLevel" of (custom nbt of {_artifact}) to {_itemLevel}
@@ -220,6 +221,88 @@ function GearScoreGemTypeMultiplier(type: text) :: number:
         return 1.35
     return 1
 
+function GearScoreStatValue(stat: text, value: number) :: number:
+    if {_stat} = "Health":
+        return {_value} * 0.08
+    else if {_stat} = "Strength":
+        return {_value} * 2.6
+    else if {_stat} = "Intellect":
+        return {_value} * 2.6
+    else if {_stat} = "Agility":
+        return {_value} * 2.6
+    else if {_stat} = "Damage":
+        return {_value} * 5.2
+    else if {_stat} = "Resistance":
+        return {_value} * 4.4
+    else if {_stat} = "Mobility":
+        return {_value} * 3.3
+    else if {_stat} = "Utility":
+        return {_value} * 3.4
+    else if {_stat} = "Crowd Control":
+        return {_value} * 3.8
+    else if {_stat} = "Versatility":
+        return {_value} * 4.6
+    else if {_stat} = "Mastery":
+        return {_value} * 4.8
+    else if {_stat} = "Critical Hit":
+        return {_value} * 5
+    else if {_stat} = "Element":
+        return {_value} * 5.4
+    else if {_stat} = "Haste":
+        return {_value} * 4.9
+    else if {_stat} = "Avoidance":
+        return {_value} * 3.1
+    return {_value} * 3
+
+function ArtifactRarityFromStar(starLevel: integer) :: text:
+    if {_starLevel} = 1:
+        return "Common"
+    else if {_starLevel} = 2:
+        return "Uncommon"
+    else if {_starLevel} = 3:
+        return "Rare"
+    else if {_starLevel} = 4:
+        return "Epic"
+    return "Legendary"
+
+function ArtifactRollUnit(itemLevel: integer) :: number:
+    return round((0.186 * 4.7385 * {_itemLevel}) / 6, 0)
+
+function ArtifactRollCount(item: item) :: integer:
+    set {_stats::*} to nbt tags of (compound tag "Stats" of (custom nbt of {_item}))
+    set {_currentSubstats} to size of {_stats::*}
+    set {_initialSubstats} to int tag "InitialSubstats" of (custom nbt of {_item})
+    if {_initialSubstats} is not set:
+        set {_initialSubstats} to {_currentSubstats}
+    set {_upgradeLevel} to int tag "Upgraded" of (custom nbt of {_item})
+    return {_initialSubstats} + floor({_upgradeLevel} / 5)
+
+function ArtifactCurrentValue(item: item) :: number:
+    set {_stats::*} to nbt tags of (compound tag "Stats" of (custom nbt of {_item}))
+    loop {_stats::*}:
+        set {_value} to int tag "Stats;%loop-value%" of (custom nbt of {_item})
+        set {_total} to {_total} + {_value}
+    return {_total}
+
+function ArtifactMaxValue(item: item) :: number:
+    set {_itemLevel} to int tag "ItemLevel" of (custom nbt of {_item})
+    set {_unit} to ArtifactRollUnit({_itemLevel})
+    set {_rollCount} to ArtifactRollCount({_item})
+    return {_unit} * {_rollCount}
+
+function ArtifactValueRatio(item: item) :: number:
+    set {_currentValue} to ArtifactCurrentValue({_item})
+    set {_maxValue} to ArtifactMaxValue({_item})
+    if {_maxValue} <= 0:
+        return 0
+    set {_ratio} to {_currentValue} / {_maxValue}
+    if {_ratio} > 1:
+        set {_ratio} to 1
+    return {_ratio}
+
+function ArtifactJudgePercent(item: item) :: number:
+    return round(ArtifactValueRatio({_item}) * 100, 1)
+
 function CalculateCardGearScore(p: player, saveResult: boolean = true) :: number:
     set {_gearScore} to 0
 
@@ -240,27 +323,54 @@ function CalculateCardGearScore(p: player, saveResult: boolean = true) :: number
                 if {_socketAmount} is set:
                     set {_gearScore} to {_gearScore} + ({_socketAmount} * 40)
                     loop {_socketAmount} times:
-                        if yaml value "Card.Gear.%{_gearSlot}%.Socket.%loop-number%.Gem.Name" in "activeCard-%{_p}%" is set:
-                            set {_gemRank} to yaml value "Card.Gear.%{_gearSlot}%.Socket.%loop-number%.Gem.Rank" in "activeCard-%{_p}%"
-                            set {_gemType} to yaml value "Card.Gear.%{_gearSlot}%.Socket.%loop-number%.Gem.Type" in "activeCard-%{_p}%"
-                            loop yaml node keys "Card.Gear.%{_gearSlot}%.Socket.%loop-number%.Gem.Stats" in "activeCard-%{_p}%":
-                                set {_gemStatsTotal} to {_gemStatsTotal} + yaml value "Card.Gear.%{_gearSlot}%.Socket.%loop-number%.Gem.Stats.%loop-value-3%" in "activeCard-%{_p}%"
-                            set {_gemScore} to ({_gemStatsTotal} * 2.35 * GearScoreGemTypeMultiplier({_gemType})) + (20 * {_gemRank})
+                        set {_socketIndex} to loop-number
+                        if yaml value "Card.Gear.%{_gearSlot}%.Socket.%{_socketIndex}%.Gem.Name" in "activeCard-%{_p}%" is set:
+                            set {_gemRank} to yaml value "Card.Gear.%{_gearSlot}%.Socket.%{_socketIndex}%.Gem.Rank" in "activeCard-%{_p}%"
+                            set {_gemType} to yaml value "Card.Gear.%{_gearSlot}%.Socket.%{_socketIndex}%.Gem.Type" in "activeCard-%{_p}%"
+                            set {_gemStatKeys::*} to yaml node keys "Card.Gear.%{_gearSlot}%.Socket.%{_socketIndex}%.Gem.Stats" in "activeCard-%{_p}%"
+                            loop {_gemStatKeys::*}:
+                                set {_gemValue} to yaml value "Card.Gear.%{_gearSlot}%.Socket.%{_socketIndex}%.Gem.Stats.%loop-value-3%" in "activeCard-%{_p}%"
+                                set {_gemStatsTotal} to {_gemStatsTotal} + GearScoreStatValue(loop-value-3, {_gemValue})
+                            set {_gemScore} to ({_gemStatsTotal} * GearScoreGemTypeMultiplier({_gemType})) + (20 * {_gemRank})
                             set {_gearScore} to {_gearScore} + {_gemScore}
                             clear {_gemStatsTotal}
+                            clear {_gemStatKeys::*}
+
+                if yaml value "Card.Gear.%{_gearSlot}%.Socket Bonus.Stats" in "activeCard-%{_p}%" is set:
+                    set {_socketBonusKeys::*} to yaml node keys "Card.Gear.%{_gearSlot}%.Socket Bonus.Stats" in "activeCard-%{_p}%"
+                    loop {_socketBonusKeys::*}:
+                        set {_bonusValue} to yaml value "Card.Gear.%{_gearSlot}%.Socket Bonus.Stats.%loop-value-2%" in "activeCard-%{_p}%"
+                        set {_gearScore} to {_gearScore} + GearScoreStatValue(loop-value-2, {_bonusValue})
+                    clear {_socketBonusKeys::*}
 
                 if yaml value "Card.Gear.%{_gearSlot}%.Enchant.Name" in "activeCard-%{_p}%" is set:
                     set {_enchantRank} to yaml value "Card.Gear.%{_gearSlot}%.Enchant.Rank" in "activeCard-%{_p}%"
-                    loop yaml node keys "Card.Gear.%{_gearSlot}%.Enchant.Stats" in "activeCard-%{_p}%":
-                        set {_enchantStatsTotal} to {_enchantStatsTotal} + yaml value "Card.Gear.%{_gearSlot}%.Enchant.Stats.%loop-value-2%" in "activeCard-%{_p}%"
-                    set {_gearScore} to {_gearScore} + ({_enchantStatsTotal} * 4.5) + (18 * {_enchantRank})
+                    set {_enchantKeys::*} to yaml node keys "Card.Gear.%{_gearSlot}%.Enchant.Stats" in "activeCard-%{_p}%"
+                    loop {_enchantKeys::*}:
+                        set {_enchantValue} to yaml value "Card.Gear.%{_gearSlot}%.Enchant.Stats.%loop-value-2%" in "activeCard-%{_p}%"
+                        set {_enchantStatsTotal} to {_enchantStatsTotal} + GearScoreStatValue(loop-value-2, {_enchantValue})
+                    set {_gearScore} to {_gearScore} + {_enchantStatsTotal} + (18 * {_enchantRank})
                     clear {_enchantStatsTotal}
+                    clear {_enchantKeys::*}
 
                 if yaml value "Card.Gear.%{_gearSlot}%.2Set.Name" in "activeCard-%{_p}%" is set:
+                    set {_gearScore} to {_gearScore} + 30
+
+                if yaml value "Card.Gear.%{_gearSlot}%.4Set.Name" in "activeCard-%{_p}%" is set:
                     set {_gearScore} to {_gearScore} + 60
 
                 if yaml value "Card.Gear.%{_gearSlot}%.Starforged.Card" in "activeCard-%{_p}%" is set:
                     set {_gearScore} to {_gearScore} + 90
+
+            else if boolean tag "Artifact" of (custom nbt of {_gearItem}) is set:
+                set {_itemLevel} to int tag "ItemLevel" of (custom nbt of {_gearItem})
+                set {_starLevel} to int tag "StarLevel" of (custom nbt of {_gearItem})
+                set {_rarity} to ArtifactRarityFromStar({_starLevel})
+                set {_qualityRatio} to ArtifactValueRatio({_gearItem})
+                set {_artifactBase} to {_itemLevel} * 4.8
+                set {_artifactBase} to {_artifactBase} * GearScoreRarityMultiplier({_rarity})
+                set {_artifactBase} to {_artifactBase} * {_qualityRatio}
+                set {_gearScore} to {_gearScore} + {_artifactBase}
 
     loop yaml node keys "Card.Gear Set Bonuses" in "activeCard-%{_p}%":
         if yaml value "Card.Gear Set Bonuses.%loop-value%.2Set.Active" in "activeCard-%{_p}%" is true:
@@ -270,16 +380,23 @@ function CalculateCardGearScore(p: player, saveResult: boolean = true) :: number
 
     loop yaml node keys "Card.Starforged Bonus" in "activeCard-%{_p}%":
         loop yaml node keys "Card.Starforged Bonus.%loop-value%" in "activeCard-%{_p}%":
-            if yaml value "Card.Starforged Bonus.%loop-value-1%.%loop-value-2%.2Set.Active" in "activeCard-%{_p}%" is true:
+            if yaml value "Card.Starforged Bonus.%loop-value-1%.%loop-value-2%.2Set.Active" in "activeCard-%{_p}%":
                 set {_gearScore} to {_gearScore} + 220
-            if yaml value "Card.Starforged Bonus.%loop-value-1%.%loop-value-2%.4Set.Active" in "activeCard-%{_p}%" is true:
+            if yaml value "Card.Starforged Bonus.%loop-value-1%.%loop-value-2%.4Set.Active" in "activeCard-%{_p}%":
                 set {_gearScore} to {_gearScore} + 420
+
+    loop yaml node keys "Card.Artifact Sets" in "activeCard-%{_p}%":
+        set {_count} to yaml value "Card.Artifact Sets.%loop-value%" in "activeCard-%{_p}%"
+        if {_count} >= 2:
+            set {_twoSetCount} to floor({_count} / 2)
+            set {_gearScore} to {_gearScore} + ({_twoSetCount} * 160)
 
     set {_gearScore} to round({_gearScore}, 0)
     if {_saveResult} is true:
         set yaml value "Card.Gear Score" in "activeCard-%{_p}%" to {_gearScore}
         save yaml "activeCard-%{_p}%"
     return {_gearScore}
+
 
 function GearLoreUpdate(item: item) :: string:
     set {_customNbt} to custom nbt of {_item}

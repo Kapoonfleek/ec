@@ -1265,11 +1265,21 @@ function CombatProfileStatItem(itemType: item type, title: text, description: te
 		set {_item} to {_item} with item flag hide attributes
 	return {_item}
 
-function CombatProfileTopList(card: text, yamlNode: text) :: texts:
+function CombatProfileTopList(card: text, yamlNode: text, p: player = null) :: texts:
 	set {_dir} to new File("plugins/Skript/playerdata/karty/%{_card}%")
 	if {_dir}.isDirectory() is false:
-		set {_return::*} to "&8+&o0 more..."
-		return {_return::*}
+		loop 5 times:
+			set {_top::*} to {_top::*} and "&7%loop-number%. &8..."
+		if {_p} is set:
+			set {_top::*} to {_top::*} and "%last string color code of name of {_p}'s tool%&7-"
+		set {_top::*} to {_top::*} and "&8&o0 more..."
+		return {_top::*}
+
+	if {_p} is set:
+		set {_playerLineColour} to last string color code of name of {_p}'s tool
+	else:
+		set {_playerLineColour} to "&f"
+
 	set {_files::*} to ...{_dir}.listFiles()
 	loop {_files::*}:
 		set {_file} to loop-value
@@ -1281,46 +1291,111 @@ function CombatProfileTopList(card: text, yamlNode: text) :: texts:
 				if {_extension} = ".yml":
 					set {_yamlId} to "combatprofile-%random 8 char string from charset `0-9` `a-z`%"
 					load yaml "plugins/Skript/playerdata/karty/%{_card}%/%{_fileName}%" as {_yamlId}
+
 					set {_value} to yaml value "%{_yamlNode}%" in {_yamlId}
 					if {_value} is not set:
 						set {_value} to 0
+
 					if {_value} > 0:
 						set {_owner} to yaml value "Card.Owner" in {_yamlId}
 						if {_owner} is not set:
 							set {_owner} to "Unknown"
+
 						set {_cardId} to yaml value "Card.Id" in {_yamlId}
 						if {_cardId} is not set:
 							set {_cardId} to subtext of {_fileName} from 1 to ({_nameLength} - 4)
+
 						set {_labels::*} to {_labels::*} and "%{_owner}% (%{_cardId}%)"
 						set {_values::*} to {_values::*} and {_value}
+						set {_owners::*} to {_owners::*} and {_owner}
 						set {_positiveCount} to {_positiveCount} + 1
+
 					unload yaml {_yamlId}
 
 	if {_values::*} is set:
-		loop 5 times:
+		loop size of {_values::*} times:
+			clear {_max}
+			clear {_index}
+
 			loop {_values::*}:
-				if {_max} is not set:
-					set {_max} to loop-value-2
-					set {_index} to loop-index
-				else:
-					if loop-value-2 > {_max}:
+				if {_used::*} does not contain loop-index:
+					if {_max} is not set:
 						set {_max} to loop-value-2
 						set {_index} to loop-index
-			if {_max} is set:
-				add "&7%loop-number%. %{_labels::%{_index}%}%: &f%{_max}%" to {_top::*}
-				delete {_labels::%{_index}%}
-				delete {_values::%{_index}%}
-				clear {_max}
-				clear {_index}
+					else if loop-value-2 > {_max}:
+						set {_max} to loop-value-2
+						set {_index} to loop-index
 
-		set {_shown} to size of {_top::*}
+			if {_index} is set:
+				set {_used::*} to {_used::*} and {_index}
+				set {_rankedLabel::%loop-number%} to {_labels::%{_index}%}
+				set {_rankedValue::%loop-number%} to {_max}
+
+				if {_p} is set:
+					if {_owners::%{_index}%} = "%{_p}%":
+						set {_playerRank} to loop-number
+						set {_playerRankValue} to {_max}
+						set {_playerRankLabel} to {_labels::%{_index}%}
+
+		loop 5 times:
+			if {_rankedLabel::%loop-number%} is set:
+				if all:
+					{_p} is set
+					{_playerRank} is set
+					{_playerRank} = loop-number
+				then:
+					set {_top::*} to {_top::*} and "%{_playerLineColour}%%loop-number%. %{_rankedLabel::%loop-number%}%: &f%{_rankedValue::%loop-number%}%"
+				else:
+					set {_top::*} to {_top::*} and "&7%loop-number%. %{_rankedLabel::%loop-number%}%: &f%{_rankedValue::%loop-number%}%"
+			else:
+				set {_top::*} to {_top::*} and "&7%loop-number%. &8..."
+
+		if {_p} is set:
+			if {_playerRank} is not set:
+				loop size of {_values::*} times:
+					clear {_max}
+					clear {_index}
+
+					loop {_values::*}:
+						if {_usedPlayer::*} does not contain loop-index:
+							if {_max} is not set:
+								set {_max} to loop-value-2
+								set {_index} to loop-index
+							else if loop-value-2 > {_max}:
+								set {_max} to loop-value-2
+								set {_index} to loop-index
+
+					if {_index} is set:
+						set {_usedPlayer::*} to {_usedPlayer::*} and {_index}
+						if {_owners::%{_index}%} = "%{_p}%":
+							set {_playerRank} to loop-number
+							set {_playerRankValue} to {_max}
+							set {_playerRankLabel} to {_labels::%{_index}%}
+							stop loop
+
+			if {_playerRank} is set:
+				if {_playerRank} > 5:
+					set {_top::*} to {_top::*} and "%{_playerLineColour}%%{_playerRank}%. %{_playerRankLabel}%: &f%{_playerRankValue}%"
+
+		set {_shown} to {_positiveCount}
+		if {_shown} > 5:
+			set {_shown} to 5
+
 		set {_remaining} to {_positiveCount} - {_shown}
+		if {_playerRank} is set:
+			if {_playerRank} > 5:
+				set {_remaining} to {_remaining} - 1
+
 		if {_remaining} < 0:
 			set {_remaining} to 0
-		set {_top::*} to {_top::*} and "&8+&o%{_remaining}% more..."
+
+		set {_top::*} to {_top::*} and "&8&o+%{_remaining}% more..."
 		return {_top::*}
-	set {_return::*} to "&8&o+0 more..."
-	return {_return::*}
+
+	loop 5 times:
+		set {_top::*} to {_top::*} and "&7%loop-number%. &8..."
+	set {_top::*} to {_top::*} and "&8&o+0 more..."
+	return {_top::*}
 
 
 on inventory close:
