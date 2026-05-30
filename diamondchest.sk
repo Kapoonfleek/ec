@@ -165,8 +165,6 @@ function DiamondCardHasRelic(card: text) :: boolean:
 	set {_enabled} to yaml value "Cards.%{_card}%.Relic.Enabled" in "DiamondChestList"
 	if {_enabled} is set:
 		return {_enabled}
-	if {_card} = "Brother Therold":
-		return true
 	return false
 
 function DiamondMissingRelic(card: text) :: item:
@@ -176,12 +174,10 @@ function DiamondMissingRelic(card: text) :: item:
 function DiamondRelicItem(card: text, preview: boolean = false) :: item:
 	if DiamondCardHasRelic({_card}) is false:
 		return DiamondMissingRelic({_card})
-	if {_card} = "Brother Therold":
-		set {_specialEffect} to "&f✨ <#613E82>Special Effect:%nl%&f <#8165a6>Harbinger's Hunger"
-		set {_item} to netherite sword named "<#613E82>Xal'Atath" with lore "<#ff8000>Legendary Brother Therold Relic%nl%<#fdd002>Item Level 1%nl%&7Card Relic%nl% %nl%<#59c1e3> +4 Intellect%nl%<#f53b98> +8 Mastery%nl%<#19943e> +8 Haste%nl% %nl%%{_specialEffect}%%nl%   <#613E82>Every &f1 sec<#613E82>, &f <#8165a6>Voidform <#613E82>increases damage%nl%   <#613E82>dealt by &f <#8165a6>Shadow Word: Pain <#613E82>and &f <#8165a6>Vampiric%nl%   <#613E82>Touch by &f2%%<#613E82>, stacking until &f <#8165a6>Voidform <#613E82>ends.%nl% %nl%&7&o""Xal'atath has a mind of its own. Ignore its%nl%&7&omaddening whispers. Do not trust the lies it%nl%&7&ospins. Take from it what you need, but always%nl%&7&oremember that the dark presence in the blade is%nl%&7&onot your ally.""%nl% %nl%&fUpgraded: +0 | Enhanced: +0%nl%&m&8---------------------------------------------%nl%&7Star Level: &e★★★★★%nl%&8&o(!) This Relic can only be equipped by Brother Therold.%nl%&8&oUpgrading this item will increase its combat potential.%nl%&8&oEnhancing this Relic will increase the effectiveness%nl%&8&oof its Special Effect. The Item Level of this item scales%nl%&8&owith the average Item Level of your equipped gear." with nbt from "{""minecraft:custom_model_data"":{floats:[1.0f]}}" with item flag hide attributes
-		set string tag "DiamondFeaturedType" of (custom nbt of {_item}) to "Relic"
-		set string tag "DiamondSourceCard" of (custom nbt of {_item}) to {_card}
-		return {_item}
+
+	set {_item} to yaml value "Cards.%{_card}%.Relic.Item" in "DiamondChestList"
+	return {_item}
+
 	return DiamondMissingRelic({_card})
 
 function DiamondTierSetAvailable(card: text) :: boolean:
@@ -312,21 +308,22 @@ function DiamondDroppedCard(p: player) :: text:
 	return {_weekly}
 
 function DiamondRollFeaturedType(card: text) :: text:
-	set {_total} to 0
+	set {_total} to 0.00
 	loop yaml node keys "Featured Rewards" in "DiamondChestList":
 		set {_type} to yaml value "Featured Rewards.%loop-value%.Type" in "DiamondChestList"
 		if DiamondFeaturedTypeAvailable({_card}, {_type}) is true:
 			set {_chance} to yaml value "Featured Rewards.%loop-value%.Chance" in "DiamondChestList"
 			if {_chance} is set:
 				set {_total} to {_total} + {_chance}
-	if {_total} <= 0:
-		return ""
-	set {_roll} to a random number between 0 and {_total}
+
+	set {_roll} to a random number between 0.00 and {_total}
 	set {_current} to 0
+
 	loop yaml node keys "Featured Rewards" in "DiamondChestList":
 		set {_type} to yaml value "Featured Rewards.%loop-value%.Type" in "DiamondChestList"
 		if DiamondFeaturedTypeAvailable({_card}, {_type}) is true:
 			set {_chance} to yaml value "Featured Rewards.%loop-value%.Chance" in "DiamondChestList"
+			broadcast "%{_chance}% %loop-value%"
 			if {_chance} is set:
 				set {_current} to {_current} + {_chance}
 				if {_roll} <= {_current}:
@@ -450,14 +447,13 @@ function DiamondRewardDisplay(reward: text, item: item) :: text:
 	return {_display}
 
 function DiamondRollReward() :: text:
-	set {_total} to 0
+	set {_total} to 0.00
 	loop yaml node keys "Rewards" in "DiamondChestList":
 		set {_chance} to yaml value "Rewards.%loop-value%.Chance" in "DiamondChestList"
 		if {_chance} is set:
 			set {_total} to {_total} + {_chance}
-	if {_total} <= 0:
-		return ""
-	set {_roll} to a random number between 0 and {_total}
+
+	set {_roll} to a random number between 0.00 and {_total}
 	set {_current} to 0
 	loop yaml node keys "Rewards" in "DiamondChestList":
 		set {_chance} to yaml value "Rewards.%loop-value%.Chance" in "DiamondChestList"
@@ -472,16 +468,21 @@ function DiamondPoolItems(p: player) :: items:
 		set {_item} to DiamondRewardItem(loop-value, {_p})
 		if {_item} is set:
 			set {_pool::*} to {_pool::*} and {_item}
+
 	set {_weekly} to DiamondWeeklyCard()
+
 	if DiamondCardHasRelic({_weekly}) is true:
 		set {_item} to DiamondRelicItem({_weekly})
 		if {_item} is set:
 			set {_pool::*} to {_pool::*} and {_item}
+
 	if DiamondTierSetAvailable({_weekly}) is true:
 		set {_item} to DiamondTierSetForPlayer({_p}, {_weekly})
 		if {_item} is set:
 			set {_pool::*} to {_pool::*} and {_item}
+
 	set {_fated} to DiamondFatedCard({_p})
+
 	if {_fated} is set:
 		if {_fated} != "":
 			if DiamondCardHasRelic({_fated}) is true:
@@ -492,6 +493,7 @@ function DiamondPoolItems(p: player) :: items:
 				set {_item} to DiamondTierSetForPlayer({_p}, {_fated})
 				if {_item} is set:
 					set {_pool::*} to {_pool::*} and {_item}
+
 	return {_pool::*}
 
 function DiamondInfoItem(p: player) :: item:
@@ -650,7 +652,7 @@ function DiamondPreviewMenu(p: player):
 	loop yaml node keys "Rewards" in "DiamondChestList":
 		set {_rewardItem} to DiamondRewardItem(loop-value, {_p}, true)
 		if {_rewardItem} is set:
-			set {_chance} to yaml value "Rewards.%loop-value%.Chance" in "DiamondChestList"
+			set {_chance} to yaml value "Rewards.%loop-value%.Chance Preview" in "DiamondChestList"
 			set {_display} to DiamondRewardDisplay(loop-value, {_rewardItem})
 			set name of {_rewardItem} to colored {_display}
 			set lore of {_rewardItem} to colored "&7Drop probability: &f%{_chance}%%%"
@@ -855,7 +857,7 @@ on inventory click:
 			set metadata value "DiamondOpening" of player to true
 			set metadata tag "diamondchest" of player to chest inventory with 3 rows named "Diamond Chest"
 			open metadata tag "diamondchest" of player to player
-			set {_roll} to a random number between 0 and 100
+			set {_roll} to a random number between 0.00 and 100.00
 			set {_featuredChance} to DiamondPityChance(player)
 			set {_featuredSuccess} to false
 
@@ -894,14 +896,30 @@ on inventory click:
 						if {_featuredType} is set:
 							if {_featuredType} != "":
 								set {_it} to DiamondFeaturedItem({_featuredType}, player, {_featuredCard})
+
+								if {_featuredType} = "Relic":
+									diamondRelicDiscord(player, {_featuredCard})
+
+									set {_dPD} to yaml value "Statistics.Diamond Chest.Relic Drops" in "data-%player%"
+									if {_dPD} is not set:
+										set {_dPD} to 0
+									set {_dPD} to {_dPD} + 1
+									set yaml value "Statistics.Diamond Chest.Relic Drops" in "data-%player%" to {_dPD}
+								else:
+									set {_dPD} to yaml value "Statistics.Diamond Chest.Tier Set Drops" in "data-%player%"
+									if {_dPD} is not set:
+										set {_dPD} to 0
+									set {_dPD} to {_dPD} + 1
+									set yaml value "Statistics.Diamond Chest.Tier Set Drops" in "data-%player%" to {_dPD}
+
 								set {nagrodadiamentowa::%player%} to coloured (name of {_it})
 								set {diamondDroppedFeatured::%player%} to true
 
-								set {_dPD} to yaml value "Player.Diamond Featured Drops" in "data-%player%"
+								set {_dPD} to yaml value "Statistics.Diamond Chest.Featured Drops.Total" in "data-%player%"
 								if {_dPD} is not set:
 									set {_dPD} to 0
 								set {_dPD} to {_dPD} + 1
-								set yaml value "Player.Diamond Featured Drops" in "data-%player%" to {_dPD}
+								set yaml value "Statistics.Diamond Chest.Featured Drops.Total" in "data-%player%" to {_dPD}
 
 								set yaml value "Player.Diamond Pity" in "data-%player%" to 0
 								set {_featuredSuccess} to true
@@ -918,16 +936,17 @@ on inventory click:
 					set {_pityDiamond} to 1
 				set yaml value "Player.Diamond Pity" in "data-%player%" to {_pityDiamond}
 			if {diamondDroppedFeatured::%player%} is not true:
-				set {_dND} to yaml value "Player.Diamond Normal Drops" in "data-%player%"
+				set {_dND} to yaml value "Statistics.Diamond Chest.Normal Drops" in "data-%player%"
 				if {_dND} is not set:
 					set {_dND} to 0
 				set {_dND} to {_dND} + 1
-				set yaml value "Player.Diamond Normal Drops" in "data-%player%" to {_dND}
-			set {_totalDrops} to yaml value "Player.Diamond Total Drops" in "data-%player%"
+				set yaml value "Statistics.Diamond Chest.Normal Drops" in "data-%player%" to {_dND}
+			set {_totalDrops} to yaml value "Statistics.Diamond Chest.Total Drops" in "data-%player%"
 			if {_totalDrops} is not set:
 				set {_totalDrops} to 0
 			set {_totalDrops} to {_totalDrops} + 1
-			set yaml value "Player.Diamond Total Drops" in "data-%player%" to {_totalDrops}
+			set yaml value "Statistics.Diamond Chest.Total Drops" in "data-%player%" to {_totalDrops}
+
 			save yaml "data-%player%"
 			DiamondSpinAnimation(player, {_it})
 
@@ -954,30 +973,31 @@ on rightclick on armor stand:
 			if {diamondChests::*} contains (location of loop-block):
 				cancel event
 
-function diamondRelicDiscord(p: player, relic: string):
-    set {_bot} to bot named "Earthcraft"
+function diamondRelicDiscord(p: player, card: string):
+	set {_bot} to bot named "Earthcraft"
 
-    if {_bot} is not set:
-        send "[StellarrelicDiscord] Earthcraft bot is not loaded." to console
-        stop
+	if {_bot} is not set:
+		send "[StellarrelicDiscord] Earthcraft bot is not loaded." to console
+		stop
 
-    set {_relicImage} to yaml value "Relics.%{_relic}%.Discord Image" in "DiamondChestList"
+	set {_relicImage} to yaml value "Cards.%{_card}%.Relic.Discord Image" in "DiamondChestList"
+	set {_relic} to (uncolored (name of yaml value "Cards.%{_card}%.Relic.Item" in "DiamondChestList"))
 
-    make embed:
-        set author of embed to "%{_p}% dropped %{_relic}%"
-        set embed color of the embed to aqua
-        set description of embed to "%{_p}% just dropped %{_relic}% from the Diamond Chest!"
+	make embed:
+		set author of embed to "%{_p}% dropped %{_relic}%"
+		set embed color of the embed to aqua
+		set description of embed to "%{_p}% just dropped %{_relic}% from the Diamond Chest!"
 
-        if {_relicImage} is set:
-            set thumbnail of embed to {_relicImage}
+		if {_relicImage} is set:
+			set thumbnail of embed to {_relicImage}
 
-        set {_playerIcon} to "https://mc-heads.net/avatar/%{_p}%"
-        set author icon of embed to {_playerIcon}
+		set {_playerIcon} to "https://mc-heads.net/avatar/%{_p}%"
+		set author icon of embed to {_playerIcon}
 
-        set {_data::*} to data() split at " "
-        set footer of embed to first element of {_data::*}
+		set {_data::*} to data() split at " "
+		set footer of embed to first element of {_data::*}
 
-    post last embed to channel with id "900397064251379752" using {_bot}
+	post last embed to channel with id "900397064251379752" using {_bot}
 
 function diamondChestAnimate():
 	wait 1 tick
