@@ -913,12 +913,6 @@ function RelicFormattedStat(stat: text, value: number) :: text:
         return "<##5ee359> +%{_value}% Agility"
     return ""
 
-function RelicCard(item: item) :: text:
-    set {_card} to string tag "Card" of (custom nbt of {_item})
-    if {_card} is set:
-        return {_card}
-    return ""
-
 function RelicCanEquip(p: player, item: item) :: boolean:
     set {_card} to RelicCard({_item})
     if {_card} is "":
@@ -933,24 +927,78 @@ function RelicCannotEquipMessage(item: item) :: text:
         return "&cThis relic cannot be equipped by this card."
     return "&cThis relic can only be equipped by %{_card}%."
 
+function RelicKey(item: item) :: text:
+    set {_name} to uncolored name of {_item}
+    loop yaml node keys "Relics" in "RelicList":
+        if loop-value = {_name}:
+            return loop-value
+    return ""
+
+function RelicCard(item: item) :: text:
+    set {_card} to string tag "Card" of (custom nbt of {_item})
+    if {_card} is set:
+        return {_card}
+    set {_key} to RelicKey({_item})
+    if {_key} is not "":
+        set {_card} to yaml value "Relics.%{_key}%.Card" in "RelicList"
+        if {_card} is set:
+            return {_card}
+    return ""
+
+function RelicEffectValue(item: item) :: number:
+    set {_key} to RelicKey({_item})
+    if {_key} is "":
+        return 0
+    set {_tag} to yaml value "Relics.%{_key}%.Effect Value Tag" in "RelicList"
+    if {_tag} is not set:
+        return 0
+    set {_value} to long tag "%{_tag}%" of (custom nbt of {_item})
+    if {_value} is not set:
+        set {_value} to 0
+    return {_value}
+
+function RelicStatsLore(item: item) :: texts:
+    set {_stats::*} to nbt tags of (compound tag "Stats" of (custom nbt of {_item}))
+    loop {_stats::*}:
+        set {_value} to int tag "Stats;%loop-value%" of (custom nbt of {_item})
+        set {_line} to RelicFormattedStat(loop-value, {_value})
+        if {_line} is not "":
+            set {_lore::*} to {_lore::*} and {_line}
+    return {_lore::*}
+
 function RelicLoreUpdate(item: item) :: item:
     set {_item} to RelicEnsureStats({_item})
-    set {_customNbt} to custom nbt of {_item}
-    set {_itemLevel} to int tag "ItemLevel" of {_customNbt}
-    set {_stats::*} to nbt tags of (compound tag "Stats" of {_customNbt})
-    loop lore of {_item}:
-        set {_lineIndex} to loop-counter
-        if loop-value contains "Item Level":
-            set line {_lineIndex} of lore of {_item} to "<#fdd002>Item Level %{_itemLevel}%"
-        else:
-            loop {_stats::*}:
-                if loop-value-1 contains loop-value-2:
-                    set {_value} to int tag "Stats;%loop-value-2%" of {_customNbt}
-                    set {_formattedStat} to RelicFormattedStat(loop-value-2, {_value})
-                    if {_formattedStat} is not "":
-                        set line {_lineIndex} of lore of {_item} to {_formattedStat}
-    return {_item}
+    set {_key} to RelicKey({_item})
+    if {_key} is "":
+        return {_item}
 
+    set {_itemLevel} to int tag "ItemLevel" of (custom nbt of {_item})
+    set {_upgraded} to int tag "Upgraded" of (custom nbt of {_item})
+    set {_enhanced} to int tag "Enhanced" of (custom nbt of {_item})
+    if {_upgraded} is not set:
+        set {_upgraded} to 0
+    if {_enhanced} is not set:
+        set {_enhanced} to 0
+
+    set {_effectValue} to RelicEffectValue({_item})
+    set {_template::*} to yaml list "Relics.%{_key}%.Lore" in "RelicList"
+    set {_statsLore::*} to RelicStatsLore({_item})
+
+    loop {_template::*}:
+        set {_line} to loop-value
+        replace all "{ITEM_LEVEL}" in {_line} with "%{_itemLevel}%"
+        replace all "{UPGRADED}" in {_line} with "%{_upgraded}%"
+        replace all "{ENHANCED}" in {_line} with "%{_enhanced}%"
+        replace all "{EFFECT_VALUE}" in {_line} with "%{_effectValue}%"
+
+        if {_line} = "{STATS}":
+            set {_lore::*} to {_lore::*} and {_statsLore::*}
+        else:
+            set {_lore::*} to {_lore::*} and {_line}
+
+    set lore of {_item} to {_lore::*}
+    return {_item}
+    
 function RelicApplyScaling(p: player, item: item) :: item:
     if boolean tag "Relic" of (custom nbt of {_item}) is not set:
         return {_item}
