@@ -1,11 +1,233 @@
+function ProfileFavouriteCard(p: player) :: text:
+	set {_card} to yaml value "Player.Profile.Favourite Card" in "data-%{_p}%"
+	if {_card} is not set:
+		set {_card} to "Not set"
+	return {_card}
+
+function ProfileFavouriteElement(p: player) :: text:
+	set {_element} to yaml value "Player.Profile.Favourite Element" in "data-%{_p}%"
+	if {_element} is not set:
+		set {_element} to "Not set"
+	return {_element}
+
+function ProfileBirthday(p: player) :: text:
+	set {_birthday} to yaml value "Player.Profile.Birthday" in "data-%{_p}%"
+	if {_birthday} is not set:
+		if {dataurodzin::%{_p}%} is set:
+			set {_birthday} to {dataurodzin::%{_p}%}
+	if {_birthday} is not set:
+		set {_birthday} to "Not set"
+	return {_birthday}
+
+function ProfileCurrentCard(p: player) :: text:
+	if {kartaname::%{_p}%} is set:
+		return {kartaname::%{_p}%}
+	return "None"
+
+function ProfileCurrentCardLevel(p: player) :: number:
+	if yaml "activeCard-%{_p}%" is loaded:
+		set {_level} to yaml value "Card.Level" in "activeCard-%{_p}%"
+		if {_level} is set:
+			return {_level}
+	return 0
+
+function ProfilePrimaryStatLine(p: player) :: text:
+	if {karta::%{_p}%} is set:
+		set {_primaryStat} to string tag "PrimaryStat" of (custom nbt of {karta::%{_p}%})
+		if {_primaryStat} is set:
+			set {_value} to int tag "Stats;%{_primaryStat}%" of (custom nbt of {karta::%{_p}%})
+			set {_formatted} to getFormattedStat({_primaryStat})
+			replace all "{VALUE}" in {_formatted} with "+%{_value}%"
+			return {_formatted}
+	return "&7Primary Stat: &fNone"
+
+function ProfileTopStatsLines(p: player) :: texts:
+	set {_indices::*} to retrieveTopStats({_p}, "indices")
+	set {_values::*} to retrieveTopStats({_p}, "values")
+	loop 5 times:
+		if {_indices::%loop-number%} is set:
+			set {_stat} to {_indices::%loop-number%}
+			set {_icon} to returnStatIcon({_stat})
+			set {_value} to {_values::%loop-number - 1%}
+			set {_lines::*} to {_lines::*} and "&7%loop-number%. %{_icon}% &7- &f%{_value}%"
+	return {_lines::*}
+
+function ProfileHoverText(p: player) :: text:
+	set {_favouriteCard} to ProfileFavouriteCard({_p})
+	set {_favouriteElement} to ProfileFavouriteElement({_p})
+	set {_currentCard} to ProfileCurrentCard({_p})
+	set {_cardLevel} to ProfileCurrentCardLevel({_p})
+	set {_primaryStat} to ProfilePrimaryStatLine({_p})
+	set {_stoneMined} to {stone::%{_p}%} + {deepslate::%{_p}%}
+	set {_mobKills} to {mobskilled::%{_p}%}
+	set {_hover} to "&fFavourite Card: &e%{_favouriteCard}%"
+	set {_hover} to "%{_hover}%%nl%&fFavourite Element: &e%{_favouriteElement}%"
+	set {_hover} to "%{_hover}%%nl% %nl%&fCurrent Card: &e%{_currentCard}%"
+	set {_hover} to "%{_hover}%%nl%&fCard Level: &e%{_cardLevel}%"
+	set {_hover} to "%{_hover}%%nl% %nl%%{_primaryStat}%"
+	set {_stats::*} to ProfileTopStatsLines({_p})
+	loop {_stats::*}:
+		set {_hover} to "%{_hover}%%nl%%loop-value%"
+	set {_hover} to "%{_hover}%%nl% %nl%&fTotal mob kills: &e%{_mobKills}%"
+	set {_hover} to "%{_hover}%%nl%&fTotal stone mined: &e%{_stoneMined}%"
+	replace all "&" in {_hover} with "§"
+	replace all nl in {_hover} with "<newline>"
+	return {_hover}
+
+function CountYamlTrue(yamlId: text, path: text) :: number:
+	set {_keys::*} to yaml node keys "%{_path}%" in {_yamlId}
+	loop {_keys::*}:
+		set {_childPath} to "%{_path}%.%loop-value%"
+		if yaml value "%{_childPath}%" in {_yamlId} is true:
+			add 1 to {_count}
+		else:
+			set {_childKeys::*} to yaml node keys "%{_childPath}%" in {_yamlId}
+			if {_childKeys::*} is set:
+				add CountYamlTrue({_yamlId}, {_childPath}) to {_count}
+	return {_count}
+
+function ProfileSummaryLore(p: player) :: texts:
+	set {_lore::*} to "&fFavourite Card: &e%ProfileFavouriteCard({_p})%", "&fFavourite Element: &e%ProfileFavouriteElement({_p})%", "&fBirthday: &e%ProfileBirthday({_p})%", " ", "&fCurrent Card: &e%ProfileCurrentCard({_p})%", "&fCard Level: &e%ProfileCurrentCardLevel({_p})%", " ", "%ProfilePrimaryStatLine({_p})%"
+	set {_stats::*} to ProfileTopStatsLines({_p})
+	loop {_stats::*}:
+		set {_lore::*} to {_lore::*} and loop-value
+	set {_stoneMined} to {stone::%{_p}%} + {deepslate::%{_p}%}
+	set {_lore::*} to {_lore::*} and " " and "&fTotal mob kills: &e%{mobskilled::%{_p}%}%" and "&fTotal stone mined: &e%{_stoneMined}%"
+	return {_lore::*}
+
+function OpenProfileMain(viewer: player, target: player):
+	set metadata tag "profile-main" of {_viewer} to chest inventory with 3 rows named "%{_target}% - Profile"
+	set {_gui} to metadata tag "profile-main" of {_viewer}
+	set slots integers between 0 and 26 of {_gui} to black stained glass pane named " "
+	set slot 4 of {_gui} to skull of ("%{_target}%" parsed as offlineplayer) named "&f%{_target}%" with lore ProfileSummaryLore({_target})
+	set slot 10 of {_gui} to book named "&bCollection" with lore "&7View collected cards."
+	set slot 11 of {_gui} to compass named "&aStatistics" with lore "&7View saved profile statistics."
+	set slot 12 of {_gui} to totem of undying named "&6Achievements" with lore "&7View achievement progress."
+	set slot 14 of {_gui} to cake named "&dSet Birthday" with lore "&7Current: &f%ProfileBirthday({_target})%"
+	set slot 15 of {_gui} to paper named "&eSet Favourite Card" with lore "&7Current: &f%ProfileFavouriteCard({_target})%"
+	set slot 16 of {_gui} to blaze powder named "&cSet Favourite Element" with lore "&7Current: &f%ProfileFavouriteElement({_target})%"
+	set metadata value "ProfileTarget" of {_viewer} to {_target}
+	open {_gui} to {_viewer}
+
+function OpenProfileCollection(viewer: player, target: player):
+	set metadata tag "profile-collection" of {_viewer} to chest inventory with 6 rows named "%{_target}% - Collection"
+	set {_gui} to metadata tag "profile-collection" of {_viewer}
+	set {_slot} to 0
+	loop {kolekcja::karty::%{_target}%::*}:
+		set slot {_slot} of {_gui} to paper named "&f%loop-value%"
+		set {_slot} to {_slot} + 1
+	open {_gui} to {_viewer}
+
+function OpenProfileStatistics(viewer: player, target: player):
+	set metadata tag "profile-stats" of {_viewer} to chest inventory with 3 rows named "%{_target}% - Statistics"
+	set {_gui} to metadata tag "profile-stats" of {_viewer}
+	set slots integers between 0 and 26 of {_gui} to black stained glass pane named " "
+	set {_messages} to yaml value "Statistics.Chat.Messages sent" in "data-%{_target}%"
+	if {_messages} is not set:
+		set {_messages} to 0
+	set {_experience} to yaml value "Statistics.Experience.Total" in "data-%{_target}%"
+	if {_experience} is not set:
+		set {_experience} to 0
+	set {_stoneMined} to {stone::%{_target}%} + {deepslate::%{_target}%}
+	set slot 10 of {_gui} to iron pickaxe named "&fMining" with lore "&7Total stone mined: &f%{_stoneMined}%", "&7Essences found: &f%{wykopaneesencje::%{_target}%}%"
+	set slot 13 of {_gui} to nether star named "&fGeneral" with lore "&7Chat messages sent: &f%{_messages}%", "&7Experience gained: &f%{_experience}%"
+	set slot 16 of {_gui} to iron sword named "&fCombat" with lore "&7Total mob kills: &f%{mobskilled::%{_target}%}%", "&7Current level: &f%{poziom::%{_target}%}%"
+	open {_gui} to {_viewer}
+
+function OpenProfileAchievements(viewer: player, target: player):
+	set metadata tag "profile-achievements" of {_viewer} to chest inventory with 3 rows named "%{_target}% - Achievements"
+	set {_gui} to metadata tag "profile-achievements" of {_viewer}
+	set slots integers between 0 and 26 of {_gui} to black stained glass pane named " "
+	set {_yamlId} to "profile-ach-%random 8 char string from charset `0-9` `a-z`%"
+	load yaml "plugins/Skript/playerdata/achievements/%uuid of {_target}%.yml" as {_yamlId}
+	set {_unlocked} to CountYamlTrue({_yamlId}, "Achievement")
+	unload yaml {_yamlId}
+	set slot 13 of {_gui} to totem of undying named "&6Achievements" with lore "&7Unlocked achievements: &f%{_unlocked}%"
+	open {_gui} to {_viewer}
+
+function OpenProfileBirthday(viewer: player, target: player):
+	set metadata tag "profile-birthday" of {_viewer} to chest inventory with 3 rows named "%{_target}% - Birthday"
+	set {_gui} to metadata tag "profile-birthday" of {_viewer}
+	set slots integers between 0 and 26 of {_gui} to black stained glass pane named " "
+	set slot 13 of {_gui} to cake named "&dBirthday" with lore "&7Current birthday: &f%ProfileBirthday({_target})%", " ", "&7Use &f/birthday <day> <month> <year> &7to set it."
+	open {_gui} to {_viewer}
+
+function OpenProfileFavouriteCard(viewer: player, target: player):
+	set metadata tag "profile-favcard" of {_viewer} to chest inventory with 6 rows named "%{_target}% - Favourite Card"
+	set {_gui} to metadata tag "profile-favcard" of {_viewer}
+	set metadata value "ProfileTarget" of {_viewer} to {_target}
+	set {_slot} to 0
+	loop {kolekcja::karty::%{_target}%::*}:
+		set slot {_slot} of {_gui} to paper named "&f%loop-value%"
+		set {_slot} to {_slot} + 1
+	open {_gui} to {_viewer}
+
+function OpenProfileFavouriteElement(viewer: player, target: player):
+	set metadata tag "profile-favelement" of {_viewer} to chest inventory with 6 rows named "%{_target}% - Favourite Element"
+	set {_gui} to metadata tag "profile-favelement" of {_viewer}
+	set metadata value "ProfileTarget" of {_viewer} to {_target}
+	set {_slot} to 0
+	loop {esencje::*}:
+		set slot {_slot} of {_gui} to loop-value
+		set {_slot} to {_slot} + 1
+	open {_gui} to {_viewer}
+
+command /profile [<player>]:
+	trigger:
+		if arg-1 is set:
+			set {_target} to arg-1
+		else:
+			set {_target} to player
+		if {_target} is online:
+			OpenProfileMain(player, {_target})
+
+on inventory click:
+	if event-inventory = metadata tag "profile-main" of player:
+		cancel event
+		set {_target} to metadata value "ProfileTarget" of player
+		if event-slot = 10:
+			OpenProfileCollection(player, {_target})
+		else if event-slot = 11:
+			OpenProfileStatistics(player, {_target})
+		else if event-slot = 12:
+			OpenProfileAchievements(player, {_target})
+		else if event-slot = 14:
+			OpenProfileBirthday(player, {_target})
+		else if event-slot = 15:
+			OpenProfileFavouriteCard(player, {_target})
+		else if event-slot = 16:
+			OpenProfileFavouriteElement(player, {_target})
+	else if event-inventory = metadata tag "profile-collection" of player:
+		cancel event
+	else if event-inventory = metadata tag "profile-stats" of player:
+		cancel event
+	else if event-inventory = metadata tag "profile-achievements" of player:
+		cancel event
+	else if event-inventory = metadata tag "profile-birthday" of player:
+		cancel event
+	else if event-inventory = metadata tag "profile-favcard" of player:
+		cancel event
+		set {_target} to metadata value "ProfileTarget" of player
+		if {_target} = player:
+			if clicked slot is not air:
+				set yaml value "Player.Profile.Favourite Card" in "data-%player%" to uncolored name of clicked slot
+				save yaml "data-%player%"
+				play sound "entity.player.levelup" with volume 3 and pitch 1.2 to player
+				OpenProfileMain(player, player)
+	else if event-inventory = metadata tag "profile-favelement" of player:
+		cancel event
+		set {_target} to metadata value "ProfileTarget" of player
+		if {_target} = player:
+			if clicked slot is not air:
+				set yaml value "Player.Profile.Favourite Element" in "data-%player%" to uncolored name of clicked slot
+				save yaml "data-%player%"
+				play sound "entity.player.levelup" with volume 3 and pitch 1.2 to player
+				OpenProfileMain(player, player)
+
 on rightclick on a player:
 	if player is sneaking:
 		if clicked player is online:
 			set {_x} to clicked player's name in uppercase
 			send "&f==== %{_x}% ====" to player
-			if {language::%player%} = "English":
-				send "&fLevel: &e%{poziom::%clicked player%}%" to player
-			else:
-				send "&fPoziom: &e%{poziom::%clicked player%}%" to player
+			send "&fLevel: &e%{poziom::%clicked player%}%" to player
 			send "&fEXP: &e%{exp::%clicked player%}%" to player
-		
