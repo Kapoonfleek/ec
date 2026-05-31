@@ -162,6 +162,94 @@ function Artifact(artifactType: string, starLevel: integer, itemLevel: integer) 
     set int tag "StarLevel" of (custom nbt of {_artifact}) to {_starLevel}
     return {_artifact}
 
+function ArtifactStarLore(starLevel: integer) :: text:
+    if {_starLevel} = 1:
+        return "&e★"
+    else if {_starLevel} = 2:
+        return "&e★★"
+    else if {_starLevel} = 3:
+        return "&e★★★"
+    else if {_starLevel} = 4:
+        return "&e★★★★"
+    return "&e★★★★★"
+
+function ArtifactRarityColourText(starLevel: integer) :: text:
+    if {_starLevel} = 1:
+        return "<#cccccc>Common"
+    else if {_starLevel} = 2:
+        return "<#1fef00>Uncommon"
+    else if {_starLevel} = 3:
+        return "<#0070dd>Rare"
+    else if {_starLevel} = 4:
+        return "<#a335ee>Epic"
+    return "<#ff8000>Legendary"
+
+function ArtifactSubstatLore(starLevel: integer) :: text:
+    if {_starLevel} = 1:
+        return "&8&oby a random value. One star artifacts%nl%&8&oalways start with one substat."
+    else if {_starLevel} = 2:
+        return "&8&oby a random value. Two star artifacts%nl%&8&ostart with one substat and have a%nl%&8&o33.33%% chance to start with two."
+    else if {_starLevel} = 3:
+        return "&8&oby a random value. Three star artifacts%nl%&8&ostart with two substats and have a%nl%&8&o33.33%% chance to start with three."
+    else if {_starLevel} = 4:
+        return "&8&oby a random value. Four star artifacts%nl%&8&oalways start with three substats."
+    return "&8&oby a random value. Five star artifacts%nl%&8&ostart with three substats and have a%nl%&8&o33.33%% chance to start with four."
+
+function ArtifactInfoBlock(starLevel: integer, upgraded: integer) :: text:
+    set {_starLevelLore} to ArtifactStarLore({_starLevel})
+    set {_loreSubstats} to ArtifactSubstatLore({_starLevel})
+    return "&fUpgraded: +%{_upgraded}%%nl%&m&8-------------------------------------------%nl%&7Star Level: &e%{_starLevelLore}%%nl%&8&o(!) Every five upgrades raises a random substat%nl%%{_loreSubstats}%"
+
+function ArtifactSetBonusBlock(set: text, info: text) :: text:
+    if {_set} = "Scorched":
+        return "%nl% %nl%<#ff7045>2 Set Bonus: <#ff3014>Lava &7and <#ff4d00>Fire &7damage dealt is%nl%&7increased by &f8%%&7.%nl%<#ff7045>4 Set Bonus: &7Using your ultimate ability increases%nl%&7your <#f53b98> Mastery &7by &f30%% &7for &f10 sec&7. This effect%nl%&7has a &f20 sec &7cooldown.%nl% %nl%%{_info}%"
+    else if {_set} = "Arcane Mysteries":
+        return "%nl% %nl%<#7154b8>2 Set Bonus: &7Gain &f40 <#f53b98> Mastery &7if it is your highest stat.%nl%<#7154b8>4 Set Bonus: &7Gain a fluctuating &f+2%% &7elemental damage bonus%nl%&7every &f2 sec&7. &7After reaching an increase of &f+16%%&7,%nl%&7the effect will persist for &f5 sec &7before it will rapidly%nl%&7start declining every &f1 sec &7and ultimately reset.%nl% %nl%&7When you use your Ultimate ability, double the%nl%&7current effect and extend its duration by &f10 sec&7.%nl%&7The elemental damage bonus is halved if your element%nl%&7is not <#512989>Magic&7, <#431d53>Ghost &7or <#333333>Dark&7.%nl% %nl%%{_info}%"
+    else if {_set} = "Marksmanship":
+        return "%nl% %nl%<#aad372>2 Set Bonus: &7Damage dealt while at least &f20 &7blocks%nl%&7from the target is increased by &f12%%&7.%nl%<#aad372>4 Set Bonus: &7Increases damage dealt by ranged%nl%&7weapons and projectiles by &f35%%&7.%nl% %nl%%{_info}%"
+    else if {_set} = "Deepfrost":
+        return "%nl% %nl%<#73b7ff>2 Set Bonus: <#add8e6>Ice &7damage dealt is increased by &f15%%&7.%nl%<#73b7ff>4 Set Bonus: <#fca417> Critically Striking &7an enemy will grant%nl%&7you &f+3%% &7Critical Damage for &f20 sec&7. Each following%nl%<#fca417> Critical Hit &7will increase this bonus by an additional%nl%&f3%%&7, stacking up to &f12 &7times.%nl% %nl%%{_info}%"
+    return "%nl% %nl%%{_info}%"
+
+function ArtifactTypeLabel(item: item) :: text:
+    set {_base} to type of {_item}
+    if {_base} = green dye:
+        return "Flower Artifact"
+    else if {_base} = firework star:
+        return "Orb Artifact"
+    else if {_base} = glass bottle:
+        return "Phial Artifact"
+    else if {_base} = book:
+        return "Scroll Artifact"
+    return "Artifact"
+
+function ArtifactLoreUpdate(item: item) :: text:
+    set {_customNbt} to custom nbt of {_item}
+    set {_starLevel} to int tag "StarLevel" of {_customNbt}
+    set {_itemLevel} to int tag "ItemLevel" of {_customNbt}
+    set {_upgraded} to int tag "Upgraded" of {_customNbt}
+    if {_upgraded} is not set:
+        set {_upgraded} to 0
+    set {_set} to string tag "ArtifactSet" of {_customNbt}
+
+    set {_rarity} to ArtifactRarityColourText({_starLevel})
+    set {_typeLabel} to ArtifactTypeLabel({_item})
+
+    set {_lore} to "%{_rarity}% %{_typeLabel}%%nl%<#fdd002>Item Level %{_itemLevel}%%nl%&7%{_set}% Set%nl% "
+
+    set {_statList::*} to "Health", "Damage", "Resistance", "Mobility", "Utility", "Crowd Control", "Versatility", "Mastery", "Critical Hit", "Element", "Haste" and "Avoidance"
+    loop {_statList::*}:
+        set {_statAmount} to int tag "Stats;%loop-value%" of {_customNbt}
+        if {_statAmount} is set:
+            set {_formattedStat} to getFormattedStat(loop-value)
+            replace all "{VALUE}" in {_formattedStat} with "+%{_statAmount}%"
+            set {_lore} to "%{_lore}%%nl%%{_formattedStat}%"
+
+    set {_info} to ArtifactInfoBlock({_starLevel}, {_upgraded})
+    set {_lore} to "%{_lore}%%ArtifactSetBonusBlock({_set}, {_info})%"
+
+    return {_lore}
+
 #Generic formula for calculating secondary stat budget
 function statFormula(itemLevel: integer) :: number:
     set {_formula} to (1.0136^({_itemLevel}/3)) * 0.287*{_itemLevel}
@@ -400,6 +488,9 @@ function CalculateCardGearScore(p: player, saveResult: boolean = true) :: number
 
 function GearLoreUpdate(item: item) :: string:
     set {_customNbt} to custom nbt of {_item}
+
+    if boolean tag "Artifact" of {_customNbt} is set:
+        return ArtifactLoreUpdate({_item})
 
     set {_rarity} to string tag "Rarity" of {_customnbt}
     set {_gearSlot} to string tag "GearSlot" of {_customnbt}
@@ -1306,8 +1397,12 @@ function RecalculateRegularGearSets(p: player):
     save yaml "activeCard-%{_p}%"
 
 function EquippedGearLoreUpdate(p: player, item: item) :: text:
-    set {_lore} to GearLoreUpdate({_item})
     set {_customNbt} to custom nbt of {_item}
+
+    if boolean tag "Artifact" of {_customNbt} is set:
+        return ArtifactLoreUpdate({_item})
+
+    set {_lore} to GearLoreUpdate({_item})
 
     if string tag "2Set;Name" of {_customNbt} is set:
         set {_setName} to string tag "2Set;Name" of {_customNbt}
