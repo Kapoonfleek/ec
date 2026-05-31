@@ -119,6 +119,7 @@ function LegacyToMiniMessage(t: text) :: text:
 	replace all "&o" with "<i>" in {_t}
 	replace all "&m" with "<strikethrough>" in {_t}
 	replace all "&k" with "<obfuscated>" in {_t}
+	replace all "&r" with "<reset>" in {_t}
 	replace all "<##" with "<color:##" in {_t}
 	return {_t}
 
@@ -151,6 +152,24 @@ function ProfileHoverText(p: player) :: text:
 	replace all nl in {_hover} with "<newline>"
 	return {_hover}
 
+function LoadTargetData(target: player):
+	if yaml "data-%{_target}%" is not loaded:
+		load yaml "plugins/Skript/playerdata/%uuid of {_target}%.yml" as "data-%{_target}%"
+
+function IsCardCollected(p: player, booster: text, card: text) :: boolean:
+	if {kolekcja::karty::%{_p}%::*} contains {_card}:
+		return true
+	set {_pathName} to {_booster}
+	if {_booster} = "Team Poison vs Team Aqua":
+		set {_pathName} to "Team Poison vs. Team Aqua"
+	if yaml "%{_booster}%-%{_p}%" is not loaded:
+		load yaml "plugins/Skript/playerdata/boosters/%{_pathName}%/%uuid of {_p}%.yml" as "%{_booster}%-%{_p}%"
+	set {_val} to yaml value "Cards.%{_card}%" in "%{_booster}%-%{_p}%"
+	if {_val} is set:
+		if {_val} > 0:
+			return true
+	return false
+
 function CountYamlTrue(yamlId: text, path: text) :: number:
 	set {_count} to 0
 	set {_keys::*} to yaml node keys "%{_path}%" in {_yamlId}
@@ -170,10 +189,11 @@ function ProfileSummaryLore(p: player) :: texts:
 	set {_stats::*} to ProfileTopStatsLines({_p})
 	loop {_stats::*}:
 		set {_lore::*} to {_lore::*} and loop-value
-	set {_lore::*} to {_lore::*} and " " and "&fTotal mob kills: &e%{mobskilled::%{_p}%}%" and "&fTotal stone mined: &e%{_stoneMined}%"
+	set {_lore::*} to {_lore::*} and " " and "&fTotal mob kills: &e%formatNumberEc({mobskilled::%{_p}%})%" and "&fTotal stone mined: &e%formatNumberEc({_stoneMined})%"
 	return {_lore::*}
 
 function OpenProfileMain(viewer: player, target: player):
+	LoadTargetData({_target})
 	set metadata tag "profile-main" of {_viewer} to chest inventory with 3 rows named "%{_target}% - Profile"
 	set {_gui} to metadata tag "profile-main" of {_viewer}
 	set slots integers between 0 and 26 of {_gui} to black stained glass pane named " " with item flag hide attributes
@@ -189,18 +209,22 @@ function OpenProfileMain(viewer: player, target: player):
 	open {_gui} to {_viewer}
 
 function OpenProfileCollection(viewer: player, target: player):
+	LoadTargetData({_target})
 	set metadata tag "profile-collection" of {_viewer} to chest inventory with 3 rows named "%{_target}% - Collection"
 	set {_gui} to metadata tag "profile-collection" of {_viewer}
 	set slots integers between 0 and 26 of {_gui} to black stained glass pane named " " with item flag hide attributes
 	set slot 12 of {_gui} to nether star named "&fPlayable Cards" with lore "&7View your collected playable cards." with item flag hide attributes
 	set slot 14 of {_gui} to experience bottle named "&9Booster Cards" with lore "&7View collected booster cards." with item flag hide attributes
+	set slot 22 of {_gui} to barrier named "&cBack" with lore "&7Click to go back." with item flag hide attributes
 	set metadata value "ProfileTarget" of {_viewer} to {_target}
 	play sound "ui.click_echo" with volume 1 and pitch 1 to {_viewer}
 	open {_gui} to {_viewer}
 
 function OpenProfileCollectionPlayable(viewer: player, target: player):
+	LoadTargetData({_target})
 	set metadata tag "profile-collection-playable" of {_viewer} to chest inventory with 6 rows named "%{_target}% - Playable Cards"
 	set {_gui} to metadata tag "profile-collection-playable" of {_viewer}
+	set slots integers between 0 and 53 of {_gui} to black stained glass pane named " " with item flag hide attributes
 	set {_slot} to 0
 	set {_cards::*} to yaml node keys "Cards" in "StellarChestList"
 	loop {_cards::*}:
@@ -217,20 +241,26 @@ function OpenProfileCollectionPlayable(viewer: player, target: player):
 				set lore of {_preview} to {_lore::*}
 			set slot {_slot} of {_gui} to {_preview}
 			set {_slot} to {_slot} + 1
+			if {_slot} >= 45:
+				exit loop
+	set slot 49 of {_gui} to barrier named "&cBack" with lore "&7Click to go back." with item flag hide attributes
 	play sound "ui.click_echo" with volume 1 and pitch 1 to {_viewer}
 	open {_gui} to {_viewer}
 
 function OpenProfileCollectionBoosterMain(viewer: player, target: player):
+	LoadTargetData({_target})
 	set metadata tag "profile-collection-booster" of {_viewer} to chest inventory with 3 rows named "%{_target}% - Booster Cards"
 	set {_gui} to metadata tag "profile-collection-booster" of {_viewer}
 	set slots integers between 0 and 26 of {_gui} to black stained glass pane named " " with item flag hide attributes
 	set slot 12 of {_gui} to nether star named "&fAll Cards" with lore "&7View all booster cards." with item flag hide attributes
 	set slot 14 of {_gui} to book named "&9Per Booster" with lore "&7View booster cards sorted per booster." with item flag hide attributes
+	set slot 22 of {_gui} to barrier named "&cBack" with lore "&7Click to go back." with item flag hide attributes
 	set metadata value "ProfileTarget" of {_viewer} to {_target}
 	play sound "ui.click_echo" with volume 1 and pitch 1 to {_viewer}
 	open {_gui} to {_viewer}
 
 function OpenProfileCollectionBoosterSetSelect(viewer: player, target: player):
+	LoadTargetData({_target})
 	set metadata tag "profile-collection-booster-select" of {_viewer} to chest inventory with 3 rows named "%{_target}% - Per Booster"
 	set {_gui} to metadata tag "profile-collection-booster-select" of {_viewer}
 	set slots integers between 0 and 26 of {_gui} to black stained glass pane named " " with item flag hide attributes
@@ -239,13 +269,16 @@ function OpenProfileCollectionBoosterSetSelect(viewer: player, target: player):
 	loop {_boosters::*}:
 		set slot {_slot} of {_gui} to glass pane named "&9%loop-value% &7Booster" with lore "&7View cards from this booster." with item flag hide attributes
 		set {_slot} to {_slot} + 1
+	set slot 22 of {_gui} to barrier named "&cBack" with lore "&7Click to go back." with item flag hide attributes
 	set metadata value "ProfileTarget" of {_viewer} to {_target}
 	play sound "ui.click_echo" with volume 1 and pitch 1 to {_viewer}
 	open {_gui} to {_viewer}
 
 function OpenProfileCollectionBoosterAll(viewer: player, target: player):
+	LoadTargetData({_target})
 	set metadata tag "profile-collection-booster-all" of {_viewer} to chest inventory with 6 rows named "%{_target}% - All Booster Cards"
 	set {_gui} to metadata tag "profile-collection-booster-all" of {_viewer}
+	set slots integers between 0 and 53 of {_gui} to black stained glass pane named " " with item flag hide attributes
 	set {_boosters::*} to "Secret Wonders", "Majestic Dawn", "Unseen Forces", "Plasma Freeze", "Team Poison vs Team Aqua"
 	set {_slot} to 0
 	loop {_boosters::*}:
@@ -265,7 +298,7 @@ function OpenProfileCollectionBoosterAll(viewer: player, target: player):
 		loop {_sorted::*}:
 			set {_cardName} to {_boosterCards::%loop-value-2%}
 			if {_cardName} is set:
-				if {kolekcja::karty::%{_target}%::*} contains {_cardName}:
+				if IsCardCollected({_target}, {_booster}, {_cardName}) is true:
 					set {_preview} to StellarCardPreview({_cardName}, true)
 					if {_preview} is set:
 						set lore of {_preview} to coloured lore of {_preview}
@@ -285,14 +318,17 @@ function OpenProfileCollectionBoosterAll(viewer: player, target: player):
 					set {_preview} to gray stained glass pane named "&7???" with lore "&7Not collected yet", " ", "&7Name: ???", "&7Element: %{_element}%", "&7Card ID: %{_boosterOrder}%", "&7Global ID: %{_id}%", "&7Booster: %{_booster}%"
 					set slot {_slot} of {_gui} to {_preview}
 				set {_slot} to {_slot} + 1
-				if {_slot} >= 54:
+				if {_slot} >= 45:
 					exit 2 loops
+	set slot 49 of {_gui} to barrier named "&cBack" with lore "&7Click to go back." with item flag hide attributes
 	play sound "ui.click_echo" with volume 1 and pitch 1 to {_viewer}
 	open {_gui} to {_viewer}
 
 function OpenProfileCollectionBoosterSet(viewer: player, target: player, booster: text):
+	LoadTargetData({_target})
 	set metadata tag "profile-collection-booster-set" of {_viewer} to chest inventory with 6 rows named "%{_target}% - %{_booster}% Cards"
 	set {_gui} to metadata tag "profile-collection-booster-set" of {_viewer}
+	set slots integers between 0 and 53 of {_gui} to black stained glass pane named " " with item flag hide attributes
 	set {_slot} to 0
 	set {_cards::*} to yaml node keys "Cards" in "StellarChestList"
 	clear {_boosterCards::*}
@@ -309,7 +345,7 @@ function OpenProfileCollectionBoosterSet(viewer: player, target: player, booster
 	loop {_sorted::*}:
 		set {_cardName} to {_boosterCards::%loop-value%}
 		if {_cardName} is set:
-			if {kolekcja::karty::%{_target}%::*} contains {_cardName}:
+			if IsCardCollected({_target}, {_booster}, {_cardName}) is true:
 				set {_preview} to StellarCardPreview({_cardName}, true)
 				if {_preview} is set:
 					set lore of {_preview} to coloured lore of {_preview}
@@ -329,6 +365,9 @@ function OpenProfileCollectionBoosterSet(viewer: player, target: player, booster
 				set {_preview} to gray stained glass pane named "&7???" with lore "&7Not collected yet", " ", "&7Name: ???", "&7Element: %{_element}%", "&7Card ID: %{_boosterOrder}%", "&7Global ID: %{_id}%", "&7Booster: %{_booster}%"
 				set slot {_slot} of {_gui} to {_preview}
 			set {_slot} to {_slot} + 1
+			if {_slot} >= 45:
+				exit loop
+	set slot 49 of {_gui} to barrier named "&cBack" with lore "&7Click to go back." with item flag hide attributes
 	play sound "ui.click_echo" with volume 1 and pitch 1 to {_viewer}
 	open {_gui} to {_viewer}
 
@@ -341,8 +380,8 @@ function ProfileStatCategoryItem(category: text) :: item:
 		return brewing stand named "&fProfessions"
 	else if {_category} = "Experience":
 		return experience bottle named "&fExperience"
-	else if {_category} = "General":
-		return nether star named "&fGeneral"
+	else if {_category} = "General" or "Miscellaneous" or "Global":
+		return nether star named "&fMiscellaneous"
 	else if {_category} = "Chat":
 		return writable book named "&fChat"
 	else if {_category} = "Diamond Chest":
@@ -387,56 +426,182 @@ function ProfileStatLines(target: player, category: text) :: texts:
 	return {_lines::*}
 
 function OpenProfileStatistics(viewer: player, target: player):
+	LoadTargetData({_target})
 	set metadata tag "profile-stats" of {_viewer} to chest inventory with 6 rows named "%{_target}% - Statistics"
 	set {_gui} to metadata tag "profile-stats" of {_viewer}
 	set slots integers between 0 and 53 of {_gui} to black stained glass pane named " " with item flag hide attributes
 	set {_slots::*} to 10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 22, 23, 24, 25
 	set {_i} to 1
-	loop yaml node keys "Statistics" in "data-%{_target}%":
+	
+	set {_categories::*} to "Experience", "Professions", "Mining", "Chat", "Diamond Chest", "Miscellaneous"
+	loop {_categories::*}:
 		set {_category} to loop-value
+		set {_searchCategory} to {_category}
+		if {_category} = "Miscellaneous":
+			set {_searchCategory} to "General"
+			
 		set {_item} to ProfileStatCategoryItem({_category})
-		set lore of {_item} to ProfileStatSummaryLines({_target}, {_category})
+		set lore of {_item} to ProfileStatSummaryLines({_target}, {_searchCategory})
 		set {_item} to {_item} with item flag hide attributes
 		set {_slot} to {_slots::%{_i}%}
 		if {_slot} is set:
 			set slot {_slot} of {_gui} to {_item}
 			set {_i} to {_i} + 1
+			
+	set slot 49 of {_gui} to barrier named "&cBack" with lore "&7Click to go back." with item flag hide attributes
 	set metadata value "ProfileTarget" of {_viewer} to {_target}
 	play sound "ui.click_echo" with volume 1 and pitch 1 to {_viewer}
 	open {_gui} to {_viewer}
 
 function OpenProfileStatCategory(viewer: player, target: player, category: text):
+	LoadTargetData({_target})
 	set metadata tag "profile-stat-category" of {_viewer} to chest inventory with 6 rows named "%{_target}% - %{_category}%"
 	set {_gui} to metadata tag "profile-stat-category" of {_viewer}
 	set slots integers between 0 and 53 of {_gui} to black stained glass pane named " " with item flag hide attributes
-	set {_slot} to 0
-	set {_lines::*} to ProfileStatLines({_target}, {_category})
-	set {_item} to ProfileStatCategoryItem({_category})
-	set lore of {_item} to {_lines::*}
-	set {_item} to {_item} with item flag hide attributes
-	set slot 4 of {_gui} to {_item}
+	
+	set {_searchCategory} to {_category}
+	if {_category} = "Miscellaneous":
+		set {_searchCategory} to "General"
+		
+	set {_slot} to 9
+	loop yaml node keys "Statistics.%{_searchCategory}%" in "data-%{_target}%":
+		set {_key} to loop-value
+		set {_childKeys::*} to yaml node keys "Statistics.%{_searchCategory}%.%{_key}%" in "data-%{_target}%"
+		if size of {_childKeys::*} > 0:
+			loop {_childKeys::*}:
+				set {_val} to yaml value "Statistics.%{_searchCategory}%.%{_key}%.%loop-value-2%" in "data-%{_target}%"
+				if {_val} is not set:
+					set {_val} to 0
+				set slot {_slot} of {_gui} to paper named "&e%{_key}% - %loop-value-2%" with lore "&7Value: &f%{_val}%" with item flag hide attributes
+				set {_slot} to {_slot} + 1
+				if {_slot} >= 45:
+					exit loop
+		else:
+			set {_val} to yaml value "Statistics.%{_searchCategory}%.%{_key}%" in "data-%{_target}%"
+			if {_val} is not set:
+				set {_val} to 0
+			set slot {_slot} of {_gui} to paper named "&e%{_key}%" with lore "&7Value: &f%{_val}%" with item flag hide attributes
+			set {_slot} to {_slot} + 1
+			if {_slot} >= 45:
+				exit loop
+
+	set slot 49 of {_gui} to barrier named "&cBack" with lore "&7Click to go back." with item flag hide attributes
+	set metadata value "ProfileTarget" of {_viewer} to {_target}
+	set metadata value "ProfileStatCategory" of {_viewer} to {_category}
+	play sound "ui.click_echo" with volume 1 and pitch 1 to {_viewer}
+	open {_gui} to {_viewer}
+
+function OpenProfileStatProfessionsSelect(viewer: player, target: player):
+	set metadata tag "profile-stat-professions-select" of {_viewer} to chest inventory with 3 rows named "%{_target}% - Professions Stats"
+	set {_gui} to metadata tag "profile-stat-professions-select" of {_viewer}
+	set slots integers between 0 and 26 of {_gui} to black stained glass pane named " " with item flag hide attributes
+	
+	set {_jcLvl} to {poziomjubilerstwo::%{_target}%}
+	if {_jcLvl} is not set:
+		set {_jcLvl} to 0
+	set {_jcExp} to {exp::jubilerstwo::%{_target}%}
+	if {_jcExp} is not set:
+		set {_jcExp} to 0
+	set {_jcRecipes} to {przepisy::jubilerstwo::%{_target}%}
+	if {_jcRecipes} is not set:
+		set {_jcRecipes} to 0
+	set {_jc} to prismarine crystals named "&dJewelcrafting" with lore "&7Level: &f%{_jcLvl}%", "&7Experience: &f%{_jcExp}%&7/&f%150*{_jcLvl}%", "&7Unlocked Recipes: &f%{_jcRecipes}%&7/&f24" with item flag hide attributes
+	set slot 11 of {_gui} to {_jc}
+	
+	set {_enchLvl} to yaml value "Professions.Enchanting.Level" in "data-%{_target}%"
+	if {_enchLvl} is not set:
+		set {_enchLvl} to 0
+	set {_ench} to brewing stand named "&bEnchanting" with lore "&7Level: &f%{_enchLvl}%", " ", "&7Click to view detailed Enchanting stats." with item flag hide attributes
+	set slot 13 of {_gui} to {_ench}
+	
+	set {_minLvl} to {poziomgornictwo::%{_target}%}
+	if {_minLvl} is not set:
+		set {_minLvl} to 0
+	set {_min} to iron pickaxe named "&aMining" with lore "&7Level: &f%{_minLvl}%", " ", "&7Click to view detailed Mining stats." with item flag hide attributes
+	set slot 15 of {_gui} to {_min}
+	
+	set slot 22 of {_gui} to barrier named "&cBack" with lore "&7Click to go back." with item flag hide attributes
 	set metadata value "ProfileTarget" of {_viewer} to {_target}
 	play sound "ui.click_echo" with volume 1 and pitch 1 to {_viewer}
 	open {_gui} to {_viewer}
 
 function OpenProfileAchievements(viewer: player, target: player):
+	LoadTargetData({_target})
 	set metadata tag "profile-achievements" of {_viewer} to chest inventory with 3 rows named "%{_target}% - Achievements"
 	set {_gui} to metadata tag "profile-achievements" of {_viewer}
 	set slots integers between 0 and 26 of {_gui} to black stained glass pane named " " with item flag hide attributes
 	set {_unlocked} to CountYamlTrue("data-%{_target}%", "Achievements.Achievement")
-	set slot 13 of {_gui} to totem of undying named "&6Achievements" with lore "&7Unlocked achievements: &f%{_unlocked}%" with item flag hide attributes
+	
+	set slot 10 of {_gui} to totem of undying named "&6Achievements Summary" with lore "&7Total Unlocked: &f%{_unlocked}%" with item flag hide attributes
+	set slot 12 of {_gui} to iron pickaxe named "&eMining Achievements" with lore "&7Click to view Mining achievements." with item flag hide attributes
+	set slot 13 of {_gui} to brewing stand named "&bProfessions Achievements" with lore "&7Click to view Professions achievements." with item flag hide attributes
+	set slot 14 of {_gui} to experience bottle named "&aExperience Achievements" with lore "&7Click to view Level & Experience achievements." with item flag hide attributes
+	set slot 15 of {_gui} to nether star named "&fGeneral Achievements" with lore "&7Click to view General achievements." with item flag hide attributes
+	set slot 22 of {_gui} to barrier named "&cBack" with lore "&7Click to go back." with item flag hide attributes
+	
+	set metadata value "ProfileTarget" of {_viewer} to {_target}
+	play sound "ui.click_echo" with volume 1 and pitch 1 to {_viewer}
+	open {_gui} to {_viewer}
+
+function OpenProfileAchievementsCategory(viewer: player, target: player, category: text):
+	LoadTargetData({_target})
+	set metadata tag "profile-achievements-category" of {_viewer} to chest inventory with 6 rows named "%{_target}% - %{_category}% Achievs"
+	set {_gui} to metadata tag "profile-achievements-category" of {_viewer}
+	set slots integers between 0 and 53 of {_gui} to black stained glass pane named " " with item flag hide attributes
+	
+	set {_slot} to 9
+	if {_category} = "Mining":
+		set {_ids::*} to "Stone.100", "Stone.1000", "Stone.10000", "Stone.100000", "Stone.1000000", "Chest.100", "Chest.1000", "LuxuriousChest.100", "LuxuriousChest.1000", "Gemstones.100", "Gemstones.1000", "Essences.100", "Essences.1000", "Sapphire.100", "Sapphire.1000", "Klejnot.100", "Klejnot.1000", "Ruby.100", "Ruby.1000", "Amethyst.100", "Amethyst.1000", "Topaz.100", "Topaz.1000", "Aquamarine.100", "Aquamarine.1000", "Peridot.100", "Peridot.1000", "Amber.100", "Amber.1000"
+		set {_names::*} to "R(o)ocky", "Stone Adept", "Miner", "Mining Expert", "Million: Mining", "Chest Finder", "Chest Lover", "Luxurious Chest Finder", "Luxurious Chest Lover", "Gemstones", "More Gemstones", "Elemental", "One with the Elements", "Sapphire: 100", "Sapphire: 1000", "Klejnot: 100", "Klejnot: 1000", "Ruby: 100", "Ruby: 1000", "Amethyst: 100", "Amethyst: 1000", "Topaz: 100", "Topaz: 1000", "Aquamarine: 100", "Aquamarine: 1000", "Peridot: 100", "Peridot: 1000", "Amber: 100", "Amber: 1000"
+		set {_descs::*} to "Mine 100 stone.", "Mine 1000 stone.", "Mine 10000 stone.", "Mine 100000 stone.", "Mine 1000000 stone.", "Find 100 Chests.", "Find 1000 Chests.", "Find 1000 Luxurious Chests.", "Find 1000 Luxurious Chests.", "Find 100 Gemstones when mining.", "Find 1000 Gemstones when mining.", "Find 100 Essences while mining.", "Find 1000 Essences while mining.", "Find 100 Sapphires while mining.", "Find 1000 Sapphires while mining.", "Find 100 Klejnots while mining.", "Find 1000 Klejnots while mining.", "Find 100 Rubies while mining.", "Find 1000 Rubies while mining.", "Find 100 Amethysts while mining.", "Find 1000 Amethysts while mining.", "Find 100 Topazes while mining.", "Find 1000 Topazes while mining.", "Find 100 Aquamarines while mining.", "Find 1000 Aquamarines while mining.", "Find 100 Peridots while mining.", "Find 1000 Peridots while mining.", "Find 100 Ambers while mining.", "Find 1000 Ambers while mining."
+		
+	else if {_category} = "Professions":
+		set {_ids::*} to "ProfessionLevel.10", "ProfessionLevel.25", "ProfessionLevel.50", "ProfessionLevel.75", "Jewelry.Gems.1", "Jewelry.Gems.100", "Jewelry.EpicGems.1"
+		set {_names::*} to "10 LVL: Mining", "25 LVL: Mining", "50 LVL: Mining", "MAX LVL: Mining", "First Gem", "Gem Cutter", "Powerhouse"
+		set {_descs::*} to "Achieve level ten in the Mining profession.", "Achieve level twenty-five in the Mining profession.", "Achieve level fifty in the Mining profession.", "Achieve max level in the Mining profession.", "Cut your first Gem.", "Craft 100 Gems.", "Craft an Epic Gem."
+		
+	else if {_category} = "Experience":
+		set {_ids::*} to "Level.10", "Level.50", "Level.100", "Level.200", "Level.300", "Level.500", "Level.1000"
+		set {_names::*} to "10 LVL", "50 LVL", "100 LVL", "200 LVL", "300 LVL", "500 LVL", "1000 LVL"
+		set {_descs::*} to "Achieve level ten.", "Achieve level fifty.", "Achieve level one hundred.", "Achieve level two hundred.", "Achieve level three hundred.", "Achieve level five hundred.", "Achieve level one thousand."
+		
+	else if {_category} = "General":
+		set {_ids::*} to "General.1"
+		set {_names::*} to "Friend"
+		set {_descs::*} to "Join the server for the first time."
+
+	loop {_ids::*}:
+		set {_id} to loop-value
+		set {_name} to {_names::%loop-index%}
+		set {_desc} to {_descs::%loop-index%}
+		
+		set {_yamlPath} to "Achievements.Achievement.%{_category}%.%{_id}%"
+		if yaml value {_yamlPath} in "data-%{_target}%" is true:
+			set slot {_slot} of {_gui} to totem of undying named "&a%{_name}%" with lore "&7%{_desc}%", " ", "&a&lUNLOCKED" with item flag hide attributes
+		else:
+			set slot {_slot} of {_gui} to gray stained glass pane named "&c%{_name}%" with lore "&7%{_desc}%", " ", "&c&lLOCKED" with item flag hide attributes
+		set {_slot} to {_slot} + 1
+		if {_slot} >= 45:
+			exit loop
+			
+	set slot 49 of {_gui} to barrier named "&cBack" with lore "&7Click to go back." with item flag hide attributes
+	set metadata value "ProfileTarget" of {_viewer} to {_target}
+	set metadata value "ProfileAchievementsCategory" of {_viewer} to {_category}
 	play sound "ui.click_echo" with volume 1 and pitch 1 to {_viewer}
 	open {_gui} to {_viewer}
 
 function OpenProfileBirthday(viewer: player, target: player):
+	LoadTargetData({_target})
 	set metadata tag "profile-birthday" of {_viewer} to chest inventory with 3 rows named "%{_target}% - Birthday"
 	set {_gui} to metadata tag "profile-birthday" of {_viewer}
 	set slots integers between 0 and 26 of {_gui} to black stained glass pane named " " with item flag hide attributes
 	set slot 13 of {_gui} to cake named "&dBirthday" with lore "&7Current birthday: &f%ProfileBirthday({_target})%", " ", "&7Use &f/birthday <day> <month> <year> &7to set it." with item flag hide attributes
+	set slot 22 of {_gui} to barrier named "&cBack" with lore "&7Click to go back." with item flag hide attributes
 	play sound "ui.click_echo" with volume 1 and pitch 1 to {_viewer}
 	open {_gui} to {_viewer}
 
 function OpenProfileFavouriteCard(viewer: player, target: player):
+	LoadTargetData({_target})
 	set metadata tag "profile-favcard" of {_viewer} to chest inventory with 6 rows named "%{_target}% - Favourite Card"
 	set {_gui} to metadata tag "profile-favcard" of {_viewer}
 	set metadata value "ProfileTarget" of {_viewer} to {_target}
@@ -450,10 +615,14 @@ function OpenProfileFavouriteCard(viewer: player, target: player):
 			set {_preview} to {_preview} with item flag hide attributes
 			set slot {_slot} of {_gui} to {_preview}
 			set {_slot} to {_slot} + 1
+			if {_slot} >= 45:
+				exit loop
+	set slot 49 of {_gui} to barrier named "&cBack" with lore "&7Click to go back." with item flag hide attributes
 	play sound "ui.click_echo" with volume 1 and pitch 1 to {_viewer}
 	open {_gui} to {_viewer}
 
 function OpenProfileFavouriteElement(viewer: player, target: player):
+	LoadTargetData({_target})
 	set metadata tag "profile-favelement" of {_viewer} to chest inventory with 6 rows named "%{_target}% - Favourite Element"
 	set {_gui} to metadata tag "profile-favelement" of {_viewer}
 	set metadata value "ProfileTarget" of {_viewer} to {_target}
@@ -466,6 +635,9 @@ function OpenProfileFavouriteElement(viewer: player, target: player):
 		set lore of {_item} to "&eClick here to set your favourite%nl%&eElement to %{_name}%"
 		set slot {_slot} of {_gui} to {_item} with item flag hide attributes
 		set {_slot} to {_slot} + 1
+		if {_slot} >= 45:
+			exit loop
+	set slot 49 of {_gui} to barrier named "&cBack" with lore "&7Click to go back." with item flag hide attributes
 	play sound "ui.click_echo" with volume 1 and pitch 1 to {_viewer}
 	open {_gui} to {_viewer}
 
@@ -494,51 +666,122 @@ on inventory click:
 			OpenProfileFavouriteCard(player, {_target})
 		else if event-slot = 16:
 			OpenProfileFavouriteElement(player, {_target})
+			
 	else if event-inventory = metadata tag "profile-collection" of player:
 		cancel event
 		set {_target} to metadata value "ProfileTarget" of player
-		if event-slot = 12:
+		if event-slot = 22:
+			OpenProfileMain(player, {_target})
+		else if event-slot = 12:
 			OpenProfileCollectionPlayable(player, {_target})
 		else if event-slot = 14:
 			OpenProfileCollectionBoosterMain(player, {_target})
+			
 	else if event-inventory = metadata tag "profile-collection-playable" of player:
 		cancel event
+		set {_target} to metadata value "ProfileTarget" of player
+		if event-slot = 49:
+			OpenProfileCollection(player, {_target})
+			
 	else if event-inventory = metadata tag "profile-collection-booster" of player:
 		cancel event
 		set {_target} to metadata value "ProfileTarget" of player
-		if event-slot = 12:
+		if event-slot = 22:
+			OpenProfileCollection(player, {_target})
+		else if event-slot = 12:
 			OpenProfileCollectionBoosterAll(player, {_target})
 		else if event-slot = 14:
 			OpenProfileCollectionBoosterSetSelect(player, {_target})
+			
 	else if event-inventory = metadata tag "profile-collection-booster-select" of player:
 		cancel event
 		set {_target} to metadata value "ProfileTarget" of player
-		if clicked slot is not air:
+		if event-slot = 22:
+			OpenProfileCollectionBoosterMain(player, {_target})
+		else if clicked slot is not air:
 			if name of clicked slot contains "Booster":
 				set {_boosterName} to uncolored name of clicked slot
 				replace all " Booster" in {_boosterName} with ""
 				OpenProfileCollectionBoosterSet(player, {_target}, {_boosterName})
+				
 	else if event-inventory = metadata tag "profile-collection-booster-all" of player:
 		cancel event
+		set {_target} to metadata value "ProfileTarget" of player
+		if event-slot = 49:
+			OpenProfileCollectionBoosterMain(player, {_target})
+			
 	else if event-inventory = metadata tag "profile-collection-booster-set" of player:
 		cancel event
+		set {_target} to metadata value "ProfileTarget" of player
+		if event-slot = 49:
+			OpenProfileCollectionBoosterSetSelect(player, {_target})
+			
 	else if event-inventory = metadata tag "profile-stats" of player:
 		cancel event
 		set {_target} to metadata value "ProfileTarget" of player
-		if clicked slot is not air:
+		if event-slot = 49:
+			OpenProfileMain(player, {_target})
+		else if clicked slot is not air:
 			if name of clicked slot is set:
 				set {_category} to uncolored name of clicked slot
-				OpenProfileStatCategory(player, {_target}, {_category})
+				if {_category} = "Professions":
+					OpenProfileStatProfessionsSelect(player, {_target})
+				else:
+					OpenProfileStatCategory(player, {_target}, {_category})
+					
+	else if event-inventory = metadata tag "profile-stat-professions-select" of player:
+		cancel event
+		set {_target} to metadata value "ProfileTarget" of player
+		if event-slot = 22:
+			OpenProfileStatistics(player, {_target})
+		else if clicked slot is not air:
+			if index of event-slot is 13:
+				OpenProfileStatCategory(player, {_target}, "Professions")
+			else if index of event-slot is 15:
+				OpenProfileStatCategory(player, {_target}, "Mining")
+				
 	else if event-inventory = metadata tag "profile-stat-category" of player:
 		cancel event
+		set {_target} to metadata value "ProfileTarget" of player
+		set {_category} to metadata value "ProfileStatCategory" of player
+		if event-slot = 49:
+			if {_category} = "Professions" or "Mining":
+				OpenProfileStatProfessionsSelect(player, {_target})
+			else:
+				OpenProfileStatistics(player, {_target})
+				
 	else if event-inventory = metadata tag "profile-achievements" of player:
 		cancel event
+		set {_target} to metadata value "ProfileTarget" of player
+		if event-slot = 22:
+			OpenProfileMain(player, {_target})
+		else if event-slot = 12:
+			OpenProfileAchievementsCategory(player, {_target}, "Mining")
+		else if event-slot = 13:
+			OpenProfileAchievementsCategory(player, {_target}, "Professions")
+		else if event-slot = 14:
+			OpenProfileAchievementsCategory(player, {_target}, "Experience")
+		else if event-slot = 15:
+			OpenProfileAchievementsCategory(player, {_target}, "General")
+			
+	else if event-inventory = metadata tag "profile-achievements-category" of player:
+		cancel event
+		set {_target} to metadata value "ProfileTarget" of player
+		if event-slot = 49:
+			OpenProfileAchievements(player, {_target})
+			
 	else if event-inventory = metadata tag "profile-birthday" of player:
 		cancel event
+		set {_target} to metadata value "ProfileTarget" of player
+		if event-slot = 22:
+			OpenProfileMain(player, {_target})
+			
 	else if event-inventory = metadata tag "profile-favcard" of player:
 		cancel event
 		set {_target} to metadata value "ProfileTarget" of player
-		if {_target} = player:
+		if event-slot = 49:
+			OpenProfileMain(player, {_target})
+		else if {_target} = player:
 			if clicked slot is not air:
 				set {_card} to string tag "StellarCard" of (custom nbt of clicked slot)
 				if {_card} is not set:
@@ -547,10 +790,13 @@ on inventory click:
 				save yaml "data-%player%"
 				play sound "entity.player.levelup" with volume 3 and pitch 1.2 to player
 				OpenProfileMain(player, player)
+				
 	else if event-inventory = metadata tag "profile-favelement" of player:
 		cancel event
 		set {_target} to metadata value "ProfileTarget" of player
-		if {_target} = player:
+		if event-slot = 49:
+			OpenProfileMain(player, {_target})
+		else if {_target} = player:
 			if clicked slot is not air:
 				set {_name} to name of clicked slot
 				replace all " Essence" in {_name} with ""
@@ -581,5 +827,5 @@ on rightclick on a player:
 			loop ProfileTopStatsLines({_t}):
 				send formatted loop-value to player
 			send " " to player
-			send "&fTotal mob kills: &e%{mobskilled::%{_t}%}%" to player
-			send "&fTotal stone mined: &e%{_stoneMined}%" to player
+			send "&fTotal mob kills: &e%formatNumberEc({mobskilled::%{_t}%})%" to player
+			send "&fTotal stone mined: &e%formatNumberEc({_stoneMined})%" to player
