@@ -1265,6 +1265,13 @@ function CombatProfileStatItem(itemType: item type, title: text, description: te
 		set {_item} to {_item} with item flag hide attributes
 	return {_item}
 
+function CombatProfileDisplayValue(yamlNode: text, value: number) :: text:
+	if {_yamlNode} = "Combat Data.Total Combat Time":
+		set {_timespan} to "%{_value}% seconds" parsed as timespan
+		return "%{_timespan}%"
+
+	return "%{_value}%"
+
 function CombatProfileTopList(card: text, yamlNode: text, p: player = null) :: texts:
 	set {_dir} to new File("plugins/Skript/playerdata/karty/%{_card}%")
 	if {_dir}.isDirectory() is false:
@@ -1339,14 +1346,16 @@ function CombatProfileTopList(card: text, yamlNode: text, p: player = null) :: t
 
 		loop 5 times:
 			if {_rankedLabel::%loop-number%} is set:
+				set {_displayValue} to CombatProfileDisplayValue({_yamlNode}, {_rankedValue::%loop-number%})
+
 				if all:
 					{_p} is set
 					{_playerRank} is set
 					{_playerRank} = loop-number
 				then:
-					set {_top::*} to {_top::*} and "%{_playerLineColour}%%loop-number%. %{_rankedLabel::%loop-number%}%: &f%{_rankedValue::%loop-number%}%"
+					set {_top::*} to {_top::*} and "%{_playerLineColour}%%loop-number%. %{_rankedLabel::%loop-number%}%: &f%{_displayValue}%"
 				else:
-					set {_top::*} to {_top::*} and "&7%loop-number%. %{_rankedLabel::%loop-number%}%: &f%{_rankedValue::%loop-number%}%"
+					set {_top::*} to {_top::*} and "&7%loop-number%. %{_rankedLabel::%loop-number%}%: &f%{_displayValue}%"
 			else:
 				set {_top::*} to {_top::*} and "&7%loop-number%. &8..."
 
@@ -1375,7 +1384,8 @@ function CombatProfileTopList(card: text, yamlNode: text, p: player = null) :: t
 
 			if {_playerRank} is set:
 				if {_playerRank} > 5:
-					set {_top::*} to {_top::*} and "%{_playerLineColour}%%{_playerRank}%. %{_playerRankLabel}%: &f%{_playerRankValue}%"
+					set {_playerDisplayValue} to CombatProfileDisplayValue({_yamlNode}, {_playerRankValue})
+					set {_top::*} to {_top::*} and "%{_playerLineColour}%%{_playerRank}%. %{_playerRankLabel}%: &f%{_playerDisplayValue}%"
 
 		set {_shown} to {_positiveCount}
 		if {_shown} > 5:
