@@ -730,13 +730,8 @@ on inventory click:
         cancel event
         if clicked slot is not air:
             if boolean tag "Artifact" of (custom nbt of clicked slot) is set:
-                play sound "block.anvil.place" with volume 5 and pitch 1.72 to player
-                set metadata tag "papitoJudgeItem" of player to chest inventory with 3 rows named "Papito - Rate Artifact"
-                set {_gui} to metadata tag "papitoJudgeItem" of player
-                set slots integers between 0 and 26 of {_gui} to black stained glass pane named " "
-                set slot 11 of {_gui} to clicked slot
-                set slot 15 of {_gui} to netherite ingot named "&7Artifact Value" with lore ArtifactJudgeValueLore(clicked slot)
-                open {_gui} to player
+                close player's inventory
+                PapitoJudgeArtifact(player, clicked slot)
     else if event-inventory = metadata tag "papitoJudgeItem" of player:
         cancel event
 
@@ -745,6 +740,73 @@ on inventory close:
         if boolean tag "Gem" of (custom nbt of (slot 13 of event-inventory)) is set:
             giveItem(player, slot 13 of event-inventory)
             clear metadata value "papitoSocketItem" of player
+
+function PapitoFormatPercent(value: number) :: text:
+    set {_whole} to floor({_value})
+    set {_decimal} to round((({_value} - {_whole}) * 100), 0)
+    if {_decimal} = 100:
+        set {_whole} to {_whole} + 1
+        set {_decimal} to 0
+    if {_decimal} < 10:
+        set {_decimalText} to "0%{_decimal}%"
+    else:
+        set {_decimalText} to "%{_decimal}%"
+    return "%{_whole}%.%{_decimalText}%"
+
+function ArtifactStatJudgePercent(item: item, stat: text) :: number:
+    set {_itemLevel} to int tag "ItemLevel" of (custom nbt of {_item})
+    set {_unit} to ArtifactRollUnit({_itemLevel})
+    set {_current} to int tag "Stats;%{_stat}%" of (custom nbt of {_item})
+    if {_current} <= 0:
+        return 0
+    set {_estimatedRolls} to ceil({_current} / {_unit})
+    if {_estimatedRolls} < 1:
+        set {_estimatedRolls} to 1
+    set {_maximum} to {_unit} * {_estimatedRolls}
+    if {_maximum} <= 0:
+        return 0
+    set {_ratio} to {_current} / {_maximum}
+    if {_ratio} > 1:
+        set {_ratio} to 1
+    return {_ratio} * 100
+
+function PapitoJudgeArtifact(p: player, item: item):
+    set {_artifact} to {_item}
+    set {_artifactName} to name of {_artifact}
+    send "&8[<#b0b0b0>NPC&8] [<#b0b0b0>Papito&8] &fHmm... let me think, m'hijo." to {_p}
+    play sound "entity.villager.ambient" with volume 4 and pitch 0.8 to {_p}
+    play sound "entity.villager.work_toolsmith" with volume 4 and pitch 0.95 to {_p}
+    wait 25 ticks
+    send "&8[<#b0b0b0>NPC&8] [<#b0b0b0>Papito&8] &f..." to {_p}
+    play sound "entity.villager.ambient" with volume 3 and pitch 0.6 to {_p}
+    wait 30 ticks
+    send "&8[<#b0b0b0>NPC&8] [<#b0b0b0>Papito&8] &fYour %{_artifactName}% &f... ahh, I see it now, m'hijo." to {_p}
+    play sound "entity.villager.yes" with volume 4 and pitch 0.8 to {_p}
+    wait 25 ticks
+
+    set {_stats::*} to nbt tags of (compound tag "Stats" of (custom nbt of {_artifact}))
+    loop {_stats::*}:
+        set {_percent} to ArtifactStatJudgePercent({_artifact}, loop-value)
+        set {_formattedPercent} to PapitoFormatPercent({_percent})
+        set {_formattedStat} to getFormattedStat(loop-value)
+        set {_stats} to int tag "Stats;%loop-value%" of (custom nbt of {_artifact})
+        replace all "{VALUE}" in {_formattedStat} with "+%{_stats}%"
+        send "&8[<#b0b0b0>NPC&8] [<#b0b0b0>Papito&8] &fThis %{_formattedStat}% &froll... &f%{_formattedPercent}%%%&f." to {_p}
+        play sound "entity.villager.ambient" with volume 3 and pitch 0.9 to {_p}
+        wait 12 ticks
+
+    set {_overallPercent} to ArtifactJudgePercent({_artifact})
+    set {_overallText} to PapitoFormatPercent({_overallPercent})
+    wait 10 ticks
+    send "&8[<#b0b0b0>NPC&8] [<#b0b0b0>Papito&8] &fOverall, m'hijo... this one has &f%{_overallText}%%% &fof its possible value." to {_p}
+    play sound "entity.villager.celebrate" with volume 4 and pitch 0.85 to {_p}
+    wait 8 ticks
+    set metadata tag "papitoJudgeItem" of {_p} to chest inventory with 3 rows named "Papito - Rate Artifact"
+    set {_gui} to metadata tag "papitoJudgeItem" of {_p}
+    set slots integers between 0 and 26 of {_gui} to black stained glass pane named " "
+    set slot 11 of {_gui} to {_artifact}
+    set slot 15 of {_gui} to netherite ingot named "&7Artifact Value" with lore ArtifactJudgeValueLore({_artifact})
+    open {_gui} to {_p}
 
 function ArtifactJudgeValueLore(item: item) :: texts:
     set {_currentValue} to ArtifactCurrentValue({_item})
@@ -765,7 +827,8 @@ function ArtifactJudgeValueLore(item: item) :: texts:
         set {_rating} to "&eAverage"
     else:
         set {_rating} to "&cPoor"
-    set {_lore::*} to "&7Papito judges this Artifact by comparing", "&7its rolled substat value against the", "&7maximum possible roll value.", " ", "&7Star Level: &f%{_starLevel}%", "&7Item Level: &f%{_itemLevel}%", "&7Roll Count: &f%{_rollCount}%", "&7Current Value: &f%round({_currentValue}, 0)%", "&7Maximum Value: &f%round({_maxValue}, 0)%", "&7Quality: &f%{_percent}%%%", "&7Rating: %{_rating}%"
+    set {_percentText} to PapitoFormatPercent({_percent})
+    set {_lore::*} to "&7Papito judges this Artifact by comparing", "&7its rolled substat value against the", "&7maximum possible roll value.", " ", "&7Star Level: &f%{_starLevel}%", "&7Item Level: &f%{_itemLevel}%", "&7Roll Count: &f%{_rollCount}%", "&7Current Value: &f%round({_currentValue}, 0)%", "&7Maximum Value: &f%round({_maxValue}, 0)%", "&7Quality: &f%{_percentText}%%%", "&7Rating: %{_rating}%"
     return {_lore::*}
 
 function findGemsByColour(gemColour: string) :: strings:
