@@ -1255,6 +1255,11 @@ function CombatProfileMenu(p: player):
 	set slot 7 of {_gui} to CombatProfileStatItem(flint, "&6Critical Hits", "&7Shows the top critical hits for %{_card}%.", {_card}, "Combat Data.Total Critical Hits")
 	set slot 8 of {_gui} to CombatProfileStatItem(clock, "&fCombat Time", "&7Shows the top combat time for %{_card}%.", {_card}, "Combat Data.Total Combat Time")
 	set slot 9 of {_gui} to CombatProfileStatItem(wither skeleton skull, "&8Deaths", "&7Shows the top deaths for %{_card}%.", {_card}, "Combat Data.Total Deaths")
+	set {_averageItemLevel} to CalculateCardAverageItemLevel({_p})
+	set {_averageItemLevelTop::*} to CombatProfileTopList({_card}, "Card.Average Item Level")
+	set {_averageItemLevelItem} to spyglass named "&bTop Item Levels" with item flag hide attributes
+	set lore of {_averageItemLevelItem} to "&7Shows the top average item levels", "&7for %{_card}%.", " ", "&7Your Average Item Level: &f%CombatProfileFormatDecimal({_averageItemLevel})%", " " and {_averageItemLevelTop::*}
+	set slot 10 of {_gui} to {_averageItemLevelItem}
 	open {_gui} to {_p}
 
 function CombatProfileStatItem(itemType: item type, title: text, description: text, card: text, yamlNode: text, hideAttributes: boolean = false) :: item:
@@ -1265,10 +1270,24 @@ function CombatProfileStatItem(itemType: item type, title: text, description: te
 		set {_item} to {_item} with item flag hide attributes
 	return {_item}
 
+function CombatProfileFormatDecimal(value: number) :: text:
+	set {_whole} to floor({_value})
+	set {_decimal} to round(({_value} - {_whole}) * 100, 0)
+	if {_decimal} = 100:
+		set {_whole} to {_whole} + 1
+		set {_decimal} to 0
+	if {_decimal} < 10:
+		set {_decimalText} to "0%{_decimal}%"
+	else:
+		set {_decimalText} to "%{_decimal}%"
+	return "%{_whole}%.%{_decimalText}%"
+
 function CombatProfileDisplayValue(yamlNode: text, value: number) :: text:
 	if {_yamlNode} = "Combat Data.Total Combat Time":
 		set {_timespan} to "%{_value}% seconds" parsed as timespan
 		return "%{_timespan}%"
+	if {_yamlNode} = "Card.Average Item Level":
+		return CombatProfileFormatDecimal({_value})
 
 	return "%{_value}%"
 
