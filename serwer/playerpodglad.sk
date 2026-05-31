@@ -33,11 +33,11 @@ function ProfileCurrentCardLevel(p: player) :: number:
 
 function ProfilePrimaryStatIcon(stat: text) :: text:
 	if {_stat} = "Strength":
-		return "<#e35959> &fStrength"
+		return "<#e35959> &fStrength"
 	else if {_stat} = "Intellect":
-		return "<#59c1e3> &fIntellect"
+		return "<#59c1e3> &fIntellect"
 	else if {_stat} = "Agility":
-		return "<#5ee359> &fAgility"
+		return "<#5ee359> &fAgility"
 	return "&f %{_stat}%"
 
 function ProfilePrimaryStatLine(p: player) :: text:
@@ -51,13 +51,13 @@ function ProfilePrimaryStatLine(p: player) :: text:
 
 function ProfileHealthLine(p: player) :: text:
 	set {_health} to round(Health({_p}), 0)
-	return "<#c0ff02> &fHealth &7- &f%{_health}%"
+	return "<#c0ff02> &fHealth &7- &f%{_health}%"
 
 function ProfileTopStatsLines(p: player) :: texts:
 	set {_indices::*} to retrieveTopStats({_p}, "indices")
 	set {_values::*} to retrieveTopStats({_p}, "values")
 	set {_rank} to 0
-	set {_i} to 0
+	set {_i} to 1
 	loop {_indices::*}:
 		set {_stat} to loop-value
 		set {_value} to {_values::%{_i}%}
@@ -164,7 +164,7 @@ function OpenProfileCollectionPlayable(viewer: player, target: player):
 	set {_slot} to 0
 	loop {kolekcja::karty::%{_target}%::*}:
 		set {_card} to loop-value
-		set {_preview} to StellarCardPreview({_card})
+		set {_preview} to StellarCardPreview({_card}, true)
 		if {_preview} is set:
 			set lore of {_preview} to coloured lore of {_preview}
 			set {_preview} to {_preview} with item flag hide attributes
@@ -181,7 +181,7 @@ function OpenProfileCollectionBoosterMain(viewer: player, target: player):
 	set slots integers between 0 and 26 of {_gui} to black stained glass pane named " " with item flag hide attributes
 	set slot 11 of {_gui} to nether star named "&fAll Cards" with lore "&7View all booster cards." with item flag hide attributes
 	set {_slot} to 14
-	set {_boosters::*} to "Majestic Dawn", "Plasma Freeze", "Secret Wonders", "Team Poison vs Team Aqua", "Unseen Forces"
+	set {_boosters::*} to "Secret Wonders", "Majestic Dawn", "Unseen Forces", "Plasma Freeze", "Team Poison vs Team Aqua"
 	loop {_boosters::*}:
 		set slot {_slot} of {_gui} to glass pane named "&9%loop-value% &7Booster" with lore "&7View cards from this booster." with item flag hide attributes
 		set {_slot} to {_slot} + 1
@@ -192,25 +192,36 @@ function OpenProfileCollectionBoosterMain(viewer: player, target: player):
 function OpenProfileCollectionBoosterAll(viewer: player, target: player):
 	set metadata tag "profile-collection-booster-all" of {_viewer} to chest inventory with 6 rows named "%{_target}% - All Booster Cards"
 	set {_gui} to metadata tag "profile-collection-booster-all" of {_viewer}
-	set {_boosters::*} to "Majestic Dawn", "Plasma Freeze", "Secret Wonders", "Team Poison vs Team Aqua", "Unseen Forces"
+	set {_boosters::*} to "Secret Wonders", "Majestic Dawn", "Unseen Forces", "Plasma Freeze", "Team Poison vs Team Aqua"
 	set {_slot} to 0
 	loop {_boosters::*}:
 		set {_booster} to loop-value
 		set {_cards::*} to yaml node keys "Cards" in "StellarChestList"
+		clear {_boosterCards::*}
 		loop {_cards::*}:
 			set {_source} to yaml value "Cards.%loop-value-2%.Source" in "StellarChestList"
-			if {_source} is set:
-				set {_preview} to StellarCardPreview(loop-value-2)
-				if {_preview} is set:
-					if {kolekcja::karty::%{_target}%::*} contains loop-value-2:
+			if {_source} = {_booster}:
+				set {_boosterOrder} to yaml value "Cards.%loop-value-2%.BoosterOrder" in "StellarChestList"
+				if {_boosterOrder} is not set:
+					set {_boosterOrder} to yaml value "Cards.%loop-value-2%.ID" in "StellarChestList"
+					if {_boosterOrder} is not set:
+						set {_boosterOrder} to 99
+				set {_boosterCards::%{_boosterOrder}%} to loop-value-2
+		set {_sorted::*} to sorted indices of {_boosterCards::*} in ascending order
+		loop {_sorted::*}:
+			set {_cardName} to {_boosterCards::%loop-value-2%}
+			if {_cardName} is set:
+				if {kolekcja::karty::%{_target}%::*} contains {_cardName}:
+					set {_preview} to StellarCardPreview({_cardName}, true)
+					if {_preview} is set:
 						set lore of {_preview} to coloured lore of {_preview}
 						set {_preview} to {_preview} with item flag hide attributes
-					else:
-						set {_preview} to gray stained glass pane named "&7Not collected yet"
-					set slot {_slot} of {_gui} to {_preview}
-					set {_slot} to {_slot} + 1
-					if {_slot} >= 54:
-						exit 2 loops
+						set slot {_slot} of {_gui} to {_preview}
+				else:
+					set slot {_slot} of {_gui} to gray stained glass pane named "&7Not collected yet"
+				set {_slot} to {_slot} + 1
+				if {_slot} >= 54:
+					exit 2 loops
 	play sound "ui.click_echo" with volume 1 and pitch 1 to {_viewer}
 	open {_gui} to {_viewer}
 
@@ -219,7 +230,7 @@ function OpenProfileCollectionBoosterSet(viewer: player, target: player, booster
 	set {_gui} to metadata tag "profile-collection-booster-set" of {_viewer}
 	set {_slot} to 0
 	set {_cards::*} to yaml node keys "Cards" in "StellarChestList"
-	set {_boosterCards::*} to ""
+	clear {_boosterCards::*}
 	loop {_cards::*}:
 		set {_source} to yaml value "Cards.%loop-value%.Source" in "StellarChestList"
 		if {_source} = {_booster}:
@@ -234,7 +245,7 @@ function OpenProfileCollectionBoosterSet(viewer: player, target: player, booster
 		set {_cardName} to {_boosterCards::%loop-value%}
 		if {_cardName} is set:
 			if {kolekcja::karty::%{_target}%::*} contains {_cardName}:
-				set {_preview} to StellarCardPreview({_cardName})
+				set {_preview} to StellarCardPreview({_cardName}, true)
 				if {_preview} is set:
 					set lore of {_preview} to coloured lore of {_preview}
 					set {_preview} to {_preview} with item flag hide attributes
@@ -354,7 +365,7 @@ function OpenProfileFavouriteCard(viewer: player, target: player):
 	set {_slot} to 0
 	loop yaml node keys "Cards" in "StellarChestList":
 		set {_card} to loop-value
-		set {_preview} to StellarCardPreview({_card})
+		set {_preview} to StellarCardPreview({_card}, true)
 		if {_preview} is set:
 			set lore of {_preview} to coloured lore of {_preview}
 			set string tag "StellarCard" of (custom nbt of {_preview}) to {_card}
