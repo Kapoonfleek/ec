@@ -1,12 +1,28 @@
 
 
+function addMiningStat(p: player, stat: text, amount: number = 1) :: number:
+	set {_value} to yaml value "Statistics.Mining.%{_stat}%" in "data-%{_p}%"
+	if {_value} is not set:
+		set {_value} to 0
+	set {_value} to {_value} + {_amount}
+	set yaml value "Statistics.Mining.%{_stat}%" in "data-%{_p}%" to {_value}
+	return {_value}
+
+function getMiningStat(p: player, stat: text) :: number:
+	set {_value} to yaml value "Statistics.Mining.%{_stat}%" in "data-%{_p}%"
+	if {_value} is not set:
+		set {_value} to 0
+	return {_value}
+
 function minenew(p: player, t: text, b: block):
 	if {_t} = "deepslate":
 		set {_blok} to 2
 		add 1 to {deepslate::%{_p}%}
+		addMiningStat({_p}, "Deepslate Mined")
 	else if {_t} = "stone":
 		set {_blok} to 1
 		add 1 to {stone::%{_p}%}
+		addMiningStat({_p}, "Stone Mined")
 	if {event} = "Winter Delight":
 		if {winterDelightPassLEVEL::%{_p}%} >= 0:
 			getMission({_p}, "Festive Mining", "Świąteczne Kopanie", {_blok})
@@ -72,10 +88,14 @@ function minenew(p: player, t: text, b: block):
 			#	getMission({_p}, "Essenceful", "Esencyjność", {_damount})
 			loop {_damount} times:
 				drop {_essence} at {_b}
-				add 1 to {wykopaneesencje::%{_p}%}
-				achievement("wykopaneesencje", {_p}, 100, "osiagniecie.100es", "Wykop 100 Esencji", "Żywiołak", "Find 100 Essences when mining", "Elemental")
-				achievement("wykopaneesencje", {_p}, 1000, "osiagniecie.100es", "Wykop 100 Esencji", "Jeden z Żywiołami", "Find 1000 Essences when mining", "One with the Elements")
-				add 1 to {%{_essenceName}%::%{_p}%}
+				set {_essencesFound} to addMiningStat({_p}, "Essences Found")
+				if {_essencesFound} = 100:
+					set {_yamlValue} to "Achievement.Mining.Essences.100"
+					achievementYaml({_p}, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Elemental", "Find 100 Essences while mining.")
+				else if {_essencesFound} = 1000:
+					set {_yamlValue} to "Achievement.Mining.Essences.1000"
+					achievementYaml({_p}, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "One with the Elements", "Find 1000 Essences while mining.")
+				addMiningStat({_p}, "Essences.%{_essenceName}%")
 				set {_otxp} to 12
 				set {_otxpAfterMultiplier} to addPlayerXP({_p}, {_otxp}, 1, "mining")
 				add {_otxpAfterMultiplier} to {expkopanie::%{_p}%}
@@ -94,12 +114,12 @@ function minenew(p: player, t: text, b: block):
 			#if {winterDelightPassLEVEL::%{_p}%} >= 0:
 			#	getMission({_p}, "Christmas Baubles", "Świąteczne Ozdoby", {_damount})
 			loop {_damount} times:
-				add 1 to {sapphire::%{_p}%}
+				set {_sapphire} to addMiningStat({_p}, "Sapphire")
 
-				if {sapphire::%{_p}%} = 100:
+				if {_sapphire} = 100:
 					set {_yamlValue} to "Achievement.Mining.Sapphire.100"
 					achievementYaml({_p}, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Sapphire: 100", "Find 100 Sapphires while mining.")
-				else if {sapphire::%{_p}%} = 1000:
+				else if {_sapphire} = 1000:
 					set {_yamlValue} to "Achievement.Mining.Sapphire.1000"
 					achievementYaml({_p}, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Sapphire: 1000", "Find 1000 Sapphires while mining.")
 
@@ -129,7 +149,6 @@ function minenew(p: player, t: text, b: block):
 			#if {winterDelightPassLEVEL::%{_p}%} >= 0:
 			#	getMission({_p}, "Klejnots for Stavros", "Klejnoty dla Stavrosa", {_damount})
 			loop {_damount} times:
-				add 1 to {klejnot::%{_p}%}
 				#if {klejnot::%{_p}%} = 300:
 				#	set {rangaklejnot::%{_p}%} to 0.5
 				#	broadcast "&8[&6Earthcraft&8] &7Gracz &6%{_p}% &7osiągnął &6rangę 1 &7[&e&l✰&8&l✰✰&7] &7na <##b5e550>Klejnocie&7!"
@@ -143,12 +162,12 @@ function minenew(p: player, t: text, b: block):
 				#	broadcast "&8[&6Earthcraft&8] &7Gracz &6%{_p}% &7osiągnął &6rangę 3 &7[&e&l✰✰✰&7] &7na <##b5e550>Klejnocie&7!"
 				#	soundRankup({_p})
 
-				add 1 to {klejnot::%{_p}%}
+				set {_klejnot} to addMiningStat({_p}, "Klejnot")
 
-				if {klejnot::%{_p}%} = 100:
+				if {_klejnot} = 100:
 					set {_yamlValue} to "Achievement.Mining.Klejnot.100"
 					achievementYaml({_p}, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Klejnot: 100", "Find 100 Klejnots while mining.")
-				else if {klejnot::%{_p}%} = 1000:
+				else if {_klejnot} = 1000:
 					set {_yamlValue} to "Achievement.Mining.Klejnot.1000"
 					achievementYaml({_p}, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Klejnot: 1000", "Find 1000 Klejnots while mining.")
 
@@ -175,12 +194,12 @@ function minenew(p: player, t: text, b: block):
 			#if {winterDelightPassLEVEL::%{_p}%} >= 0:
 			#	getMission({_p}, "Christmas Baubles", "Świąteczne Ozdoby", {_damount})
 			loop {_damount} times:
-				add 1 to {ruby::%{_p}%}
+				set {_ruby} to addMiningStat({_p}, "Ruby")
 
-				if {ruby::%{_p}%} = 100:
+				if {_ruby} = 100:
 					set {_yamlValue} to "Achievement.Mining.Ruby.100"
 					achievementYaml({_p}, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Ruby: 100", "Find 100 Rubies while mining.")
-				else if {ruby::%{_p}%} = 1000:
+				else if {_ruby} = 1000:
 					set {_yamlValue} to "Achievement.Mining.Ruby.1000"
 					achievementYaml({_p}, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Ruby: 1000", "Find 1000 Rubies while mining.")
 
@@ -207,12 +226,12 @@ function minenew(p: player, t: text, b: block):
 			#if {winterDelightPassLEVEL::%{_p}%} >= 0:
 			#	getMission({_p}, "Christmas Baubles", "Świąteczne Ozdoby", {_damount})
 			loop {_damount} times:
-				add 1 to {amethyst::%{_p}%}
+				set {_amethyst} to addMiningStat({_p}, "Amethyst")
 
-				if {amethyst::%{_p}%} = 100:
+				if {_amethyst} = 100:
 					set {_yamlValue} to "Achievement.Mining.Amethyst.100"
 					achievementYaml({_p}, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Amethyst: 100", "Find 100 Amethysts while mining.")
-				else if {amethyst::%{_p}%} = 1000:
+				else if {_amethyst} = 1000:
 					set {_yamlValue} to "Achievement.Mining.Amethyst.1000"
 					achievementYaml({_p}, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Amethyst: 1000", "Find 1000 Amethysts while mining.")
 
@@ -239,12 +258,12 @@ function minenew(p: player, t: text, b: block):
 			#if {winterDelightPassLEVEL::%{_p}%} >= 0:
 			#	getMission({_p}, "Christmas Baubles", "Świąteczne Ozdoby", {_damount})
 			loop {_damount} times:
-				add 1 to {topaz::%{_p}%}
+				set {_topaz} to addMiningStat({_p}, "Topaz")
 
-				if {topaz::%{_p}%} = 100:
+				if {_topaz} = 100:
 					set {_yamlValue} to "Achievement.Mining.Topaz.100"
 					achievementYaml({_p}, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Topaz: 100", "Find 100 Topazes while mining.")
-				else if {topaz::%{_p}%} = 1000:
+				else if {_topaz} = 1000:
 					set {_yamlValue} to "Achievement.Mining.Topaz.1000"
 					achievementYaml({_p}, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Topaz: 1000", "Find 1000 Topazes while mining.")
 
@@ -271,12 +290,12 @@ function minenew(p: player, t: text, b: block):
 			#if {winterDelightPassLEVEL::%{_p}%} >= 0:
 			#	getMission({_p}, "Christmas Baubles", "Świąteczne Ozdoby", {_damount})
 			loop {_damount} times:
-				add 1 to {aquamarine::%{_p}%}
+				set {_aquamarine} to addMiningStat({_p}, "Aquamarine")
 
-				if {aquamarine::%{_p}%} = 100:
+				if {_aquamarine} = 100:
 					set {_yamlValue} to "Achievement.Mining.Aquamarine.100"
-					achievementYaml({_p}, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Aquamarine: 100", "Find 100 Aquamarinees while mining.")
-				else if {aquamarine::%{_p}%} = 1000:
+					achievementYaml({_p}, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Aquamarine: 100", "Find 100 Aquamarines while mining.")
+				else if {_aquamarine} = 1000:
 					set {_yamlValue} to "Achievement.Mining.Aquamarine.1000"
 					achievementYaml({_p}, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Aquamarine: 1000", "Find 1000 Aquamarinees while mining.")
 
@@ -303,12 +322,12 @@ function minenew(p: player, t: text, b: block):
 			#if {winterDelightPassLEVEL::%{_p}%} >= 0:
 			#	getMission({_p}, "Christmas Baubles", "Świąteczne Ozdoby", {_damount})
 			loop {_damount} times:
-				add 1 to {peridot::%{_p}%}
+				set {_peridot} to addMiningStat({_p}, "Peridot")
 
-				if {peridot::%{_p}%} = 100:
+				if {_peridot} = 100:
 					set {_yamlValue} to "Achievement.Mining.Peridot.100"
-					achievementYaml({_p}, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Peridot: 100", "Find 100 Peridotes while mining.")
-				else if {peridot::%{_p}%} = 1000:
+					achievementYaml({_p}, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Peridot: 100", "Find 100 Peridots while mining.")
+				else if {_peridot} = 1000:
 					set {_yamlValue} to "Achievement.Mining.Peridot.1000"
 					achievementYaml({_p}, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Peridot: 1000", "Find 1000 Peridotes while mining.")
 
@@ -340,12 +359,12 @@ function minenew(p: player, t: text, b: block):
 			#if {winterDelightPassLEVEL::%{_p}%} >= 0:
 			#	getMission({_p}, "Magnus's Request", "Prośba Magnusa", {_preznal})
 			loop {_preznal} times:
-				add 1 to {amber::%{_p}%}
+				set {_amber} to addMiningStat({_p}, "Amber")
 
-				if {amber::%{_p}%} = 100:
+				if {_amber} = 100:
 					set {_yamlValue} to "Achievement.Mining.Amber.100"
 					achievementYaml({_p}, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Amber: 100", "Find 100 Ambers while mining.")
-				else if {amber::%{_p}%} = 1000:
+				else if {_amber} = 1000:
 					set {_yamlValue} to "Achievement.Mining.Amber.1000"
 					achievementYaml({_p}, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Amber: 1000", "Find 1000 Ambers while mining.")
 
@@ -393,6 +412,8 @@ function minenew(p: player, t: text, b: block):
 				addMiningXP({_p}, {_otxp})
 				send "&8[&6Earthcraft&8] &7Gratulacje! Wykopałeś/aś <##025b95>Szafirową Figurkę&7! &7(+%{_otxp}% &7XP)" to {_p}
 		UpdateScoreboard({_p})
+		if yaml "data-%{_p}%" is loaded:
+			save yaml "data-%{_p}%"
 variables:
 	#{kolorek1::%{_p}%} = "&6"
 	{poziom::%player%} = 0
