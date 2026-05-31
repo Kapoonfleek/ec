@@ -33,8 +33,7 @@ on rightclick on oak button:
 
 every 1 minute:
     if {worldTimePaused} != true:
-        set {_now} to now formatted as "HH:mm"
-        set time in world "world" to {_now} parsed as time
+        set time in world "world" to SyncedWorldTimeWarsaw() parsed as time
 
 on sound packet:
     if event.getId() = "minecraft:entity.cat.purreow":
@@ -42,3 +41,56 @@ on sound packet:
         play sound "misc.gamestillcold" in jukebox category with volume 1 and pitch {_pitch} to player
         event.setCancelled(true)
         
+
+function WarsawTimeToSeconds(time: text) :: number:
+    set {_parts::*} to {_time} split at ":"
+    set {_hours} to {_parts::1} parsed as number
+    set {_minutes} to {_parts::2} parsed as number
+    set {_seconds} to {_parts::3} parsed as number
+    return ({_hours} * 3600) + ({_minutes} * 60) + {_seconds}
+
+function RefreshWarsawSunTimes():
+    set {_json} to text from "https://api.sunrisesunset.io/json?lat=52.2297&lng=21.0122&timezone=Europe/Warsaw&time_format=24"
+    set {_splitSunrise::*} to {_json} split at '"sunrise":"'
+    set {_sunrisePart::*} to {_splitSunrise::2} split at '"'
+    set {warsawSunriseText} to {_sunrisePart::1}
+    set {_splitSunset::*} to {_json} split at '"sunset":"'
+    set {_sunsetPart::*} to {_splitSunset::2} split at '"""'
+    set {warsawSunsetText} to {_sunsetPart::1}
+    set {warsawSunriseSeconds} to WarsawTimeToSeconds({warsawSunriseText})
+    set {warsawSunsetSeconds} to WarsawTimeToSeconds({warsawSunsetText})
+
+function SyncedWorldTimeWarsaw() :: number:
+    if {warsawSunriseSeconds} is not set:
+        RefreshWarsawSunTimes()
+    set {_hours} to now formatted as "HH" parsed as number
+    set {_minutes} to now formatted as "mm" parsed as number
+    set {_seconds} to now formatted as "ss" parsed as number
+    set {_nowSeconds} to ({_hours} * 3600) + ({_minutes} * 60) + {_seconds}
+    set {_sunrise} to {warsawSunriseSeconds}
+    set {_sunset} to {warsawSunsetSeconds}
+
+    if all:
+        {_nowSeconds} >= {_sunrise}
+        {_nowSeconds} < {_sunset}
+    then:
+        set {_progress} to ({_nowSeconds} - {_sunrise}) / ({_sunset} - {_sunrise})
+        set {_ticks} to {_progress} * 12000
+    else:
+        set {_nightLength} to (86400 - {_sunset}) + {_sunrise}
+        if {_nowSeconds} >= {_sunset}:
+            set {_nightProgress} to ({_nowSeconds} - {_sunset}) / {_nightLength}
+        else:
+            set {_nightProgress} to ((86400 - {_sunset}) + {_nowSeconds}) / {_nightLength}
+        set {_ticks} to 12000 + ({_nightProgress} * 12000)
+
+    if {_ticks} >= 24000:
+        set {_ticks} to {_ticks} - 24000
+
+    return round({_ticks}, 0)
+
+on load:
+    RefreshWarsawSunTimes()
+
+every 30 minutes:
+    RefreshWarsawSunTimes()
