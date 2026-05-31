@@ -130,6 +130,8 @@ on skript start:
 
 		loop all offline players:
 			set {dziennylimit::stardust::%loop-offline player%} to {poziom::%loop-offline player%}
+			clear {dailyrewardreminderhidden::%loop-offline player%}
+			clear {dailyrewardreminderloop::%loop-offline player%}
 			if {dailyready::%loop-offline player%} = true:
 				set {dailystreak::%loop-offline player%} to 0
 			else:
@@ -359,11 +361,17 @@ on item despawn:
 		cancel event
 
 function notifyPlayerDailyReward(p: player):
-	while {dailyready::%{_p}%} != false:
+	if {dailyrewardreminderloop::%{_p}%} is true:
+		stop
+	set {dailyrewardreminderloop::%{_p}%} to true
+	while true:
 		wait 15 minutes
-		stop loop if {dailyready::%{_p}%} = false
-		stop loop if {_p} is not online
-		stop loop if metadata value "DailyRewardReminderHidden" of {_p} is set
+		if {dailyready::%{_p}%} = false:
+			stop loop
+		if {_p} is not online:
+			stop loop
+		if {dailyrewardreminderhidden::%{_p}%} is true:
+			stop loop
 		send formatted "Reminder: &4(&c&l&o!&4&o) &cYou have not yet claimed your daily reward. You can visit the &lspawn centre &cto do so. <command:/dailyrewardreminder hide><tooltip:&fHides the daily reward reminder for today.>&4(Click here to hide this message)" to {_p}
 		set {_pitch} to 1
 		loop 3 times:
@@ -372,6 +380,7 @@ function notifyPlayerDailyReward(p: player):
 			play sound "block.note_block.didgeridoo" with volume 3 and pitch {_pitch} to {_p}
 			add 0.334 to {_pitch}
 			wait 2 ticks
+	clear {dailyrewardreminderloop::%{_p}%}
 		
 
 function doubleExpDayReminder(p: player):
