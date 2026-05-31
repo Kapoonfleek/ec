@@ -160,6 +160,66 @@ function LoadStellarChestList():
 	if yaml "StellarChestList" is not loaded:
 		load yaml "plugins/Skript/lists/StellarChestList" as "StellarChestList"
 
+function LoadBoosterCardList():
+	if yaml "BoosterCardList" is not loaded:
+		load yaml "plugins/Skript/lists/BoosterCardList" as "BoosterCardList"
+
+function LoadBoosterPlayerYaml(p: player, booster: text):
+	set {_pathName} to {_booster}
+	if {_booster} = "Team Poison vs Team Aqua":
+		set {_pathName} to "Team Poison vs. Team Aqua"
+	if yaml "%{_booster}%-%{_p}%" is not loaded:
+		load yaml "plugins/Skript/playerdata/boosters/%{_pathName}%/%uuid of {_p}%.yml" as "%{_booster}%-%{_p}%"
+
+function BoosterCardCount(p: player, booster: text, card: text) :: integer:
+	LoadBoosterPlayerYaml({_p}, {_booster})
+	set {_val} to yaml value "Cards.%{_card}%" in "%{_booster}%-%{_p}%"
+	if {_val} is not set:
+		return 0
+	return {_val}
+
+function PlayableCardCount(p: player, card: text) :: integer:
+	if {kolekcja::karty::%{_p}%::%{_card}%} is set:
+		return {kolekcja::karty::%{_p}%::%{_card}%}
+	if {kolekcja::karty::%{_p}%::*} contains {_card}:
+		return 1
+	return 0
+
+function BoosterCardItem(booster: text, card: text) :: item:
+	LoadBoosterCardList()
+	set {_base} to yaml value "%{_booster}%.Cards.%{_card}%.Base" in "BoosterCardList"
+	set {_displayName} to yaml value "%{_booster}%.Cards.%{_card}%.DisplayName" in "BoosterCardList"
+	set {_cmd} to yaml value "%{_booster}%.Cards.%{_card}%.CustomModelData" in "BoosterCardList"
+	if {_base} is not set:
+		return air
+	set {_itemType} to {_base} parsed as item type
+	if {_cmd} is set:
+		set {_item} to {_itemType} named "%{_displayName}%" with nbt from "{""minecraft:custom_model_data"":{floats:[%{_cmd}%.0f]}}"
+	else:
+		set {_item} to {_itemType} named "%{_displayName}%"
+	return {_item}
+
+function BoosterCardLore(booster: text, card: text, count: integer) :: texts:
+	LoadBoosterCardList()
+	set {_rarity} to yaml value "%{_booster}%.Cards.%{_card}%.Rarity" in "BoosterCardList"
+	set {_element} to yaml value "%{_booster}%.Cards.%{_card}%.Element" in "BoosterCardList"
+	set {_id} to yaml value "%{_booster}%.Cards.%{_card}%.Id" in "BoosterCardList"
+	set {_idGlobal} to yaml value "%{_booster}%.Cards.%{_card}%.IdGlobal" in "BoosterCardList"
+	set {_lore::*} to "&7Booster: &f%{_booster}%", "&7Rarity: &f%{_rarity}%", "&7Element: &f%{_element}%", "&7Card ID: &f%{_id}%", "&7Global ID: &f%{_idGlobal}%", " ", "&7Collected: &f%{_count}%"
+	return {_lore::*}
+
+function BoosterUnknownCardLore(booster: text, card: text) :: texts:
+	LoadBoosterCardList()
+	set {_rarity} to yaml value "%{_booster}%.Cards.%{_card}%.Rarity" in "BoosterCardList"
+	set {_element} to yaml value "%{_booster}%.Cards.%{_card}%.Element" in "BoosterCardList"
+	set {_id} to yaml value "%{_booster}%.Cards.%{_card}%.Id" in "BoosterCardList"
+	set {_idGlobal} to yaml value "%{_booster}%.Cards.%{_card}%.IdGlobal" in "BoosterCardList"
+	set {_lore::*} to "&7Booster: &f%{_booster}%", "&7Rarity: &f%{_rarity}%", "&7Element: &f%{_element}%", "&7Card ID: &f%{_id}%", "&7Global ID: &f%{_idGlobal}%", " ", "&7Collected: &f0", " ", "&8Not collected yet"
+	return {_lore::*}
+
+function BoosterAllNames() :: texts:
+	return "Secret Wonders", "Majestic Dawn", "Unseen Forces", "Plasma Freeze" and "Team Poison vs. Team Aqua"
+
 function IsCardCollected(p: player, booster: text, card: text) :: boolean:
 	if {kolekcja::karty::%{_p}%::*} contains {_card}:
 		return true
@@ -236,13 +296,16 @@ function OpenProfileCollectionPlayable(viewer: player, target: player):
 		set {_card} to loop-value
 		set {_preview} to StellarCardPreview({_card}, true)
 		if {_preview} is set:
-			if {kolekcja::karty::%{_target}%::*} contains {_card}:
-				set lore of {_preview} to coloured lore of {_preview}
+			set {_count} to PlayableCardCount({_target}, {_card})
+			if {_count} > 0:
+				set {_lore::*} to coloured lore of {_preview}
+				set {_lore::*} to {_lore::*} and " " and "&7Collected: &f%{_count}%"
+				set lore of {_preview} to {_lore::*}
 				set {_preview} to {_preview} with item flag hide attributes
 			else:
 				set {_preview} to gray stained glass pane named name of {_preview}
 				set {_lore::*} to coloured lore of {_preview}
-				set {_lore::*} to {_lore::*} and " " and "&8Not collected yet"
+				set {_lore::*} to {_lore::*} and " " and "&7Collected: &f0" and " " and "&8Not collected yet"
 				set lore of {_preview} to {_lore::*}
 			set slot {_slot} of {_gui} to {_preview}
 			set {_slot} to {_slot} + 1
@@ -270,7 +333,7 @@ function OpenProfileCollectionBoosterSetSelect(viewer: player, target: player):
 	set {_gui} to metadata tag "profile-collection-booster-select" of {_viewer}
 	set slots integers between 0 and 26 of {_gui} to black stained glass pane named " " with item flag hide attributes
 	set {_slot} to 11
-	set {_boosters::*} to "Secret Wonders", "Majestic Dawn", "Unseen Forces", "Plasma Freeze", "Team Poison vs Team Aqua"
+	set {_boosters::*} to BoosterAllNames()
 	loop {_boosters::*}:
 		set slot {_slot} of {_gui} to glass pane named "&9%loop-value% &7Booster" with lore "&7View cards from this booster." with item flag hide attributes
 		set {_slot} to {_slot} + 1
@@ -281,100 +344,66 @@ function OpenProfileCollectionBoosterSetSelect(viewer: player, target: player):
 
 function OpenProfileCollectionBoosterAll(viewer: player, target: player):
 	LoadTargetData({_target})
-	LoadStellarChestList()
+	LoadBoosterCardList()
 	set metadata tag "profile-collection-booster-all" of {_viewer} to chest inventory with 6 rows named "%{_target}% - All Booster Cards"
 	set {_gui} to metadata tag "profile-collection-booster-all" of {_viewer}
 	set slots integers between 0 and 53 of {_gui} to black stained glass pane named " " with item flag hide attributes
-	set {_boosters::*} to "Secret Wonders", "Majestic Dawn", "Unseen Forces", "Plasma Freeze", "Team Poison vs Team Aqua"
+	set {_boosters::*} to BoosterAllNames()
 	set {_slot} to 0
 	loop {_boosters::*}:
 		set {_booster} to loop-value
-		set {_cards::*} to yaml node keys "Cards" in "StellarChestList"
+		clear {_orderMap::*}
+		set {_cards::*} to yaml node keys "%{_booster}%.Cards" in "BoosterCardList"
 		loop {_cards::*}:
-			set {_source} to yaml value "Cards.%loop-value-2%.Source" in "StellarChestList"
-			if {_source} = {_booster}:
-				set {_boosterOrder} to yaml value "Cards.%loop-value-2%.BoosterOrder" in "StellarChestList"
-				if {_boosterOrder} is not set:
-					set {_boosterOrder} to yaml value "Cards.%loop-value-2%.ID" in "StellarChestList"
-					if {_boosterOrder} is not set:
-						set {_boosterOrder} to 99
-				set {_boosterCards::%{_boosterOrder}%} to loop-value-2
-
-		set {_sorted::*} to sorted indices of {_boosterCards::*} in ascending order
+			set {_order} to yaml value "%{_booster}%.Cards.%loop-value-2%.Id" in "BoosterCardList"
+			if {_order} is not set:
+				set {_order} to 99
+			set {_orderMap::%{_order}%} to loop-value-2
+		set {_sorted::*} to sorted indices of {_orderMap::*} in ascending order
 		loop {_sorted::*}:
-			set {_idx} to loop-value-2
-			set {_cardName} to {_boosterCards::%{_idx}%}
+			set {_cardName} to {_orderMap::%loop-value-2%}
 			if {_cardName} is set:
-				if IsCardCollected({_target}, {_booster}, {_cardName}) is true:
-					set {_preview} to StellarCardPreview({_cardName}, true)
-					if {_preview} is set:
-						set lore of {_preview} to coloured lore of {_preview}
-						set {_preview} to {_preview} with item flag hide attributes
-						set slot {_slot} of {_gui} to {_preview}
+				set {_count} to BoosterCardCount({_target}, {_booster}, {_cardName})
+				if {_count} > 0:
+					set {_preview} to BoosterCardItem({_booster}, {_cardName})
+					set lore of {_preview} to BoosterCardLore({_booster}, {_cardName}, {_count})
+					set {_preview} to {_preview} with item flag hide attributes
 				else:
-					set {_element} to yaml value "Cards.%{_cardName}%.Element" in "StellarChestList"
-					if {_element} is not set:
-						set {_element} to "???"
-					set {_id} to yaml value "Cards.%{_cardName}%.ID" in "StellarChestList"
-					if {_id} is not set:
-						set {_id} to "???"
-					set {_boosterOrder} to yaml value "Cards.%{_cardName}%.BoosterOrder" in "StellarChestList"
-					if {_boosterOrder} is not set:
-						set {_boosterOrder} to "???"
-					
-					set {_preview} to gray stained glass pane named "&7???" with lore "&7Not collected yet", " ", "&7Name: ???", "&7Element: %{_element}%", "&7Card ID: %{_boosterOrder}%", "&7Global ID: %{_id}%", "&7Booster: %{_booster}%"
-					set slot {_slot} of {_gui} to {_preview}
+					set {_preview} to gray stained glass pane named "&7???" with lore BoosterUnknownCardLore({_booster}, {_cardName})
+				set slot {_slot} of {_gui} to {_preview}
 				set {_slot} to {_slot} + 1
 				if {_slot} >= 45:
 					exit 2 loops
-		clear {_boosterCards::*}
-		
 	set slot 49 of {_gui} to barrier named "&cBack" with lore "&7Click to go back." with item flag hide attributes
 	play sound "ui.click_echo" with volume 1 and pitch 1 to {_viewer}
 	open {_gui} to {_viewer}
 
 function OpenProfileCollectionBoosterSet(viewer: player, target: player, booster: text):
 	LoadTargetData({_target})
-	LoadStellarChestList()
+	LoadBoosterCardList()
 	set metadata tag "profile-collection-booster-set" of {_viewer} to chest inventory with 6 rows named "%{_target}% - %{_booster}% Cards"
 	set {_gui} to metadata tag "profile-collection-booster-set" of {_viewer}
 	set slots integers between 0 and 53 of {_gui} to black stained glass pane named " " with item flag hide attributes
 	set {_slot} to 0
-	set {_cards::*} to yaml node keys "Cards" in "StellarChestList"
-	clear {_boosterCards::*}
+	clear {_orderMap::*}
+	set {_cards::*} to yaml node keys "%{_booster}%.Cards" in "BoosterCardList"
 	loop {_cards::*}:
-		set {_source} to yaml value "Cards.%loop-value%.Source" in "StellarChestList"
-		if {_source} = {_booster}:
-			set {_boosterOrder} to yaml value "Cards.%loop-value%.BoosterOrder" in "StellarChestList"
-			if {_boosterOrder} is not set:
-				set {_boosterOrder} to yaml value "Cards.%loop-value%.ID" in "StellarChestList"
-				if {_boosterOrder} is not set:
-					set {_boosterOrder} to 99
-			set {_boosterCards::%{_boosterOrder}%} to loop-value
-	set {_sorted::*} to sorted indices of {_boosterCards::*} in ascending order
+		set {_order} to yaml value "%{_booster}%.Cards.%loop-value%.Id" in "BoosterCardList"
+		if {_order} is not set:
+			set {_order} to 99
+		set {_orderMap::%{_order}%} to loop-value
+	set {_sorted::*} to sorted indices of {_orderMap::*} in ascending order
 	loop {_sorted::*}:
-		set {_idx} to loop-value
-		set {_cardName} to {_boosterCards::%{_idx}%}
+		set {_cardName} to {_orderMap::%loop-value%}
 		if {_cardName} is set:
-			if IsCardCollected({_target}, {_booster}, {_cardName}) is true:
-				set {_preview} to StellarCardPreview({_cardName}, true)
-				if {_preview} is set:
-					set lore of {_preview} to coloured lore of {_preview}
-					set {_preview} to {_preview} with item flag hide attributes
-					set slot {_slot} of {_gui} to {_preview}
+			set {_count} to BoosterCardCount({_target}, {_booster}, {_cardName})
+			if {_count} > 0:
+				set {_preview} to BoosterCardItem({_booster}, {_cardName})
+				set lore of {_preview} to BoosterCardLore({_booster}, {_cardName}, {_count})
+				set {_preview} to {_preview} with item flag hide attributes
 			else:
-				set {_element} to yaml value "Cards.%{_cardName}%.Element" in "StellarChestList"
-				if {_element} is not set:
-					set {_element} to "???"
-				set {_id} to yaml value "Cards.%{_cardName}%.ID" in "StellarChestList"
-				if {_id} is not set:
-					set {_id} to "???"
-				set {_boosterOrder} to yaml value "Cards.%{_cardName}%.BoosterOrder" in "StellarChestList"
-				if {_boosterOrder} is not set:
-					set {_boosterOrder} to "???"
-				
-				set {_preview} to gray stained glass pane named "&7???" with lore "&7Not collected yet", " ", "&7Name: ???", "&7Element: %{_element}%", "&7Card ID: %{_boosterOrder}%", "&7Global ID: %{_id}%", "&7Booster: %{_booster}%"
-				set slot {_slot} of {_gui} to {_preview}
+				set {_preview} to gray stained glass pane named "&7???" with lore BoosterUnknownCardLore({_booster}, {_cardName})
+			set slot {_slot} of {_gui} to {_preview}
 			set {_slot} to {_slot} + 1
 			if {_slot} >= 45:
 				exit loop
