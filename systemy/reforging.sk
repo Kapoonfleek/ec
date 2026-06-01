@@ -90,29 +90,65 @@ function PapitoCleanUpgradeLore(item: item) :: item:
     set lore of {_item} to {_out::*}
     return {_item}
 
+function PapitoEnsureGearId(item: item) :: item:
+    if string tag "GearId" of (custom nbt of {_item}) is not set:
+        set string tag "GearId" of (custom nbt of {_item}) to "%random uuid%"
+    return {_item}
+
 function PapitoRemoveOriginal(p: player, original: item) :: boolean:
-    set {_originalClean} to PapitoCleanUpgradeLore({_original})
+    set {_original} to PapitoEnsureGearId({_original})
+    set {_gearId} to string tag "GearId" of (custom nbt of {_original})
+    if {_gearId} is not set:
+        return false
     loop all items in {_p}'s inventory:
         if loop-value is not air:
-            if loop-value.isSimilar({_original}) is true:
+            if string tag "GearId" of (custom nbt of loop-value) = {_gearId}:
                 remove (1 of loop-value) from {_p}
                 return true
-            set {_check} to PapitoCleanUpgradeLore(loop-value)
-            if {_check}.isSimilar({_originalClean}) is true:
-                remove (1 of loop-value) from {_p}
-                return true
-            if type of loop-value = type of {_originalClean}:
-                if name of loop-value = name of {_originalClean}:
-                    if int tag "ItemLevel" of (custom nbt of loop-value) = int tag "ItemLevel" of (custom nbt of {_originalClean}):
-                        if int tag "Upgraded" of (custom nbt of loop-value) = int tag "Upgraded" of (custom nbt of {_originalClean}):
-                            if boolean tag "Artifact" of (custom nbt of loop-value) is set:
-                                if string tag "ArtifactSet" of (custom nbt of loop-value) = string tag "ArtifactSet" of (custom nbt of {_originalClean}):
-                                    remove (1 of loop-value) from {_p}
-                                    return true
-                            else if boolean tag "Relic" of (custom nbt of loop-value) is set:
-                                remove (1 of loop-value) from {_p}
-                                return true
     return false
+
+function PapitoRelicCard(item: item) :: text:
+    set {_card} to string tag "Card" of (custom nbt of {_item})
+    if {_card} is set:
+        return {_card}
+    set {_line} to uncolored line 1 of lore of {_item}
+    replace all "Legendary " in {_line} with ""
+    replace all "Epic " in {_line} with ""
+    replace all "Rare " in {_line} with ""
+    replace all "Uncommon " in {_line} with ""
+    replace all "Common " in {_line} with ""
+    replace all " Relic" in {_line} with ""
+    if {_line} is set:
+        return {_line}
+    return ""
+
+function PapitoReforgeSound(p: player):
+    play sound "block.amethyst_block.resonate" with volume 3 and pitch 1.2 to {_p}
+    wait 3 ticks
+    play sound "block.anvil.use" with volume 3 and pitch 1.6 to {_p}
+    wait 3 ticks
+    play sound "entity.player.levelup" with volume 2 and pitch 1.8 to {_p}
+
+
+function PapitoReforgeFailSound(p: player):
+    play sound "entity.villager.no" with volume 2 and pitch 0.8 to {_p}
+    wait 2 ticks
+    play sound "block.anvil.land" with volume 2 and pitch 0.5 to {_p}
+
+function PapitoReforgeSelectSound(p: player):
+    play sound "block.amethyst_block.chime" with volume 2 and pitch 1.4 to {_p}
+    play sound "ui.click_echo" with volume 1 and pitch 1.2 to {_p}
+
+function ArtifactReforgeStatName(stat: text) :: text:
+    set {_line} to getFormattedStat({_stat})
+    replace all "{VALUE} " in {_line} with ""
+    replace all "{VALUE}" in {_line} with ""
+    return {_line}
+
+function ArtifactReforgeValueLine(stat: text, value: integer) :: text:
+    set {_line} to getFormattedStat({_stat})
+    replace all "{VALUE}" in {_line} with "+%{_value}%"
+    return {_line}
 
 function ArtifactReforgeStats() :: texts:
     return "Health", "Damage", "Resistance", "Mobility", "Utility", "Crowd Control", "Versatility", "Mastery", "Critical Hit", "Element", "Haste" and "Avoidance"
@@ -226,11 +262,12 @@ function ArtifactReforgeAll(item: item) :: item:
     loop nbt tags of (compound tag "Stats" of (custom nbt of {_item})):
         set {_stat} to loop-value
         set {_rolls} to int tag "Rolls;%{_stat}%" of (custom nbt of {_item})
+        set {_oldValue::%{_stat}%} to int tag "Stats;%{_stat}%" of (custom nbt of {_item})
         set {_value} to 0
         loop {_rolls} times:
             set {_value} to {_value} + ArtifactRandomRoll({_item})
         set int tag "Stats;%{_stat}%" of (custom nbt of {_item}) to {_value}
-        set {_item} to ArtifactSetStatLore({_item}, {_stat}, {_value})
+    set lore of {_item} to ArtifactLoreUpdate({_item})
     return ArtifactReforgeAdvance({_item})
 
 function ArtifactReforgeStat(item: item, oldStat: text) :: item:
@@ -247,8 +284,9 @@ function ArtifactReforgeStat(item: item, oldStat: text) :: item:
     clear int tag "Rolls;%{_oldStat}%" of (custom nbt of {_item})
     set int tag "Stats;%{_newStat}%" of (custom nbt of {_item}) to {_value}
     set int tag "Rolls;%{_newStat}%" of (custom nbt of {_item}) to {_rolls}
-    set {_item} to ArtifactRemoveStatLore({_item}, {_oldStat})
-    set {_item} to ArtifactSetStatLore({_item}, {_newStat}, {_value})
+    set string tag "LastReforgeOldStat" of (custom nbt of {_item}) to {_oldStat}
+    set string tag "LastReforgeNewStat" of (custom nbt of {_item}) to {_newStat}
+    set lore of {_item} to ArtifactLoreUpdate({_item})
     return ArtifactReforgeAdvance({_item})
 
 
@@ -325,6 +363,7 @@ on inventory click:
                     clear {_canUpgrade}
                     if line 2 of lore of loop-item contains "Item Level":
                         if line 1 of lore of loop-item contains "Artifact" or "Relic":
+                            set loop-item to PapitoEnsureGearId(loop-item)
                             set slot {_slotIndex} of metadata tag "papitoUpgrade" of player to loop-item
                             if boolean tag "Artifact" of (custom nbt of loop-item) is set:
                                 set {_starLevel} to int tag "StarLevel" of (custom nbt of loop-item)
@@ -351,6 +390,7 @@ on inventory click:
             loop all items in the player's inventory:
                 if item amount of loop-item = 1:
                     if boolean tag "Artifact" of (custom nbt of loop-item) is set:
+                        set loop-item to PapitoEnsureGearId(loop-item)
                         set {_item} to ArtifactEnsureRollTracking(loop-item)
                         set slot {_slotIndex} of metadata tag "papitoReforge" of player to {_item}
                         add "%nl%&f&oClick here to reforge this Artifact." to lore of slot {_slotIndex} of metadata tag "papitoReforge" of player
@@ -417,8 +457,10 @@ on inventory click:
         if clicked slot is not air:
             if clicked slot is between 0 and 53:
                 set {_artifact} to PapitoCleanUpgradeLore(clicked slot)
+                set {_artifact} to PapitoEnsureGearId({_artifact})
                 set {_artifact} to ArtifactEnsureRollTracking({_artifact})
                 set metadata value "PapitoReforgeOriginal" of player to {_artifact}
+                PapitoReforgeSelectSound(player)
                 set metadata tag "papitoReforgeItem" of player to chest inventory with 5 rows named "Papito - Reforge Artifact"
                 set {_gui} to metadata tag "papitoReforgeItem" of player
                 set slots integers between 0 and 44 of {_gui} to black stained glass pane named " "
@@ -444,9 +486,11 @@ on inventory click:
             set {_artifact} to slot 13 of event-inventory
             set {_modeId} to int tag "ReforgeMode" of (custom nbt of clicked slot)
             if {_modeId} = 1:
+                PapitoReforgeSelectSound(player)
                 set {_mode} to "all"
                 set {_stat} to ""
             else if {_modeId} = 2:
+                PapitoReforgeSelectSound(player)
                 set {_mode} to "stat"
                 set {_stat} to string tag "ReforgeStat" of (custom nbt of clicked slot)
             else:
@@ -467,13 +511,16 @@ on inventory click:
     else if event-inventory = metadata tag "papitoReforgeConfirm" of player:
         cancel event
         if event-slot = 15:
+            if clicked slot is not lime stained glass pane:
+                PapitoReforgeFailSound(player)
+                stop
             if clicked slot is lime stained glass pane:
                 set {_artifact} to slot 11 of event-inventory
                 set {_original} to metadata value "PapitoReforgeOriginal" of player
                 set {_mode} to metadata value "PapitoReforgeMode" of player
                 set {_stat} to metadata value "PapitoReforgeStat" of player
                 if ArtifactReforgePay(player, {_artifact}, {_mode}, {_stat}) is false:
-                    play sound "entity.villager.no" with volume 2 and pitch 1 to player
+                    PapitoReforgeFailSound(player)
                     stop
                 if PapitoRemoveOriginal(player, {_original}) is not true:
                     send "&cYour original artifact was not found. Refunded currency." to player
@@ -481,17 +528,29 @@ on inventory click:
                     set {_klejnot} to ArtifactReforgeCostKlejnot({_artifact})
                     set {cosmicflux::%player%} to {cosmicflux::%player%} + {_flux}
                     give player {_klejnot} of {klejnot}
+                    PapitoReforgeFailSound(player)
                     stop
                 if {_mode} = "all":
+                    set {_oldStats::*} to nbt tags of (compound tag "Stats" of (custom nbt of {_artifact}))
+                    loop {_oldStats::*}:
+                        set {_oldValue::%loop-value%} to int tag "Stats;%loop-value%" of (custom nbt of {_artifact})
                     set {_artifact} to ArtifactReforgeAll({_artifact})
+                    loop {_oldStats::*}:
+                        set {_newValue} to int tag "Stats;%loop-value%" of (custom nbt of {_artifact})
+                        send "%ArtifactReforgeStatName(loop-value)%&7: %ArtifactReforgeValueLine(loop-value, {_oldValue::%loop-value%})% &7-> %ArtifactReforgeValueLine(loop-value, {_newValue})%" to player
                 else:
                     set {_artifact} to ArtifactReforgeStat({_artifact}, {_stat})
+                    set {_oldStat} to string tag "LastReforgeOldStat" of (custom nbt of {_artifact})
+                    set {_newStat} to string tag "LastReforgeNewStat" of (custom nbt of {_artifact})
+                    send "%ArtifactReforgeStatName({_oldStat})% &7-> %ArtifactReforgeStatName({_newStat})%" to player
+                    clear string tag "LastReforgeOldStat" of (custom nbt of {_artifact})
+                    clear string tag "LastReforgeNewStat" of (custom nbt of {_artifact})
                 give player {_artifact}
                 clear metadata value "PapitoReforgeOriginal" of player
                 clear metadata value "PapitoReforgeMode" of player
                 clear metadata value "PapitoReforgeStat" of player
                 close player's inventory
-                play sound "block.anvil.use" with volume 4 and pitch 1.3 at player
+                PapitoReforgeSound(player)
                 send "&d✦ Successfully reforged %name of {_artifact}%&d." to player
 
     else if event-inventory = metadata tag "papitoSocket" of player:
@@ -705,6 +764,7 @@ on inventory click:
                             set {_type} to "Relic"
                             set metadata tag "papitoUpgradeItem" of player to chest inventory with 5 rows named "Papito - Upgrade - %{_}%Relic"
                         set {_item} to PapitoCleanUpgradeLore(clicked slot)
+                        set {_item} to PapitoEnsureGearId({_item})
                         set metadata value "papitoUpgradeOriginal" of player to {_item}
                         set {_artifact} to {_item}
                         set {_upgradeLevel} to int tag "Upgraded" of (custom nbt of {_artifact})
@@ -974,13 +1034,16 @@ on inventory click:
                 play sound "block.anvil.place" with volume 5 and pitch 2 to player
                 set metadata tag "papitoEnhanceItemRelics" of player to chest inventory with 5 rows named "Papito - Enhance - %name of slot 13 of player's current inventory%"
                 set {_slotIndex} to 0
+                set {_targetRelic} to slot 13 of player's current inventory
+                set {_targetCard} to PapitoRelicCard({_targetRelic})
+                set {_targetId} to metadata value "RelicEnhanceId" of player
                 loop all items in the player's inventory:
                     set {_lore::*} to lore of loop-item
                     if {_lore::2} contains "Item Level":
                         if line 1 of lore of loop-item contains "Relic":
-                            if string tag "Id" of (custom nbt of loop-item) is not (metadata value "RelicEnhanceId" of player):
-                                if name of loop-item = name of slot 13 of player's current inventory:
-                                    if string tag "Card" of (custom nbt of loop-item) = string tag "Card" of (custom nbt of (slot 13 of player's current inventory)):
+                            if string tag "Id" of (custom nbt of loop-item) is not {_targetId}:
+                                if name of loop-item = name of {_targetRelic}:
+                                    if PapitoRelicCard(loop-item) = {_targetCard}:
                                         set slot {_slotIndex} of metadata tag "papitoEnhanceItemRelics" of player to loop-item
                                         add "%nl%&c&l(&4&l!&c&l) &f&oClick here to use this item." to lore of (slot {_slotIndex} of (metadata tag "papitoEnhanceItemRelics" of player))
                                         add 1 to {_slotIndex}
@@ -1018,6 +1081,8 @@ on inventory click:
                             replace all "%{_effectValue}%%%" in line {_lineIndex} of lore of loop-item with "%{_effectValue} + 0.5%%%"
                             set long tag "EffectValue" of (custom nbt of loop-item) to {_effectValue} + 0.5
                             set int tag "Enhanced" of (custom nbt of loop-item) to {_enhanced} + 1
+                            set loop-item to RelicLoreUpdate(loop-item)
+                            set loop-item to RelicLoreUpdate(loop-item)
                         stop loop
                 set {_relicsEnhanced} to yaml value "Player.Relics Times Enhanced" in "data-%player%"
                 if {_relicsEnhanced} is not set:
