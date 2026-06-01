@@ -30,21 +30,19 @@ function Artifact(artifactType: string, starLevel: integer, itemLevel: integer) 
     set {_substatValues::*} to 0.186, 0.180, 0.174, 0.162 and 0.150
     set {_substats} to 3
     set {_stats::*} to "<#c0ff02> x Health", "<#f74428> x Damage", "<#ffef45> x Resistance", "&f x Mobility", "<#ae78d0> x Utility", "<#58c3f5> x Crowd Control", "<#e3ebff> x Versatility", "<#f53b98> x Mastery", "<#fca417> x Critical Hit", "<#d5ff57> x Element", "<#19943e> x Haste" and "<#2154ad> x Avoidance"
-    set {_chanceBonus} to 1/3
+    set {_chanceBonus} to 33.33333333333
 
     if {_starLevel} = 1:
         set {_starLevelLore} to "&e★"
         set {_rarity} to "<#cccccc>Common"
         set {_rarityPL} to "<#cccccc>Częsty"
         set {_loreSubstats} to "&8&oby a random value. One star artifacts%nl%&8&oalways start with one substat."
-        set {_loreSubstatsPL} to "&8&oo losową wartość. Jednogwiazdkowe artefakty%nl%&8&ozawsze zaczynają z jedną statystyką podrzędną."
         set {_substats} to 1
     else if {_starLevel} = 2:
         set {_starLevelLore} to "&e★★"
         set {_rarity} to "<#1fef00>Uncommon"
         set {_rarityPL} to "<#1fef00>Nieczęsty"
         set {_loreSubstats} to "&8&oby a random value. Two star artifacts%nl%&8&ostart with one substat and have a%nl%&8&o33.33%% chance to start with two."
-        set {_loreSubstatsPL} to "&8&oo losową wartość. Dwugwiazdkowe artefakty%nl%&8&ozaczynają z jedną statystyką podrzędną%nl%&8&oi mają 33.33%% szans, żeby zacząć z dwiema."
         set {_substats} to 1
         chance of {_chanceBonus}%:
             set {_substats} to 2
@@ -53,7 +51,6 @@ function Artifact(artifactType: string, starLevel: integer, itemLevel: integer) 
         set {_rarity} to "<#0070dd>Rare"
         set {_rarityPL} to "<#0070dd>Rzadki"
         set {_loreSubstats} to "&8&oby a random value. Three star artifacts%nl%&8&ostart with two substats and have a%nl%&8&o33.33%% chance to start with three."
-        set {_loreSubstatsPL} to "&8&oo losową wartość. Trzygwiazdkowe artefakty%nl%&8&ozaczynają z dwiema statystykami podrzędnymi%nl%&8&oi mają 33.33%% szans, żeby zacząć z trzema."
         set {_substats} to 2
         chance of {_chanceBonus}%:
             set {_substats} to 3
@@ -69,7 +66,6 @@ function Artifact(artifactType: string, starLevel: integer, itemLevel: integer) 
         set {_rarity} to "<#ff8000>Legendary"
         set {_rarityPL} to "<#ff8000>Legendarny"
         set {_loreSubstats} to "&8&oby a random value. Five star artifacts%nl%&8&ostart with three substats and have a%nl%&8&o33.33%% chance to start with four."
-        set {_loreSubstatsPL} to "&8&opodrzędną o losową wartość. Pięciogwiazdkowe%nl%&8&oartefakty zaczynają z trzema statystykami%nl%&8&opodrzędnymi i mają 33.33%% szans, żeby zacząć%nl%&8&oz czterema."
         set {_substats} to 3
         chance of {_chanceBonus}%:
             set {_substats} to 4
@@ -1729,11 +1725,27 @@ function EquippedGearLoreUpdate(p: player, item: item) :: text:
     return {_lore}
 
 
+function CardStatBarMax(p: player) :: number:
+    set {_stats::*} to "Strength", "Agility", "Intellect", "Health", "Damage", "Resistance", "Mobility", "Utility", "Crowd Control", "Versatility", "Mastery", "Critical Hit", "Element", "Haste" and "Avoidance"
+    set {_max} to 0
+    loop {_stats::*}:
+        set {_value} to int tag "Stats;%loop-value%" of (custom nbt of {_p}'s tool)
+        if {_value} is set:
+            if {_value} > {_max}:
+                set {_max} to {_value}
+    if {_max} <= 0:
+        set {_max} to 1
+    return {_max}
+
 function StatBarUpdate(p: player, statAmount: number, line: integer, statEN: string, statPL: string, colour: string):
-    set {_kwadraciki} to (rounded down {_statAmount}/50)
-    set {_stata} to "&7■■■■■■■■■■"
+    set {_maxStat} to CardStatBarMax({_p})
+    set {_kwadraciki} to round(({_statAmount} / {_maxStat}) * 10, 0)
+    if {_statAmount} > 0:
+        if {_kwadraciki} < 1:
+            set {_kwadraciki} to 1
     if {_kwadraciki} > 10:
         set {_kwadraciki} to 10
+    set {_stata} to "&7■■■■■■■■■■"
     set {_statas::*} to {_stata} split at ""
     loop {_kwadraciki} times:
         set {_f} to character at 2 + loop-number in {_stata}
