@@ -114,6 +114,177 @@ function PapitoRemoveOriginal(p: player, original: item) :: boolean:
                                 return true
     return false
 
+function ArtifactReforgeStats() :: texts:
+    return "Health", "Damage", "Resistance", "Mobility", "Utility", "Crowd Control", "Versatility", "Mastery", "Critical Hit", "Element", "Haste" and "Avoidance"
+
+function ArtifactRandomRoll(item: item) :: integer:
+    set {_itemLevel} to int tag "ItemLevel" of (custom nbt of {_item})
+    set {_substatValues::*} to 0.186, 0.180, 0.174, 0.162 and 0.150
+    set {_roll} to a random element of {_substatValues::*}
+    return rounded (({_roll} * 4.7385 * {_itemLevel}) / 6)
+
+function ArtifactLineIndex(item: item, stat: text) :: integer:
+    loop lore of {_item}:
+        if loop-value contains {_stat}:
+            return loop-counter
+    return 0
+
+function ArtifactSetStatLore(item: item, stat: text, value: integer) :: item:
+    set {_line} to getFormattedStat({_stat})
+    replace all "{VALUE}" in {_line} with "+%{_value}%"
+    set {_idx} to ArtifactLineIndex({_item}, {_stat})
+    if {_idx} > 0:
+        set line {_idx} of lore of {_item} to {_line}
+    return {_item}
+
+function ArtifactRemoveStatLore(item: item, stat: text) :: item:
+    set {_idx} to ArtifactLineIndex({_item}, {_stat})
+    if {_idx} > 0:
+        delete line {_idx} of lore of {_item}
+    return {_item}
+
+function ArtifactRollCountForValue(item: item, value: integer) :: integer:
+    set {_maxRoll} to PapitoArtifactMaxRoll(int tag "ItemLevel" of (custom nbt of {_item}))
+    if {_maxRoll} <= 0:
+        return 1
+    set {_rolls} to ceil({_value} / {_maxRoll})
+    if {_rolls} < 1:
+        set {_rolls} to 1
+    return {_rolls}
+
+function ArtifactEnsureRollTracking(item: item) :: item:
+    set {_stats::*} to nbt tags of (compound tag "Stats" of (custom nbt of {_item}))
+    loop {_stats::*}:
+        if int tag "Rolls;%loop-value%" of (custom nbt of {_item}) is not set:
+            set {_value} to int tag "Stats;%loop-value%" of (custom nbt of {_item})
+            set int tag "Rolls;%loop-value%" of (custom nbt of {_item}) to ArtifactRollCountForValue({_item}, {_value})
+    return {_item}
+
+function ArtifactReforgeCostKlejnot(item: item) :: integer:
+    set {_week} to {artifactReforgeWeek}
+    if {_week} is not set:
+        set {_week} to 0
+    set {_itemWeek} to int tag "ReforgeWeek" of (custom nbt of {_item})
+    set {_count} to int tag "ReforgeCount" of (custom nbt of {_item})
+    if {_itemWeek} is not {_week}:
+        set {_count} to 0
+    if {_count} is not set:
+        set {_count} to 0
+    return 5 * (2 ^ {_count})
+
+function ArtifactReforgeCount(item: item) :: integer:
+    set {_week} to {artifactReforgeWeek}
+    if {_week} is not set:
+        set {_week} to 0
+    set {_itemWeek} to int tag "ReforgeWeek" of (custom nbt of {_item})
+    set {_count} to int tag "ReforgeCount" of (custom nbt of {_item})
+    if {_itemWeek} is not {_week}:
+        return 0
+    if {_count} is not set:
+        return 0
+    return {_count}
+
+function ArtifactReforgeAdvance(item: item) :: item:
+    set {_week} to {artifactReforgeWeek}
+    if {_week} is not set:
+        set {_week} to 0
+    set {_count} to ArtifactReforgeCount({_item})
+    set int tag "ReforgeWeek" of (custom nbt of {_item}) to {_week}
+    set int tag "ReforgeCount" of (custom nbt of {_item}) to {_count} + 1
+    return {_item}
+
+function ArtifactReforgeFluxCost(item: item, mode: text, stat: text = "") :: integer:
+    if {_mode} = "all":
+        set {_item} to ArtifactEnsureRollTracking({_item})
+        loop nbt tags of (compound tag "Stats" of (custom nbt of {_item})):
+            set {_rolls} to int tag "Rolls;%loop-value%" of (custom nbt of {_item})
+            set {_total} to {_total} + {_rolls}
+        return {_total} * 50
+    return 50
+
+function ArtifactReforgeCanPay(p: player, item: item, mode: text, stat: text = "") :: boolean:
+    set {_flux} to ArtifactReforgeFluxCost({_item}, {_mode}, {_stat})
+    set {_klejnot} to ArtifactReforgeCostKlejnot({_item})
+    if {cosmicflux::%{_p}%} < {_flux}:
+        return false
+    set {_klejnotItem} to yaml value "Klejnot.Item" in "ItemList"
+    if {_p} has {_klejnot} of {_klejnotItem}:
+        return true
+    return false
+
+function ArtifactReforgePay(p: player, item: item, mode: text, stat: text = "") :: boolean:
+    if ArtifactReforgeCanPay({_p}, {_item}, {_mode}, {_stat}) is false:
+        return false
+    set {_flux} to ArtifactReforgeFluxCost({_item}, {_mode}, {_stat})
+    set {_klejnot} to ArtifactReforgeCostKlejnot({_item})
+    set {cosmicflux::%{_p}%} to {cosmicflux::%{_p}%} - {_flux}
+    remove {_klejnot} of {klejnot} from {_p}
+    return true
+
+function ArtifactReforgeAll(item: item) :: item:
+    set {_item} to ArtifactEnsureRollTracking({_item})
+    loop nbt tags of (compound tag "Stats" of (custom nbt of {_item})):
+        set {_stat} to loop-value
+        set {_rolls} to int tag "Rolls;%{_stat}%" of (custom nbt of {_item})
+        set {_value} to 0
+        loop {_rolls} times:
+            set {_value} to {_value} + ArtifactRandomRoll({_item})
+        set int tag "Stats;%{_stat}%" of (custom nbt of {_item}) to {_value}
+        set {_item} to ArtifactSetStatLore({_item}, {_stat}, {_value})
+    return ArtifactReforgeAdvance({_item})
+
+function ArtifactReforgeStat(item: item, oldStat: text) :: item:
+    set {_item} to ArtifactEnsureRollTracking({_item})
+    set {_available::*} to ArtifactReforgeStats()
+    loop nbt tags of (compound tag "Stats" of (custom nbt of {_item})):
+        remove loop-value from {_available::*}
+    if size of {_available::*} <= 0:
+        return {_item}
+    set {_newStat} to a random element of {_available::*}
+    set {_value} to int tag "Stats;%{_oldStat}%" of (custom nbt of {_item})
+    set {_rolls} to int tag "Rolls;%{_oldStat}%" of (custom nbt of {_item})
+    clear int tag "Stats;%{_oldStat}%" of (custom nbt of {_item})
+    clear int tag "Rolls;%{_oldStat}%" of (custom nbt of {_item})
+    set int tag "Stats;%{_newStat}%" of (custom nbt of {_item}) to {_value}
+    set int tag "Rolls;%{_newStat}%" of (custom nbt of {_item}) to {_rolls}
+    set {_item} to ArtifactRemoveStatLore({_item}, {_oldStat})
+    set {_item} to ArtifactSetStatLore({_item}, {_newStat}, {_value})
+    return ArtifactReforgeAdvance({_item})
+
+
+function ArtifactReforgeStatItem(stat: text) :: item:
+    if {_stat} = "Health":
+        return lime stained glass pane
+    else if {_stat} = "Damage":
+        return red stained glass pane
+    else if {_stat} = "Resistance":
+        return yellow stained glass pane
+    else if {_stat} = "Mobility":
+        return white stained glass pane
+    else if {_stat} = "Utility":
+        return magenta stained glass pane
+    else if {_stat} = "Crowd Control":
+        return light blue stained glass pane
+    else if {_stat} = "Versatility":
+        return light gray stained glass pane
+    else if {_stat} = "Mastery":
+        return magenta stained glass pane
+    else if {_stat} = "Critical Hit":
+        return orange stained glass pane
+    else if {_stat} = "Element":
+        return lime stained glass pane
+    else if {_stat} = "Haste":
+        return green stained glass pane
+    else if {_stat} = "Avoidance":
+        return blue stained glass pane
+    return gray stained glass pane
+
+function ArtifactReforgeCostLore(p: player, item: item, mode: text, stat: text = "") :: texts:
+    set {_flux} to ArtifactReforgeFluxCost({_item}, {_mode}, {_stat})
+    set {_klejnot} to ArtifactReforgeCostKlejnot({_item})
+    set {_count} to ArtifactReforgeCount({_item})
+    return "&f⇏ &7Reforging will cost you &f&n%{_flux}%&r &f &7and <#b5e550>&n%{_klejnot}% Klejnot&7.", "&f⇏ &7Weekly Artifact reforges on this item: &f%{_count}%", " ", "&8(&f &8= Cosmic Flux)", "&8Klejnot cost doubles with each weekly reforge.", "&8Costs reset on weekly reset."
+
 #What would you like to do?
 #Judge 
 #Judges an Artifact or Relic, determining its power and ... from reaching maximum values.
@@ -173,6 +344,22 @@ on inventory click:
                 play sound "entity.villager.no" with volume 5 and pitch 0.62 to player
                 play sound "block.anvil.place" with volume 5 and pitch 1.176 to player 
                 send "&c&oThere are no Artifacts or Relics in your inventory." to player
+        else if event-slot = 2:
+            play sound "block.anvil.place" with volume 5 and pitch 1.61 to player
+            set metadata tag "papitoReforge" of player to chest inventory with 6 rows named "Papito - Reforge"
+            set {_slotIndex} to 0
+            loop all items in the player's inventory:
+                if item amount of loop-item = 1:
+                    if boolean tag "Artifact" of (custom nbt of loop-item) is set:
+                        set {_item} to ArtifactEnsureRollTracking(loop-item)
+                        set slot {_slotIndex} of metadata tag "papitoReforge" of player to {_item}
+                        add "%nl%&f&oClick here to reforge this Artifact." to lore of slot {_slotIndex} of metadata tag "papitoReforge" of player
+                        set {_slotIndex} to {_slotIndex} + 1
+            if {_slotIndex} > 0:
+                open metadata tag "papitoReforge" of player to player
+            else:
+                play sound "entity.villager.no" with volume 5 and pitch 0.62 to player
+                send "&c&oThere are no Artifacts in your inventory." to player
         else if event-slot = 4:
             play sound "block.anvil.place" with volume 5 and pitch 1.61 to player
             set metadata tag "papitoSocket" of player to chest inventory with 6 rows named "Papito - Socket"
@@ -225,6 +412,88 @@ on inventory click:
             else:
                 play sound "entity.villager.no" with volume 5 and pitch 0.62 to player
                 send "&c&oThere are no Artifacts in your inventory."
+    else if event-inventory = metadata tag "papitoReforge" of player:
+        cancel event
+        if clicked slot is not air:
+            if clicked slot is between 0 and 53:
+                set {_artifact} to PapitoCleanUpgradeLore(clicked slot)
+                set {_artifact} to ArtifactEnsureRollTracking({_artifact})
+                set metadata value "PapitoReforgeOriginal" of player to {_artifact}
+                set metadata tag "papitoReforgeItem" of player to chest inventory with 5 rows named "Papito - Reforge Artifact"
+                set {_gui} to metadata tag "papitoReforgeItem" of player
+                set slots integers between 0 and 44 of {_gui} to black stained glass pane named " "
+                set slot 13 of {_gui} to {_artifact}
+                set slot 20 of {_gui} to anvil named "&dReroll Values" with lore "&7Rerolls all current stat roll values.", "&7The stats stay the same.", " " and ArtifactReforgeCostLore(player, {_artifact}, "all")
+                set int tag "ReforgeMode" of (custom nbt of slot 20 of {_gui}) to 1
+                set {_slot} to 29
+                loop nbt tags of (compound tag "Stats" of (custom nbt of {_artifact})):
+                    set {_stat} to loop-value
+                    set {_value} to int tag "Stats;%{_stat}%" of (custom nbt of {_artifact})
+                    set {_currentLine} to getFormattedStat({_stat})
+                    replace all "{VALUE}" in {_currentLine} with "+%{_value}%"
+                    set {_item} to ArtifactReforgeStatItem({_stat}) named "&bReroll %{_stat}%" with lore "&7Changes this stat into a random", "&7missing stat on this Artifact.", " ", "&7Current: %{_currentLine}%", " " and ArtifactReforgeCostLore(player, {_artifact}, "stat", {_stat})
+                    set string tag "ReforgeStat" of (custom nbt of {_item}) to {_stat}
+                    set int tag "ReforgeMode" of (custom nbt of {_item}) to 2
+                    set slot {_slot} of {_gui} to {_item}
+                    set {_slot} to {_slot} + 1
+                open {_gui} to player
+
+    else if event-inventory = metadata tag "papitoReforgeItem" of player:
+        cancel event
+        if clicked slot is not air:
+            set {_artifact} to slot 13 of event-inventory
+            set {_modeId} to int tag "ReforgeMode" of (custom nbt of clicked slot)
+            if {_modeId} = 1:
+                set {_mode} to "all"
+                set {_stat} to ""
+            else if {_modeId} = 2:
+                set {_mode} to "stat"
+                set {_stat} to string tag "ReforgeStat" of (custom nbt of clicked slot)
+            else:
+                stop
+            set metadata value "PapitoReforgeMode" of player to {_mode}
+            set metadata value "PapitoReforgeStat" of player to {_stat}
+            set metadata tag "papitoReforgeConfirm" of player to chest inventory with 3 rows named "Papito - Confirm Reforge"
+            set {_gui} to metadata tag "papitoReforgeConfirm" of player
+            set slots integers between 0 and 26 of {_gui} to black stained glass pane named " "
+            set slot 11 of {_gui} to {_artifact}
+            set slot 13 of {_gui} to iron nugget named "&fCost" with lore ArtifactReforgeCostLore(player, {_artifact}, {_mode}, {_stat}) with nbt from "{""minecraft:custom_model_data"":{floats:[1.0f]}}"
+            if ArtifactReforgeCanPay(player, {_artifact}, {_mode}, {_stat}) is true:
+                set slot 15 of {_gui} to lime stained glass pane named "&aConfirm Reforge" with lore "&7Click here to reforge this Artifact."
+            else:
+                set slot 15 of {_gui} to red stained glass pane named "&cNot enough currency" with lore "&7You do not have enough currency", "&7to reforge this Artifact."
+            open {_gui} to player
+
+    else if event-inventory = metadata tag "papitoReforgeConfirm" of player:
+        cancel event
+        if event-slot = 15:
+            if clicked slot is lime stained glass pane:
+                set {_artifact} to slot 11 of event-inventory
+                set {_original} to metadata value "PapitoReforgeOriginal" of player
+                set {_mode} to metadata value "PapitoReforgeMode" of player
+                set {_stat} to metadata value "PapitoReforgeStat" of player
+                if ArtifactReforgePay(player, {_artifact}, {_mode}, {_stat}) is false:
+                    play sound "entity.villager.no" with volume 2 and pitch 1 to player
+                    stop
+                if PapitoRemoveOriginal(player, {_original}) is not true:
+                    send "&cYour original artifact was not found. Refunded currency." to player
+                    set {_flux} to ArtifactReforgeFluxCost({_artifact}, {_mode}, {_stat})
+                    set {_klejnot} to ArtifactReforgeCostKlejnot({_artifact})
+                    set {cosmicflux::%player%} to {cosmicflux::%player%} + {_flux}
+                    give player {_klejnot} of {klejnot}
+                    stop
+                if {_mode} = "all":
+                    set {_artifact} to ArtifactReforgeAll({_artifact})
+                else:
+                    set {_artifact} to ArtifactReforgeStat({_artifact}, {_stat})
+                give player {_artifact}
+                clear metadata value "PapitoReforgeOriginal" of player
+                clear metadata value "PapitoReforgeMode" of player
+                clear metadata value "PapitoReforgeStat" of player
+                close player's inventory
+                play sound "block.anvil.use" with volume 4 and pitch 1.3 at player
+                send "&d✦ Successfully reforged %name of {_artifact}%&d." to player
+
     else if event-inventory = metadata tag "papitoSocket" of player:
         if event-slot is between 0 and 53:
             cancel event
@@ -711,7 +980,7 @@ on inventory click:
                         if line 1 of lore of loop-item contains "Relic":
                             if string tag "Id" of (custom nbt of loop-item) is not (metadata value "RelicEnhanceId" of player):
                                 if name of loop-item = name of slot 13 of player's current inventory:
-                                    if int tag "StarLevel" of (custom nbt of loop-item) = int tag "StarLevel" of (custom nbt of (slot 13 of player's current inventory)):
+                                    if string tag "Card" of (custom nbt of loop-item) = string tag "Card" of (custom nbt of (slot 13 of player's current inventory)):
                                         set slot {_slotIndex} of metadata tag "papitoEnhanceItemRelics" of player to loop-item
                                         add "%nl%&c&l(&4&l!&c&l) &f&oClick here to use this item." to lore of (slot {_slotIndex} of (metadata tag "papitoEnhanceItemRelics" of player))
                                         add 1 to {_slotIndex}
@@ -720,7 +989,7 @@ on inventory click:
                 else:
                     play sound "entity.villager.no" with volume 5 and pitch 0.62 to player
                     play sound "block.anvil.place" with volume 5 and pitch 1.176 to player 
-                    send "&c&oThere are no identical Relics in your inventory." to player
+                    send "&c&oThere are no matching Relics in your inventory." to player
     else if event-inventory = metadata tag "papitoEnhanceItemRelics" of player:
         cancel event
         if clicked slot is not air:
