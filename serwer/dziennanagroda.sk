@@ -1,283 +1,219 @@
-options:
-	loc: block at location(-1185.5, 63.5, -1829.5, world "world")
-	gui: (metadata tag "dziennanagroda" of player) 
-variables:
-	{dailystreak::%player%} = 0
-	{dziennenagrody::%player%} = 0
-	{dailynagroda::%player%} = 1
-	{dailyready::%player%} = true
+function DailyRewardInFountain(b: block) :: boolean:
+	set {_x} to x-coordinate of {_b}
+	set {_y} to y-coordinate of {_b}
+	set {_z} to z-coordinate of {_b}
+	if {_x} is between 9263.5 and 9277.5:
+		if {_y} is between 68 and 85:
+			if {_z} is between 1598.5 and 1612.5:
+				if {_b} is solid:
+					return true
+				if {_b} is water:
+					return true
+	return false
 
+function DailyRewardResetId() :: integer:
+	if {dailyRewardResetId} is not set:
+		set {dailyRewardResetId} to 1
+	return {dailyRewardResetId}
 
-#on place:
-#	if block above event-block is air:
-#		if block is smithing table:
-#			spawn 1 glow item frame at block above event-block
-#			silence last spawned glow item frame
-#			display hologram "&eDzienna Nagroda" at block above event-block to player for 10 seconds
+function DailyRewardCanClaim(p: player) :: boolean:
+	set {_lastReset} to yaml value "Daily Reward.Last Reset" in "data-%{_p}%"
+	if {_lastReset} is not DailyRewardResetId():
+		return true
+	return false
+
+function DailyRewardProgress(p: player) :: integer:
+	set {_progress} to yaml value "Daily Reward.Progress" in "data-%{_p}%"
+	if {_progress} is not set:
+		set {_progress} to 0
+	return {_progress}
+
+function DailyRewardDay(p: player) :: integer:
+	return (mod(DailyRewardProgress({_p}), 14)) + 1
+
+function DailyRewardStreak(p: player) :: integer:
+	set {_streak} to yaml value "Daily Reward.Streak" in "data-%{_p}%"
+	if {_streak} is not set:
+		set {_streak} to 0
+	return {_streak}
+
+function DailyRewardItem(day: integer, p: player) :: item:
+	if {_day} = 1:
+		return 100 of {klejnot}
+	else if {_day} = 2:
+		return 3 of glass pane named "&fRandom Booster" with lore "&7Contains 3 random boosters."
+	else if {_day} = 3:
+		return 250 of {stardust}
+	else if {_day} = 4:
+		return {tokenwdziecznosci}
+	else if {_day} = 5:
+		return 3 of {adeptexpbook}
+	else if {_day} = 6:
+		return {magicznypryzmat}
+	else if {_day} = 7:
+		return 2 of {odlamekgwiazdy}
+	else if {_day} = 8:
+		return DailyRewardPreviewCardstone()
+	else if {_day} = 9:
+		return 4 of {diamondshard}
+	else if {_day} = 10:
+		return 25 of {skrzynkaluksusowa}
+	else if {_day} = 11:
+		return 10 of (random element of {esencje::*})
+	else if {_day} = 12:
+		return 4 of {szafirowekostki}
+	else if {_day} = 13:
+		return 20 of {bursztyn}
+	return 4 of {odlamekgwiazdy}
+
+function DailyRewardPreviewCardstone() :: item:
+	set {_item} to yaml value "Cardstone.Item" in "ItemList"
+	set {_lore::*} to lore of {_item}
+	loop {_lore::*}:
+		set {_line} to loop-value
+		if {_line} contains "Resonates with":
+			set {_line} to "&7Resonates with &fa random card."
+		set {_updated::*} to {_updated::*} and {_line}
+	set lore of {_item} to {_updated::*}
+	return 100 of {_item}
+
+function DailyRewardName(day: integer) :: text:
+	if {_day} = 1:
+		return "100 Klejnot"
+	else if {_day} = 2:
+		return "3x Random Booster"
+	else if {_day} = 3:
+		return "250 Stardust"
+	else if {_day} = 4:
+		return "Token of Gratitude"
+	else if {_day} = 5:
+		return "3x Adept Experience Book"
+	else if {_day} = 6:
+		return "Magic Prism"
+	else if {_day} = 7:
+		return "2x Star Shard"
+	else if {_day} = 8:
+		return "100x Random Cardstone"
+	else if {_day} = 9:
+		return "4x Diamond Shard"
+	else if {_day} = 10:
+		return "25x Luxurious Chest"
+	else if {_day} = 11:
+		return "10x Random Essence"
+	else if {_day} = 12:
+		return "4x Sapphire Dice"
+	else if {_day} = 13:
+		return "20x Amber"
+	return "4x Star Shard"
+
+function DailyRewardBooster() :: item:
+	set {_boosters::*} to {boostersecretwonders}, {boostermajesticdawn}, {boosterunseenforces}, {boosterplasmafreeze} and {boosterteampoisonvsteamaqua}
+	return random element of {_boosters::*}
+
+function DailyRewardGive(p: player, day: integer):
+	if {_day} = 2:
+		loop 3 times:
+			giveItem({_p}, DailyRewardBooster())
+	else if {_day} = 8:
+		set {_cards::*} to DiamondAllCards()
+		giveItem({_p}, DiamondCardstoneItem(random element of {_cards::*}, 100))
+	else:
+		giveItem({_p}, DailyRewardItem({_day}, {_p}))
+
+function DailyRewardClaimSound(p: player):
+	set {_pitch} to 0.8
+	play sound "entity.item.pickup" with volume 2 and pitch 1.2 to {_p}
+	loop 8 times:
+		play sound "block.note_block.hat" with volume 2 and pitch {_pitch} to {_p}
+		play sound "block.note_block.pling" with volume 2 and pitch {_pitch} to {_p}
+		set {_pitch} to {_pitch} + 0.12
+		wait 2 ticks
+	play sound "ui.toast.challenge_complete" with volume 2 and pitch 1.1 to {_p}
+
+function DailyRewardClaim(p: player):
+	if DailyRewardCanClaim({_p}) is false:
+		send "&cYou already claimed today's reward." to {_p}
+		play sound "entity.villager.no" with volume 2 and pitch 1 to {_p}
+		stop
+
+	set {_day} to DailyRewardDay({_p})
+	set {_resetId} to DailyRewardResetId()
+	set {_lastClaimReset} to yaml value "Daily Reward.Last Claim Reset" in "data-%{_p}%"
+	set {_streak} to DailyRewardStreak({_p})
+	set {_previousReset} to {_resetId} - 1
+
+	if {_lastClaimReset} is {_previousReset}:
+		set {_streak} to {_streak} + 1
+	else:
+		set {_streak} to 1
+
+	set yaml value "Daily Reward.Streak" in "data-%{_p}%" to {_streak}
+	set yaml value "Daily Reward.Last Reset" in "data-%{_p}%" to {_resetId}
+	set yaml value "Daily Reward.Last Claim Reset" in "data-%{_p}%" to {_resetId}
+
+	set {_newProgress} to DailyRewardProgress({_p}) + 1
+	set yaml value "Daily Reward.Progress" in "data-%{_p}%" to {_newProgress}
+
+	set {_totalClaims} to yaml value "Daily Reward.Total Claims" in "data-%{_p}%"
+	if {_totalClaims} is not set:
+		set {_totalClaims} to 0
+	set yaml value "Daily Reward.Total Claims" in "data-%{_p}%" to {_totalClaims} + 1
+
+	DailyRewardGive({_p}, {_day})
+	addToYaml(1, "data-%{_p}%", "Statistics.Daily Reward.Claims")
+	save yaml "data-%{_p}%"
+
+	DailyRewardClaimSound({_p})
+	send "<##f0cc9e>Daily Reward >>> &fClaimed day &e%{_day}% &freward!" to {_p}
+
+function DailyRewardOpen(p: player):
+	set metadata tag "dziennanagroda" of {_p} to chest inventory with 5 rows named "         <##e134eb>&lDaily Reward"
+	set {_gui} to metadata tag "dziennanagroda" of {_p}
+	set slots integers between 0 and 44 of {_gui} to black stained glass pane named " "
+
+	set {_currentDay} to DailyRewardDay({_p})
+	set {_canClaim} to DailyRewardCanClaim({_p})
+	set {_progress} to DailyRewardProgress({_p})
+	set {_cycleDay} to mod({_progress}, 14) + 1
+	set {_slots::*} to 10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 22, 23, 24 and 25
+
+	loop 14 times:
+		set {_day} to loop-number
+		set {_slot} to {_slots::%loop-number%}
+
+		if {_day} = {_cycleDay}:
+			if {_canClaim} is true:
+				set {_item} to DailyRewardItem({_day}, {_p})
+				set lore of {_item} to lore of {_item} and " " and "&aClick to claim today's reward."
+			else:
+				set {_item} to magenta stained glass pane named "&dClaimed" with lore "&8Day %{_day}%", "&7Reward: &f%DailyRewardName({_day})%"
+		else if {_day} < {_cycleDay}:
+			set {_item} to magenta stained glass pane named "&dClaimed" with lore "&8Day %{_day}%", "&7Reward: &f%DailyRewardName({_day})%"
+		else:
+			set {_item} to gray stained glass pane named "&7Day %{_day}%" with lore "&7Reward: &f%DailyRewardName({_day})%"
+
+		set slot {_slot} of {_gui} to {_item}
+
+	set slot 4 of {_gui} to end crystal named "<##e134eb>Current Streak" with lore "&7Current streak: &f%DailyRewardStreak({_p})%", "&7Progress day: &f%{_currentDay}%&7/&f14"
+	open {_gui} to {_p}
 
 on rightclick:
-	if clicked block is lectern:
-		if block is {@loc}:
+	if clicked block is set:
+		if DailyRewardInFountain(clicked block) is true:
 			cancel event
-			set metadata tag "dziennanagroda" of player to chest inventory with 5 rows named "         <##e134eb>&kA &r<##e134eb>&lDaily Reward <##e134eb>&kA     "
-			set {_slot} to 28
-			set {_x} to 1
-			set slots integers between 0 and 8 of {@gui} to black stained glass pane named " "
-			set slots integers between 36 and 44 of {@gui} to black stained glass pane named " "
-			set slot 9 and 17 and 18 and 26 and 27 and 35 of {@gui} to black stained glass pane named " "
-			if {dailynagroda::%player%} <= 7:
-				set {_dailySet} to 0
-				set slot 28 of {@gui} to 25 of emerald named "%({klejnot}'s name)% x25"
-				set slot 29 of {@gui} to 64 of glowstone dust named "%({stardust}'s name)% x100" with nbt from "{""minecraft:custom_model_data"":{floats:[1.0f]}}"
-				set slot 30 of {@gui} to stained glass pane named "&fRandom Booster" with lore "&7Random booster from:%nl%&7- &fSecret Wonders%nl%&7- &fMajestic Dawn%nl%&7- &fUnseen Forces%nl%&7- Plasma Freeze" #%nl%&7- &fMajestic Dawn%nl%&7- &fUnseen Forces"
-				set slot 31 of {@gui} to amethyst shard named "&fMagic Prism"
-				set slot 32 of {@gui} to 8 of note block named "&f8x Luxurious Chest" with nbt from "{""minecraft:custom_model_data"":{floats:[4.0f]}}"
-				set slot 33 of {@gui} to firework star named "&fToken of Gratitude"
-				set slot 34 of {@gui} to glowstone dust named "&fStar Piece" with nbt from "{""minecraft:custom_model_data"":{floats:[11.0f]}}"
-			else:
-				set {_dailySet} to 7
-				set slot 28 of {@gui} to 64 of emerald named "%({klejnot}'s name)% x100"
-				set slot 29 of {@gui} to glowstone dust named ({diamondshard}'s name) with nbt from "{""minecraft:custom_model_data"":{floats:[12.0f]}}"
-				set slot 30 of {@gui} to 2 of book named "%({adeptexpbook})'s name% x2"
-				set slot 31 of {@gui} to lapis lazuli named "&fRandom Rank III Boost" with lore "&7Random Boost from:%nl%&7- &fJade Statue%nl%&7- &fCitrine Looking Glass%nl%&7- &fSapphire Dice%nl%&7- &fTourmaline Diadem" with nbt from "{""minecraft:custom_model_data"":{floats:[4.0f]}}"
-				set slot 32 of {@gui} to 16 of note block named "&f16x Luxurious Chest" with nbt from "{""minecraft:custom_model_data"":{floats:[4.0f]}}"
-				set slot 33 of {@gui} to 64 of glowstone dust named "%({stardust}'s name)% x300" with nbt from "{""minecraft:custom_model_data"":{floats:[1.0f]}}"
-				set slot 34 of {@gui} to 2 of glowstone dust named "&fStar Piece x2" with nbt from "{""minecraft:custom_model_data"":{floats:[11.0f]}}"
-			loop 7 times:
-				if loop-number is not {dailynagroda::%player%} - {_dailySet}:
-					if {dailynagroda::%player%} < loop-number + {_dailySet}:
-						set slot {_slot} of {@gui} to gray stained glass pane named " "
-					else:
-						set slot {_slot} of {@gui} to yellow stained glass pane named "&eClaimed"
-				else:
-					if {dailyready::%player%} = false:
-						set slot {_slot} of {@gui} to yellow stained glass pane named "&eClaimed"
-					set slot ({_slot} - 9) of {@gui} to white stained glass pane named "&fToday's reward"
-				set {_slot} to {_slot} + 1
-			set {_slot} to 28
-			set {_x} to 1
-			loop 7 + {_dailySet} times:
-				if {_slot} = 30:
-					if slot {_slot} of {@gui} is yellow stained glass pane:
-						set lore of slot {_slot} of {@gui} to "&8Day %{_x}%"
-					else:
-						if slot {_slot} of {@gui} is stained glass pane:
-							set lore of slot {_slot} of {@gui} to "&8Day %{_x}%%nl%&7Random booster from:%nl%&7- &fSecret Wonders%nl%&7- &fMajestic Dawn%nl%&7- &fUnseen Forces%nl%&7- &fPlasma Freeze" #%nl%&7- &fMajestic Dawn%nl%&7- &fUnseen Forces%nl%&8Day %{_x}%"
-						else:
-							set lore of slot {_slot} of {@gui} to "&8Day 10"
-				else if {_slot} = 31:
-					if slot {_slot} of {@gui} is yellow stained glass pane:
-						set lore of slot {_slot} of {@gui} to "&8Day %{_x}%"
-					else:
-						if slot {_slot} of {@gui} is lapis lazuli:
-							set lore of slot {_slot} of {@gui} to "&8Day %{_x}%%nl%&7Random boost from:%nl%&7- &fJade Statue%nl%&7- &fCitrine Looking Glass%nl%&7- &fSapphire Dice%nl%&7- &fTourmaline Diadem"
-						else:
-							set lore of slot {_slot} of {@gui} to "&8Day 11"
-				else:
-					set lore of slot {_slot} of {@gui} to "&8Day %{_x}%"
-				set {_slot} to {_slot} + 1
-				set {_x} to {_x} + 1
-				if {_slot} = 35:
-					set {_slot} to 28
-			set {_slot} to 19
-			set {_x} to 1
-			loop 7 times:
-				if slot {_slot} of {@gui} is air:
-					set slot {_slot} of {@gui} to magenta stained glass pane named "<##e134eb> "
-				set {_slot} to {_slot} + 1
-				set {_x} to {_x} + 1
-			set slot 10 and 12 and 14 and 16 of {@gui} to small amethyst bud named " "
-			set slot 11 and 15 of {@gui} to amethyst cluster named " "
-			set slot 13 of {@gui} to end crystal named "<##e134eb>Current Streak" with lore "&7Current streak amounts &f%{dailystreak::%player%}%&7."
-			open metadata tag "dziennanagroda" of player to player
-			play sound "block.note_block.hat" with volume 3 and pitch {_x} at clicked block
-			play sound "block.note_block.pling" with volume 3 and pitch {_x} at clicked block
+			DailyRewardOpen(player)
+			play sound "block.note_block.pling" with volume 2 and pitch 1.5 to player
+
 on inventory click:
-	if event-inventory = {@gui}:
+	if event-inventory = metadata tag "dziennanagroda" of player:
 		cancel event
-		if index of event-slot is between 28 and 34:
-			if event-slot is not gray stained glass pane:
-				if event-slot is not yellow stained glass pane:
-					if {dailyready::%player%} is true:
-						set {dailyready::%player%} to false
-						set {_loc} to player's location
-						teleport player to {_loc}
-						set {dziennenagrody::%player%} to {dziennenagrody::%player%} + 1
-						set {_yamlValue} to "Achievement.Mining.Dziennenagrody.1"
-						achievementYaml(player, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Daily Reward: 1", "Claim your first daily reward.")
-						set {_yamlValue} to "Achievement.Mining.Dziennenagrody.10"
-						achievementYaml(player, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Daily Reward: 10", "Claim 10 daily rewards.")
-						set {_yamlValue} to "Achievement.Mining.Dziennenagrody.30"
-						achievementYaml(player, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Daily Reward: 30", "Claim 30 daily rewards.")
-						set {_yamlValue} to "Achievement.Mining.Dziennenagrody.50"
-						achievementYaml(player, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Daily Reward: 50", "Claim 50 daily rewards.")
-						set {_yamlValue} to "Achievement.Mining.Dziennenagrody.100"
-						achievementYaml(player, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Daily Reward: 100", "Claim 100 daily rewards.")
-						set {_yamlValue} to "Achievement.Mining.Dziennenagrody.200"
-						achievementYaml(player, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Daily Reward: 200", "Claim 200 daily rewards.")
-						set {_yamlValue} to "Achievement.Mining.Dziennenagrody.300"
-						achievementYaml(player, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Daily Reward: 300", "Claim 300 daily rewards.")
-						set {dailystreak::%player%} to {dailystreak::%player%} + 1
-						set {_yamlValue} to "Achievement.Mining.Dailystreak.7"
-						achievementYaml(player, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Daily Streak: 7 Days", "Reach daily streak 7 on daily reward.")
-						set {_yamlValue} to "Achievement.Mining.Dailystreak.14"
-						achievementYaml(player, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Daily Streak: 14 Days", "Reach daily streak 14 on daily reward.")
-						set {_yamlValue} to "Achievement.Mining.Dailystreak.30"
-						achievementYaml(player, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Daily Streak: 30 Days", "Reach daily streak 30 on daily reward.")
-						set {_yamlValue} to "Achievement.Mining.Dailystreak.60"
-						achievementYaml(player, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Daily Streak: 60 Days", "Reach daily streak 60 on daily reward.")
-						set {_yamlValue} to "Achievement.Mining.Dailystreak.100"
-						achievementYaml(player, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Daily Streak: 100 Days", "Reach daily streak 100 on daily reward.")
-						if event-slot is an emerald:
-							drawItemFountain emerald, style 2, center location of {@loc}, id "%player%nagroda", itemTime 10 second, yVelocity 0.34, radius 0.3, density 5, displacementXYZ 0, 0, 0, pulseDelay 1
-						if event-slot is glowstone dust:
-							if name of event-slot = "%({stardust}'s name)% x100" or "%({stardust}'s name)% x300":
-								drawItemFountain (glowstone dust with nbt from "{""minecraft:custom_model_data"":{floats:[1.0f]}}"), style 2, center location of {@loc}, id "%player%nagroda", itemTime 10 second, yVelocity 0.34, radius 0.3, density 5, displacementXYZ 0, 0, 0, pulseDelay 1
-						if event-slot is stained glass pane:
-							drawItemFountain stained glass pane, style 2, center location of {@loc}, id "%player%nagroda", itemTime 10 second, yVelocity 0.34, radius 0.3, density 5, displacementXYZ 0, 0, 0, pulseDelay 1
-						if event-slot is amethyst shard:
-							drawItemFountain {magicznypryzmat}, style 2, center location of {@loc}, id "%player%nagroda", itemTime 10 second, yVelocity 0.34, radius 0.3, density 5, displacementXYZ 0, 0, 0, pulseDelay 1
-						if event-slot is note block:
-							drawItemFountain {skrzynkaluksusowa}, style 2, center location of {@loc}, id "%player%nagroda", itemTime 10 second, yVelocity 0.34, radius 0.3, density 5, displacementXYZ 0, 0, 0, pulseDelay 1
-						if event-slot is firework star:
-							drawItemFountain {tokenwdziecznosci}, style 2, center location of {@loc}, id "%player%nagroda", itemTime 10 second, yVelocity 0.34, radius 0.3, density 5, displacementXYZ 0, 0, 0, pulseDelay 1
-						if event-slot is glowstone dust:
-							if name of event-slot = "&fOdłamek Gwiazdy":
-								drawItemFountain (glowstone dust with nbt from "{""minecraft:custom_model_data"":{floats:[11.0f]}}"), style 2, center location of {@loc}, id "%player%nagroda", itemTime 10 second, yVelocity 0.34, radius 0.3, density 5, displacementXYZ 0, 0, 0, pulseDelay 1
-						set {_x} to 0
-						loop 20 times:
-							if loop-number is divisible by 5:
-								play sound "block.note_block.hat" with volume 3 and pitch {_x} at {@loc}
-							play sound "entity.item.pickup" with volume 3 and pitch {_x} at {@loc}
-							add 0.1 to {_x}
-							wait 0.1 seconds
-						set {_y} to 0
-						set {_y2} to 0
-						set {_loc} to location(-1185.5, 63.5, -1830.5, world "world")
-						loop 120 times:
-							if loop-number is divisible by 10:
-								play sound "block.note_block.basedrum" with volume 3 and pitch 1 at {@loc}
-							if loop-number is divisible by 20:
-								play sound "block.note_block.snare" with volume 3 and pitch 2 at {@loc}
-							if loop-number is 30:
-								play sound "block.note_block.bell" with volume 3 and pitch 1.1 at {@loc}
-							else if loop-number is 33:
-								play sound "block.note_block.bell" with volume 3 and pitch 0.9 at {@loc}
-							if loop-number is 60 or 63:
-								play sound "block.note_block.bell" with volume 3 and pitch 1.1 at {@loc}
-							if loop-number is 90:
-								play sound "block.note_block.bell" with volume 3 and pitch 1.1 at {@loc}
-							else if loop-number is 93:
-								play sound "block.note_block.bell" with volume 3 and pitch 0.9 at {@loc}
-							set {_v} to vector 1, 0, 1
-							set {_v2} to vector 1, 0, 1
-							rotate {_v} around z-axis by {_y}
-							rotate {_v2} around y-axis by {_y2}
-							add 8 to {_y}
-							add 8 to {_y2}
-							draw 1 of dust using dustOption(lime, 1) at {_loc} ~ {_v}
-							draw 1 of dust using dustOption(lime, 1) at {@loc} ~ {_v2}
-							wait 1 tick
-						stopEffect "%player%nagroda"
-						loop 3 times:
-							play sound "block.note_block.basedrum" with volume 3 and pitch 1 at {@loc}
-							wait 5 ticks
-						if event-slot is emerald:
-							if name of event-slot contains "x25":
-								set {_itemAmount} to 25
-							else if name of event-slot contains "x100":
-								set {_itemAmount} to 100
-							send "<##f0cc9e> Daily Reward >>> &fClaimed <##b5e550>%{_itemAmount}%x Klejnots&f! Come back tomorrow for another surprise!" to player
-							giveItem(player, ({_itemAmount} of {klejnot}))
-						if event-slot is glowstone dust:
-							if name of event-slot contains "x100":
-								set {_itemAmount} to 100
-							else if name of event-slot contains "x300":
-								set {_itemAmount} to 300
-							if name of event-slot = "%({stardust}'s name)% x100" or "%({stardust}'s name)% x300":
-								send "<##f0cc9e> Daily Reward >>> &fClaimed &5%{_itemAmount}%x &f%{stardust}'s name%&f! Come back tomorrow for another surprise!" to player
-								giveItem(player, ({_itemAmount} of {stardust}))
-						if event-slot is stained glass pane:
-							set {_ran} to a random integer between 1 and 5
-							if {_ran} = 1:
-								set {_booster} to {boostersecretwonders}
-							else if {_ran} = 2:
-								set {_booster} to {boostermajesticdawn}
-							else if {_ran} = 3:
-								set {_booster} to {boosterunseenforces}
-							else if {_ran} = 4:
-								set {_booster} to {boosterplasmafreeze}
-							else if {_ran} = 5:
-								set {_booster} to {boosterteampoisonvsteamaqua}
-							giveItem(player, {_booster})
-							play sound "block.lava.pop" with volume 3 and pitch 1 at player
-							send "<##f0cc9e> Daily Reward>>> &fClaimed %{_booster}'s name%&f! Wróć kolejnego dnia po następną niespodziankę!" to player
-						if event-slot is amethyst shard:
-							send "<##f0cc9e> Daily Reward >>> &fClaimed %{magicznypryzmat}'s name%&f! Come back tomorrow for another surprise!" to player
-							giveItem(player, {magicznypryzmat})
-						else if event-slot is note block:
-							if name of event-slot contains "8x":
-								set {_itemAmount} to 8
-							else if name of event-slot contains "16x":
-								set {_itemAmount} to 16
-							send "<##f0cc9e> Daily Reward >>> &fClaimed &9%{_itemAmount}%x %{skrzynkaluksusowa}'s name%&f! Come back tomorrow for another surprise!" to player
-							giveItem(player, {_itemAmount} of {skrzynkaluksusowa})
-						else if event-slot is firework star:
-							send "<##f0cc9e> Daily Reward >>> &fClaimed a %{tokenwdziecznosci}'s name%&f! Come back tomorrow for another surprise!" to player
-							giveItem(player, {tokenwdziecznosci})
-						else if event-slot is glowstone dust:
-							if name of event-slot contains "&fStar Piece":
-								if name of event-slot contains "x2":
-									set {_itemAmount} to 2
-								else:
-									set {_itemAmount} to 1
-								send "<##f0cc9e> Daily Reward >>> &fClaimed %{_itemAmount}%x %{odlamekgwiazdy}'s name%&f! Come back tomorrow for another surprise!" to player
-								giveItem(player, ({_itemAmount} of {odlamekgwiazdy}))
-							else if name of event-slot = "&bDiamond Shard":
-								send "<##f0cc9e> Daily Reward >>> &fClaimed %{diamondshard}'s name%&f! Come back tomorrow for another surprise!" to player
-								giveItem(player, ({diamondshard}))
-						else if event-slot is book:
-							if name of event-slot contains (name of {adeptexpbook}):
-								if name of event-slot contains "x2":
-									set {_itemAmount} to 2
-								send "<##f0cc9e> Daily Reward >>> &fClaimed %{_itemAmount}%x %{adeptexpbook}'s name%&f! Come back tomorrow for another surprise!" to player
-								giveItem(player, ({_itemAmount} of {adeptexpbook}))
-						else if event-slot is lapis lazuli:
-							set {_rng} to a random integer between 1 and 4
-							if {_rng} = 1:
-								set {_boost} to {jadeitowastatuetka}
-							else if {_rng} = 2:
-								set {_boost} to {cytrynowelustro}
-							else if {_rng} = 3:
-								set {_boost} to {szafirowekostki}
-							else:
-								set {_boost} to {turmalinowydiadem}
-							send "<##f0cc9e> Daily Reward >>> &fClaimed %{_boost}'s name%&f! Come back tomorrow for another surprise!" to player
-							giveItem(player, ({_boost}))
-						play sound "entity.item.pickup" with volume 3 and pitch 1 at player
-#on rightclick on armor stand:
-#	if helmet of clicked entity is stained glass pane:
-#		cancel event
-#		play sound "block.chest.open" with volume 3 and pitch 1 at clicked entity
-#		loop all entities in radius 2 around clicked entity:
-#			if loop-entity is armor stand:
-#				kill loop-entity
-#		delete clicked entity
-#		if {language::%player%} = "English":
-#			#set {_booster} to a random element of {boosteryEN::*}
-#			set {_booster} to {boostersecretwonders}
-#			drop {_booster} at clicked entity
-#			play sound "block.lava.pop" with volume 3 and pitch 1 at clicked entity
-#			send "<##f0cc9e> Daily Reward>>> &fClaimed %{_booster}'s name%&f! Wróć kolejnego dnia po następną niespodziankę!" to player
-#		else:
-#			#set {_booster} to a random element of {boostery::*}
-#			set {_booster} to {boostersecretwonders}
-#			drop {_booster} at clicked entity
-#			play sound "block.lava.pop" with volume 3 and pitch 1 at clicked entity
-#			send "<##f0cc9e> Dzienna Nagroda >>> &fOdebrano %{_booster}'s name%&f! Wróć kolejnego dnia po następną niespodziankę!" to player
-on break of lectern:
-	if event-block is {@loc}:
-		cancel event
+		set {_slots::*} to 10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 22, 23, 24 and 25
+		if {_slots::*} contains index of event-slot:
+			if DailyRewardCanClaim(player) is true:
+				DailyRewardClaim(player)
+				DailyRewardOpen(player)
+			else:
+				play sound "entity.villager.no" with volume 2 and pitch 1 to player
 
 function dailyRewardAnimate():
 	wait 1 tick
