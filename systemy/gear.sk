@@ -391,6 +391,21 @@ function ArtifactValueRatio(item: item) :: number:
 function ArtifactJudgePercent(item: item) :: number:
     return round(ArtifactValueRatio({_item}) * 100, 1)
 
+function GearScoreRelic(p: player, relic: item) :: number:
+    set {_itemLevel} to int tag "ItemLevel" of (custom nbt of {_relic})
+    if {_itemLevel} is not set:
+        set {_itemLevel} to round(RelicAverageItemLevel({_p}), 0)
+    set {_upgraded} to int tag "Upgraded" of (custom nbt of {_relic})
+    if {_upgraded} is not set:
+        set {_upgraded} to 0
+    set {_enhanced} to int tag "Enhanced" of (custom nbt of {_relic})
+    if {_enhanced} is not set:
+        set {_enhanced} to 0
+    set {_score} to {_itemLevel} * 4.8
+    set {_score} to {_score} * (1 + ({_upgraded} / 125))
+    set {_score} to {_score} * (1 + ({_enhanced} * 0.05))
+    return {_score}
+
 function CalculateCardGearScore(p: player, saveResult: boolean = true) :: number:
     set {_gearScore} to 0
 
@@ -459,6 +474,11 @@ function CalculateCardGearScore(p: player, saveResult: boolean = true) :: number
                 set {_artifactBase} to {_artifactBase} * GearScoreRarityMultiplier({_rarity})
                 set {_artifactBase} to {_artifactBase} * {_qualityRatio}
                 set {_gearScore} to {_gearScore} + {_artifactBase}
+
+            else if boolean tag "Relic" of (custom nbt of {_gearItem}) is set:
+                set {_gearScore} to {_gearScore} + GearScoreRelic({_p}, {_gearItem})
+            else if GearIsRelic({_gearItem}) is true:
+                set {_gearScore} to {_gearScore} + GearScoreRelic({_p}, {_gearItem})
 
     loop yaml node keys "Card.Gear Set Bonuses" in "activeCard-%{_p}%":
         if yaml value "Card.Gear Set Bonuses.%loop-value%.2Set.Active" in "activeCard-%{_p}%" is true:
