@@ -150,6 +150,7 @@ function DailyRewardClaim(p: player):
 	set yaml value "Daily Reward.Streak" in "data-%{_p}%" to {_streak}
 	set yaml value "Daily Reward.Last Reset" in "data-%{_p}%" to {_resetId}
 	set yaml value "Daily Reward.Last Claim Reset" in "data-%{_p}%" to {_resetId}
+	set {dailyready::%{_p}%} to false
 
 	set {_newProgress} to DailyRewardProgress({_p}) + 1
 	set yaml value "Daily Reward.Progress" in "data-%{_p}%" to {_newProgress}
@@ -175,26 +176,34 @@ function DailyRewardOpen(p: player):
 	set {_canClaim} to DailyRewardCanClaim({_p})
 	set {_progress} to DailyRewardProgress({_p})
 	set {_cycleDay} to mod({_progress}, 14) + 1
+	set {_lastClaimedDay} to mod(({_progress} - 1), 14) + 1
+	if {_canClaim} is false:
+		set {_displayDay} to {_lastClaimedDay}
+	else:
+		set {_displayDay} to {_cycleDay}
 	set {_slots::*} to 10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 22, 23, 24 and 25
 
 	loop 14 times:
 		set {_day} to loop-number
 		set {_slot} to {_slots::%loop-number%}
 
-		if {_day} = {_cycleDay}:
-			if {_canClaim} is true:
+		if {_canClaim} is false:
+			if {_day} = {_lastClaimedDay}:
+				set {_item} to magenta stained glass pane named "&dClaimed" with lore "&8Day %{_day}%", "&7Reward: &f%DailyRewardName({_day})%"
+			else:
+				set {_item} to gray stained glass pane named "&7Day %{_day}%" with lore "&7Reward: &f%DailyRewardName({_day})%"
+		else:
+			if {_day} = {_cycleDay}:
 				set {_item} to DailyRewardItem({_day}, {_p})
 				set lore of {_item} to lore of {_item} and " " and "&aClick to claim today's reward."
-			else:
+			else if {_day} < {_cycleDay}:
 				set {_item} to magenta stained glass pane named "&dClaimed" with lore "&8Day %{_day}%", "&7Reward: &f%DailyRewardName({_day})%"
-		else if {_day} < {_cycleDay}:
-			set {_item} to magenta stained glass pane named "&dClaimed" with lore "&8Day %{_day}%", "&7Reward: &f%DailyRewardName({_day})%"
-		else:
-			set {_item} to gray stained glass pane named "&7Day %{_day}%" with lore "&7Reward: &f%DailyRewardName({_day})%"
+			else:
+				set {_item} to gray stained glass pane named "&7Day %{_day}%" with lore "&7Reward: &f%DailyRewardName({_day})%"
 
 		set slot {_slot} of {_gui} to {_item}
 
-	set slot 4 of {_gui} to end crystal named "<##e134eb>Current Streak" with lore "&7Current streak: &f%DailyRewardStreak({_p})%", "&7Progress day: &f%{_currentDay}%&7/&f14"
+	set slot 4 of {_gui} to end crystal named "<##e134eb>Current Streak" with lore "&7Current streak: &f%DailyRewardStreak({_p})%", "&7Progress day: &f%{_displayDay}%&7/&f14"
 	open {_gui} to {_p}
 
 on rightclick:
