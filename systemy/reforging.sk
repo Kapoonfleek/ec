@@ -1130,6 +1130,27 @@ function PapitoFormatPercent(value: number) :: text:
     return "%{_whole}%.%{_decimalText}%"
 
 
+
+function ArtifactEffectiveRollCount(item: item, stat: text) :: integer:
+    set {_current} to int tag "Stats;%{_stat}%" of (custom nbt of {_item})
+    set {_rolls} to int tag "Rolls;%{_stat}%" of (custom nbt of {_item})
+    set {_inferredRolls} to ArtifactRollCountForValue({_item}, {_current})
+    if {_rolls} is not set:
+        set {_rolls} to {_inferredRolls}
+    if {_rolls} < {_inferredRolls}:
+        set {_rolls} to {_inferredRolls}
+    if {_rolls} < 1:
+        set {_rolls} to 1
+    return {_rolls}
+
+function ArtifactTotalEffectiveRolls(item: item) :: integer:
+    loop nbt tags of (compound tag "Stats" of (custom nbt of {_item})):
+        set {_rolls} to ArtifactEffectiveRollCount({_item}, loop-value)
+        set {_total} to {_total} + {_rolls}
+    if {_total} is not set:
+        set {_total} to 0
+    return {_total}
+
 function PapitoArtifactMinRoll(itemLevel: integer) :: number:
     return round((0.150 * 4.7385 * {_itemLevel}) / 6, 0)
 
@@ -1166,6 +1187,9 @@ function PapitoArtifactInitialSubstats(item: item) :: integer:
     return size of {_stats::*}
 
 function PapitoArtifactRollCount(item: item) :: integer:
+    set {_trackedRolls} to ArtifactTotalEffectiveRolls({_item})
+    if {_trackedRolls} > 0:
+        return {_trackedRolls}
     set {_upgradeLevel} to int tag "Upgraded" of (custom nbt of {_item})
     if {_upgradeLevel} is not set:
         set {_upgradeLevel} to 0
@@ -1173,11 +1197,7 @@ function PapitoArtifactRollCount(item: item) :: integer:
 
 function PapitoArtifactMinValue(item: item) :: number:
     set {_itemLevel} to int tag "ItemLevel" of (custom nbt of {_item})
-    set {_starLevel} to int tag "StarLevel" of (custom nbt of {_item})
-    set {_upgradeLevel} to int tag "Upgraded" of (custom nbt of {_item})
-    if {_upgradeLevel} is not set:
-        set {_upgradeLevel} to 0
-    set {_rollCount} to PapitoArtifactMinInitialSubstats({_starLevel}) + floor({_upgradeLevel} / 5)
+    set {_rollCount} to PapitoArtifactRollCount({_item})
     return PapitoArtifactMinRoll({_itemLevel}) * {_rollCount}
 
 function PapitoArtifactMaxValue(item: item) :: number:
@@ -1186,16 +1206,21 @@ function PapitoArtifactMaxValue(item: item) :: number:
     set {_upgradeLevel} to int tag "Upgraded" of (custom nbt of {_item})
     if {_upgradeLevel} is not set:
         set {_upgradeLevel} to 0
-    set {_rollCount} to PapitoArtifactMaxInitialSubstats({_starLevel}) + floor({_upgradeLevel} / 5)
-    return PapitoArtifactMaxRoll({_itemLevel}) * {_rollCount}
+    set {_maxRollCount} to PapitoArtifactMaxInitialSubstats({_starLevel}) + floor({_upgradeLevel} / 5)
+    return PapitoArtifactMaxRoll({_itemLevel}) * {_maxRollCount}
 
 function PapitoArtifactRollQuality(item: item) :: number:
-    set {_stats::*} to nbt tags of (compound tag "Stats" of (custom nbt of {_item}))
-    if size of {_stats::*} <= 0:
-        return 0
-    loop {_stats::*}:
-        set {_total} to {_total} + ArtifactStatJudgePercent({_item}, loop-value)
-    return {_total} / size of {_stats::*}
+    set {_currentValue} to ArtifactCurrentValue({_item})
+    set {_minValue} to PapitoArtifactMinValue({_item})
+    set {_maxValue} to PapitoArtifactMaxValue({_item})
+    if {_maxValue} <= {_minValue}:
+        return 100
+    set {_ratio} to ({_currentValue} - {_minValue}) / ({_maxValue} - {_minValue})
+    if {_ratio} < 0:
+        set {_ratio} to 0
+    if {_ratio} > 1:
+        set {_ratio} to 1
+    return {_ratio} * 100
 
 function PapitoArtifactInitialSubstatQuality(item: item) :: number:
     set {_starLevel} to int tag "StarLevel" of (custom nbt of {_item})
@@ -1212,22 +1237,16 @@ function PapitoArtifactInitialSubstatQuality(item: item) :: number:
     return {_ratio} * 100
 
 function PapitoArtifactJudgePercent(item: item) :: number:
-    set {_rollQuality} to PapitoArtifactRollQuality({_item})
-    set {_initialQuality} to PapitoArtifactInitialSubstatQuality({_item})
-    return round(({_rollQuality} * 0.75) + ({_initialQuality} * 0.25), 1)
+    return round(PapitoArtifactRollQuality({_item}), 1)
 
 function ArtifactStatJudgePercent(item: item, stat: text) :: number:
     set {_itemLevel} to int tag "ItemLevel" of (custom nbt of {_item})
     set {_current} to int tag "Stats;%{_stat}%" of (custom nbt of {_item})
     if {_current} <= 0:
         return 0
-    set {_minRoll} to PapitoArtifactMinRoll({_itemLevel})
-    set {_maxRoll} to PapitoArtifactMaxRoll({_itemLevel})
-    set {_estimatedRolls} to ceil({_current} / {_maxRoll})
-    if {_estimatedRolls} < 1:
-        set {_estimatedRolls} to 1
-    set {_minimum} to {_minRoll} * {_estimatedRolls}
-    set {_maximum} to {_maxRoll} * {_estimatedRolls}
+    set {_rolls} to ArtifactEffectiveRollCount({_item}, {_stat})
+    set {_minimum} to PapitoArtifactMinRoll({_itemLevel}) * {_rolls}
+    set {_maximum} to PapitoArtifactMaxRoll({_itemLevel}) * {_rolls}
     if {_maximum} <= {_minimum}:
         return 100
     set {_ratio} to ({_current} - {_minimum}) / ({_maximum} - {_minimum})
@@ -1299,7 +1318,7 @@ function ArtifactJudgeValueLore(item: item) :: texts:
     else:
         set {_rating} to "&cPoor"
     set {_percentText} to PapitoFormatPercent({_percent})
-    set {_lore::*} to "&7Papito judges this Artifact using", "&7roll quality and starting substats.", " ", "&7Star Level: &f%{_starLevel}%", "&7Item Level: &f%{_itemLevel}%", "&7Initial Substats: &f%{_initialSubstats}%", "&7Roll Count: &f%{_rollCount}%", "&7Current Value: &f%round({_currentValue}, 0)%", "&7Minimum Value: &f%round({_minValue}, 0)%", "&7Maximum Value: &f%round({_maxValue}, 0)%", "&7Roll Quality: &f%PapitoFormatPercent({_rollQuality})%%%", "&7Substat Quality: &f%PapitoFormatPercent({_initialQuality})%%%", "&7Quality: &f%{_percentText}%%%", "&7Rating: %{_rating}%"
+    set {_lore::*} to "&7Papito judges this Artifact using", "&7normalized roll quality.", " ", "&7Star Level: &f%{_starLevel}%", "&7Item Level: &f%{_itemLevel}%", "&7Initial Substats: &f%{_initialSubstats}%", "&7Roll Count: &f%{_rollCount}%", "&7Current Value: &f%round({_currentValue}, 0)%", "&7Minimum Value: &f%round({_minValue}, 0)%", "&7Maximum Value: &f%round({_maxValue}, 0)%", "&7Quality: &f%{_percentText}%%%", "&7Rating: %{_rating}%"
     return {_lore::*}
 
 function findGemsByColour(gemColour: string) :: strings:
