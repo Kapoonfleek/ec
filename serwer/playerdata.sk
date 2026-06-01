@@ -49,11 +49,12 @@ on join:
 		add player's name to yaml list "Player.Name History" in "data-%player%" 
 
 	if yaml value "Unlocked Content" in "data-%player%" is not set:
-		broadcast "b"
 		load yaml "plugins/Skript/lists/ContentList.yml" as "ContentList"
 		set {_contentList::*} to yaml list "Content List" in "ContentList"
 		loop {_contentList::*}:
 			set yaml value "Unlocked Content.%loop-value%" in "data-%player%" to false
+
+	updateAllTimeVariables(player)
 
 	save yaml "data-%player%"
 	save yaml "WorldQuests%player%"
@@ -63,7 +64,7 @@ on join:
 
 	set {_region} to (join "%regions at player%" by "")
 	UnfreezeWorldQuestMobsInRegion(player, {_region})
-	
+
 	set {_size} to size of (yaml list "Player.Item Claim" in "data-%player%")
 	if {_size} > 0:
 		wait 6 seconds
@@ -114,3 +115,43 @@ on skript stop:
 	loop all loaded yaml:
 		save loop-value
 		wait 1 tick
+
+function updateAllTimeVariables(p: player):
+	if yaml "data-%{_p}%" is not loaded:
+		load yaml "plugins/Skript/playerdata/%uuid of {_p}%.yml" as "data-%{_p}%"
+		set {_offline} to true
+
+	set {_allTimeLevel} to yaml value "Player.All Time.Level" in "data-%{_p}%"
+	if {_allTimeLevel} is not set:
+		set {_allTimeLevel} to 0
+	set {alltimelevel::%{_p}%} to {_allTimeLevel}
+
+	set {_allTimeMobKills} to yaml value "Player.All Time.Mob Kills" in "data-%{_p}%"
+	if {_allTimeMobKills} is not set:
+		set {_allTimeMobKills} to 0
+	set {alltimemobkills::%{_p}%} to {_allTimeMobKills}
+
+	set {_allTimeStone} to yaml value "Player.All Time.Stone Mined" in "data-%{_p}%"
+	if {_allTimeStone} is not set:
+		set {_allTimeStone} to 0
+	set {alltimestone::%{_p}%} to {_allTimeStone}
+
+	set {_siegeLevel} to yaml value "Player.Per Update.Siege of Spawn.Level" in "data-%{_p}%"
+	if {_siegeLevel} is not set:
+		set {_siegeLevel} to 0
+	set {historiclevel::siegeofspawn::%{_p}%} to {_siegeLevel}
+
+	set {_siegeMobKills} to yaml value "Player.Per Update.Siege of Spawn.Mob Kills" in "data-%{_p}%"
+	if {_siegeMobKills} is not set:
+		set {_siegeMobKills} to 0
+	set {historicmobkills::siegeofspawn::%{_p}%} to {_siegeMobKills}
+
+	set {_siegeStone} to yaml value "Player.Per Update.Siege of Spawn..Stone Mined" in "data-%{_p}%"
+	if {_siegeStone} is not set:
+		set {_siegeStone} to 0
+	set {historicstonemined::siegeofspawn::%{_p}%} to {_siegeStone}
+
+	save yaml "data-%{_p}%"
+
+	if {_offline} = true:
+		unload yaml "data-%{_p}%"
