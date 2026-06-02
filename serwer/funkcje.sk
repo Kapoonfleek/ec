@@ -987,6 +987,27 @@ function StarforgedSetCount(p: player, card: text, tier: text) :: integer:
 		set {_count} to 0
 	return {_count}
 
+function TalentPlaceholderValue(p: player, card: text, row: integer, tier: text = "") :: text:
+	if {karta::%{_p}%} is set:
+		if {kartaname::%{_p}%} = {_card}:
+			set {_talent} to string tag "Talents;Row %{_row}%" of (custom nbt of {karta::%{_p}%})
+	if {_talent} is not set:
+		if {_tier} is not "":
+			set {_talent} to yaml value "%{_card}%.%{_tier}%.TALENT%{_row}%" in "TierSetList"
+	if {_card} = "Ghazan":
+		if {_row} = 3:
+			if {_talent} is not set:
+				set {_talent} to "Lava Wave"
+	return {_talent}
+
+function ReplaceTalentPlaceholders(p: player, card: text, text: text, tier: text = "") :: text:
+	set {_text} to {_text}
+	loop 5 times:
+		set {_talent} to TalentPlaceholderValue({_p}, {_card}, loop-number, {_tier})
+		if {_talent} is set:
+			replace all "{TALENT%loop-number%}" in {_text} with {_talent}
+	return {_text}
+
 function GetAbilityDescription(p: player, card: text, ability: text, valueNames: texts, values: objects) :: text:
 	set {_description::*} to yaml list "%{_card}%.%{_ability}%.Description" in "AbilityDescriptionList"
 	set {_description} to (join {_description::*} by nl)
@@ -1019,6 +1040,7 @@ function GetAbilityDescription(p: player, card: text, ability: text, valueNames:
 		set {_icon} to yaml value "Card.%{_card}%.%loop-value%.Icons.%{_variant}%" in "SpellList"
 		replace all "{ICON:%loop-value%}" in {_description} with {_icon}
 
+	set {_description} to ReplaceTalentPlaceholders({_p}, {_card}, {_description})
 	set {_description} to coloured {_description}
 
 	return {_description}
