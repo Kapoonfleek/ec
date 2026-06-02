@@ -190,7 +190,27 @@ function DiamondMissingTierSet(card: text) :: item:
 	set {_cardName} to DiamondCardName({_card})
 	return gray stained glass pane named "&8Pending Starforged Sigil" with lore "&7A Starforged Sigil for %{_cardName}%&7%nl%&7is not available yet."
 
-function DiamondTierSetItem(card: text, tier: text) :: item:
+function DiamondTierTalentValue(p: player, card: text, tier: text, row: integer) :: text:
+	if {karta::%{_p}%} is set:
+		if {kartaname::%{_p}%} = {_card}:
+			set {_talent} to string tag "Talents;Row %{_row}%" of (custom nbt of {karta::%{_p}%})
+	if {_talent} is not set:
+		set {_talent} to yaml value "%{_card}%.%{_tier}%.TALENT%{_row}%" in "TierSetList"
+	if {_card} = "Ghazan":
+		if {_row} = 3:
+			if {_talent} is not set:
+				set {_talent} to "Lava Wave"
+	return {_talent}
+
+function DiamondTierReplaceTalents(p: player, card: text, tier: text, text: text) :: text:
+	set {_text} to {_text}
+	loop 5 times:
+		set {_talent} to DiamondTierTalentValue({_p}, {_card}, {_tier}, loop-number)
+		if {_talent} is set:
+			replace all "{TALENT%loop-number%}" in {_text} with {_talent}
+	return {_text}
+
+function DiamondTierSetItem(p: player, card: text, tier: text) :: item:
 	if {_tier} = "":
 		return DiamondMissingTierSet({_card})
 	set {_setBonus} to yaml value "%{_card}%.%{_tier}%.Name" in "TierSetList"
@@ -206,6 +226,7 @@ function DiamondTierSetItem(card: text, tier: text) :: item:
 		set {_setBonusDetailRaw} to {_setBonus}
 	if {_description} is not set:
 		set {_description} to ""
+	set {_description} to DiamondTierReplaceTalents({_p}, {_card}, {_tier}, {_description})
 	set {_itemType} to {_itemTypeRaw} parsed as item type
 	set {_cardName} to DiamondCardName({_card})
 	set {_cardColour} to last string colour code of {_cardName}
@@ -230,6 +251,8 @@ function DiamondTierSetItem(card: text, tier: text) :: item:
 		set {_value} to yaml value "%{_card}%.%{_tier}%.4SETVALUE%loop-number%" in "TierSetList"
 		replace all "{4SETVALUE%loop-number%}" in {_4Set} with "%{_value}%"
 		replace all "{NL}" in {_4Set} with nl
+	set {_2Set} to DiamondTierReplaceTalents({_p}, {_card}, {_tier}, {_2Set})
+	set {_4Set} to DiamondTierReplaceTalents({_p}, {_card}, {_tier}, {_4Set})
 	if {_customModelData} is set:
 		set {_item} to {_itemType} named "<#9fe7ff>%{_tier}%: %{_setBonusDetail}%" with lore "<#78e4ff>%{_cardName}% Set Bonus%nl%%{_sigil}%%nl% %nl%%{_generalDescription}% &f%{_cardName}%&7.%nl% %nl%&8%{_underline}%%nl%%{_setBonusDetail}%%nl%&8%{_underline}%%nl%%{_cardColour}%✨ 2-set Effect:%nl%  %{_2Set}%%nl% %nl%%{_cardColour}%✨ 4-set Effect:%nl%  %{_4Set}%%nl% %nl%%{_flavourText}%" with nbt from "{""minecraft:custom_model_data"":{floats:[%{_customModelData}%.0f]}}"
 	else:
@@ -245,7 +268,7 @@ function DiamondTierSetForPlayer(p: player, card: text) :: item:
 	set {_tier} to DiamondPreferredTier({_p}, {_card})
 	if {_tier} = "":
 		return DiamondMissingTierSet({_card})
-	return DiamondTierSetItem({_card}, {_tier})
+	return DiamondTierSetItem({_p}, {_card}, {_tier})
 
 function DiamondFeaturedTypeAvailable(card: text, type: text) :: boolean:
 	if {_type} contains "Relic":
@@ -585,7 +608,7 @@ function DiamondTierSelectionMenu(p: player, card: text):
 		stop
 	loop {_tiers::*}:
 		if DiamondTierPreviewEnabled(loop-value) is true:
-			set {_item} to DiamondTierSetItem({_card}, loop-value)
+			set {_item} to DiamondTierSetItem({_p}, {_card}, loop-value)
 			set {_selectLore::*} to colored lore of {_item}
 			set {_selectLore::*} to {_selectLore::*} and " "
 			if loop-value = {_currentTier}:
@@ -597,8 +620,9 @@ function DiamondTierSelectionMenu(p: player, card: text):
 			set string tag "DiamondTierValue" of (custom nbt of {_item}) to loop-value
 		else:
 			set {_item} to DiamondComingSoonTierItem({_card}, loop-value)
-		set slot {_slot} of {_m} to {_item}
-		set {_slot} to {_slot} + 1
+			set slot {_slot} of {_m} to {_item}
+			set {_slot} to {_slot} + 1
+			
 	open {_m} to {_p}
 
 function DiamondPreviewMenu(p: player):
