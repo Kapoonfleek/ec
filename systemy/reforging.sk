@@ -1529,7 +1529,7 @@ function StarforgeSetName(card: text, tier: text) :: text:
 function StarforgeSetDisplay(card: text, tier: text, active: boolean = false) :: text:
     return StarforgeSetName({_card}, {_tier})
 
-function StarforgeSetDescription(card: text, tier: text, setTier: text, active: boolean = false) :: text:
+function StarforgeSetDescription(p: player, card: text, tier: text, setTier: text, active: boolean = false) :: text:
     set {_description} to formatted yaml value "%{_card}%.%{_tier}%.%{_setTier}%" in "TierSetList"
 
     set {_valueNames::*} to yaml node keys "%{_card}%.%{_tier}%" in "TierSetList"
@@ -1545,6 +1545,7 @@ function StarforgeSetDescription(card: text, tier: text, setTier: text, active: 
                 replace all "{%loop-value%}" in {_description} with "%{_value}%"
 
     replace all "{NL}" in {_description} with nl
+    set {_description} to ReplaceTalentPlaceholders({_p}, {_card}, {_description}, {_tier})
 
     if {_active} is false:
         set {_description} to uncoloured {_description}
@@ -1564,8 +1565,8 @@ function StarforgeInactiveBlock(item: item) :: text:
         return ""
     set {_name} to mini message from (yaml value "%{_card}%.%{_tier}%.Gradient Name" in "TierSetList")
     
-    set {_twoSet} to StarforgeSetDescription({_card}, {_tier}, "2SET", false)
-    set {_fourSet} to StarforgeSetDescription({_card}, {_tier}, "4SET", false)
+    set {_twoSet} to StarforgeSetDescription({_p}, {_card}, {_tier}, "2SET", false)
+    set {_fourSet} to StarforgeSetDescription({_p}, {_card}, {_tier}, "4SET", false)
     set {_block} to "%nl% %nl%<#9fe7ff>&o✨ Starforged: &f%{_name}%"
     set {_block} to "%{_block}%%nl%&8✨ 2-set Effect: %{_twoSet}%"
     set {_block} to "%{_block}%%nl%&8✨ 4-set Effect: %{_fourSet}%"
@@ -1583,16 +1584,16 @@ function StarforgeActiveBlock(p: player, item: item) :: text:
     set {_leadColour} to StarforgeLeadColour({_card})
     set {_block} to "%nl% %nl%<#9fe7ff>&o✨ Starforged: &f%{_name}%"
     if {_count} >= 2:
-        set {_twoSet} to StarforgeSetDescription({_card}, {_tier}, "2SET", true)
+        set {_twoSet} to StarforgeSetDescription({_p}, {_card}, {_tier}, "2SET", true)
         set {_block} to coloured "%{_block}%%nl%%{_leadColour}%✨ 2-set Effect: %{_twoSet}%"
     else:
-        set {_twoSet} to StarforgeSetDescription({_card}, {_tier}, "2SET", false)
+        set {_twoSet} to StarforgeSetDescription({_p}, {_card}, {_tier}, "2SET", false)
         set {_block} to "%{_block}%%nl%&8✨ 2-set Effect: %{_twoSet}%"
     if {_count} >= 4:
-        set {_fourSet} to StarforgeSetDescription({_card}, {_tier}, "4SET", true)
+        set {_fourSet} to StarforgeSetDescription({_p}, {_card}, {_tier}, "4SET", true)
         set {_block} to coloured "%{_block}%%nl%%{_leadColour}%✨ 4-set Effect: %{_fourSet}%"
     else:
-        set {_fourSet} to StarforgeSetDescription({_card}, {_tier}, "4SET", false)
+        set {_fourSet} to StarforgeSetDescription({_p}, {_card}, {_tier}, "4SET", false)
         set {_block} to "%{_block}%%nl%&8✨ 4-set Effect: %{_fourSet}%"
     return {_block}
 
@@ -1606,8 +1607,8 @@ function StarforgeSaveGearYaml(p: player, gearSlot: text, gear: item):
         set yaml value "Card.Gear.%{_gearSlot}%.Starforged.Tier" in "activeCard-%{_p}%" to {_tier}
         set yaml value "Card.Gear.%{_gearSlot}%.Starforged.Name" in "activeCard-%{_p}%" to {_name}
         set yaml value "Card.Gear.%{_gearSlot}%.Starforged Bonus.Name" in "activeCard-%{_p}%" to {_name}
-        set yaml value "Card.Gear.%{_gearSlot}%.Starforged Bonus.2Set.Description" in "activeCard-%{_p}%" to StarforgeSetDescription({_card}, {_tier}, "2SET", true)
-        set yaml value "Card.Gear.%{_gearSlot}%.Starforged Bonus.4Set.Description" in "activeCard-%{_p}%" to StarforgeSetDescription({_card}, {_tier}, "4SET", true)
+        set yaml value "Card.Gear.%{_gearSlot}%.Starforged Bonus.2Set.Description" in "activeCard-%{_p}%" to StarforgeSetDescription({_p}, {_card}, {_tier}, "2SET", true)
+        set yaml value "Card.Gear.%{_gearSlot}%.Starforged Bonus.4Set.Description" in "activeCard-%{_p}%" to StarforgeSetDescription({_p}, {_card}, {_tier}, "4SET", true)
 
 function StarforgeEligibleGearSlot(slot: text) :: boolean:
     if {_slot} = "Helmet" or "Chestplate" or "Leggings" or "Boots":
@@ -1632,13 +1633,13 @@ function RecalculateStarforgedBonuses(p: player):
                 set {_name} to yaml value "Card.Gear.%loop-value%.Starforged.Name" in "activeCard-%{_p}%"
                 set {_countValue} to {_count::%{_card}%::%{_tier}%}
                 set yaml value "Card.Gear.%loop-value%.Starforged Bonus.Name" in "activeCard-%{_p}%" to {_name}
-                set yaml value "Card.Gear.%loop-value%.Starforged Bonus.2Set.Description" in "activeCard-%{_p}%" to StarforgeSetDescription({_card}, {_tier}, "2SET", true)
-                set yaml value "Card.Gear.%loop-value%.Starforged Bonus.4Set.Description" in "activeCard-%{_p}%" to StarforgeSetDescription({_card}, {_tier}, "4SET", true)
+                set yaml value "Card.Gear.%loop-value%.Starforged Bonus.2Set.Description" in "activeCard-%{_p}%" to StarforgeSetDescription({_p}, {_card}, {_tier}, "2SET", true)
+                set yaml value "Card.Gear.%loop-value%.Starforged Bonus.4Set.Description" in "activeCard-%{_p}%" to StarforgeSetDescription({_p}, {_card}, {_tier}, "4SET", true)
                 set yaml value "Card.Gear.%loop-value%.Starforged Bonus.Count" in "activeCard-%{_p}%" to {_countValue}
                 set yaml value "Card.Starforged Bonus.%{_card}%.%{_tier}%.Name" in "activeCard-%{_p}%" to {_name}
                 set yaml value "Card.Starforged Bonus.%{_card}%.%{_tier}%.Count" in "activeCard-%{_p}%" to {_countValue}
-                set yaml value "Card.Starforged Bonus.%{_card}%.%{_tier}%.2Set.Description" in "activeCard-%{_p}%" to StarforgeSetDescription({_card}, {_tier}, "2SET", true)
-                set yaml value "Card.Starforged Bonus.%{_card}%.%{_tier}%.4Set.Description" in "activeCard-%{_p}%" to StarforgeSetDescription({_card}, {_tier}, "4SET", true)
+                set yaml value "Card.Starforged Bonus.%{_card}%.%{_tier}%.2Set.Description" in "activeCard-%{_p}%" to StarforgeSetDescription({_p}, {_card}, {_tier}, "2SET", true)
+                set yaml value "Card.Starforged Bonus.%{_card}%.%{_tier}%.4Set.Description" in "activeCard-%{_p}%" to StarforgeSetDescription({_p}, {_card}, {_tier}, "4SET", true)
                 if {_countValue} >= 2:
                     set yaml value "Card.Gear.%loop-value%.Starforged Bonus.2Set.Active" in "activeCard-%{_p}%" to true
                     set yaml value "Card.Starforged Bonus.%{_card}%.%{_tier}%.2Set.Active" in "activeCard-%{_p}%" to true
@@ -1680,8 +1681,8 @@ function StarforgeDisplayItem(card: text, tier: text, current: boolean = false) 
     else:
         set {_title} to "&bNew Starforge"
 
-    set {_twoSet} to StarforgeSetDescription({_card}, {_tier}, "2SET", true)
-    set {_fourSet} to StarforgeSetDescription({_card}, {_tier}, "4SET", true)
+    set {_twoSet} to StarforgeSetDescription({_p}, {_card}, {_tier}, "2SET", true)
+    set {_fourSet} to StarforgeSetDescription({_p}, {_card}, {_tier}, "4SET", true)
 
     if {_cmd} is set:
         set {_item} to {_itemType} named "<#9fe7ff>%{_tier}%: &f%{_name}%" with lore coloured "%{_title}%%nl%&7Card: &f%{_card}%%nl% %nl%%{_leadColour}%✨ 2-set Effect: %{_twoSet}%%nl%%{_leadColour}%✨ 4-set Effect: %{_fourSet}%" with nbt from "{""minecraft:custom_model_data"":{floats:[%{_cmd}%.0f]}}"
