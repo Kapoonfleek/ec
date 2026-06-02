@@ -694,13 +694,15 @@ on inventory click:
 						#BOUNDLESS MOONLIGHT
 
 						set {_apGen} to 3/{_hasteTt}
-						set {_ap} to 2 * (1 + getRunePower(player, "Astral Flow") / 100)
-						set {_invocChance} to 10
+						set {_ap} to AbilityUpgradeValue(player, "Cresselia", "Boundless Moonlight", "AP") * (1 + getRunePower(player, "Astral Flow") / 100)
+						set {_invocChance} to AbilityUpgradeValue(player, "Cresselia", "Boundless Moonlight", "INVOCATIONCHANCE")
 
 						#STARFIRE
 
-						set {_starfireCastTime} to round((2.25 / {_hasteTt}), 1)
-						set {_starfireDamage} to 1.5 + ({damage::%player%}/30) + (Versatility(player)/90) + ({primarystat::%player%}/15)
+						set {_starfireBaseCastTime} to AbilityUpgradeValue(player, "Cresselia", "Starfire", "CASTTIME")
+						set {_starfireScaling} to AbilityUpgradeValue(player, "Cresselia", "Starfire", "DAMAGESCALING")
+						set {_starfireCastTime} to round(({_starfireBaseCastTime} / {_hasteTt}), 1)
+						set {_starfireDamage} to AbilityUpgradeValue(player, "Cresselia", "Starfire", "BASEDAMAGE") + ({damage::%player%}/{_starfireScaling}) + (Versatility(player)/({_starfireScaling} * 3)) + ({primarystat::%player%}/({_starfireScaling} / 2))
 
 						if metadata value "CelestialAlignment" of player is set:
 							if string tag "Talents;Row 3" of {_customnbt} = "Aetherial Kindling":
@@ -711,7 +713,7 @@ on inventory click:
 						else:
 							set {_starfireDamagePreview} to {_starfireDamage}
 
-						set {_starfireAoeDamage} to {_starfireDamagePreview} * 0.6
+						set {_starfireAoeDamage} to {_starfireDamagePreview} * (AbilityUpgradeValue(player, "Cresselia", "Starfire", "AOE") / 100)
 
 						if string tag "Talents;Row 3" of {_customnbt} = "Aetherial Kindling":
 							if metadata value "CelestialAlignment" of player is set:
@@ -720,6 +722,7 @@ on inventory click:
 						#SHOOTING STARS
 
 						set {_shootingStarsDamage} to (0.8 + (({damage::%player%}/61) + (Versatility(player)/183) + ({primarystat::%player%}/30.5))) * (1 + (Mastery(player)/108))
+						set {_shootingStarsDamage} to {_shootingStarsDamage} * AbilityUpgradeValue(player, "Cresselia", "Shooting Stars", "DAMAGE_MULTIPLIER")
 
 						set {_chance} to 8 + getRunePower(player, "Astral Cascade")
 
@@ -727,17 +730,18 @@ on inventory click:
 							set {_chance} to {_chance} + 2
 
 						if metadata value "CelestialAlignment" of player is set:
-							set {_chance} to {_chance} * 2
+							set {_chance} to {_chance} * (1 + (AbilityUpgradeValue(player, "Cresselia", "Celestial Alignment", "SHOOTINGSTARSFREQUENCY") / 100))
 							set {_shootingStarsDamage} to {_shootingStarsDamage} * 1.15
-							set {_shootingStarsDamage} to {_shootingStarsDamage} * 7
+							set {_shootingStarsDamage} to {_shootingStarsDamage} * (1 + (AbilityUpgradeValue(player, "Cresselia", "Celestial Alignment", "SHOOTINGSTARSDAMAGE") / 100))
 
 						if metadata value "Solstice" of player is set:
 							set {_chance} to {_chance} * 3
 
-						set {_astralPowerSS} to 2
+						set {_astralPowerSS} to AbilityUpgradeValue(player, "Cresselia", "Shooting Stars", "ASTRALPOWER")
 
 						if string tag "Talents;Row 3" of {_customnbt} = "Whirling Stars":
-							set {_astralPowerSS} to 3
+							if {_astralPowerSS} < 3:
+								set {_astralPowerSS} to 3
 							set {_shootingStarsDamage} to {_shootingStarsDamage} * 1.09
 
 						if string tag "Talents;Row 4" of {_customnbt} = "Stellar Collision":
@@ -745,13 +749,16 @@ on inventory click:
 
 						#STARSURGE
 
-						set {_starsurgeCost} to 30
+						set {_starsurgeCost} to AbilityUpgradeValue(player, "Cresselia", "Starsurge", "COST")
 
 						if string tag "Talents;Row 2" of {_customnbt} = "Astral Communion":
 							if metadata value "CelestialAlignment" of player is set:
-								set {_starsurgeCost} to 20
+								set {_starsurgeCost} to {_starsurgeCost} - 10
+								if {_starsurgeCost} < 0:
+									set {_starsurgeCost} to 0
 
-						set {_starsurgeDamage} to 5.5 + ({damage::%player%}/12) + (Versatility(player)/36) + ({primarystat::%player%}/6)
+						set {_starsurgeScaling} to AbilityUpgradeValue(player, "Cresselia", "Starsurge", "DAMAGESCALING")
+						set {_starsurgeDamage} to AbilityUpgradeValue(player, "Cresselia", "Starsurge", "BASEDAMAGE") + ({damage::%player%}/{_starsurgeScaling}) + (Versatility(player)/({_starsurgeScaling} * 3)) + ({primarystat::%player%}/({_starsurgeScaling} / 2))
 
 						if boolean tag "Constellation;Rattle the Stars" of {_customnbt} is set:
 							set {_starsurgeCost} to {_starsurgeCost} * 0.9
@@ -763,36 +770,38 @@ on inventory click:
 						if metadata value "UmbralInspiration" of player is set:
 							set {_starsurgeDamage} to {_starsurgeDamage} * 1.3
 
-						set {_starsurgeMultiplier} to (0.15 + getRunePower(player, "Stellar Compression")) + (0.25 * (Haste(player) - 1))
+						set {_starsurgeMultiplier} to ((AbilityUpgradeValue(player, "Cresselia", "Starsurge", "AMPBASE") / 100) + getRunePower(player, "Stellar Compression")) + (0.25 * (Haste(player) - 1))
 
-						set {_starsurgeBonusMax} to 2
+						set {_starsurgeBonusMax} to AbilityUpgradeValue(player, "Cresselia", "Starsurge", "MAXSTACKS")
 
 						if boolean tag "Constellation;Stellar Amplification" of {_customnbt} is set:
 							set {_starsurgeBonusMax} to 4
 
 						#STARFALL
 
-						set {_starfallCost} to 50
+						set {_starfallCost} to AbilityUpgradeValue(player, "Cresselia", "Starfall", "COST")
 
 						if string tag "Talents;Row 2" of {_customnbt} = "Astral Communion":
 							if metadata value "CelestialAlignment" of player is set:
-								set {_starfallCost} to 40
+								set {_starfallCost} to {_starfallCost} - 10
+								if {_starfallCost} < 0:
+									set {_starfallCost} to 0
 
 						if boolean tag "Constellation;Rattle the Stars" of {_customnbt} is set:
 							set {_starfallCost} to {_starfallCost} * 0.9
 
-						set {_starfallDuration} to 8 + getRunePower(player, "Astral Rain")
+						set {_starfallDuration} to AbilityUpgradeValue(player, "Cresselia", "Starfall", "DURATION") + getRunePower(player, "Astral Rain")
 
 						if string tag "Talents;Row 4" of {_customnbt} = "Hail of Stars":
-							add 3 to {_starfallDuration}
+							set {_starfallDuration} to {_starfallDuration} + 3
 							set {_starfallHaste} to Haste(player, 3.6)
 						else:
 							set {_starfallHaste} to Haste(player)
 
 						if boolean tag "Constellation;Stellar Amplification" of {_customnbt} is set:
-							add 3 to {_starfallDuration}
+							set {_starfallDuration} to {_starfallDuration} + 3
 
-						set {_baseStarfallDuration} to 8
+						set {_baseStarfallDuration} to AbilityUpgradeValue(player, "Cresselia", "Starfall", "DURATION")
 						set {_durationScalarStrength} to 0.22
 						set {_durationRatio} to {_starfallDuration} / {_baseStarfallDuration}
 						set {_starfallDurationScalar} to 1 / (1 + ({_durationScalarStrength} * ({_durationRatio} - 1)))
@@ -800,7 +809,8 @@ on inventory click:
 						if {_starfallDurationScalar} > 1:
 							set {_starfallDurationScalar} to 1
 
-						set {_starfallDamage} to 1 + ({damage::%player%}/63) + (Versatility(player)/189) + ({primarystat::%player%}/31.5)
+						set {_starfallScaling} to AbilityUpgradeValue(player, "Cresselia", "Starfall", "DAMAGESCALING")
+						set {_starfallDamage} to AbilityUpgradeValue(player, "Cresselia", "Starfall", "BASEDAMAGE") + ({damage::%player%}/{_starfallScaling}) + (Versatility(player)/({_starfallScaling} * 3)) + ({primarystat::%player%}/({_starfallScaling} / 2))
 						set {_starfallDamage} to {_starfallDamage} * {_starfallDurationScalar}
 
 						if metadata value "CelestialAlignment" of player is set:
@@ -820,16 +830,17 @@ on inventory click:
 
 						#Celestial Alignment
 
-						set {_caCooldown} to 3 minutes
+						set {_caCooldownSeconds} to AbilityUpgradeValue(player, "Cresselia", "Celestial Alignment", "COOLDOWN")
+						set {_caCooldown} to "%{_caCooldownSeconds}% seconds" parsed as timespan
 
 						if boolean tag "Constellation;The Eternal Moon" of {_customnbt} is set:
 							set {_caCooldown} to {_caCooldown} - 30 seconds
 
-						set {_caAstralPower} to 40
-						set {_caCrit} to 15
+						set {_caAstralPower} to AbilityUpgradeValue(player, "Cresselia", "Celestial Alignment", "ASTRALPOWER")
+						set {_caCrit} to AbilityUpgradeValue(player, "Cresselia", "Celestial Alignment", "CRIT")
 						set {_caDuration} to 20
-						set {_shootingStarsFrequency} to 100
-						set {_shootingStarsDamageBonus} to 600
+						set {_shootingStarsFrequency} to AbilityUpgradeValue(player, "Cresselia", "Celestial Alignment", "SHOOTINGSTARSFREQUENCY")
+						set {_shootingStarsDamageBonus} to AbilityUpgradeValue(player, "Cresselia", "Celestial Alignment", "SHOOTINGSTARSDAMAGE")
 
 						#Innervate
 						set {_innervateCooldown} to 3 minutes
@@ -861,14 +872,14 @@ on inventory click:
 
 
 						set {_valueNames::*} to "COST", "DAMAGE", "AMP", "MAXSTACKS"
-						set {_values::*} to {_starsurgeCost}, {_starsurgeDamage}, {_starsurgeMultiplier}, {_starsurgeBonusMax}
+						set {_values::*} to {_starsurgeCost}, {_starsurgeDamage}, ({_starsurgeMultiplier} * 100), {_starsurgeBonusMax}
 						set {_item} to AbilityItem(player, "Starsurge", magenta dye)
 						set lore of {_item} to GetAbilityDescription(player, "Cresselia", "Starsurge", {_valueNames::*}, {_values::*})
 						set slot 20 of {_gui} to {_item}
 
 
-						set {_valueNames::*} to "COST", "DAMAGE", "DURATION"
-						set {_values::*} to {_starfallCost}, {_starfallDamageTotal}, {_starfallDuration}
+						set {_valueNames::*} to "COST", "DAMAGE", "DURATION", "AOE"
+						set {_values::*} to {_starfallCost}, {_starfallDamageTotal}, {_starfallDuration}, AbilityUpgradeValue(player, "Cresselia", "Starfall", "AOE")
 						set {_item} to AbilityItem(player, "Starfall", purple dye)
 						set lore of {_item} to GetAbilityDescription(player, "Cresselia", "Starfall", {_valueNames::*}, {_values::*})
 						set slot 21 of {_gui} to {_item}
@@ -1217,7 +1228,13 @@ on inventory click:
 						set {_lore} to "%nl%&7Level 1:%nl%%{_color}%Critical strike chance against Frozen targets:%nl%&7Lv. 0: &c35%% &7-> Lv. 1: &a40%%%nl% %nl%&e★ &7&oUpgrade cost:%nl%   %{_color}%50 %{_ele}% Essence%nl%   <#b5e550>200 Klejnot%nl%   <#11d7d8>60 Aquamarine%nl%   <#ffe17a>800 Cosmic Flux"
 					if uncolored (name of clicked slot) = "Icy Veins":
 						set {_info} to "&f• &7Icy Veins' CD does not benefit from Haste." 
-					set slot 3 of {_gui} to (heart of the sea named "&bUpgrade Ability") with lore "&7Spend resources &7to upgrade this ability%nl%&7and increase its power." and {_lore}
+					set {_clickedAbilityName} to uncolored name of (metadata tag "ClickedAbility" of player)
+					replace all "Mastery: " in {_clickedAbilityName} with ""
+					set {_cardName} to uncolored name of player's tool
+					if AbilityUpgradeable({_cardName}, {_clickedAbilityName}) is true:
+						set slot 3 of {_gui} to (heart of the sea named "&bUpgrade Ability") with lore "&7Spend resources &7to upgrade this ability%nl%&7and increase its power." and {_lore}
+					else:
+						set slot 3 of {_gui} to gray stained glass pane named "&8Upgrade Unavailable" with lore "&7This ability cannot be upgraded."
 					set slot 5 of {_gui} to (shulker shell named "&dObtain Ability") with lore "&7Click here to obtain the ability%nl%&7in case you've lost it or accidentally%nl%&7deleted it.%nl% %nl%&7&oKeep in mind that this ability is not%nl%&7&ousable without the %(name of player's tool)% &7&ocard."
 					set slot 4 of {_gui} to (magma cream named "&cModifiers") with lore "&7NYI, coming soon!"
 					if {_info} is set:
@@ -1227,7 +1244,10 @@ on inventory click:
 		cancel event
 		#ABILITIES
 		if index of event-slot is between 0 and 8:
-			if event-slot = shulker shell named "&dObtain Ability":
+			if name of event-slot contains "&bUpgrade Ability":
+				AbilityUpgradeMenu(player)
+				play sound "block.enchantment_table.use" with volume 2 and pitch 1.4 to player
+			else if event-slot = shulker shell named "&dObtain Ability":
 				set {_clickedAbility} to metadata tag "ClickedAbility" of player
 				if cooldown "%uncolored name of {_clickedAbility}%-Obtain%player%" is finished:
 					create cooldown "%uncolored name of {_clickedAbility}%-Obtain%player%" for 5 minutes
@@ -1239,6 +1259,458 @@ on inventory click:
 					play sound "entity.villager.no" with volume 2 and pitch 1 to player
 				open metadata tag "abilitygui" of player to player
 				play sound "entity.armadillo.scute_drop" with volume 1 and pitch 1.5 to player
+
+
+	if player's current inventory is (metadata tag "abilityupgrademenu" of player):
+		cancel event
+		if event-slot = 16:
+			set {_ability} to metadata tag "AbilityUpgradeAbility" of player
+			set {_card} to metadata tag "AbilityUpgradeCard" of player
+			set {_nextLevel} to metadata tag "AbilityUpgradeNextLevel" of player
+			if AbilityUpgradeCanAfford(player, {_nextLevel}) is true:
+				AbilityUpgradeTakeCost(player, {_nextLevel})
+				AbilityUpgradeApply(player, {_card}, {_ability}, {_nextLevel})
+				play sound "entity.player.levelup" with volume 3 and pitch 1.6 to player
+				send "&a✦ Successfully upgraded &9%{_ability}% &ato &9Level %{_nextLevel}%&a!" to player
+				loop all players:
+					send "&a✦ &f%player% &aSuccessfully upgraded their &9%{_ability}% &aability to &9Level %{_nextLevel}%&a!" to player
+				AbilityUpgradeMenu(player)
+				play sound "ui.toast.challenge_complete" with volume 5 and pitch 2 at player
+			else:
+				play sound "entity.villager.no" with volume 2 and pitch 1 to player
+				send "&cYou do not have enough materials to upgrade this ability." to player
+
+function AbilityUpgradeMaxLevel(card: text, ability: text) :: integer:
+	set {_max} to yaml value "Card.%{_card}%.%{_ability}%.Upgrades.Max Level" in "SpellList"
+	if {_max} is not set:
+		set {_max} to 5
+	return {_max}
+
+function AbilityUpgradeLevel(p: player, ability: text) :: integer:
+	set {_level} to yaml value "Card.Ability Levels.%{_ability}%" in "activeCard-%{_p}%"
+	if {_level} is not set:
+		set {_level} to 0
+	return {_level}
+
+function AbilityUpgradeable(card: text, ability: text) :: boolean:
+	set {_enabled} to yaml value "Card.%{_card}%.%{_ability}%.Upgrades.Enabled" in "SpellList"
+	if {_enabled} is true:
+		return true
+	return false
+
+function AbilityUpgradeValue(p: player, card: text, ability: text, modifier: text, level: integer = -1) :: number:
+	if {_level} < 0:
+		set {_level} to AbilityUpgradeLevel({_p}, {_ability})
+	set {_currentLevel} to AbilityUpgradeLevel({_p}, {_ability})
+	if {_level} = {_currentLevel}:
+		set {_value} to yaml value "Card.Ability Modifiers.%{_ability}%.%{_modifier}%" in "activeCard-%{_p}%"
+	if {_value} is not set:
+		set {_value} to yaml value "Card.%{_card}%.%{_ability}%.Upgrades.Levels.%{_level}%.%{_modifier}%" in "SpellList"
+	if {_value} is not set:
+		set {_value} to yaml value "Card.%{_card}%.%{_ability}%.Upgrades.Levels.0.%{_modifier}%" in "SpellList"
+	if {_value} is not set:
+		set {_value} to 0
+	return {_value}
+
+function AbilityUpgradeFormatValue(value: number, valueFormat: text) :: text:
+	if {_valueFormat} = "scaling":
+		set {_text} to "%round((1 / {_value}) * 100, 2)%%%"
+	else if {_valueFormat} = "percent":
+		set {_text} to "%{_value}%%%"
+	else if {_valueFormat} = "multiplier":
+		set {_text} to "%round({_value} * 100, 2)%%%"
+	else if {_valueFormat} = "sec":
+		set {_text} to "%{_value}% sec"
+	else:
+		set {_text} to "%{_value}%"
+	return {_text}
+
+
+function AbilityUpgradeDescription(p: player, card: text, ability: text, valueNames: texts, values: objects) :: text:
+	set {_description::*} to yaml list "%{_card}%.%{_ability}%.Description" in "AbilityDescriptionList"
+	set {_description} to (join {_description::*} by nl)
+
+	set {_primCol} to getPrimaryCardColour({_p})
+	set {_secCol} to getSecondaryCardColour({_p})
+
+	replace all "{COLOUR:primary}" in {_description} with {_primCol}
+	replace all "{COLOUR:secondary}" in {_description} with {_secCol}
+
+	loop {_valueNames::*}:
+		replace all "{%loop-value%}" in {_description} with "%{_values::%loop-counter%}%"
+
+	set {_variant} to getCurrentVariant({_p}, {_card})
+	set {_cardAbilities::*} to yaml node keys "Card.%{_card}%" in "SpellList"
+
+	loop {_cardAbilities::*}:
+		set {_icon} to yaml value "Card.%{_card}%.%loop-value%.Icons.%{_variant}%" in "SpellList"
+		replace all "{ICON:%loop-value%}" in {_description} with {_icon}
+
+	set {_description} to coloured {_description}
+	return {_description}
+
+function AbilityUpgradePreviewValue(value: object, colour: text, oldValue: object = "") :: text:
+	if {_oldValue} is set:
+		if "%{_oldValue}%" != "":
+			if "%{_value}%" = "%{_oldValue}%":
+				return "&f%{_value}%"
+	return "%{_colour}%%{_value}%"
+
+function CresseliaAbilityUpgradePreviewLore(p: player, ability: text, level: integer, colour: text, compareLevel: integer = -1) :: text:
+	set {_customnbt} to custom nbt of {karta::%{_p}%}
+	set {_hasteTt} to Haste({_p})
+	set {_levelLine} to "&9Level %{_level}%"
+
+	if {_ability} = "Shooting Stars":
+		set {_baseDamage} to (0.8 + (({damage::%{_p}%}/61) + (Versatility({_p})/183) + ({primarystat::%{_p}%}/30.5))) * (1 + (Mastery({_p})/108))
+		set {_damage} to {_baseDamage} * AbilityUpgradeValue({_p}, "Cresselia", "Shooting Stars", "DAMAGE_MULTIPLIER", {_level})
+		set {_oldDamage} to {_damage}
+		if {_compareLevel} >= 0:
+			set {_oldDamage} to {_baseDamage} * AbilityUpgradeValue({_p}, "Cresselia", "Shooting Stars", "DAMAGE_MULTIPLIER", {_compareLevel})
+		set {_chance} to 8 + getRunePower({_p}, "Astral Cascade")
+		if boolean tag "Constellation;Stellar Command" of {_customnbt} is set:
+			set {_chance} to {_chance} + 2
+		if metadata value "CelestialAlignment" of {_p} is set:
+			set {_chance} to {_chance} * (1 + (AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "SHOOTINGSTARSFREQUENCY") / 100))
+			set {_damage} to {_damage} * 1.15
+			set {_damage} to {_damage} * (1 + (AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "SHOOTINGSTARSDAMAGE") / 100))
+			set {_oldDamage} to {_oldDamage} * 1.15
+			set {_oldDamage} to {_oldDamage} * (1 + (AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "SHOOTINGSTARSDAMAGE") / 100))
+		if metadata value "Solstice" of {_p} is set:
+			set {_chance} to {_chance} * 3
+		set {_astralPower} to AbilityUpgradeValue({_p}, "Cresselia", "Shooting Stars", "ASTRALPOWER", {_level})
+		set {_oldAstralPower} to {_astralPower}
+		if {_compareLevel} >= 0:
+			set {_oldAstralPower} to AbilityUpgradeValue({_p}, "Cresselia", "Shooting Stars", "ASTRALPOWER", {_compareLevel})
+		if string tag "Talents;Row 3" of {_customnbt} = "Whirling Stars":
+			if {_astralPower} < 3:
+				set {_astralPower} to 3
+			if {_oldAstralPower} < 3:
+				set {_oldAstralPower} to 3
+			set {_damage} to {_damage} * 1.09
+			set {_oldDamage} to {_oldDamage} * 1.09
+		if string tag "Talents;Row 4" of {_customnbt} = "Stellar Collision":
+			set {_damage} to {_damage} * 1.15
+			set {_oldDamage} to {_oldDamage} * 1.15
+		set {_valueNames::*} to "CHANCE", "DAMAGE", "ASTRALPOWER"
+		set {_values::*} to AbilityUpgradePreviewValue({_chance}, {_colour}, {_chance}), AbilityUpgradePreviewValue({_damage}, {_colour}, {_oldDamage}), AbilityUpgradePreviewValue({_astralPower}, {_colour}, {_oldAstralPower})
+		set {_description} to AbilityUpgradeDescription({_p}, "Cresselia", "Shooting Stars", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	else if {_ability} = "Boundless Moonlight":
+		set {_apGen} to 3/{_hasteTt}
+		set {_ap} to AbilityUpgradeValue({_p}, "Cresselia", "Boundless Moonlight", "AP", {_level}) * (1 + getRunePower({_p}, "Astral Flow") / 100)
+		set {_oldAp} to {_ap}
+		set {_invocChance} to AbilityUpgradeValue({_p}, "Cresselia", "Boundless Moonlight", "INVOCATIONCHANCE", {_level})
+		set {_oldInvocChance} to {_invocChance}
+		if {_compareLevel} >= 0:
+			set {_oldAp} to AbilityUpgradeValue({_p}, "Cresselia", "Boundless Moonlight", "AP", {_compareLevel}) * (1 + getRunePower({_p}, "Astral Flow") / 100)
+			set {_oldInvocChance} to AbilityUpgradeValue({_p}, "Cresselia", "Boundless Moonlight", "INVOCATIONCHANCE", {_compareLevel})
+		set {_valueNames::*} to "APGEN", "AP", "INVOCATIONCHANCE"
+		set {_values::*} to {_apGen}, AbilityUpgradePreviewValue({_ap}, {_colour}, {_oldAp}), AbilityUpgradePreviewValue({_invocChance}, {_colour}, {_oldInvocChance})
+		set {_description} to AbilityUpgradeDescription({_p}, "Cresselia", "Boundless Moonlight", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	else if {_ability} = "Starfire":
+		set {_baseCastTime} to AbilityUpgradeValue({_p}, "Cresselia", "Starfire", "CASTTIME", {_level})
+		set {_oldBaseCastTime} to {_baseCastTime}
+		set {_scaling} to AbilityUpgradeValue({_p}, "Cresselia", "Starfire", "DAMAGESCALING", {_level})
+		set {_oldScaling} to {_scaling}
+		if {_compareLevel} >= 0:
+			set {_oldBaseCastTime} to AbilityUpgradeValue({_p}, "Cresselia", "Starfire", "CASTTIME", {_compareLevel})
+			set {_oldScaling} to AbilityUpgradeValue({_p}, "Cresselia", "Starfire", "DAMAGESCALING", {_compareLevel})
+		set {_castTime} to round(({_baseCastTime} / {_hasteTt}), 1)
+		set {_oldCastTime} to round(({_oldBaseCastTime} / {_hasteTt}), 1)
+		set {_damage} to AbilityUpgradeValue({_p}, "Cresselia", "Starfire", "BASEDAMAGE", {_level}) + ({damage::%{_p}%}/{_scaling}) + (Versatility({_p})/({_scaling} * 3)) + ({primarystat::%{_p}%}/({_scaling} / 2))
+		set {_oldDamage} to {_damage}
+		if {_compareLevel} >= 0:
+			set {_oldDamage} to AbilityUpgradeValue({_p}, "Cresselia", "Starfire", "BASEDAMAGE", {_compareLevel}) + ({damage::%{_p}%}/{_oldScaling}) + (Versatility({_p})/({_oldScaling} * 3)) + ({primarystat::%{_p}%}/({_oldScaling} / 2))
+		if metadata value "CelestialAlignment" of {_p} is set:
+			if string tag "Talents;Row 3" of {_customnbt} = "Aetherial Kindling":
+				set {_damage} to {_damage} * 1.15
+				set {_oldDamage} to {_oldDamage} * 1.15
+		if metadata value "AstronomicalImpact" of {_p} is set:
+			set {_damagePreview} to {_damage} * 1.6
+			set {_oldDamagePreview} to {_oldDamage} * 1.6
+		else:
+			set {_damagePreview} to {_damage}
+			set {_oldDamagePreview} to {_oldDamage}
+		set {_aoeDamage} to {_damagePreview} * (AbilityUpgradeValue({_p}, "Cresselia", "Starfire", "AOE", {_level}) / 100)
+		set {_oldAoeDamage} to {_aoeDamage}
+		if {_compareLevel} >= 0:
+			set {_oldAoeDamage} to {_oldDamagePreview} * (AbilityUpgradeValue({_p}, "Cresselia", "Starfire", "AOE", {_compareLevel}) / 100)
+		if string tag "Talents;Row 3" of {_customnbt} = "Aetherial Kindling":
+			if metadata value "CelestialAlignment" of {_p} is set:
+				set {_aoeDamage} to {_aoeDamage} * 1.3
+				set {_oldAoeDamage} to {_oldAoeDamage} * 1.3
+		set {_valueNames::*} to "CASTTIME", "DAMAGE", "AOEDAMAGE"
+		set {_values::*} to AbilityUpgradePreviewValue({_castTime}, {_colour}, {_oldCastTime}), AbilityUpgradePreviewValue({_damagePreview}, {_colour}, {_oldDamagePreview}), AbilityUpgradePreviewValue({_aoeDamage}, {_colour}, {_oldAoeDamage})
+		set {_description} to AbilityUpgradeDescription({_p}, "Cresselia", "Starfire", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	else if {_ability} = "Starsurge":
+		set {_cost} to AbilityUpgradeValue({_p}, "Cresselia", "Starsurge", "COST", {_level})
+		set {_oldCost} to {_cost}
+		if {_compareLevel} >= 0:
+			set {_oldCost} to AbilityUpgradeValue({_p}, "Cresselia", "Starsurge", "COST", {_compareLevel})
+		if string tag "Talents;Row 2" of {_customnbt} = "Astral Communion":
+			if metadata value "CelestialAlignment" of {_p} is set:
+				set {_cost} to {_cost} - 10
+				set {_oldCost} to {_oldCost} - 10
+				if {_cost} < 0:
+					set {_cost} to 0
+				if {_oldCost} < 0:
+					set {_oldCost} to 0
+		set {_scaling} to AbilityUpgradeValue({_p}, "Cresselia", "Starsurge", "DAMAGESCALING", {_level})
+		set {_oldScaling} to {_scaling}
+		if {_compareLevel} >= 0:
+			set {_oldScaling} to AbilityUpgradeValue({_p}, "Cresselia", "Starsurge", "DAMAGESCALING", {_compareLevel})
+		set {_damage} to AbilityUpgradeValue({_p}, "Cresselia", "Starsurge", "BASEDAMAGE", {_level}) + ({damage::%{_p}%}/{_scaling}) + (Versatility({_p})/({_scaling} * 3)) + ({primarystat::%{_p}%}/({_scaling} / 2))
+		set {_oldDamage} to {_damage}
+		if {_compareLevel} >= 0:
+			set {_oldDamage} to AbilityUpgradeValue({_p}, "Cresselia", "Starsurge", "BASEDAMAGE", {_compareLevel}) + ({damage::%{_p}%}/{_oldScaling}) + (Versatility({_p})/({_oldScaling} * 3)) + ({primarystat::%{_p}%}/({_oldScaling} / 2))
+		if boolean tag "Constellation;Rattle the Stars" of {_customnbt} is set:
+			set {_cost} to {_cost} * 0.9
+			set {_oldCost} to {_oldCost} * 0.9
+			set {_damage} to {_damage} * 1.08
+			set {_oldDamage} to {_oldDamage} * 1.08
+		if metadata value "CelestialAlignment" of {_p} is set:
+			set {_damage} to {_damage} * 1.15
+			set {_oldDamage} to {_oldDamage} * 1.15
+		if metadata value "UmbralInspiration" of {_p} is set:
+			set {_damage} to {_damage} * 1.3
+			set {_oldDamage} to {_oldDamage} * 1.3
+		set {_amp} to ((AbilityUpgradeValue({_p}, "Cresselia", "Starsurge", "AMPBASE", {_level}) / 100) + getRunePower({_p}, "Stellar Compression")) + (0.25 * (Haste({_p}) - 1))
+		set {_oldAmp} to {_amp}
+		if {_compareLevel} >= 0:
+			set {_oldAmp} to ((AbilityUpgradeValue({_p}, "Cresselia", "Starsurge", "AMPBASE", {_compareLevel}) / 100) + getRunePower({_p}, "Stellar Compression")) + (0.25 * (Haste({_p}) - 1))
+		set {_maxStacks} to AbilityUpgradeValue({_p}, "Cresselia", "Starsurge", "MAXSTACKS", {_level})
+		set {_oldMaxStacks} to {_maxStacks}
+		if {_compareLevel} >= 0:
+			set {_oldMaxStacks} to AbilityUpgradeValue({_p}, "Cresselia", "Starsurge", "MAXSTACKS", {_compareLevel})
+		if boolean tag "Constellation;Stellar Amplification" of {_customnbt} is set:
+			set {_maxStacks} to 4
+			set {_oldMaxStacks} to 4
+		set {_valueNames::*} to "COST", "DAMAGE", "AMP", "MAXSTACKS"
+		set {_ampPreview} to {_amp} * 100
+		set {_oldAmpPreview} to {_oldAmp} * 100
+		set {_values::*} to AbilityUpgradePreviewValue({_cost}, {_colour}, {_oldCost}), AbilityUpgradePreviewValue({_damage}, {_colour}, {_oldDamage}), AbilityUpgradePreviewValue({_ampPreview}, {_colour}, {_oldAmpPreview}), AbilityUpgradePreviewValue({_maxStacks}, {_colour}, {_oldMaxStacks})
+		set {_description} to AbilityUpgradeDescription({_p}, "Cresselia", "Starsurge", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	else if {_ability} = "Starfall":
+		set {_cost} to AbilityUpgradeValue({_p}, "Cresselia", "Starfall", "COST", {_level})
+		set {_oldCost} to {_cost}
+		if {_compareLevel} >= 0:
+			set {_oldCost} to AbilityUpgradeValue({_p}, "Cresselia", "Starfall", "COST", {_compareLevel})
+		if string tag "Talents;Row 2" of {_customnbt} = "Astral Communion":
+			if metadata value "CelestialAlignment" of {_p} is set:
+				set {_cost} to {_cost} - 10
+				set {_oldCost} to {_oldCost} - 10
+				if {_cost} < 0:
+					set {_cost} to 0
+				if {_oldCost} < 0:
+					set {_oldCost} to 0
+		if boolean tag "Constellation;Rattle the Stars" of {_customnbt} is set:
+			set {_cost} to {_cost} * 0.9
+			set {_oldCost} to {_oldCost} * 0.9
+		set {_duration} to AbilityUpgradeValue({_p}, "Cresselia", "Starfall", "DURATION", {_level}) + getRunePower({_p}, "Astral Rain")
+		set {_oldDuration} to {_duration}
+		if {_compareLevel} >= 0:
+			set {_oldDuration} to AbilityUpgradeValue({_p}, "Cresselia", "Starfall", "DURATION", {_compareLevel}) + getRunePower({_p}, "Astral Rain")
+		if string tag "Talents;Row 4" of {_customnbt} = "Hail of Stars":
+			set {_duration} to {_duration} + 3
+			set {_oldDuration} to {_oldDuration} + 3
+			set {_starfallHaste} to Haste({_p}, 3.6)
+		else:
+			set {_starfallHaste} to Haste({_p})
+		if boolean tag "Constellation;Stellar Amplification" of {_customnbt} is set:
+			set {_duration} to {_duration} + 3
+			set {_oldDuration} to {_oldDuration} + 3
+		set {_baseDuration} to AbilityUpgradeValue({_p}, "Cresselia", "Starfall", "DURATION", {_level})
+		set {_oldBaseDuration} to {_baseDuration}
+		if {_compareLevel} >= 0:
+			set {_oldBaseDuration} to AbilityUpgradeValue({_p}, "Cresselia", "Starfall", "DURATION", {_compareLevel})
+		set {_durationScalarStrength} to 0.22
+		set {_durationRatio} to {_duration} / {_baseDuration}
+		set {_oldDurationRatio} to {_oldDuration} / {_oldBaseDuration}
+		set {_durationScalar} to 1 / (1 + ({_durationScalarStrength} * ({_durationRatio} - 1)))
+		set {_oldDurationScalar} to 1 / (1 + ({_durationScalarStrength} * ({_oldDurationRatio} - 1)))
+		if {_durationScalar} > 1:
+			set {_durationScalar} to 1
+		if {_oldDurationScalar} > 1:
+			set {_oldDurationScalar} to 1
+		set {_scaling} to AbilityUpgradeValue({_p}, "Cresselia", "Starfall", "DAMAGESCALING", {_level})
+		set {_oldScaling} to {_scaling}
+		if {_compareLevel} >= 0:
+			set {_oldScaling} to AbilityUpgradeValue({_p}, "Cresselia", "Starfall", "DAMAGESCALING", {_compareLevel})
+		set {_damage} to AbilityUpgradeValue({_p}, "Cresselia", "Starfall", "BASEDAMAGE", {_level}) + ({damage::%{_p}%}/{_scaling}) + (Versatility({_p})/({_scaling} * 3)) + ({primarystat::%{_p}%}/({_scaling} / 2))
+		set {_oldDamage} to {_damage}
+		if {_compareLevel} >= 0:
+			set {_oldDamage} to AbilityUpgradeValue({_p}, "Cresselia", "Starfall", "BASEDAMAGE", {_compareLevel}) + ({damage::%{_p}%}/{_oldScaling}) + (Versatility({_p})/({_oldScaling} * 3)) + ({primarystat::%{_p}%}/({_oldScaling} / 2))
+		set {_damage} to {_damage} * {_durationScalar}
+		set {_oldDamage} to {_oldDamage} * {_oldDurationScalar}
+		if metadata value "CelestialAlignment" of {_p} is set:
+			set {_damage} to {_damage} * 1.15
+			set {_oldDamage} to {_oldDamage} * 1.15
+		if metadata value "UmbralInspiration" of {_p} is set:
+			set {_damage} to {_damage} * 1.3
+			set {_oldDamage} to {_oldDamage} * 1.3
+		if string tag "Talents;Row 2" of {_customnbt} = "Stellar Drift":
+			set {_damage} to {_damage} * 1.3
+			set {_oldDamage} to {_oldDamage} * 1.3
+		if boolean tag "Constellation;Rattle the Stars" of {_customnbt} is set:
+			set {_damage} to {_damage} * 1.08
+			set {_oldDamage} to {_oldDamage} * 1.08
+		set {_ticks} to rounded ({_duration} / (1 / {_starfallHaste}))
+		set {_oldTicks} to rounded ({_oldDuration} / (1 / {_starfallHaste}))
+		set {_damageTotal} to {_damage} * {_ticks}
+		set {_oldDamageTotal} to {_oldDamage} * {_oldTicks}
+		set {_aoe} to AbilityUpgradeValue({_p}, "Cresselia", "Starfall", "AOE", {_level})
+		set {_oldAoe} to {_aoe}
+		if {_compareLevel} >= 0:
+			set {_oldAoe} to AbilityUpgradeValue({_p}, "Cresselia", "Starfall", "AOE", {_compareLevel})
+		set {_valueNames::*} to "COST", "DAMAGE", "DURATION", "AOE"
+		set {_values::*} to AbilityUpgradePreviewValue({_cost}, {_colour}, {_oldCost}), AbilityUpgradePreviewValue({_damageTotal}, {_colour}, {_oldDamageTotal}), AbilityUpgradePreviewValue({_duration}, {_colour}, {_oldDuration}), AbilityUpgradePreviewValue({_aoe}, {_colour}, {_oldAoe})
+		set {_description} to AbilityUpgradeDescription({_p}, "Cresselia", "Starfall", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	else if {_ability} = "Celestial Alignment":
+		set {_cdSeconds} to AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "COOLDOWN", {_level})
+		set {_oldCdSeconds} to {_cdSeconds}
+		if {_compareLevel} >= 0:
+			set {_oldCdSeconds} to AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "COOLDOWN", {_compareLevel})
+		set {_cd} to "%{_cdSeconds}% seconds" parsed as timespan
+		set {_oldCd} to "%{_oldCdSeconds}% seconds" parsed as timespan
+		if boolean tag "Constellation;The Eternal Moon" of {_customnbt} is set:
+			set {_cd} to {_cd} - 30 seconds
+			set {_oldCd} to {_oldCd} - 30 seconds
+		set {_ap} to AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "ASTRALPOWER", {_level})
+		set {_crit} to AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "CRIT", {_level})
+		set {_frequency} to AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "SHOOTINGSTARSFREQUENCY", {_level})
+		set {_damageBonus} to AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "SHOOTINGSTARSDAMAGE", {_level})
+		set {_oldAp} to {_ap}
+		set {_oldCrit} to {_crit}
+		set {_oldFrequency} to {_frequency}
+		set {_oldDamageBonus} to {_damageBonus}
+		if {_compareLevel} >= 0:
+			set {_oldAp} to AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "ASTRALPOWER", {_compareLevel})
+			set {_oldCrit} to AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "CRIT", {_compareLevel})
+			set {_oldFrequency} to AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "SHOOTINGSTARSFREQUENCY", {_compareLevel})
+			set {_oldDamageBonus} to AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "SHOOTINGSTARSDAMAGE", {_compareLevel})
+		set {_valueNames::*} to "COOLDOWN", "ASTRALPOWER", "CRIT", "DURATION", "SHOOTINGSTARSFREQUENCY", "SHOOTINGSTARSDAMAGE"
+		set {_values::*} to AbilityUpgradePreviewValue({_cd}, {_colour}, {_oldCd}), AbilityUpgradePreviewValue({_ap}, {_colour}, {_oldAp}), AbilityUpgradePreviewValue({_crit}, {_colour}, {_oldCrit}), AbilityUpgradePreviewValue(20, {_colour}, 20), AbilityUpgradePreviewValue({_frequency}, {_colour}, {_oldFrequency}), AbilityUpgradePreviewValue({_damageBonus}, {_colour}, {_oldDamageBonus})
+		set {_description} to AbilityUpgradeDescription({_p}, "Cresselia", "Celestial Alignment", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	return AbilityUpgradeModifierLore({_p}, "Cresselia", {_ability}, {_level}, {_colour})
+
+function AbilityUpgradeModifierLore(p: player, card: text, ability: text, level: integer, colour: text, bold: boolean = false, compareLevel: integer = -1) :: text:
+	if {_bold} = true:
+		set {_lore} to "&9Level %{_level}% &8(Max)"
+	else:
+		set {_lore} to "&9Level %{_level}%"
+	loop yaml list "Card.%{_card}%.%{_ability}%.Upgrades.Display" in "SpellList":
+		set {_entry::*} to loop-value split at "|"
+		set {_label} to {_entry::1}
+		set {_modifier} to {_entry::2}
+		set {_format} to {_entry::3}
+		set {_value} to AbilityUpgradeValue({_p}, {_card}, {_ability}, {_modifier}, {_level})
+		set {_valueText} to AbilityUpgradeFormatValue({_value}, {_format})
+		if {_compareLevel} >= 0:
+			set {_oldValue} to AbilityUpgradeValue({_p}, {_card}, {_ability}, {_modifier}, {_compareLevel})
+			set {_oldValueText} to AbilityUpgradeFormatValue({_oldValue}, {_format})
+			set {_lore} to "%{_lore}%%nl%&7%{_label}%: &e%{_oldValueText}% &f-> &a%{_valueText}%"
+		else if {_bold} = true:
+			set {_lore} to "%{_lore}%%nl%&7%{_label}%: %{_colour}%%{_valueText}%"
+		else:
+			set {_lore} to "%{_lore}%%nl%&7%{_label}%: %{_colour}%%{_valueText}%"
+	return {_lore}
+
+function AbilityUpgradeItem(p: player, card: text, ability: text, level: integer, colour: text, bold: boolean = false, compareLevel: integer = -1) :: item:
+	set {_item} to metadata tag "AbilityUpgradeClickedAbility" of {_p}
+	if {_card} = "Cresselia":
+		set lore of {_item} to CresseliaAbilityUpgradePreviewLore({_p}, {_ability}, {_level}, {_colour}, {_compareLevel})
+	else:
+		set lore of {_item} to AbilityUpgradeModifierLore({_p}, {_card}, {_ability}, {_level}, {_colour}, {_bold}, {_compareLevel})
+	return {_item}
+
+function AbilityUpgradePrismCost(level: integer) :: integer:
+	if {_level} >= 5:
+		return 2
+	return 1
+
+function AbilityUpgradeCostLore(level: integer) :: text:
+	set {_prismCost} to AbilityUpgradePrismCost({_level})
+	set {_essenceCost} to 40 + (({_level} - 1) * 10)
+	set {_fluxCost} to 500 * {_level}
+	set {_peridotCost} to 30 * {_level}
+	return "&7Cost:%nl%&f%{_prismCost}% <##f79eff>Magic <##9ed5ff>Prism%nl%&f%{_essenceCost}% <#a99afc>Astral Essence%nl%&f%{_fluxCost}% &f &7Cosmic Flux%nl%&f%{_peridotCost}% <#c0ff02>Peridot"
+
+function AbilityUpgradeCanAfford(p: player, level: integer) :: boolean:
+	set {_prismCost} to AbilityUpgradePrismCost({_level})
+	set {_essenceCost} to 40 + (({_level} - 1) * 10)
+	set {_fluxCost} to 500 * {_level}
+	set {_peridotCost} to 30 * {_level}
+	set {_peridotItem} to yaml value "Peridot.Item" in "ItemList"
+	set {_essenceItem} to yaml value "Astral Essence.Item" in "ItemList"
+	if {_p} has {_prismCost} of {magicznypryzmat}:
+		if {_p} has {_essenceCost} of {_essenceItem}:
+			if {_p} has {_peridotCost} of {_peridotItem}:
+				if {cosmicflux::%{_p}%} >= {_fluxCost}:
+					return true
+	return false
+
+function AbilityUpgradeTakeCost(p: player, level: integer):
+	set {_prismCost} to AbilityUpgradePrismCost({_level})
+	set {_essenceCost} to 40 + (({_level} - 1) * 10)
+	set {_fluxCost} to 500 * {_level}
+	set {_peridotCost} to 30 * {_level}
+	set {_peridotItem} to yaml value "Peridot.Item" in "ItemList"
+	set {_essenceItem} to yaml value "Astral Essence.Item" in "ItemList"
+	remove {_prismCost} of {magicznypryzmat} from {_p}'s inventory
+	remove {_essenceCost} of {_essenceItem} from {_p}'s inventory
+	remove {_peridotCost} of {_peridotItem} from {_p}'s inventory
+	set {cosmicflux::%{_p}%} to {cosmicflux::%{_p}%} - {_fluxCost}
+
+function AbilityUpgradeApply(p: player, card: text, ability: text, level: integer):
+	loop yaml node keys "Card.%{_card}%.%{_ability}%.Upgrades.Levels.%{_level}%" in "SpellList":
+		set {_value} to yaml value "Card.%{_card}%.%{_ability}%.Upgrades.Levels.%{_level}%.%loop-value%" in "SpellList"
+		set yaml value "Card.Ability Modifiers.%{_ability}%.%loop-value%" in "activeCard-%{_p}%" to {_value}
+	set yaml value "Card.Ability Levels.%{_ability}%" in "activeCard-%{_p}%" to {_level}
+	save yaml "activeCard-%{_p}%"
+
+function AbilityUpgradeMenu(p: player):
+	if metadata tag "ClickedAbility" of {_p} is set:
+		set {_card} to uncolored name of {_p}'s tool
+		set {_ability} to uncolored name of (metadata tag "ClickedAbility" of {_p})
+		replace all "Mastery: " in {_ability} with ""
+		set metadata tag "AbilityUpgradeAbility" of {_p} to {_ability}
+		set metadata tag "AbilityUpgradeCard" of {_p} to {_card}
+		set metadata tag "AbilityUpgradeClickedAbility" of {_p} to metadata tag "ClickedAbility" of {_p}
+	else:
+		set {_ability} to metadata tag "AbilityUpgradeAbility" of {_p}
+		set {_card} to metadata tag "AbilityUpgradeCard" of {_p}
+	if AbilityUpgradeable({_card}, {_ability}) is not true:
+		stop
+	set metadata tag "abilityupgrademenu" of {_p} to chest inventory with 3 rows named "%{_card}% - Upgrade %{_ability}%"
+	set {_gui} to metadata tag "abilityupgrademenu" of {_p}
+	set {_level} to AbilityUpgradeLevel({_p}, {_ability})
+	set {_maxLevel} to AbilityUpgradeMaxLevel({_card}, {_ability})
+	if {_level} >= {_maxLevel}:
+		set slot 10 of {_gui} to AbilityUpgradeItem({_p}, {_card}, {_ability}, {_level}, "&f", true)
+		set slot 16 of {_gui} to blue stained glass pane named "<#8bbdf0>Fully Awakened" with lore "&7This ability has reached its current%nl%&7celestial apex. Its power sleeps no%nl%&7longer, though deeper stars may yet%nl%&7answer in a future awakening."
+	else:
+		set {_nextLevel} to {_level} + 1
+		set metadata tag "AbilityUpgradeNextLevel" of {_p} to {_nextLevel}
+		set slot 10 of {_gui} to AbilityUpgradeItem({_p}, {_card}, {_ability}, {_level}, "&f")
+		set slot 13 of {_gui} to AbilityUpgradeItem({_p}, {_card}, {_ability}, {_nextLevel}, "&a", false, {_level})
+		set {_confirmLore} to "&7Upgrade &f%{_ability}% &7to &fLevel %{_nextLevel}%&7.%nl% %nl%%AbilityUpgradeCostLore({_nextLevel})%"
+		if AbilityUpgradeCanAfford({_p}, {_nextLevel}) is true:
+			set slot 16 of {_gui} to lime stained glass pane named "&aAwaken Power" with lore "%{_confirmLore}%%nl% %nl%&fClick here to upgrade ability."
+		else:
+			set slot 16 of {_gui} to red stained glass pane named "&cAwaken Power" with lore "%{_confirmLore}%%nl% %nl%&cInsufficient materials."
+	open {_gui} to {_p}
 
 function CombatProfileMenu(p: player):
 	set metadata tag "combatprofilegui" of {_p} to (chest inventory with 3 rows named "%uncolored (name of {_p}'s tool)% - Combat Profile")
@@ -1439,6 +1911,8 @@ on inventory close:
 	if player's current inventory is (metadata tag "abilitymenu" of player):
 		clear metadata tag "abilitymenu" of player
 		clear metadata tag "ClickedAbility" of player
+	if player's current inventory is (metadata tag "abilityupgrademenu" of player):
+		clear metadata tag "abilityupgrademenu" of player
 		
 function topDesc(n: number, v: text) :: string:
 	loop 5 times:
