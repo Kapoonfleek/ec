@@ -8,7 +8,7 @@ on rightclick:
 			cancel event
 			if {kartaname::%player%} = "Ghazan":
 				if CanUseAbility(player) != false:
-					if metadata value "Rain of Lava" of {_p} is true:
+					if metadata value "Rain of Lava" of player is true:
 						stop
 					set {_target} to Target(player, 100, false)
 					if {_target} is set:
@@ -226,12 +226,8 @@ on rightclick:
 					if cooldown "moltenlava%player%" is finished:
 						set {_id} to line 19 of lore of {karta::%player%}
 						set {_pospiech} to Haste(player)
-						#IGNEOUS POTENTIAL
-						loop {_loreheart::*}:
-							loop-value contains "Igneous Potential":
-								add (0.25*{trait::Ghazan::Igneous Potential::%player%}) to {_cdred}
-						set {_cd} to "%(15-{_cdred})/{_pospiech}% seconds" parsed as timespan
-						set {_cdd} to (15-{_cdred})/{_pospiech}
+						set {_cd} to "%15/{_pospiech}% seconds" parsed as timespan
+						set {_cdd} to 15/{_pospiech}
 						set {_radius} to 2 + (CrowdControl(player)/40)
 						if distance between player and target block < 7:
 							create cooldown "moltenlava%player%" for {_cd}
@@ -315,15 +311,13 @@ on rightclick:
 									play sound "block.lava.pop" with volume 1.2 and pitch 1 at {_l} ~ {_v}
 									wait 1 tick
 								set metadata value "Lava Wave" of player to true
-								if boolean tag "Constellation;Master Heritage" of (custom nbt of {karta::%player%}) is set:
-									set metadata value "Master Heritage Lava Spread" of player to 2
-								set {_pospiech} to Haste(player)
-								if {_loreheart::*} is set:
-									loop {_loreheart::*}:
-										loop-value contains "Igneous Potential":
-											add (0.25*{trait::Ghazan::Igneous Potential::%player%}) to {_cdred}
-								set {_cd} to "%(15-{_cdred})/{_pospiech}% seconds" parsed as timespan
-								set {_cdd} to (15-{_cdred})/{_pospiech}
+								if HasStarforgedBonus(player, "Ghazan", "Tier I", "2Set") is true:
+									GhazanLavaflow(player)
+									if boolean tag "Constellation;Master Heritage" of (custom nbt of {karta::%player%}) is set:
+										set metadata value "Master Heritage Lava Spread" of player to 2
+									set {_pospiech} to Haste(player)
+									set {_cd} to "%15/{_pospiech}% seconds" parsed as timespan
+									set {_cdd} to 15/{_pospiech}
 								set {_radius} to 2 + (CrowdControl(player)/40)
 								MoltenLava(player, {_radius}, {_cdd}, {_pospiech}, true, {_target})
 								set {_crit} to CriticalHit(player)
@@ -509,6 +503,86 @@ on rightclick:
 		else:
 			send "&8[&6Earthcraft&8] &6You don't have the required card selected to use this ability." to player
 		
+function GhazanGainLavaSurge(p: player):
+	set metadata value "Lava Surge" of {_p} to true
+	if metadata value "Rain of Lava-Camera" of {_p} is set:
+		set {_entityId} to metadata value "Rain of Lava-Camera" of {_p}
+		set {_world} to {_p}'s world
+		set {_entityFromId} to {_world}.getEntity({_entityId})
+		send title " " with subtitle "          " to {_entityFromId} for 1 minute with fade in 0.25 second and fade out 0.0 second
+	if {guiscale::%{_p}%} = 4:
+		send title " " with subtitle "          " to {_p} for 1 minute with fade in 0.25 second and fade out 0.0 second
+	else:
+		send title " " with subtitle "                    " to {_p} for 1 minute with fade in 0.25 second and fade out 0.0 second
+
+function GhazanLavaflow(p: player):
+	GhazanGainLavaSurge({_p})
+	set metadata value "LavaflowDuration" of {_p} to 8 seconds
+	if metadata value "Lavaflow" of {_p} is not set:
+		set metadata value "Lavaflow" of {_p} to true
+		while metadata value "LavaflowDuration" of {_p} > 0 seconds:
+			wait 2 seconds
+			set metadata value "LavaflowDuration" of {_p} to metadata value "LavaflowDuration" of {_p} - 2 seconds
+			if metadata value "LavaflowDuration" of {_p} > 0 seconds:
+				GhazanGainLavaSurge({_p})
+		clear metadata value "LavaflowDuration" of {_p}
+		clear metadata value "Lavaflow" of {_p}
+
+function GhazanMoltenUpheavalTargets(p: player) :: integer:
+	set {_targets} to 0
+	set {_world} to world of {_p}
+	loop {ECMobs::%{_world}%::*}:
+		set {_entity} to loop-value parsed as entity
+		set {_entityLoc} to location of {_entity}
+		if chunk at {_entityLoc} is loaded:
+			if metadata value "MoltenUpheaval%{_p}%" of {_entity} is set:
+				set {_targets} to {_targets} + 1
+	return {_targets}
+
+function GhazanApplyMoltenUpheaval(p: player, target: entity):
+	set {_damage} to offensiveTrait({_p}, "Ghazan", "Molten Upheaval")
+	if {_damage} <= 0:
+		stop
+	if metadata value "MoltenUpheaval%{_p}%" of {_target} is not set:
+		set {_targets} to GhazanMoltenUpheavalTargets({_p})
+		if {_targets} >= 8:
+			stop
+		set metadata value "MoltenUpheaval%{_p}%" of {_target} to true
+		set metadata value "MoltenUpheavalDuration%{_p}%" of {_target} to 5 seconds
+		while metadata value "MoltenUpheaval%{_p}%" of {_target} is set:
+			wait 1 second
+			if {_target} is not alive:
+				clear metadata value "MoltenUpheaval%{_p}%" of {_target}
+				clear metadata value "MoltenUpheavalDuration%{_p}%" of {_target}
+				stop loop
+			set metadata value "MoltenUpheavalDuration%{_p}%" of {_target} to metadata value "MoltenUpheavalDuration%{_p}%" of {_target} - 1 second
+			if metadata value "MoltenUpheavalDuration%{_p}%" of {_target} <= 0 seconds:
+				clear metadata value "MoltenUpheaval%{_p}%" of {_target}
+				clear metadata value "MoltenUpheavalDuration%{_p}%" of {_target}
+				stop loop
+	else:
+		set metadata value "MoltenUpheavalDuration%{_p}%" of {_target} to 5 seconds
+
+function GhazanMoltenUpheaval(p: player):
+	set {_damage} to offensiveTrait({_p}, "Ghazan", "Molten Upheaval")
+	if {_damage} <= 0:
+		stop
+	set {_world} to world of {_p}
+	set {_crit} to CriticalHit({_p})
+	set {_lore} to "&8Offensive Azerite Trait%nl%&f <#b03228>Molten Lava <#b03228>damage leaves &f <#d14d43>Molten Upheaval <#b03228>on enemies%nl%<#b03228>for &f5 sec<#b03228>. When you &f <#d14d43>Lava Burst<#b03228>, targets with%nl%&f <#d14d43>Molten Upheaval <#b03228>are damaged for &f%{_damage}%<#b03228>."
+	loop {ECMobs::%{_world}%::*}:
+		set {_entity} to loop-value parsed as entity
+		set {_entityLoc} to location of {_entity}
+		if chunk at {_entityLoc} is loaded:
+			if metadata value "MoltenUpheaval%{_p}%" of {_entity} is set:
+				if {_entity} is alive:
+					set {_finalDamage} to Crit({_p}, {_entity}, {_crit}, {_damage})
+					set {_entity}'s last damage cause to sweep attack
+					set metadata value "LastDamageCause" of {_entity} to "<#b03228>Molten Upheaval"
+					set metadata value "LastDamageCauseLore" of {_entity} to {_lore}
+					set metadata value "Element" of {_p} to "Lava"
+					make {_p} damage {_entity} by {_finalDamage}
+
 function LavaWave(p: player, target: entity):
 	wait 1 tick
 	set {_world} to world of {_p}
@@ -563,11 +637,15 @@ function LavaSurge(p: player, target: entity):
 
 	AbilityUse({_p}, "Lava Burst")
 	set {_bonusDamage} to lavaResurgence({_p})
+	set {_lavaflowMultiplier} to 1
+	if HasStarforgedBonus({_p}, "Ghazan", "Tier I", "4Set") is true:
+		if metadata value "Lavaflow" of {_p} is set:
+			set {_lavaflowMultiplier} to 1.3
 
 	if boolean tag "Constellation;Deeptremor" of (custom nbt of {karta::%{_p}%}) is set:
-		LavaBurst({_p}, {_target}, 1.18, "Lava Burst", false, {_bonusDamage})
+		LavaBurst({_p}, {_target}, 1.18 * {_lavaflowMultiplier}, "Lava Burst", false, {_bonusDamage})
 	else:
-		LavaBurst({_p}, {_target}, 1, "Lava Burst", false, {_bonusDamage})
+		LavaBurst({_p}, {_target}, 1 * {_lavaflowMultiplier}, "Lava Burst", false, {_bonusDamage})
 
 	if metadata value "Rain of Lava-Camera" of {_p} is set:
 		set {_entityId} to metadata value "Rain of Lava-Camera" of {_p}
@@ -595,22 +673,18 @@ on damage:
 function MoltenLava(p: player, radius: number, cdd: number, pospiech: number, wave: boolean, target: entity, refresh: timespan = 0 seconds):
 	set {_damage} to (0.5 + ({damage::%{_p}%}/160) + (Versatility({_p})/480) + ({primarystat::%{_p}%}/80) + {_bonusdmg})
 
-	loop {_loreheart::*}:
-		if loop-value contains "Molten Upheaval":
-			add ((2.75*{trait::Ghazan::Molten Upheaval::%{_p}%})/100) to {_faster}
-	set {_faster} to 1 + {_faster}
+	set {_faster} to 1
 	if string tag "Talents;Row 1" of (custom nbt of {karta::%{_p}%}) = "Hot Hand":
-		add 0.08 to {_faster}
+		set {_faster} to {_faster} + 0.08
 	set {_wait} to "%(1/{_faster})/(((({_pospiech}-1)/1.3))+1)% seconds" parsed as timespan
 	play sound "block.lava.ambient" with volume 4 and pitch 1 at (location of (target block of {_p}))
 	play sound "block.lava.extinguish" with volume 4 and pitch 1.25 at (location of (target block of {_p}))
 	if {_wave} is true:
 		set {_Eventblock} to block under {_target}
 	else:
-		if {_Eventblock} is solid:
-			set {_Eventblock} to target block of {_p}
-		else:
-			set {_Eventblock} to block under target block of {_p}
+		set {_Eventblock} to target block of {_p}
+		if {_Eventblock} is not solid:
+			set {_Eventblock} to block under {_Eventblock}
 	
 	set {_duration} to 30 seconds
 
@@ -716,13 +790,9 @@ function rollingLava(p: player) :: number:
 	return {_damage}
 
 function Magma(p: player):
-	#IGNEOUS POTENTIAL
-	loop {_loreheart::*}:
-		loop-value contains "Igneous Potential":
-			add (1*{trait::Ghazan::Igneous Potential::%{_p}%}) to {_bonusdmg}
 	set {_id} to cardId({_p})
 	set {_crit} to CriticalHit({_p})
-	set {_damage} to (0.5 + ({damage::%{_p}%}/160)) + (Versatility({_p})/480) + ({primarystat::%{_p}%}/80) + {_bonusdmg}
+	set {_damage} to (0.5 + ({damage::%{_p}%}/160)) + (Versatility({_p})/480) + ({primarystat::%{_p}%}/80)
 
 	if string tag "Talents;Row 4" of (custom nbt of {karta::%{_p}%}) = "Groundbreaker":
 		set {_damage} to {_damage}*1.25
@@ -742,6 +812,8 @@ function Magma(p: player):
 	if string tag "Talents;Row 1" of (custom nbt of {karta::%{_p}%}) = "Hot Hand":
 		add 0.08 to {_faster}
 	set {_wait} to "%(1/{_faster})/(((({_pospiech}-1)/1.3))+1)% seconds" parsed as timespan
+	set {_cdd} to round(15/{_pospiech}, 1)
+	set {_duration} to 30 seconds
 	set {_radius} to 2 + (CrowdControl({_p})/40)
 	set {_lore} to "&8Basic Ability%nl%&fInstant cast%nl%&7Cooldown:  &f%{_cdd}% seconds%nl%&7Use: &fRMB%nl%<#b03228>Turns all terrain in radius &f%{_radius}% <#b03228>of the%nl%<#b03228>target block into &f <#d14d43>Molten Lava <#b03228>for &f%{_duration}%<#b03228>.%nl% %nl%<#b03228>Enemies standing in &f <#d14d43>Molten Lava%nl%<#b03228>receive &f%{_damage}% <#ff4d00>Lava <#b03228>damage every &f%{_wait}% sec<#b03228>."
 	set {_world} to world of {_p}
@@ -775,21 +847,10 @@ function Magma(p: player):
 					
 					set {_damage} to Crit({_p}, {_entity}, {_crit}, {_damage})
 					make {_p} damage {_entity} by {_damage}
+					GhazanApplyMoltenUpheaval({_p}, {_entity})
 					play sound "block.lava.pop" with volume 1.5 and pitch 0.75 at (location of {_entity})
-					#LAVA SURGE
 					chance of {_chance}%:
-						set metadata value "Lava Surge" of {_p} to true
-						if metadata value "Rain of Lava-Camera" of {_p} is set:
-							set {_entityId} to metadata value "Rain of Lava-Camera" of {_p}
-
-							set {_entityFromId} to {_world}.getEntity({_entityId})
-
-							send title " " with subtitle "          " to {_entityFromId} for 1 minute with fade in 0.25 second and fade out 0.0 second
-
-						if {guiscale::%{_p}%} = 4:
-							send title " " with subtitle "          " to {_p} for 1 minute with fade in 0.25 second and fade out 0.0 second
-						else:
-							send title " " with subtitle "                    " to {_p} for 1 minute with fade in 0.25 second and fade out 0.0 second
+						GhazanGainLavaSurge({_p})
 
 function Ascendance(p: player, duration: timespan):
 	play sound "skill.ghazan.ascendance_activate" with volume 3 and pitch 0 at (location of {_p})
@@ -868,14 +929,9 @@ on disconnect:
 function MagmaCheck(p: player):
 	while metadata value "ECEngaged" of {_p} is set:
 		set {_id} to cardId({_p})
-		#MOLTEN UPHEAVAL
-		set {_faster} to 0
-		loop {_loreheart::*}:
-			if loop-value contains "Molten Upheaval":
-				add ((2.75*{trait::Ghazan::Molten Upheaval::%{_p}%})/100) to {_faster}
-		set {_faster} to 1 + {_faster}
+		set {_faster} to 1
 		if string tag "Talents;Row 1" of (custom nbt of {karta::%{_p}%}) = "Hot Hand":
-			add 0.08 to {_faster}
+			set {_faster} to {_faster} + 0.08
 		if {magmaarea::%{_p}%} > 0:
 			Magma({_p})
 		set {_pospiech} to Haste({_p})
@@ -886,11 +942,6 @@ function WildfireDuration(p: player):
 	set {_wait} to 12 seconds
 	if string tag "Talents;Row 1" of (custom nbt of {karta::%{_p}%}) = "Unrivaled Finesse":
 		add 1.5 seconds to {_wait}
-	#ERUPTING LAVA
-	loop {_loreheart::*}:
-		loop-value contains "Erupting Lava":
-			loop {trait::Ghazan::Erupting Lava::%{_p}%} times:
-				add 1 second to {_wait}
 	wait {_wait}
 	clear metadata value "Rain of Lava" of {_p}
 	
@@ -931,7 +982,7 @@ function LavaBurst(p: player, x: entity, multiplier: number, ability: string, re
 
 	set {_mistrzostwo} to {_mistrzostwo} + getRunePower({_p}, "Thermal Buildup")
 
-	set {_maxMasteryDmg} to  (1 + ({_mistrzostwo}/100))^{_LTmaxStacks}
+	set {_maxMasteryDmg} to (1 + ({_mistrzostwo}/100))^{_maxStacks}
 	set {_LTDuration} to 16
 	set {_loreMastery} to "&8Mastery Bonus%nl%&fNo cast%nl%&7Cooldown:  &fnone%nl%&7Use: &fPASSIVE%nl%&f <#d14d43>Lava Burst <#b03228>deals &f%{_mistrzostwo}%%% <#b03228>more damage%nl%<#b03228>to the enemy each time it is used on the%nl%<#b03228>the same target, up to &f%{_maxStacks}% stacks<#b03228>.%nl%<#b03228>Maximum damage increase: &f%{_maxMasteryDmg}%%%<#b03228>.%nl% %nl%<#b03228>This damage increase has a duration%nl%<#b03228>of &f%{_LTDuration}% sec <#b03228>and is refreshed with each%nl%&f <#d14d43>Lava Burst <#b03228>cast on the target."
 	
@@ -1015,6 +1066,8 @@ function LavaBurst(p: player, x: entity, multiplier: number, ability: string, re
 		set {_damage} to Crit({_p}, {_x}, {_crit}, {_damage})
 
 	make {_p} damage {_x} by {_damage}
+	if {_replicated} is not true:
+		GhazanMoltenUpheaval({_p})
 
 	if string tag "Talents;Row 5" of (custom nbt of {karta::%{_p}%}) = "Rolling Magma":
 		if cooldown "Lava Wave%{_p}%" > 0 seconds:
