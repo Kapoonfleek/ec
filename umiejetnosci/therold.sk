@@ -127,7 +127,7 @@ function VoidEruptionAbilityCast(p: player):
         play sound "block.glass.break" with volume 3 and pitch 0 to {_p}
 
 function VoidBoltCast(p: player, target: entity):
-    set {_pospiech} to Haste({_p}) + (({hasteVoidform::%{_p}%}/4)/100)
+    set {_pospiech} to Haste({_p})
     set {_cd} to "%4.5/{_pospiech}% seconds" parsed as timespan
     set the cooldown of {_p}'s held item for {_p} to {_cd}
     create cooldown "Void Bolt%{_p}%" for {_cd}
@@ -177,7 +177,7 @@ function VoidBoltCast(p: player, target: entity):
     set metadata tag "LastDamageCause" of {_target} to "<##462566>Void Bolt"
     set metadata tag "LastDamageCauseLore" of {_target} to {_lore}
     set metadata tag "Element" of {_p} to "Ghost"
-    set lore of {_p}'s tool to {_lore}
+    LoreUpdate({_p}, "Void Bolt", {_lore})
     set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage})
     make {_p} damage {_target} by {_damage}*2
 
@@ -254,7 +254,7 @@ function MindBlastAbilityCast(p: player):
                             if cooldown "Shadow Word: Pain%{_p}%" is finished:
                                 if cooldown "Shadow Word: Death%{_p}%" is finished:
                                     if cooldown "Global Cooldown Interrupted Cast%{_p}%" is finished:
-                                        set {_pospiech} to Haste({_p}) + (({hasteVoidform::%{_p}%}/4)/100)
+                                        set {_pospiech} to Haste({_p})
                                         set {_casttime} to "%round((1.5/{_pospiech}), 1)% seconds" parsed as timespan
                                         set {_casttimeText} to {_casttime}
                                         set {_cd} to "%9/{_pospiech}% seconds" parsed as timespan
@@ -348,7 +348,7 @@ function MindBlastAbilityCast(p: player):
                                                 set {_mindBlastLore} to "&8Basic Ability%nl%&f%{_chargesLore}%%nl%&f%1.5/{_pospiech}% second cast%nl%&7Cooldown:  &f%{_cd}%"
                                             set {_lore} to "%{_mindBlastLore}%%nl%&7Use: &fRMB%nl%<##613e82>Blasts the target's mind for &f%{_damage}%%nl%&f <##431d53>Ghost damage.%nl% %nl%&fGenerates %{_insanity}% Insanity."
                                             loop all items in the inventory of {_p}:
-                                                if boolean tag "Mind Blast" of (custom nbt of loop-item) = true:
+                                                if boolean tag "Mind Blast" of (custom nbt of (1 of loop-item)) = true:
                                                     set lore of loop-item to {_lore}
                                                     if {_charges} > 0:
                                                         set item amount of loop-item to {_charges}
@@ -359,10 +359,9 @@ function MindBlastAbilityCast(p: player):
                                             set metadata tag "Element" of {_p} to "Ghost"
                                             set metadata tag "LastDamageCause" of {_target} to "<##462566>Mind Blast"
                                             set metadata tag "LastDamageCauseLore" of {_target} to {_lore}
-                                            chance of {_crit}%:
-                                                set {_damage} to {_damage}*2
-                                                CritVisual({_target})
-                                                set metadata tag "Crit%{_p}%" of {_target} to true
+                                            set {_damageBeforeCrit} to {_damage}
+                                            set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage})
+                                            if {_damage} > {_damageBeforeCrit}:
                                                 if offensiveTrait({_p}, "Brother Therold", "Whispers of the Damned") > 0:
                                                     GrantInsanity({_p}, 20)
                                                     UpdateInsanity({_p})
@@ -403,7 +402,7 @@ function ShadowWordPainAbilityCast(p: player):
                 if cooldown "Shadow Word: Pain%{_p}%" is finished:
                     if cooldown "Shadow Word: Death%{_p}%" is finished:
                         if cooldown "Global Cooldown Interrupted Cast%{_p}%" is finished:
-                            set {_pospiech} to Haste({_p}) + (({hasteVoidform::%{_p}%}/4)/100)
+                            set {_pospiech} to Haste({_p})
                             set {_cd} to "%1.5/{_pospiech}% seconds" parsed as timespan
                             set the cooldown of {_p}'s held item for {_p} to {_cd}
                             create cooldown "Shadow Word: Pain%{_p}%" for {_cd}
@@ -435,7 +434,7 @@ function ShadowWordPainAbilityCast(p: player):
                                 set {_damage} to {_damage}*(1 + ({_voidformStacks}/100))
                                 set {_damageSWPTicks} to {_damageSWPTicks}*(1 + ({_voidformStacks}/100))
                             set {_target}'s last damage cause to sweep attack
-                            set {_lore} to "&8Basic Ability%nl%&fInstant cast%nl%&7Global Cooldown:  &f%{_cd}%%nl%&7Use: &fRMB%nl%<##613e82>A word of darkness that causes%nl%&f%{_damage}%  <##431d53>Ghost <##613e82>damage instantly, and%nl%<##613e82>an additional &f%(round({_SWPDuration}/(2/{_pospiech}), 0))*{_damageSWPTicks}%  <##431d53>Ghost <##613e82>damage%nl%<##613e82>over &f%{_SWPDuration}% sec<##613e82>.%nl% %nl%&fGenerates 3 Insanity."
+                            set {_lore} to "&8Basic Ability%nl%&fInstant cast%nl%&7Global Cooldown:  &f%{_cd}%%nl%&7Use: &fRMB%nl%<##613e82>A word of darkness that causes%nl%&f%{_damage}%  <##431d53>Ghost <##613e82>damage instantly, and%nl%<##613e82>an additional &f%{_totalTicks}*{_damageSWPTicks}%  <##431d53>Ghost <##613e82>damage%nl%<##613e82>over &f%{_SWPDuration}% sec<##613e82>.%nl% %nl%&fGenerates 3 Insanity."
                             set metadata tag "LastDamageCause" of {_target} to "<##462566>Shadow Word: Pain"
                             set metadata tag "LastDamageCauseLore" of {_target} to {_lore}
                             set metadata tag "Element" of {_p} to "Ghost"
@@ -480,7 +479,7 @@ function MindFlayAbilityCast(p: player):
                         if cooldown "Shadow Word: Death%{_p}%" is finished:
                             if cooldown "Global Cooldown Interrupted Cast%{_p}%" is finished:
                                 if metadata tag "channeling" of {_p} is not set:
-                                    set {_pospiech} to Haste({_p}) + (({hasteVoidform::%{_p}%}/4)/100)
+                                    set {_pospiech} to Haste({_p})
                                     #set {_casttime} to (3/{_pospiech})
                                     set {_casttime} to 3
                                     if metadata tag "cast" of {_p} is set:
@@ -494,11 +493,11 @@ function MindFlayAbilityCast(p: player):
                                             send action bar "&cInterrupted" to {_p}
                                         else:
                                             stop
-                                        set {_pospiech} to (Haste({_p}) + (({hasteVoidform::%{_p}%}/4)/100))/1.5
+                                        set {_pospiech} to Haste({_p})/1.5
                                         set {_cd} to 3/2/{_pospiech}
                                         set {_sec} to "%{_cd}% seconds" parsed as timespan
                                         create cooldown "Global Cooldown Interrupted Cast%{_p}%" for {_sec}
-                                        set the cooldown of player's held item for {_p} to {_sec}
+                                        set the cooldown of {_p}'s held item for {_p} to {_sec}
                                         set {_abilities::*} to "Mind Blast", "Shadow Word: Pain", "Vampiric Touch", "Mind Flay", "Void Eruption", "Void Bolt", "Shadow Word: Void", "Shadow Word: Death"
                                         set {_abilitiesItems::*} to light gray dye, orange dye, gray dye, cyan dye, purple dye, black dye, light gray dye and yellow dye
                                         GlobalCooldownSpells({_p}, {_abilities::*}, {_abilitiesItems::*}, {_cd})
@@ -540,7 +539,7 @@ function VampiricTouchAbilityCast(p: player):
                         if cooldown "Shadow Word: Pain%{_p}%" is finished:
                             if cooldown "Shadow Word: Death%{_p}%" is finished:
                                 if cooldown "Global Cooldown Interrupted Cast%{_p}%" is finished:
-                                    set {_pospiech} to Haste({_p}) + (({hasteVoidform::%{_p}%}/4)/100)
+                                    set {_pospiech} to Haste({_p})
                                     set {_casttime} to "%round((1.5/{_pospiech}), 1)% seconds" parsed as timespan
                                     if boolean tag "Constellation;Dark Evangelism" of (custom nbt of {karta::%{_p}%}) is set:
                                         set {_VPTDuration} to 21
@@ -635,7 +634,7 @@ function ShadowWordVoidAbilityCast(p: player):
                             if cooldown "Shadow Word: Pain%{_p}%" is finished:
                                 if cooldown "Shadow Word: Death%{_p}%" is finished:
                                     if cooldown "Global Cooldown Interrupted Cast%{_p}%" is finished:
-                                        set {_pospiech} to Haste({_p}) + (({hasteVoidform::%{_p}%}/4)/100)
+                                        set {_pospiech} to Haste({_p})
                                         set {_casttime} to "%round((1.5/{_pospiech}), 1)% seconds" parsed as timespan
                                         set {_casttimeText} to {_casttime}
                                         set {_cd} to "%9/{_pospiech}% seconds" parsed as timespan
@@ -737,10 +736,9 @@ function ShadowWordVoidAbilityCast(p: player):
                                             set metadata tag "Element" of {_p} to "Ghost"
                                             set metadata tag "LastDamageCause" of {_target} to "<##462566>Shadow Word: Void"
                                             set metadata tag "LastDamageCauseLore" of {_target} to {_lore}
-                                            chance of {_crit}%:
-                                                set {_damage} to {_damage}*2
-                                                CritVisual({_target})
-                                                set metadata tag "Crit%{_p}%" of {_target} to true
+                                            set {_damageBeforeCrit} to {_damage}
+                                            set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage})
+                                            if {_damage} > {_damageBeforeCrit}:
                                                 if offensiveTrait({_p}, "Brother Therold", "Whispers of the Damned") > 0:
                                                     GrantInsanity({_p}, 20)
                                                     UpdateInsanity({_p})
@@ -783,7 +781,7 @@ function ShadowWordDeathAbilityCast(p: player):
                         if cooldown "Shadow Word: Pain%{_p}%" is finished:
                             if cooldown "Shadow Word: Death%{_p}%" is finished:
                                 if cooldown "Global Cooldown Interrupted Cast%{_p}%" is finished:
-                                    set {_pospiech} to Haste({_p}) + (({hasteVoidform::%{_p}%}/4)/100)
+                                    set {_pospiech} to Haste({_p})
                                     set {_globalcd} to "%1.5/{_pospiech}% seconds" parsed as timespan
                                     set {_cd} to "%9/{_pospiech}% seconds" parsed as timespan
                                     set the cooldown of {_p}'s held item for {_p} to {_globalcd}
@@ -815,7 +813,7 @@ function ShadowWordDeathAbilityCast(p: player):
                                         set {_chargesLore} to "%{_charges}% Charges"
                                     set {_lore} to "&8Basic Ability%nl%&f%{_chargesLore}%%nl%&fInstant Cast%nl%&7Global Cooldown:  &f%{_globalcd}%%nl%&7Recharge Time:  &f%{_cd}%%nl%&7Use: &fRMB%nl%<##613e82>A word of dark binding that inflicts%nl%&f%{_damage}%  <##431d53>Ghost <##613e82>damage to the target. Only%nl%<##613e82>usable on enemies that have less%nl%<##613e82>than &f%{_hpRequired}*100%%% <##8165a6>health<##613e82>.%nl% %nl%&fGenerates 15 Insanity, or 30 Insanity%nl%&fif the target dies."
                                     loop all items in the inventory of {_p}:
-                                        if boolean tag "Shadow Word: Death" of (custom nbt of loop-item) = true:
+                                        if boolean tag "Shadow Word: Death" of (custom nbt of (1 of loop-item)) = true:
                                             set lore of loop-item to {_lore}
                                             if {_charges} > 0:
                                                 set item amount of loop-item to {_charges}
@@ -855,7 +853,7 @@ function ShadowWordDeathAbilityCast(p: player):
                         stop
                 else:
                     if {tekstcd::%{_p}%} = true:
-                        send "<##462566>Target's health must be &f<%{_hpRequired}%%% <##462566>to use this ability." to {_p}
+                        send "<##462566>Target's health must be &f<%{_hpRequired}*100%%% <##462566>to use this ability." to {_p}
                         play sound "block.glass.break" with volume 2 and pitch 0 to {_p}
                     stop
     else:
@@ -897,7 +895,6 @@ function SurrenderToMadnessAbilityCast(p: player):
                         stop
                 else:
                     if {tekstcd::%{_p}%} = true:
-                        set {_cdd} to cooldown "Surrender To Madness%{_p}%"
                         send "<##462566>You must be in <##8165a6>Voidform <##462566>to use this ability." to {_p}
                     stop
 
@@ -1020,7 +1017,7 @@ function VoidEruptionVisual(p: player, target: entity):
 function ShadowWordPain(p: player, target: entity):
     while metadata tag "Shadow Word: Pain-%{_p}%" of {_target} is set:
         if {_target} is alive:
-            set {_pospiech} to Haste({_p}) + (({hasteVoidform::%{_p}%}/4)/100)
+            set {_pospiech} to Haste({_p})
             set {_crit} to CriticalHit({_p})
             if boolean tag "Constellation;Dark Evangelism" of (custom nbt of {karta::%{_p}%}) is set:
                 set {_SWPDuration} to 18
@@ -1036,28 +1033,24 @@ function ShadowWordPain(p: player, target: entity):
             if boolean tag "Constellation;Mass Hysteria" of (custom nbt of {karta::%{_p}%}) is set:
                 set {_voidformStacks} to metadata tag "Voidform Stacks" of {_p}
                 set {_damage} to {_damage}*(1 + ({_voidformStacks}/100))
-            loop all items in the inventory of {_p}:
-                if boolean tag "Shadow Word: Pain" of (custom nbt of loop-item) = true:
-                    set {_instantDamage} to (0.6 + ({damage::%{_p}%}/45) + ({versatility::%{_p}%}/135) + ({primarystat::%{_p}%}/22.5)) * (1.096 + (({mastery::%{_p}%}/6.25)/100))
-                    if metadata tag "Voidform" of {_p} is set:
-                        set {_instantDamage} to {_instantDamage}*1.2
-                    set {_gcd} to "%1.5/{_pospiech}% seconds" parsed as timespan
-                    set {_lore} to "&8Basic Ability%nl%&fInstant cast%nl%&7Global Cooldown:  &f%{_gcd}%%nl%&7Use: &fRMB%nl%<##613e82>A word of darkness that causes%nl%&f%{_instantDamage}%  <##431d53>Ghost <##613e82>damage instantly, and%nl%<##613e82>an additional &f%(round({_SWPDuration}/(2/{_pospiech}), 0))*{_damage}%  <##431d53>Ghost <##613e82>damage%nl%<##613e82>over &f%{_SWPDuration}% sec<##613e82>.%nl% %nl%&fGenerates 3 Insanity."
-                    set lore of loop-item to {_lore}
-                else if boolean tag "Shadowy Apparitions" of (custom nbt of loop-item) = true:
-                    set {_shadowyApparitionsDamage} to (0.8 + (({damage::%{_p}%}/65.5) + ({versatility::%{_p}%}/196.5) + {primarystat::%{_p}%}/32.75))
-                    if boolean tag "Constellation;Haunting Apparitions" of (custom nbt of {karta::%{_p}%}) is set:
-                        set {_shadowyApparitionsDamage} to {_shadowyApparitionsDamage} * (1.096 + (({mastery::%{_p}%}/6.25)/100))
-                    if (string tag "Talents;Row 4" of (custom nbt of {karta::%{_p}%})) = "Auspicious Spirits":
-                        set {_shadowyApparitionsDamage} to {_shadowyApparitionsDamage}*2
-                    if metadata tag "Voidform" of {_p} is set:
-                        set {_shadowyApparitionsDamage} to {_shadowyApparitionsDamage}*1.2
-                    set lore of loop-item to "&8Passive Ability%nl%&fNo cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fPASSIVE%nl%<##613e82>When your &f <##8165a6>Shadow Word: Pain <##613e82>damage%nl%<##613e82>over time <##8165a6> Critically Strikes<##613e82>, you also create%nl%<##613e82>a shadowy version of yourself that floats%nl%<##613e82>towards the target and deals &f%{_shadowyApparitionsDamage}%  <##431d53>Ghost%nl%<##613e82>damage."
+            set {_instantDamage} to (0.6 + ({damage::%{_p}%}/45) + ({versatility::%{_p}%}/135) + ({primarystat::%{_p}%}/22.5)) * (1.096 + (({mastery::%{_p}%}/6.25)/100))
+            if metadata tag "Voidform" of {_p} is set:
+                set {_instantDamage} to {_instantDamage}*1.2
+            set {_gcd} to "%1.5/{_pospiech}% seconds" parsed as timespan
+            set {_lore} to "&8Basic Ability%nl%&fInstant cast%nl%&7Global Cooldown:  &f%{_gcd}%%nl%&7Use: &fRMB%nl%<##613e82>A word of darkness that causes%nl%&f%{_instantDamage}%  <##431d53>Ghost <##613e82>damage instantly, and%nl%<##613e82>an additional &f%{_totalTicks}*{_damage}%  <##431d53>Ghost <##613e82>damage%nl%<##613e82>over &f%{_SWPDuration}% sec<##613e82>.%nl% %nl%&fGenerates 3 Insanity."
+            LoreUpdate({_p}, "Shadow Word: Pain", {_lore})
+            set {_shadowyApparitionsDamage} to (0.8 + (({damage::%{_p}%}/65.5) + ({versatility::%{_p}%}/196.5) + {primarystat::%{_p}%}/32.75))
+            if boolean tag "Constellation;Haunting Apparitions" of (custom nbt of {karta::%{_p}%}) is set:
+                set {_shadowyApparitionsDamage} to {_shadowyApparitionsDamage} * (1.096 + (({mastery::%{_p}%}/6.25)/100))
+            if (string tag "Talents;Row 4" of (custom nbt of {karta::%{_p}%})) = "Auspicious Spirits":
+                set {_shadowyApparitionsDamage} to {_shadowyApparitionsDamage}*2
+            if metadata tag "Voidform" of {_p} is set:
+                set {_shadowyApparitionsDamage} to {_shadowyApparitionsDamage}*1.2
+            LoreUpdate({_p}, "Shadowy Apparitions", "&8Passive Ability%nl%&fNo cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fPASSIVE%nl%<##613e82>When your &f <##8165a6>Shadow Word: Pain <##613e82>damage%nl%<##613e82>over time <##8165a6> Critically Strikes<##613e82>, you also create%nl%<##613e82>a shadowy version of yourself that floats%nl%<##613e82>towards the target and deals &f%{_shadowyApparitionsDamage}%  <##431d53>Ghost%nl%<##613e82>damage.")
             set {_target}'s last damage cause to sweep attack
-            chance of {_crit}%:
-                set {_damage} to {_damage}*2
-                CritVisual({_target})
-                set metadata tag "Crit%{_p}%" of {_target} to true
+            set {_damageBeforeCrit} to {_damage}
+            set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage})
+            if {_damage} > {_damageBeforeCrit}:
                 ShadowyApparitionSpawn({_p}, {_target})
             set metadata tag "Element" of {_p} to "Ghost"
             set metadata tag "LastDamageCause" of {_target} to "<##462566>Shadow Word: Pain"
@@ -1080,7 +1073,7 @@ function ShadowWordPainExpire(p: player, target: entity):
     set {_dots} to metadata tag "AmountOfDots%{_p}%" of {_target}
     while {_duration} > 0:
         if {_target} is alive:
-            set {_pospiech} to Haste({_p}) + (({hasteVoidform::%{_p}%}/4)/100)
+            set {_pospiech} to Haste({_p})
             set {_tickTime} to "1 seconds" parsed as timespan
             if metadata tag "AmountOfDots%{_p}%" of {_target} < {_dots}:
                 set {_height} to amountOfDots({_p}, {_target})
@@ -1115,8 +1108,10 @@ function MindFlayVisual(p: player, target: entity):
         draw 1 of (rgb(78, 68, 102) dust particle of size 1) at ({_l} ~ {_vec})
 
 function MindFlay(p: player, target: entity, cast: number):
+    set {_totalTime} to 0 seconds
+    set {_castBar} to false
     while metadata tag "channeling" of {_p} is set:
-        set {_pospiech} to (Haste({_p}) + (({hasteVoidform::%{_p}%}/4)/100))/1.5 #Scale with haste 0.67x as effectively
+        set {_pospiech} to Haste({_p})/1.5 #Scale with haste 0.67x as effectively
         set {_crit} to CriticalHit({_p})
         set {_casttime} to ({_cast}/4)/{_pospiech}
         set {_tickTime} to "%{_casttime}% seconds" parsed as timespan
@@ -1148,10 +1143,7 @@ function MindFlay(p: player, target: entity, cast: number):
                 if offensiveTrait({_p}, "Brother Therold", "Sinister Thoughts") > 0:
                     sinisterThoughts({_p})
             set {_lore} to "&8Basic Ability%nl%&fChanneled%nl%&7No cooldown%nl%&7Use: &fRMB%nl%<##613e82>Assaults the target's mind with shadow%nl%<##613e82>energy, causing &f%{_damage}*(rounded up 3/(({_cast}/4)/{_pospiech}))%  <##431d53>Ghost <##613e82>damage over%nl%&f%{_cast}% sec <##613e82>and <##8165a6>slowing <##613e82>their movement speed%nl%<##613e82>by &f50%%<##613e82>.%nl% %nl%&fGenerates %2*(rounded up 3/(({_cast}/4)/{_pospiech}))% Insanity over the duration."
-            loop all items in the inventory of {_p}:
-                if boolean tag "Mind Flay" of (custom nbt of loop-item) = true:
-                    set lore of loop-item to {_lore}
-                    stop loop
+            LoreUpdate({_p}, "Mind Flay", {_lore})
             set {_target}'s last damage cause to sweep attack
             set metadata tag "Element" of {_p} to "Ghost"
             set metadata tag "LastDamageCause" of {_target} to "<##462566>Mind Flay"
@@ -1183,7 +1175,7 @@ function MindFlay(p: player, target: entity, cast: number):
         if (string tag "Talents;Row 3" of (custom nbt of {karta::%{_p}%})) = "Lingering Insanity":
             if {lingeringInsanityHaste::%{_p}%} is set:
                 set {_insanityInfo} to "%{_insanityInfo}% |  %{lingeringInsanityHaste::%{_p}%}/4%%% "
-        if {_castBar} is not set:
+        if {_castBar} = false:
             MindFlayCast({_p}, 3 seconds, {_target})
             set {_castBar} to true
 
@@ -1230,7 +1222,7 @@ function MindFlayCast(p: player, seconds: timespan, target: entity):
 function VampiricTouch(p: player, target: entity):
     while metadata tag "Vampiric Touch-%{_p}%" of {_target} is set:
         if {_target} is alive:
-            set {_pospiech} to Haste({_p}) + (({hasteVoidform::%{_p}%}/4)/100)
+            set {_pospiech} to Haste({_p})
             if boolean tag "Constellation;Dark Evangelism" of (custom nbt of {karta::%{_p}%}) is set:
                 set {_VPTDuration} to 21
             else:
@@ -1251,10 +1243,8 @@ function VampiricTouch(p: player, target: entity):
             if boolean tag "Constellation;Mass Hysteria" of (custom nbt of {karta::%{_p}%}) is set:
                 set {_voidformStacks} to metadata tag "Voidform Stacks" of {_p}
                 set {_damage} to {_damage}*(1 + ({_voidformStacks}/100))
-            loop all items in the inventory of {_p}:
-                if boolean tag "Vampiric Touch" of (custom nbt of loop-item) = true:
-                    set {_lore} to "&8Basic Ability%nl%&f%{_casttimeVT}% second cast%nl%&7No cooldown%nl%&7Use: &fRMB%nl%<##613e82>A touch of darkness that causes &f%(1 + {_totalTicks})*{_damage}%  <##431d53>Ghost%nl%<##613e82>damage over &f%{_VPTDuration}% sec<##613e82>, and <##8165a6>heals <##613e82>the priest for%nl%&f10%% <##613e82>of damage dealt.%nl% %nl%&fGenerates 6 Insanity."
-                    set lore of loop-item to {_lore}
+            set {_lore} to "&8Basic Ability%nl%&f%{_casttimeVT}% second cast%nl%&7No cooldown%nl%&7Use: &fRMB%nl%<##613e82>A touch of darkness that causes &f%(1 + {_totalTicks})*{_damage}%  <##431d53>Ghost%nl%<##613e82>damage over &f%{_VPTDuration}% sec<##613e82>, and <##8165a6>heals <##613e82>the priest for%nl%&f10%% <##613e82>of damage dealt.%nl% %nl%&fGenerates 6 Insanity."
+            LoreUpdate({_p}, "Vampiric Touch", {_lore})
             set {_target}'s last damage cause to sweep attack
             set metadata tag "Element" of {_p} to "Ghost"
             set metadata tag "LastDamageCause" of {_target} to "<##462566>Vampiric Touch"
@@ -1284,7 +1274,7 @@ function VampiricTouchExpire(p: player, target: entity):
     set {_dots} to metadata tag "AmountOfDots%{_p}%" of {_target}
     while {_duration} > 0:
         if {_target} is alive:
-            set {_pospiech} to Haste({_p}) + (({hasteVoidform::%{_p}%}/4)/100)
+            set {_pospiech} to Haste({_p})
             set {_tickTime} to "1 seconds" parsed as timespan
             if metadata tag "AmountOfDots%{_p}%" of {_target} < {_dots}:
                 set {_height} to amountOfDots({_p}, {_target})
@@ -1381,9 +1371,7 @@ function ShadowyApparitionFloat(p: player, apparition: entity, target: entity):
             if metadata tag "Heir to the Darkness" of {_p} < 300:
                 add 1 to metadata tag "Heir to the Darkness" of {_p}
                 buffRegister({_p}, "Heir", 4, "", "Stacks", "%(metadata tag "Heir to the Darkness" of {_p})%%%", "-")
-        loop all items in the inventory of {_p}:
-            if boolean tag "Shadowy Apparitions" of (custom nbt of loop-item) = true:
-                set lore of loop-item to {_lore}
+        LoreUpdate({_p}, "Shadowy Apparitions", {_lore})
     teleport {_apparition} to location(0, -100, 0)
     kill {_apparition}
 
@@ -1493,7 +1481,7 @@ function Mania(p: player):
         set {_speedBuff} to 1 + ({insanity::%{_p}%}/5)/100
         playerMoveSpeedUpdate({_p})
         set {_p}'s walking speed to ({_p}'s walking speed)*{_speedBuff}
-        set {_p}'s flying speed to ({_p}'s walking speed)*{_speedBuff}
+        set {_p}'s flying speed to ({_p}'s flying speed)*{_speedBuff}
         buffRegister({_p}, "Mania", 1, "", "Value", "%{insanity::%{_p}%}/5%%% ", "-")
             
 function LingeringInsanity(p: player):
@@ -1607,7 +1595,7 @@ function touchOfDarkness(p: player):
 function sinisterThoughts(p: player):
     if metadata tag "Voidform" of {_p} is not set:
         set metadata tag "SinisterThoughts" of {_p} to true
-        set {_pospiech} to Haste({_p}) + (({hasteVoidform::%{_p}%}/4)/100)
+        set {_pospiech} to Haste({_p})
         loop all items in the inventory of {_p}:
             if boolean tag "Void Eruption" of (custom nbt of loop-item) = true:
                 set {_cd} to "%4.5/{_pospiech}% seconds" parsed as timespan
@@ -1620,9 +1608,9 @@ function sinisterThoughts(p: player):
 function dotsText(t: text, p: player, e: entity, loc: location, wait: timespan, waitDelete: timespan):
     wait {_wait}
 
-    set {_id} to a random integer between 1 and 999999999999999999
+    set {_id} to a random integer between 0 and 999999999999
 
-    spawn fake text display at (location 0.25 above {_loc}) for {_p} with id {_id}
+    spawn fake text display entity at (location 0.25 above {_loc}) for {_p} with id {_id}
 
     set {_packet} to new metadata packet with id {_id}:
         display text: {_t}
@@ -1642,3 +1630,17 @@ on inventory click:
 on drop:
     if boolean tag "Void Bolt" of (custom nbt of event-item) is set:
         cancel event
+
+on death:
+    if victim is a player:
+        if {kartaname::%victim%} = "Brother Therold":
+            if metadata tag "Voidform" of victim is set:
+                ExitVoidform(victim)
+            set gravity attribute of victim to 0.08
+
+on quit:
+    if {kartaname::%player%} = "Brother Therold":
+        if metadata tag "Voidform" of player is set:
+            clear metadata tag "Voidform" of player
+            clear metadata tag "Voidform Stacks" of player
+        set gravity attribute of player to 0.08
