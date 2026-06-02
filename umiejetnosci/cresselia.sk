@@ -27,7 +27,7 @@ function ShootingStars(p: player):
 			if boolean tag "Constellation;Stellar Command" of (custom nbt of {karta::%{_p}%}) is set:
 				set {_chance} to {_chance} + 2
 			if metadata value "CelestialAlignment" of {_p} is set:
-				set {_chance} to {_chance}*2
+				set {_chance} to {_chance} * (1 + (AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "SHOOTINGSTARSFREQUENCY") / 100))
 			if metadata value "Solstice" of {_p} is set:
 				set {_chance} to {_chance}*3
 			chance of {_chance}%:
@@ -41,27 +41,30 @@ function ShootingStar(p: player):
 	set {_id} to cardId({_p})
 
 	set {_loops} to 1
-	set {_astralInvocationChance} to 10
+	set {_astralInvocationChance} to AbilityUpgradeValue({_p}, "Cresselia", "Boundless Moonlight", "INVOCATIONCHANCE")
+	set {_shootingStarsDamageMultiplier} to AbilityUpgradeValue({_p}, "Cresselia", "Shooting Stars", "DAMAGE_MULTIPLIER")
 	set {_damage} to (0.8 + (({damage::%{_p}%}/61) + (Versatility({_p})/183) + PrimaryStat({_p})/30.5)) * (1 + (Mastery({_p})/108))
+	set {_damage} to {_damage} * {_shootingStarsDamageMultiplier}
 	if string tag "Talents;Row 2" of (custom nbt of {karta::%{_p}%}) = "Crashing Star":
 		chance of 15%:
 			set {_damage} to (2.4 + (({damage::%{_p}%}/41) + (Versatility({_p})/123) + PrimaryStat({_p})/20.5)) * (1 + (Mastery({_p})/108))
+			set {_damage} to {_damage} * {_shootingStarsDamageMultiplier}
 			set {_crashingStar} to true
-			set {_astralInvocationChance} to 20
+			set {_astralInvocationChance} to {_astralInvocationChance} * 2
 	set {_crit} to 0 + (CriticalHit({_p})/10)
 	if metadata value "CelestialAlignment" of {_p} is set:
-		set {_crit} to {_crit} + 15
+		set {_crit} to {_crit} + AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "CRIT")
 	set {_haste} to Haste({_p})
 
 	if metadata value "CelestialAlignment" of {_p} is set:
 		set {_damage} to {_damage}*1.15
-		set {_damage} to {_damage}*7
+		set {_damage} to {_damage} * (1 + (AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "SHOOTINGSTARSDAMAGE") / 100))
 
+	set {_astralpower} to AbilityUpgradeValue({_p}, "Cresselia", "Shooting Stars", "ASTRALPOWER")
 	if string tag "Talents;Row 3" of (custom nbt of {karta::%{_p}%}) = "Whirling Stars":
-		set {_astralpower} to 3
+		if {_astralpower} < 3:
+			set {_astralpower} to 3
 		set {_damage} to {_damage}*1.09
-	else:
-		set {_astralpower} to 2
 	if string tag "Talents;Row 4" of (custom nbt of {karta::%{_p}%}) = "Stellar Collision":
 		set {_damage} to {_damage}*1.15
 		chance of 20%:
@@ -95,7 +98,7 @@ function ShootingStar(p: player):
 		if boolean tag "Constellation;Stellar Command" of (custom nbt of {karta::%{_p}%}) is set:
 			set {_chanceShooting} to {_chanceShooting} + 2
 		if metadata value "CelestialAlignment" of {_p} is set:
-			set {_chanceShooting} to {_chanceShooting}*2
+			set {_chanceShooting} to {_chanceShooting} * (1 + (AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "SHOOTINGSTARSFREQUENCY") / 100))
 		if metadata value "Solstice" of {_p} is set:
 			set {_chanceShooting} to {_chanceShooting}*3
 
@@ -244,7 +247,7 @@ function AstralPower(p: player):
 		set {_astralPowerCap} to 120
 	while metadata value "ECEngaged" of {_p} is set:
 		if {_p} is alive:
-			set {_astralpower} to 2 * (1 + getRunePower({_p}, "Astral Flow") / 100)
+			set {_astralpower} to AbilityUpgradeValue({_p}, "Cresselia", "Boundless Moonlight", "AP") * (1 + getRunePower({_p}, "Astral Flow") / 100)
 
 			set {_astralpower} to CresseliaAstralPowerGen({_p}, {_astralpower})
 			if {astralpower::%{_p}%} + {_astralpower} <= {_astralPowerCap}:
@@ -269,8 +272,8 @@ function AstralPowerUpdate(p: player):
 		send action bar {_message} to {_p}
 	
 	set {_apGen} to 3/Haste({_p})
-	set {_ap} to 2 * (1 + getRunePower({_p}, "Astral Flow") / 100)
-	set {_invocChance} to 10
+	set {_ap} to AbilityUpgradeValue({_p}, "Cresselia", "Boundless Moonlight", "AP") * (1 + getRunePower({_p}, "Astral Flow") / 100)
+	set {_invocChance} to AbilityUpgradeValue({_p}, "Cresselia", "Boundless Moonlight", "INVOCATIONCHANCE")
 
 	set {_valueNames::*} to "APGEN", "AP", "INVOCATIONCHANCE"
 	set {_values::*} to {_apGen}, {_ap}, {_invocChance}
@@ -301,10 +304,12 @@ on rightclick:
 							if cooldown "StarsurgeDoublecast%player%" is finished:
 								create cooldown "StarsurgeDoublecast%player%" for 1 tick
 								
-								set {_astralPowerCost} to 30
+								set {_astralPowerCost} to AbilityUpgradeValue(player, "Cresselia", "Starsurge", "COST")
 								if string tag "Talents;Row 2" of (custom nbt of {karta::%player%}) = "Astral Communion":
 									if metadata value "CelestialAlignment" of player is set:
-										set {_astralPowerCost} to 20
+										set {_astralPowerCost} to {_astralPowerCost} - 10
+										if {_astralPowerCost} < 0:
+											set {_astralPowerCost} to 0
 
 								if HasStarforgedBonus(player, "Cresselia", "Tier I", "2Set") is true:
 									if metadata value "StarfallActive%player%" of player > 0:
@@ -312,7 +317,8 @@ on rightclick:
 										if {_astralPowerCost} < 0:
 											set {_astralPowerCost} to 0
 
-								set {_damage} to 5.5 + ({damage::%player%}/12) + (Versatility(player)/36) + (PrimaryStat(player)/6)
+								set {_starsurgeScaling} to AbilityUpgradeValue(player, "Cresselia", "Starsurge", "DAMAGESCALING")
+								set {_damage} to AbilityUpgradeValue(player, "Cresselia", "Starsurge", "BASEDAMAGE") + ({damage::%player%}/{_starsurgeScaling}) + (Versatility(player)/({_starsurgeScaling} * 3)) + (PrimaryStat(player)/({_starsurgeScaling} / 2))
 
 								if boolean tag "Constellation;Rattle the Stars" of (custom nbt of {karta::%player%}) is set:
 									set {_astralPowerCost} to {_astralPowerCost}*0.9
@@ -345,7 +351,7 @@ on rightclick:
 									set {_crit} to 0 + (CriticalHit(player)/10)
 									if metadata value "CelestialAlignment" of player is set:
 										set {_damage} to {_damage}*1.15
-										set {_crit} to {_crit} + 15
+										set {_crit} to {_crit} + AbilityUpgradeValue(player, "Cresselia", "Celestial Alignment", "CRIT")
 									if metadata value "UmbralInspiration" of player is set:
 										set {_damage} to {_damage}*1.3
 
@@ -423,10 +429,12 @@ on rightclick:
 						if cooldown "StarfallDoublecast%player%" is finished:
 							create cooldown "StarfallDoublecast%player%" for 1 tick
 
-							set {_astralPowerCost} to 50
+							set {_astralPowerCost} to AbilityUpgradeValue(player, "Cresselia", "Starfall", "COST")
 							if string tag "Talents;Row 2" of (custom nbt of {karta::%player%}) = "Astral Communion":
 								if metadata value "CelestialAlignment" of player is set:
-									set {_astralPowerCost} to 40
+									set {_astralPowerCost} to {_astralPowerCost} - 10
+									if {_astralPowerCost} < 0:
+										set {_astralPowerCost} to 0
 
 							if boolean tag "Constellation;Rattle the Stars" of (custom nbt of {karta::%player%}) is set:
 								set {_astralPowerCost} to {_astralPowerCost}*0.9
@@ -472,7 +480,7 @@ on rightclick:
 						if metadata value "AstralInvocation" of player is not set:
 							if cooldown "Global Cooldown Interrupted Cast%player%" is finished:
 								set {_pospiech} to Haste(player)
-								set {_baseCastTime} to 2.25
+								set {_baseCastTime} to AbilityUpgradeValue(player, "Cresselia", "Starfire", "CASTTIME")
 								if boolean tag "Constellation;The Eternal Moon" of (custom nbt of {karta::%player%}) is set:
 									if metadata value "CelestialAlignment" of player is set:
 										set {_baseCastTime} to {_baseCastTime} - 0.25
@@ -585,7 +593,8 @@ on rightclick:
 			set {_secCol} to coloured getSecondaryCardColour(player)
 			if cooldown "Celestial Alignment%player%" is finished:
 				if metadata value "casting" of player is not set:
-					set {_cd} to 3 minutes
+					set {_cdSeconds} to AbilityUpgradeValue(player, "Cresselia", "Celestial Alignment", "COOLDOWN")
+					set {_cd} to "%{_cdSeconds}% seconds" parsed as timespan
 					if boolean tag "Constellation;The Eternal Moon" of (custom nbt of {karta::%player%}) is set:
 						set {_cd} to {_cd} - 30 seconds
 					create cooldown "Celestial Alignment%player%" for {_cd}
@@ -595,7 +604,7 @@ on rightclick:
 					AbilityUse(player, "Celestial Alignment")
 					CelestialAlignment(player, 20 seconds)
 
-					set {_astralPower} to 40
+					set {_astralPower} to AbilityUpgradeValue(player, "Cresselia", "Celestial Alignment", "ASTRALPOWER")
 
 					AstralPowerAdd(player, {_astralPower})
 					AstralPowerUpdate(player)
@@ -603,7 +612,7 @@ on rightclick:
 					celestialAlignmentVisual(player)
 
 					set {_valueNames::*} to "COOLDOWN", "ASTRALPOWER", "CRIT", "DURATION", "SHOOTINGSTARSFREQUENCY", "SHOOTINGSTARSDAMAGE"
-					set {_values::*} to {_cd}, 40, 15, 20, 100, 600
+					set {_values::*} to {_cd}, {_astralPower}, AbilityUpgradeValue(player, "Cresselia", "Celestial Alignment", "CRIT"), 20, AbilityUpgradeValue(player, "Cresselia", "Celestial Alignment", "SHOOTINGSTARSFREQUENCY"), AbilityUpgradeValue(player, "Cresselia", "Celestial Alignment", "SHOOTINGSTARSDAMAGE")
 					set {_lore} to GetAbilityDescription(player, "Cresselia", "Celestial Alignment", {_valueNames::*}, {_values::*})
 					LoreUpdate(player, "Celestial Alignment", {_lore})
 
@@ -715,7 +724,7 @@ function Starfire(p: player, target: entity, astronomicalImpact: boolean = false
 		set {astralpower::%{_p}%} to {_astralPowerCap}
 	AstralPowerUpdate({_p})
 	
-	set {_baseCastTime} to 2.25
+	set {_baseCastTime} to AbilityUpgradeValue({_p}, "Cresselia", "Starfire", "CASTTIME")
 	
 	if boolean tag "Constellation;The Eternal Moon" of (custom nbt of {karta::%{_p}%}) is set:
 		if metadata value "CelestialAlignment" of {_p} is set:
@@ -734,15 +743,16 @@ function Starfire(p: player, target: entity, astronomicalImpact: boolean = false
 	if boolean tag "Constellation;The Eternal Moon" of (custom nbt of {karta::%{_p}%}) is set:
 		set {_critModifier} to {_critModifier} + 0.2
 
-	set {_damageAoeMod} to 0.6
+	set {_damageAoeMod} to AbilityUpgradeValue({_p}, "Cresselia", "Starfire", "AOE") / 100
 
 	loop {_enemies::*}:
-		set {_damage} to 1.5 + (({damage::%{_p}%}/30) + (Versatility({_p})/90) + PrimaryStat({_p})/15)
+		set {_starfireScaling} to AbilityUpgradeValue({_p}, "Cresselia", "Starfire", "DAMAGESCALING")
+		set {_damage} to AbilityUpgradeValue({_p}, "Cresselia", "Starfire", "BASEDAMAGE") + (({damage::%{_p}%}/{_starfireScaling}) + (Versatility({_p})/({_starfireScaling} * 3)) + PrimaryStat({_p})/({_starfireScaling} / 2))
 		set {_crit} to 0 + (CriticalHit({_p})/10)
 		if metadata value "CelestialAlignment" of {_p} is set:
 			if string tag "Talents;Row 3" of (custom nbt of {karta::%{_p}%}) = "Aetherial Kindling":
 				set {_damage} to {_damage}*1.15
-			set {_crit} to {_crit} + 15
+			set {_crit} to {_crit} + AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "CRIT")
 
 		if {_astronomicalImpact} = true:
 			set {_damage} to {_damage}*1.6
@@ -761,7 +771,7 @@ function Starfire(p: player, target: entity, astronomicalImpact: boolean = false
 			StarfireVisual({_p}, loop-value, true)
 		
 		set {_valueNames::*} to "CASTTIME", "DAMAGE", "AOEDAMAGE"
-		set {_values::*} to ({_baseCastTime}/Haste({_p})), {_damageMainTarget}, ({_damageAoeMod}*{_damage})
+		set {_values::*} to ({_baseCastTime}/Haste({_p})), {_damageMainTarget}, ({_damageMainTarget}*{_damageAoeMod})
 		set {_lore} to GetAbilityDescription({_p}, "Cresselia", "Starfire", {_valueNames::*}, {_values::*})
 
 		set loop-value's last damage cause to sweep attack
@@ -936,7 +946,9 @@ function Starfall(p: player, effectiveness: number, astralPowerCost: number = 0)
 		PrimordialArcanicPulsar({_p}, {_astralPowerCost})
 	
 	set {_astralRain} to "%getRunePower({_p}, "Astral Rain")% seconds" parsed as timespan
-	set {_starfallDuration} to 8 seconds + {_astralRain}
+	set {_starfallBaseDurationSeconds} to AbilityUpgradeValue({_p}, "Cresselia", "Starfall", "DURATION")
+	set {_starfallBaseDuration} to "%{_starfallBaseDurationSeconds}% seconds" parsed as timespan
+	set {_starfallDuration} to {_starfallBaseDuration} + {_astralRain}
 
 	if string tag "Talents;Row 4" of (custom nbt of {karta::%{_p}%}) = "Hail of Stars":
 		set {_pospiech} to Haste({_p}, 3.6)
@@ -948,7 +960,7 @@ function Starfall(p: player, effectiveness: number, astralPowerCost: number = 0)
 		
 	set {_wait} to "%1/{_pospiech}% seconds" parsed as timespan
 	
-	set {_baseStarfallDuration} to 8
+	set {_baseStarfallDuration} to AbilityUpgradeValue({_p}, "Cresselia", "Starfall", "DURATION")
 
 	set {_starfallDurationSeconds} to "%{_starfallDuration}%"
 	replace all " seconds" and " second" in {_starfallDurationSeconds} with ""
@@ -1000,7 +1012,8 @@ function Starfall(p: player, effectiveness: number, astralPowerCost: number = 0)
 					set {_enemies::*} to {_enemies::*} and {_entity}
 
 
-	set {_starfallDamage} to (1 + ((({damage::%{_p}%}/48) + (Versatility({_p})/144) + PrimaryStat({_p})/24)))
+	set {_starfallScaling} to AbilityUpgradeValue({_p}, "Cresselia", "Starfall", "DAMAGESCALING")
+	set {_starfallDamage} to AbilityUpgradeValue({_p}, "Cresselia", "Starfall", "BASEDAMAGE") + ((({damage::%{_p}%}/{_starfallScaling}) + (Versatility({_p})/({_starfallScaling} * 3)) + PrimaryStat({_p})/({_starfallScaling} / 2)))
 
 	set {_primCol} to coloured getPrimaryCardColour({_p})
 	set {_secCol} to coloured getSecondaryCardColour({_p})
@@ -1016,8 +1029,8 @@ function Starfall(p: player, effectiveness: number, astralPowerCost: number = 0)
 
 	set {_starfallDamage} to {_starfallDamage} * rounded ({_starfallDurationSeconds}/(1/{_pospiech}))
 
-	set {_valueNames::*} to "COST", "DAMAGE", "DURATION"
-	set {_values::*} to {_astralPowerCost}, {_starfallDamage}, {_starfallDurationSeconds}
+	set {_valueNames::*} to "COST", "DAMAGE", "DURATION", "AOE"
+	set {_values::*} to {_astralPowerCost}, {_starfallDamage}, {_starfallDurationSeconds}, AbilityUpgradeValue({_p}, "Cresselia", "Starfall", "AOE")
 	set {_lore} to GetAbilityDescription({_p}, "Cresselia", "Starfall", {_valueNames::*}, {_values::*})
 	LoreUpdate({_p}, "Starfall", {_lore})
 
@@ -1312,13 +1325,14 @@ function StarfallStarTravel(p: player, e: entity, target: entity, duration: time
 		set {_enemies::*} to LoopEntitiesAroundTarget({_target}, 3, true)
 		loop {_enemies::*}:
 			set {_crit} to 0 + (CriticalHit({_p})/10)
-			set {_damage} to (1 + (({damage::%{_p}%}/63) + (Versatility({_p})/189) + PrimaryStat({_p})/31.5)) * {_effectiveness}
+			set {_starfallScaling} to AbilityUpgradeValue({_p}, "Cresselia", "Starfall", "DAMAGESCALING")
+			set {_damage} to (AbilityUpgradeValue({_p}, "Cresselia", "Starfall", "BASEDAMAGE") + (({damage::%{_p}%}/{_starfallScaling}) + (Versatility({_p})/({_starfallScaling} * 3)) + PrimaryStat({_p})/({_starfallScaling} / 2))) * {_effectiveness}
 
 			set {_damage} to {_damage} * {_starfallScalar}
 
 			if metadata value "CelestialAlignment" of {_p} is set:
 				set {_damage} to {_damage}*1.15
-				set {_crit} to {_crit} + 15
+				set {_crit} to {_crit} + AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "CRIT")
 			if metadata value "UmbralInspiration" of {_p} is set:
 				set {_damage} to {_damage}*1.3
 			if string tag "Talents;Row 2" of (custom nbt of {karta::%{_p}%}) = "Stellar Drift":
@@ -1327,7 +1341,7 @@ function StarfallStarTravel(p: player, e: entity, target: entity, duration: time
 				set {_damage} to {_damage}*1.08
 
 			if loop-value != {_target}:
-				set {_splashMultiplier} to 0.4
+				set {_splashMultiplier} to AbilityUpgradeValue({_p}, "Cresselia", "Starfall", "AOE") / 100
 
 				set {_damage} to {_damage}*{_splashMultiplier}
 			
@@ -1335,8 +1349,8 @@ function StarfallStarTravel(p: player, e: entity, target: entity, duration: time
 
 			set loop-value's last damage cause to sweep attack
 			
-			set {_valueNames::*} to "COST", "DAMAGE", "DURATION"
-			set {_values::*} to {_astralPowerCost}, {_damage}, {_starfallDuration}
+			set {_valueNames::*} to "COST", "DAMAGE", "DURATION", "AOE"
+			set {_values::*} to {_astralPowerCost}, {_damage}, {_starfallDuration}, AbilityUpgradeValue({_p}, "Cresselia", "Starfall", "AOE")
 			set {_lore} to GetAbilityDescription({_p}, "Cresselia", "Starfall", {_valueNames::*}, {_values::*})
 
 			set metadata value "LastDamageCause" of loop-value to "%{_primCol}%Starfall"
@@ -1714,6 +1728,7 @@ function FullMoon(p: player, target: entity, effectiveness: number = 1):
 	set {_secCol} to coloured getSecondaryCardColour({_p})
 	
 	set {_damageFullMoon} to (13 + (({damage::%{_p}%}/6.5) + (Versatility({_p})/19.5) + PrimaryStat({_p})/3.25)) * (1 + (Mastery({_p})/108))
+	set {_damageFullMoon} to {_damageFullMoon} * AbilityUpgradeValue({_p}, "Cresselia", "Shooting Stars", "DAMAGE_MULTIPLIER")
 	set {_damageFullMoon} to {_damageFullMoon}*{_effectiveness}
 	set {_lunarFirmamentDmg} to offensiveTrait({_p}, "Cresselia", "Lunar Firmament")
 	if {_lunarFirmamentDmg} > 0:
@@ -1737,7 +1752,7 @@ function FullMoon(p: player, target: entity, effectiveness: number = 1):
 			set {_damage} to {_damage}*0.4
 		if metadata value "CelestialAlignment" of {_p} is set:
 			set {_damage} to {_damage}*1.15
-			set {_crit} to {_crit} + 15
+			set {_crit} to {_crit} + AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "CRIT")
 		set loop-value's last damage cause to sweep attack
 		set metadata value "LastDamageCause" of loop-value to "%{_primCol}%Full Moon"
 		set metadata value "LastDamageCauseLore" of loop-value to {_lore}
@@ -1817,13 +1832,13 @@ function AstronomicalImpact(p: player):
 	set metadata value "AstronomicalImpact" of {_p} to 3
 
 function CresseliaStarsurgeStackMax(p: player) :: integer:
-	set {_maxStacks} to 2
+	set {_maxStacks} to AbilityUpgradeValue({_p}, "Cresselia", "Starsurge", "MAXSTACKS")
 	if boolean tag "Constellation;Stellar Amplification" of (custom nbt of {karta::%{_p}%}) is set:
 		set {_maxStacks} to 4
 	return {_maxStacks}
 
 function CresseliaStarsurgeAmpPerStack(p: player) :: number:
-	set {_amp} to 0.15 + getRunePower({_p}, "Stellar Compression")
+	set {_amp} to (AbilityUpgradeValue({_p}, "Cresselia", "Starsurge", "AMPBASE") / 100) + getRunePower({_p}, "Stellar Compression")
 	if HasStarforgedBonus({_p}, "Cresselia", "Tier I", "2Set") is true:
 		if metadata value "StarfallActive%{_p}%" of {_p} > 0:
 			set {_amp} to {_amp} + 0.025
@@ -1863,12 +1878,13 @@ function CresseliaEchoesOfTheStarloomProc(p: player, target: entity):
 		CresseliaStarsurgeCastSound({_p})
 		CresseliaStarsurgeVisual({_p}, {_target})
 		loop {_procTargets::*}:
-			set {_damage} to 5.5 + ({damage::%{_p}%}/12) + (Versatility({_p})/36) + (PrimaryStat({_p})/6)
+			set {_starsurgeScaling} to AbilityUpgradeValue({_p}, "Cresselia", "Starsurge", "DAMAGESCALING")
+			set {_damage} to AbilityUpgradeValue({_p}, "Cresselia", "Starsurge", "BASEDAMAGE") + ({damage::%{_p}%}/{_starsurgeScaling}) + (Versatility({_p})/({_starsurgeScaling} * 3)) + (PrimaryStat({_p})/({_starsurgeScaling} / 2))
 			set {_crit} to 0 + (CriticalHit({_p})/10)
 
 			if metadata value "CelestialAlignment" of {_p} is set:
 				set {_damage} to {_damage} * 1.15
-				set {_crit} to {_crit} + 15
+				set {_crit} to {_crit} + AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "CRIT")
 			if metadata value "UmbralInspiration" of {_p} is set:
 				set {_damage} to {_damage} * 1.3
 			if boolean tag "Constellation;Rattle the Stars" of (custom nbt of {karta::%{_p}%}) is set:
@@ -2231,7 +2247,7 @@ function CresseliaStreakingStars(p: player, target: entity, spell: string):
 						stop loop
 						
 				if {_hit} is true:
-					set {_crit} to (CriticalHit({_p})/10) + 15
+					set {_crit} to (CriticalHit({_p})/10) + AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "CRIT")
 					set {_critMod} to 2
 					if boolean tag "Constellation;The Eternal Moon" of (custom nbt of {karta::%{_p}%}) is set:
 						set {_critMod} to {_critMod} + 0.2
