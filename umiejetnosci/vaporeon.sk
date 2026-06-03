@@ -478,8 +478,8 @@ function ExplosiveBubble(p: player, target: entity, turnOfTheTide: boolean = fal
 	set {_wait} to 8/{_pospiech}
 
 	set {_versatility} to Versatility({_p})
-	set {_shield} to 6 + ({utility::%{_p}%}/52) + ({_versatility}/156) + {primarystat::%{_p}%}/26
-	set {_damage} to 1 + ({damage::%{_p}%}/60) + ({_versatility}/180) + {primarystat::%{_p}%}/30
+	set {_shield} to 6 + ({utility::%{_p}%}/52) + ({_versatility}/156) + PrimaryStat({_p})/26
+	set {_damage} to 1 + ({damage::%{_p}%}/60) + ({_versatility}/180) + PrimaryStat({_p})/30
 	
 	if {_target} is set:
 		set {_uuid} to uuid of {_target}
@@ -545,7 +545,7 @@ function ExplosiveBubble(p: player, target: entity, turnOfTheTide: boolean = fal
 				loop all living entities in radius 10 around {_target}:
 					if boolean tag "ECMob" of (custom nbt of loop-entity) is set:
 						set {_versatility} to Versatility({_p})
-						set {_damage} to 1 + ({damage::%{_p}%}/60) + ({_versatility}/180) + {primarystat::%{_p}%}/30
+						set {_damage} to 1 + ({damage::%{_p}%}/60) + ({_versatility}/180) + PrimaryStat({_p})/30
 
 						set {_damage} to Crit({_p}, loop-entity, {_crit}, {_damage})
 
@@ -643,7 +643,7 @@ function CircleOfWaterApply(p: player, x: entity, ability: string):
 		
 function CircleOfWaterDetonate(p: player, x: entity, effectiveness: number = 1):
 	set {_versatility} to Versatility({_p})
-	set {_healcircle} to 0.8 + ({utility::%{_p}%}/100) + ({_versatility}/300) + ({primarystat::%{_p}%}/50)
+	set {_healcircle} to 0.8 + ({utility::%{_p}%}/100) + ({_versatility}/300) + (PrimaryStat({_p})/50)
 
 	set {_crit} to CriticalHit({_p})
 
@@ -778,8 +778,9 @@ function cardHealModifiers(p: player, x: entity, heal: number, spell: text) :: n
 						play sound "ambient.underwater.exit" with volume 2.5 and pitch 2 at location of {_x}
 
 	set {_healModifier} to {_heal}/{_healBeforeModifiers}
-
-	healText({_p}, {_x}, {_heal}, {_crit}, {_healModifier})
+		
+	if (health of {_x} != max health of {_x}):
+		healText({_p}, {_x}, {_heal}, {_crit}, {_healModifier})
 
 	return {_heal}
 
@@ -846,14 +847,14 @@ function selfHealModifiers(p: entity, heal: number) :: number:
 	return {_heal}
 
 function healAboveMaxHealth(p: player, x: entity, heal: number):
-	if {_heal} < 0:
+	if {_heal} < 0.00000000000000000001:
 		set {_heal} to {_heal}*-1
 	if {_p} = {_x}:
 		if {kartaname::%{_p}%} = "Brother Therold":
 			if string tag "Talents;Row 2" of (custom nbt of {karta::%{_p}%}) = "Mental Fortitude":
-				if {_heal} <= 0:
+				if {_heal} <= 0.00000000000000000001:
 					stop
-				set {_mentalFortitude} to ({_p}'s max health/4.25)-3 + {primarystat::%{_p}%}/8.75
+				set {_mentalFortitude} to ({_p}'s max health/4.25)-3 + PrimaryStat({_p})/8.75
 				set {_mentalFortitude} to 0 if {_mentalFortitude} < 0
 				set {_lore} to "&8Talent%nl%&fInstant cast%nl%&7Cooldown: &fnone%nl%&7Use: &fPassive%nl%<#613e82>Healing from Vampiric Touch when you are at%nl%<#613e82>maximum health will shield you for the same%nl%<#613e82>amount. Shield cannot exceed &f%{_mentalFortitude}% <#613e82>damage%nl%<#613e82>absorbed."
 				Shield({_p}, {_x}, {_heal} + 0.00, "Mental Fortitude", "<#613e82>", {_lore}, {_mentalFortitude}, false, true)
@@ -875,8 +876,8 @@ function Shield(p: player, x: entity, shield: number, spell: text, col: text, lo
 			if {_x} is a player:
 				HealRefresh({_x}, 0)
 		
-				
 		set {_existingShield} to metadata value "ShieldTotal" of {_x}
+
 		if yaml "Shields%uuid of {_x}%" is not loaded:
 			load yaml "plugins/Skript/combat/Shields/%uuid of {_x}%" as "Shields%uuid of {_x}%"
 
@@ -889,19 +890,21 @@ function Shield(p: player, x: entity, shield: number, spell: text, col: text, lo
 				if yaml value "Shields.%loop-number%.Name" in "Shields%uuid of {_x}%" = {_spell}:
 					set {_shieldAlreadyActive} to true
 					set {_amount} to yaml value "Shields.%loop-number%.Amount" in "Shields%uuid of {_x}%"
-					if {_maxShield} > 0:
+					if {_maxShield} > 0.0000000000000000001:
 						if {_amount} + {_shield} > {_maxShield}:
 							set {_shield} to {_maxShield} - {_amount}
-						if {_shield} < 0:
+						if {_shield} < 0.0000000000000000001:
 							set {_shield} to 0
-					add {_shield} to {_amount}
-					add {_shield} to {_existingShield}
+
+					set {_amount} to {_amount} + {_shield}
+					set {_existingShield} to {_existingShield} + {_shield}
+
 					set metadata value "ShieldTotal" of {_x} to {_existingShield}
 					set yaml value "Shields.%loop-number%.Amount" in "Shields%uuid of {_x}%" to {_amount}
 					stop loop
 
 		if {_shieldAlreadyActive} != true:
-			add 1 to {_shieldsActive}
+			set {_shieldsActive} to {_shieldsActive} + 1
 			set yaml value "Shields.%{_shieldsActive}%.Name" in "Shields%uuid of {_x}%" to {_spell}
 			set yaml value "Shields.%{_shieldsActive}%.Caster" in "Shields%uuid of {_x}%" to {_p}
 			set yaml value "Shields.%{_shieldsActive}%.Amount" in "Shields%uuid of {_x}%" to {_shield}
@@ -909,10 +912,18 @@ function Shield(p: player, x: entity, shield: number, spell: text, col: text, lo
 			set metadata value "ShieldTotal" of {_x} to {_shield}
 
 		set yaml value "ShieldsActive" in "Shields%uuid of {_x}%" to {_shieldsActive}
-		if metadata value "ShieldTotal" of {_x} < 0:
+		if metadata value "ShieldTotal" of {_x} < 0.00000000000001:
 			set metadata value "ShieldTotal" of {_x} to 0
 
-		set {_shieldTotal} to metadata value "ShieldTotal" of {_x}
+		set {_shieldTotal} to 0
+		loop {_shieldsActive} times:
+			set {_entryAmount} to yaml value "Shields.%loop-number%.Amount" in "Shields%uuid of {_x}%"
+			if {_entryAmount} is set:
+				set {_shieldTotal} to {_shieldTotal} + {_entryAmount}
+		if {_shieldTotal} < 0:
+			set {_shieldTotal} to 0
+
+		set metadata value "ShieldTotal" of {_x} to {_shieldTotal}
 
 		if {_x} is a player:
 			if {_sendMessage} != false:
