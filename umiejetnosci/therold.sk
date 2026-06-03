@@ -1,13 +1,22 @@
 
 
+function TheroldDamageFormula(p: player, ability: text, baseKey: text = "BASEDAMAGE", scalingKey: text = "DAMAGESCALING") :: number:
+    set {_scaling} to AbilityUpgradeValue({_p}, "Brother Therold", {_ability}, {_scalingKey})
+    set {_base} to AbilityUpgradeValue({_p}, "Brother Therold", {_ability}, {_baseKey})
+    set {_damage} to ({_base} + ({damage::%{_p}%}/{_scaling}) + (Versatility({_p})/({_scaling}*3)) + (PrimaryStat({_p})/({_scaling}/2))) * (1.096 + ((Mastery({_p})/6.25)/100))
+    return {_damage}
+
+function TheroldVoidformMultiplier(p: player) :: number:
+    return 1 + (AbilityUpgradeValue({_p}, "Brother Therold", "Voidform", "DAMAGE")/100)
+
 function VoidEruptionAbilityCast(p: player):
     if {kartaname::%{_p}%} = "Brother Therold":
         if CanUseAbility({_p}) != false:
-            if metadata tag "casting" of {_p} is not set:
+            if metadata value "casting" of {_p} is not set:
                 if (string tag "Talents;Row 5" of (custom nbt of {karta::%{_p}%})) = "Legacy of the Void":
                     set {_requiredInsanity} to 60
                 else:
-                    set {_requiredInsanity} to 90
+                    set {_requiredInsanity} to AbilityUpgradeValue({_p}, "Brother Therold", "Void Eruption", "REQUIRED")
                 if {insanity::%{_p}%} >= {_requiredInsanity}:
                     set {_target} to Target({_p}, 100, false)
                     if {_target} is set:
@@ -20,51 +29,51 @@ function VoidEruptionAbilityCast(p: player):
                                         set {_baseCasttime} to {_baseCasttime}*0.6 
                                     playAnimation({_p}, "voideruption", 2.4, {_pospiech})
                                     set {_casttime} to "%round(({_baseCasttime}/{_pospiech}), 1)% seconds" parsed as timespan
-                                    if metadata tag "cast" of {_p} is not set:
-                                        set metadata tag "casttimemax" of {_p} to {_casttime}
-                                        set metadata tag "lastspellTherold" of {_p} to uncolored {_p}'s tool's name
+                                    if metadata value "cast" of {_p} is not set:
+                                        set metadata value "casttimemax" of {_p} to {_casttime}
+                                        set metadata value "lastspellTherold" of {_p} to uncolored {_p}'s tool's name
                                         play sound "skill.therold.void_eruption_precast" with volume 3 and pitch 1 at (location of {_p})
-                                        set metadata tag "casting" of {_p} to true
-                                        set metadata tag "cast" of {_p} to {_casttime}
-                                        while metadata tag "casting" of {_p} = true:
-                                            if metadata tag "channeling" of {_p} is set:
-                                                clear metadata tag "channeling" of {_p}
+                                        set metadata value "casting" of {_p} to true
+                                        set metadata value "cast" of {_p} to {_casttime}
+                                        while metadata value "casting" of {_p} = true:
+                                            if metadata value "channeling" of {_p} is set:
+                                                clear metadata value "channeling" of {_p}
                                                 stop sound "skill.therold.mindflay_channel_whisper" for (all players in radius 2 around {_p})
                                                 stop sound "skill.therold.mindflay_channel" for (all players in radius 2 around {_p})
-                                            set {_voidformStacks} to metadata tag "Voidform Stacks" of {_p}
-                                            set {_insanityDrain} to 6 + 0.68*{_voidformStacks}
+                                            set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
+                                            set {_insanityDrain} to AbilityUpgradeValue({_p}, "Brother Therold", "Voidform", "INSANITYDRAIN") + 0.68*{_voidformStacks}
                                             set {_insanityInfo} to "Insanity: %round({insanity::%{_p}%}, 0)%"
-                                            if metadata tag "Voidform" of {_p} is set:
+                                            if metadata value "Voidform" of {_p} is set:
                                                 set {_insanityInfo} to "%{_insanityInfo}%   %round({_insanityDrain}, 1)%p/s    %{_voidformStacks}%"
                                             if (string tag "Talents;Row 3" of (custom nbt of {karta::%{_p}%})) = "Lingering Insanity":
                                                 if {lingeringInsanityHaste::%{_p}%} is set:
                                                     set {_insanityInfo} to "%{_insanityInfo}% |  %{lingeringInsanityHaste::%{_p}%}/4%%% "
-                                            if metadata tag "cast" of {_p} is not set:
-                                                clear metadata tag "casting" of {_p}
+                                            if metadata value "cast" of {_p} is not set:
+                                                clear metadata value "casting" of {_p}
                                                 stop
                                             if {_p} can not see {_target}:
-                                                clear metadata tag "casting" of {_p}
+                                                clear metadata value "casting" of {_p}
                                                 stop
                                             if {_casttime} > 0 seconds:
-                                                set metadata tag "casttimeleft" of {_p} to {_casttime}
+                                                set metadata value "casttimeleft" of {_p} to {_casttime}
                                                 set {_cst} to "%{_casttime}%"
                                                 send action bar "Casting... %{_cst}% | %{_insanityInfo}%" to {_p}
                                                 wait 0.1 seconds
                                                 remove 0.1 seconds from {_casttime}
                                             else:
-                                                clear metadata tag "casting" of {_p}
+                                                clear metadata value "casting" of {_p}
                                                 send action bar "" to {_p}
                                     else:
                                         stop
-                                    clear metadata tag "casting" of {_p}
-                                    clear metadata tag "cast" of {_p}
-                                    clear metadata tag "casttime" of {_p}
-                                    clear metadata tag "casttimemax" of {_p}
+                                    clear metadata value "casting" of {_p}
+                                    clear metadata value "cast" of {_p}
+                                    clear metadata value "casttime" of {_p}
+                                    clear metadata value "casttimemax" of {_p}
                                     stop sound "skill.therold.void_eruption_precast" for (all players in radius 2 around {_p})
                                     if {_casttime} > 0 seconds:
                                         send action bar "&cInterrupted" to {_p}
                                         stop
-                                    set metadata tag "Voidform" of {_p} to true
+                                    set metadata value "Voidform" of {_p} to true
                                     AbilityUse({_p}, "Void Eruption")
                                     buffRegister({_p}, "Voidform", 5, "", "Value", "active", "-")
                                     play sound "skill.therold.void_eruption_cast" with volume 3 and pitch 1 at (location of {_p})
@@ -72,7 +81,7 @@ function VoidEruptionAbilityCast(p: player):
                                     loop all items in the inventory of {_p}:
                                         if boolean tag "Void Eruption" of (custom nbt of loop-item) = true:
                                             set {_cdVoidbolt} to "%4.5/{_pospiech}% seconds" parsed as timespan
-                                            set {_dmgVoidbolt} to (3 + (({damage::%{_p}%}/15) + ({versatility::%{_p}%}/45)))
+                                            set {_dmgVoidbolt} to (3 + (({damage::%{_p}%}/15) + (Versatility({_p})/45)))
                                             set {_voidBolt} to (black dye named "<##613e82>Void Bolt") with lore "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown:  &f%{_cdVoidbolt}%%nl%&7Use: &fRMB%nl%<##613e82>Sends a bolt of pure void energy at the%nl%<##613e82>enemy, causing &f%{_dmgVoidbolt}%  <##431d53>Ghost <##613e82>damage and%nl%<##8165a6>extending <##613e82>the duration of &f <##8165a6>Shadow Word:%nl%<##8165a6>Pain <##613e82>and &f <##8165a6>Vampiric Touch <##613e82>to their original%nl%<##613e82>duration.%nl% %nl%<##613e82>Requires &f <##8165a6>Voidform<##613e82>.%nl% %nl%&fGenerates 16 Insanity."
                                             add nbt from "{""minecraft:custom_model_data"":{floats:[3.0f]},""minecraft:custom_data"":{""Void Bolt"":1b}}" to nbt of {_voidBolt}
                                             set loop-item to {_voidBolt}
@@ -85,23 +94,28 @@ function VoidEruptionAbilityCast(p: player):
                                                     if boolean tag "ECMob" of (custom nbt of loop-entity) is set:
                                                         if CheckIfDotted({_p}, loop-entity) is true:
                                                             VoidEruptionVisual({_p}, loop-entity)
-                                                            set {_damage} to (4 + (({damage::%{_p}%}/9) + ({versatility::%{_p}%}/27) + {primarystat::%{_p}%}/4.5)) * (1.096 + (({mastery::%{_p}%}/6.25)/100))
+                                                            set {_damage} to TheroldDamageFormula({_p}, "Void Eruption")
                                                             set loop-entity's last damage cause to sweep attack
-                                                            set metadata tag "LastDamageCause" of loop-entity to "<##462566>Void Eruption"
-                                                            set metadata tag "LastDamageCauseLore" of loop-entity to {_lore}
-                                                            set metadata tag "Element" of {_p} to "Ghost"
+                                                            set metadata value "LastDamageCause" of loop-entity to "<##462566>Void Eruption"
+                                                            set metadata value "LastDamageCauseLore" of loop-entity to {_lore}
+                                                            set metadata value "Element" of {_p} to "Ghost"
                                                             set {_damage} to Crit({_p}, loop-entity, {_crit}, {_damage})
                                                             make {_p} damage loop-entity by {_damage}*2
-                                    while metadata tag "Voidform" of {_p} is true:
+                                    set {_voidformTick} to 0
+                                    while metadata value "Voidform" of {_p} is true:
+                                        set {_insanityDrain} to AbilityUpgradeValue({_p}, "Brother Therold", "Voidform", "INSANITYDRAIN") + 0.68*{_voidformStacks}
                                         if {insanity::%{_p}%} > 0:
-                                            add 1 to {_voidformStacks}
-                                            set metadata tag "Voidform Stacks" of {_p} to {_voidformStacks}
-                                            set {_insanityDrain} to 6 + 0.68*{_voidformStacks}
-                                            remove {_insanityDrain} from {insanity::%{_p}%}             
-                                            draw 20 of (((purple dust particle of size 1) with an extra value of 0.03) with offset vector(0.3, 0.6, 0.3)) at (location above {_p})
+                                            set {insanity::%{_p}%} to {insanity::%{_p}%} - ({_insanityDrain}/20)
                                             set {insanity::%{_p}%} to 0 if {insanity::%{_p}%} < 0
-                                            set {hasteVoidform::%{_p}%} to {hasteVoidform::%{_p}%} + 4
-                                        Mania({_p})
+                                            set {_voidformTick} to {_voidformTick} + 1
+                                            if {_voidformTick} >= 20:
+                                                set {_voidformTick} to 0
+                                                set {_voidformStacks} to {_voidformStacks} + 1
+                                                set metadata value "Voidform Stacks" of {_p} to {_voidformStacks}
+                                                set {hasteVoidform::%{_p}%} to {hasteVoidform::%{_p}%} + 4
+                                                draw 20 of (((purple dust particle of size 1) with an extra value of 0.03) with offset vector(0.3, 0.6, 0.3)) at (location above {_p})
+                                                TheroldRelicHarbingersHunger({_p})
+                                                Mania({_p})
                                         ExitVoidform({_p}) if {insanity::%{_p}%} = 0
                                         stop if {insanity::%{_p}%} = 0
                                         set {_insanityInfo} to "Insanity: %round({insanity::%{_p}%}, 0)%"
@@ -109,9 +123,9 @@ function VoidEruptionAbilityCast(p: player):
                                         if (string tag "Talents;Row 3" of (custom nbt of {karta::%{_p}%})) = "Lingering Insanity":
                                             if {lingeringInsanityHaste::%{_p}%} is set:
                                                 set {_insanityInfo} to "%{_insanityInfo}% |  %{lingeringInsanityHaste::%{_p}%}/4%%% "
-                                        if metadata tag "channeling" of {_p} != true:
+                                        if metadata value "channeling" of {_p} != true:
                                             send action bar {_insanityInfo} to {_p}
-                                        wait 1 second
+                                        wait 1 tick
                             else: 
                                 if {tekstcd::%{_p}%} = true:
                                     set {_cdd} to cooldown "Shadow Word: Death%{_p}%"
@@ -128,18 +142,19 @@ function VoidEruptionAbilityCast(p: player):
 
 function VoidBoltCast(p: player, target: entity):
     set {_pospiech} to Haste({_p})
-    set {_cd} to "%4.5/{_pospiech}% seconds" parsed as timespan
+    set {_cdBase} to AbilityUpgradeValue({_p}, "Brother Therold", "Void Bolt", "COOLDOWN")
+    set {_cd} to "%{_cdBase}/{_pospiech}% seconds" parsed as timespan
     set the cooldown of {_p}'s held item for {_p} to {_cd}
     create cooldown "Void Bolt%{_p}%" for {_cd}
     AbilityUse({_p}, "Void Bolt")
-    if metadata tag "channeling" of {_p} is set:
-        clear metadata tag "channeling" of {_p}
+    if metadata value "channeling" of {_p} is set:
+        clear metadata value "channeling" of {_p}
         StopCastSoundTherold({_p})
-    if metadata tag "casting" of {_p} is set:
-        clear metadata tag "cast" of {_p}
+    if metadata value "casting" of {_p} is set:
+        clear metadata value "cast" of {_p}
         StopCastSoundTherold({_p})
         send action bar "&cInterrupted" to {_p}
-    set metadata tag "lastspellTherold" of {_p} to "Void Bolt"
+    set metadata value "lastspellTherold" of {_p} to "Void Bolt"
     set {_randomLocation} to a random number between -0.40 and 0.40
     set {_l} to location 0.3 blocks below and {_randomLocation} left of {_p}'s head
     set {_vec} to vector between {_p} and {_target}'s head
@@ -153,30 +168,30 @@ function VoidBoltCast(p: player, target: entity):
     GrantInsanity({_p}, 16)
     UpdateInsanity({_p})
     set {_crit} to CriticalHit({_p})
-    set {_damage} to (4.5 + (({damage::%{_p}%}/14.5) + ({versatility::%{_p}%}/43.5) + {primarystat::%{_p}%}/7.25)) * (1.096 + (({mastery::%{_p}%}/6.25)/100))
+    set {_damage} to TheroldDamageFormula({_p}, "Void Bolt")
     if boolean tag "Constellation;Mass Hysteria" of (custom nbt of {karta::%{_p}%}) is set:
-        set {_voidformStacks} to metadata tag "Voidform Stacks" of {_p}
+        set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
         set {_damage} to {_damage}*(1 + ({_voidformStacks}/100))
 
-    if metadata tag "Heir to the Darkness" of {_p} > 0:
-        set {_heirToTheDarkness} to metadata tag "Heir to the Darkness" of {_p}
+    if metadata value "Heir to the Darkness" of {_p} > 0:
+        set {_heirToTheDarkness} to metadata value "Heir to the Darkness" of {_p}
         set {_damage} to {_damage}*(1 + ({_heirToTheDarkness}/100))
 
     if offensiveTrait({_p}, "Brother Therold", "Sinister Thoughts") > 0:
-        add offensiveTrait({_p}, "Brother Therold", "Sinister Thoughts") to {_damage}
+        set {_damage} to {_damage} + offensiveTrait({_p}, "Brother Therold", "Sinister Thoughts")
         chance of 3%:
-            if metadata tag "Voidform" of {_p} is set:
+            if metadata value "Voidform" of {_p} is set:
                 clear cooldown "Void Bolt%{_p}%"
                 loop all items in {_p}'s inventory:
                     if boolean tag "Void Bolt" of (custom nbt of loop-item) is set:
                         clear cooldown of loop-item for {_p}
-    if metadata tag "Voidform" of {_p} is set:
-        set {_damage} to {_damage}*1.2
+    if metadata value "Voidform" of {_p} is set:
+        set {_damage} to {_damage}*TheroldVoidformMultiplier({_p})
     set {_target}'s last damage cause to sweep attack
     set {_lore} to "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown:  &f%{_cd}% seconds%nl%&7Use: &fRMB%nl%<##613e82>Sends a bolt of pure void energy at the%nl%<##613e82>enemy, causing &f%{_damage}%  <##431d53>Ghost <##613e82>damage and%nl%<##8165a6>extending <##613e82>the duration of &f <##8165a6>Shadow Word:%nl%<##8165a6>Pain <##613e82>and &f <##8165a6>Vampiric Touch <##613e82>to their original%nl%<##613e82>duration.%nl% %nl%<##613e82>Requires &f <##8165a6>Voidform<##613e82>.%nl% %nl%&fGenerates 16 Insanity."
-    set metadata tag "LastDamageCause" of {_target} to "<##462566>Void Bolt"
-    set metadata tag "LastDamageCauseLore" of {_target} to {_lore}
-    set metadata tag "Element" of {_p} to "Ghost"
+    set metadata value "LastDamageCause" of {_target} to "<##462566>Void Bolt"
+    set metadata value "LastDamageCauseLore" of {_target} to {_lore}
+    set metadata value "Element" of {_p} to "Ghost"
     LoreUpdate({_p}, "Void Bolt", {_lore})
     set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage})
     make {_p} damage {_target} by {_damage}*2
@@ -185,9 +200,9 @@ function VoidBoltCast(p: player, target: entity):
         ShadowyApparitionSpawn({_p}, {_target})
 
     loop all entities in radius 4 around {_target}:
-        if metadata tag "Shadow Word: Pain-%{_p}%" of loop-entity is set:
+        if metadata value "Shadow Word: Pain-%{_p}%" of loop-entity is set:
             ShadowWordPainRefresh({_p}, loop-entity)
-        if metadata tag "Vampiric Touch-%{_p}%" of loop-entity is set:
+        if metadata value "Vampiric Touch-%{_p}%" of loop-entity is set:
             VampiricTouchRefresh({_p}, loop-entity)
 
 function VoidBoltAbilityCast(p: player):
@@ -199,19 +214,19 @@ function VoidBoltAbilityCast(p: player):
                     if cooldown "Shadow Word: Pain%{_p}%" is finished:
                         if cooldown "Shadow Word: Death%{_p}%" is finished:
                             if cooldown "Global Cooldown Interrupted Cast%{_p}%" is finished:
-                                if metadata tag "Voidform" of {_p} is set:
+                                if metadata value "Voidform" of {_p} is set:
                                     VoidBoltCast({_p}, {_target})
                                 else:
-                                    if metadata tag "SinisterThoughts" of {_p} is set:
+                                    if metadata value "SinisterThoughts" of {_p} is set:
                                         VoidBoltCast({_p}, {_target})
-                                        clear metadata tag "SinisterThoughts" of {_p}
+                                        clear metadata value "SinisterThoughts" of {_p}
                                         loop all items in the inventory of {_p}:
                                             if boolean tag "Void Bolt" of (custom nbt of loop-item) = true:
                                                 if (string tag "Talents;Row 5" of (custom nbt of {karta::%{_p}%})) = "Legacy of the Void":
                                                     set {_requiredInsanity} to 60
                                                 else:
-                                                    set {_requiredInsanity} to 90
-                                                set {_damage} to (4 + (({damage::%{_p}%}/9) + ({versatility::%{_p}%}/27) + {primarystat::%{_p}%}/4.5)) * (1.096 + (({mastery::%{_p}%}/6.25)/100))
+                                                    set {_requiredInsanity} to AbilityUpgradeValue({_p}, "Brother Therold", "Void Eruption", "REQUIRED")
+                                                set {_damage} to TheroldDamageFormula({_p}, "Void Eruption")
                                                 set {_pospiech} to Haste({_p})
                                                 set {_baseCasttime} to 2
                                                 if (string tag "Talents;Row 5" of (custom nbt of {karta::%{_p}%})) = "Legacy of the Void":
@@ -247,7 +262,7 @@ function MindBlastAbilityCast(p: player):
     if {kartaname::%{_p}%} = "Brother Therold":
         if string tag "Talents;Row 1" of (custom nbt of {karta::%{_p}%}) != "Shadow Word: Void":
             if CanUseAbility({_p}) != false:
-                if metadata tag "casting" of {_p} is not set:
+                if metadata value "casting" of {_p} is not set:
                     set {_target} to Target({_p}, 100, false)
                     if {_target} is set:
                         if isCastableTherold({_p}) = true:
@@ -257,64 +272,65 @@ function MindBlastAbilityCast(p: player):
                                         set {_pospiech} to Haste({_p})
                                         set {_casttime} to "%round((1.5/{_pospiech}), 1)% seconds" parsed as timespan
                                         set {_casttimeText} to {_casttime}
-                                        set {_cd} to "%9/{_pospiech}% seconds" parsed as timespan
-                                        if metadata tag "ShadowyInsight" of {_p} != true:
-                                            if metadata tag "cast" of {_p} is not set:
-                                                set metadata tag "casttimemax" of {_p} to {_casttime}
+                                        set {_cdBase} to AbilityUpgradeValue({_p}, "Brother Therold", "Mind Blast", "COOLDOWN")
+                                        set {_cd} to "%{_cdBase}/{_pospiech}% seconds" parsed as timespan
+                                        if metadata value "ShadowyInsight" of {_p} != true:
+                                            if metadata value "cast" of {_p} is not set:
+                                                set metadata value "casttimemax" of {_p} to {_casttime}
                                                 play sound "skill.therold.mindblast_precast" with volume 3 and pitch 1 at (location of {_p})
-                                                set metadata tag "casting" of {_p} to true
-                                                if metadata tag "channeling" of {_p} is set:
-                                                    clear metadata tag "channeling" of {_p}
+                                                set metadata value "casting" of {_p} to true
+                                                if metadata value "channeling" of {_p} is set:
+                                                    clear metadata value "channeling" of {_p}
                                                     StopCastSoundTherold({_p})
-                                                set metadata tag "lastspellTherold" of {_p} to uncolored {_p}'s tool's name
-                                                set metadata tag "cast" of {_p} to {_casttime}
-                                                while metadata tag "casting" of {_p} = true:
-                                                    set {_voidformStacks} to metadata tag "Voidform Stacks" of {_p}
-                                                    set {_insanityDrain} to 6 + 0.68*{_voidformStacks}
+                                                set metadata value "lastspellTherold" of {_p} to uncolored {_p}'s tool's name
+                                                set metadata value "cast" of {_p} to {_casttime}
+                                                while metadata value "casting" of {_p} = true:
+                                                    set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
+                                                    set {_insanityDrain} to AbilityUpgradeValue({_p}, "Brother Therold", "Voidform", "INSANITYDRAIN") + 0.68*{_voidformStacks}
                                                     set {_insanityInfo} to "Insanity: %round({insanity::%{_p}%}, 0)%"
-                                                    if metadata tag "Voidform" of {_p} is set:
+                                                    if metadata value "Voidform" of {_p} is set:
                                                         set {_insanityInfo} to "%{_insanityInfo}%   %round({_insanityDrain}, 1)%p/s    %{_voidformStacks}%"
                                                     if (string tag "Talents;Row 3" of (custom nbt of {karta::%{_p}%})) = "Lingering Insanity":
                                                         if {lingeringInsanityHaste::%{_p}%} is set:
                                                             set {_insanityInfo} to "%{_insanityInfo}% |  %{lingeringInsanityHaste::%{_p}%}/4%%% "
-                                                    if metadata tag "cast" of {_p} is not set:
-                                                        clear metadata tag "casting" of {_p}
+                                                    if metadata value "cast" of {_p} is not set:
+                                                        clear metadata value "casting" of {_p}
                                                         stop sound "skill.therold.mindblast_precast" for (all players in radius 2 around {_p})
                                                         stop
                                                     if {_p} can not see {_target}:
-                                                        clear metadata tag "casting" of {_p}
+                                                        clear metadata value "casting" of {_p}
                                                         stop
                                                     if {_casttime} > 0 seconds:
-                                                        set metadata tag "casttimeleft" of {_p} to {_casttime}
+                                                        set metadata value "casttimeleft" of {_p} to {_casttime}
                                                         set {_cst} to "%{_casttime}%"
                                                         send action bar "Casting... %{_cst}% | %{_insanityInfo}%" to {_p}
                                                         wait 0.1 seconds
                                                         remove 0.1 seconds from {_casttime}
                                                     else:
-                                                        clear metadata tag "casting" of {_p}
+                                                        clear metadata value "casting" of {_p}
                                                         send action bar "" to {_p}
                                             else:
                                                 stop
-                                            clear metadata tag "casting" of {_p}
-                                            clear metadata tag "cast" of {_p}
-                                            clear metadata tag "casttimeleft" of {_p}
-                                            clear metadata tag "casttimemax" of {_p}
+                                            clear metadata value "casting" of {_p}
+                                            clear metadata value "cast" of {_p}
+                                            clear metadata value "casttimeleft" of {_p}
+                                            clear metadata value "casttimemax" of {_p}
                                             stop sound "skill.therold.mindblast_precast" for (all players in radius 2 around {_p})
                                             if {_casttime} > 0 seconds:
                                                 send action bar "&cInterrupted" to {_p}
                                                 stop
-                                            set {_charges} to metadata tag "MindBlastCharges" of {_p}
+                                            set {_charges} to metadata value "MindBlastCharges" of {_p}
                                             remove 1 from {_charges}
-                                            set metadata tag "MindBlastCharges" of {_p} to {_charges}
+                                            set metadata value "MindBlastCharges" of {_p} to {_charges}
                                             if boolean tag "Constellation;Thought Harvester" of (custom nbt of {karta::%{_p}%}) is not set:
                                                 create cooldown "Mind Blast%{_p}%" for {_cd}
                                             MindBlastRecharge({_p}, {_cd})
                                         else:
-                                            clear metadata tag "ShadowyInsight" of {_p}
-                                            set {_charges} to metadata tag "MindBlastCharges" of {_p}
+                                            clear metadata value "ShadowyInsight" of {_p}
+                                            set {_charges} to metadata value "MindBlastCharges" of {_p}
                                             send title " " with subtitle " " to {_p} for 1 second with fade in 0.0 second and fade out 0.0 second
                                         AbilityUse({_p}, "Mind Blast")
-                                        set {_insanity} to 12
+                                        set {_insanity} to AbilityUpgradeValue({_p}, "Brother Therold", "Mind Blast", "INSANITY")
                                         if (string tag "Talents;Row 1" of (custom nbt of {karta::%{_p}%})) = "Fortress of the Mind":
                                             set {_insanity} to {_insanity}*1.2
                                         GrantInsanity({_p}, {_insanity})
@@ -325,18 +341,18 @@ function MindBlastAbilityCast(p: player):
                                         draw 20 of (((rgb(41, 22, 92) dust particle of size 1) with an extra value of 0.03) with offset vector(0.35, 0.45, 0.35)) at ({_target}'s head)
                                         if {_target} is alive:
                                             set {_crit} to CriticalHit({_p})
-                                            set {_damage} to (4.5 + (({damage::%{_p}%}/24) + ({versatility::%{_p}%}/72) + {primarystat::%{_p}%}/12)) * (1.096 + (({mastery::%{_p}%}/6.25)/100))
+                                            set {_damage} to TheroldDamageFormula({_p}, "Mind Blast")
                                             if boolean tag "Constellation;Mass Hysteria" of (custom nbt of {karta::%{_p}%}) is set:
-                                                set {_voidformStacks} to metadata tag "Voidform Stacks" of {_p}
+                                                set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
                                                 set {_damage} to {_damage}*(1 + ({_voidformStacks}/100))
-                                            add offensiveTrait({_p}, "Brother Therold", "Whispers of the Damned") to {_damage}
-                                            if metadata tag "Voidform" of {_p} is set:
-                                                set {_damage} to {_damage}*1.2
+                                            set {_damage} to {_damage} + offensiveTrait({_p}, "Brother Therold", "Whispers of the Damned")
+                                            if metadata value "Voidform" of {_p} is set:
+                                                set {_damage} to {_damage}*TheroldVoidformMultiplier({_p})
                                             if (string tag "Talents;Row 1" of (custom nbt of {karta::%{_p}%})) = "Fortress of the Mind":
                                                 set {_damage} to {_damage}*1.1
                                             if boolean tag "Constellation;Dark Evangelism" of (custom nbt of {karta::%{_p}%}) is set:
-                                                if metadata tag "Vampiric Touch-%{_p}%" of {_target} is set:
-                                                    if metadata tag "Shadow Word: Pain-%{_p}%" of {_target} is set:
+                                                if metadata value "Vampiric Touch-%{_p}%" of {_target} is set:
+                                                    if metadata value "Shadow Word: Pain-%{_p}%" of {_target} is set:
                                                         set {_damage} to {_damage}*1.55
                                             if {_charges} = 1:
                                                 set {_chargesLore} to "%{_charges}% Charge"
@@ -356,9 +372,9 @@ function MindBlastAbilityCast(p: player):
                                                         set the cooldown of loop-item for {_p} to {_cd}
                                                     stop loop
                                             set {_target}'s last damage cause to sweep attack
-                                            set metadata tag "Element" of {_p} to "Ghost"
-                                            set metadata tag "LastDamageCause" of {_target} to "<##462566>Mind Blast"
-                                            set metadata tag "LastDamageCauseLore" of {_target} to {_lore}
+                                            set metadata value "Element" of {_p} to "Ghost"
+                                            set metadata value "LastDamageCause" of {_target} to "<##462566>Mind Blast"
+                                            set metadata value "LastDamageCauseLore" of {_target} to {_lore}
                                             set {_damageBeforeCrit} to {_damage}
                                             set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage})
                                             if {_damage} > {_damageBeforeCrit}:
@@ -407,37 +423,39 @@ function ShadowWordPainAbilityCast(p: player):
                             set the cooldown of {_p}'s held item for {_p} to {_cd}
                             create cooldown "Shadow Word: Pain%{_p}%" for {_cd}
                             AbilityUse({_p}, "Shadow Word: Pain")
-                            if metadata tag "channeling" of {_p} is set:
-                                clear metadata tag "channeling" of {_p}
+                            if metadata value "channeling" of {_p} is set:
+                                clear metadata value "channeling" of {_p}
                                 StopCastSoundTherold({_p})
-                            if metadata tag "casting" of {_p} is set:
-                                clear metadata tag "cast" of {_p}
+                            if metadata value "casting" of {_p} is set:
+                                clear metadata value "cast" of {_p}
                                 StopCastSoundTherold({_p})
                                 send action bar "&cInterrupted" to {_p}
-                            set metadata tag "lastspellTherold" of {_p} to (uncolored {_p}'s tool's name)
+                            set metadata value "lastspellTherold" of {_p} to (uncolored {_p}'s tool's name)
                             set {_crit} to CriticalHit({_p})
-                            set {_damage} to (0.6 + (({damage::%{_p}%}/45) + ({versatility::%{_p}%}/135) + {primarystat::%{_p}%}/22.5)) * (1.096 + (({mastery::%{_p}%}/6.25)/100))
+                            set {_damage} to TheroldDamageFormula({_p}, "Shadow Word: Pain")
+                            set {_SWPDuration} to AbilityUpgradeValue({_p}, "Brother Therold", "Shadow Word: Pain", "DURATION")
                             if boolean tag "Constellation;Dark Evangelism" of (custom nbt of {karta::%{_p}%}) is set:
-                                set {_SWPDuration} to 18
-                            else:
-                                set {_SWPDuration} to 14
-                            set {_damageSWPTicks} to (1 + (({damage::%{_p}%}/68) + ({versatility::%{_p}%}/204) + {primarystat::%{_p}%}/34)) * (1.096 + (({mastery::%{_p}%}/6.25)/100))
+                                set {_SWPDuration} to {_SWPDuration} + 4
+                            set {_damageSWPTicks} to TheroldDamageFormula({_p}, "Shadow Word: Pain", "TICKDAMAGE", "TICKSCALING")
                             set {_totalTicks} to (round({_SWPDuration}/(2/{_pospiech}), 0))
                             if offensiveTrait({_p}, "Brother Therold", "Death Throes") > 0:
                                 set {_deathThroes} to offensiveTrait({_p}, "Brother Therold", "Death Throes")
-                                add {_deathThroes}/{_totalTicks} to {_damageSWPTicks}
-                            if metadata tag "Voidform" of {_p} is set:
-                                set {_damage} to {_damage}*1.2
+                                set {_damageSWPTicks} to {_damageSWPTicks} + {_deathThroes}/{_totalTicks}
+                            if metadata value "Voidform" of {_p} is set:
+                                set {_damage} to {_damage}*TheroldVoidformMultiplier({_p})
                                 set {_damageSWPTicks} to {_damageSWPTicks}*1.2
                             if boolean tag "Constellation;Mass Hysteria" of (custom nbt of {karta::%{_p}%}) is set:
-                                set {_voidformStacks} to metadata tag "Voidform Stacks" of {_p}
+                                set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
                                 set {_damage} to {_damage}*(1 + ({_voidformStacks}/100))
                                 set {_damageSWPTicks} to {_damageSWPTicks}*(1 + ({_voidformStacks}/100))
+                            set {_relicHarbingersHunger} to TheroldRelicHarbingersHungerMultiplier({_p})
+                            set {_damage} to {_damage}*{_relicHarbingersHunger}
+                            set {_damageSWPTicks} to {_damageSWPTicks}*{_relicHarbingersHunger}
                             set {_target}'s last damage cause to sweep attack
                             set {_lore} to "&8Basic Ability%nl%&fInstant cast%nl%&7Global Cooldown:  &f%{_cd}%%nl%&7Use: &fRMB%nl%<##613e82>A word of darkness that causes%nl%&f%{_damage}%  <##431d53>Ghost <##613e82>damage instantly, and%nl%<##613e82>an additional &f%{_totalTicks}*{_damageSWPTicks}%  <##431d53>Ghost <##613e82>damage%nl%<##613e82>over &f%{_SWPDuration}% sec<##613e82>.%nl% %nl%&fGenerates 3 Insanity."
-                            set metadata tag "LastDamageCause" of {_target} to "<##462566>Shadow Word: Pain"
-                            set metadata tag "LastDamageCauseLore" of {_target} to {_lore}
-                            set metadata tag "Element" of {_p} to "Ghost"
+                            set metadata value "LastDamageCause" of {_target} to "<##462566>Shadow Word: Pain"
+                            set metadata value "LastDamageCauseLore" of {_target} to {_lore}
+                            set metadata value "Element" of {_p} to "Ghost"
                             set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage})
                             make {_p} damage {_target} by {_damage}*2
                             GrantInsanity({_p}, 3)
@@ -445,10 +463,10 @@ function ShadowWordPainAbilityCast(p: player):
                             play sound "skill.therold.shadow_word_pain" with volume 3 and pitch 1 at (location of {_p})
                             play sound "skill.therold.shadowcast" with volume 3 and pitch 1 at (location of {_p})
                             draw 10 of (((rgb(77, 54, 138) dust particle of size 1) with an extra value of 0.03) with offset vector(0.4, 0.5, 0.4)) at (location above {_target})
-                            if metadata tag "Shadow Word: Pain-%{_p}%" of {_target} is not set:
-                                set metadata tag "Shadow Word: Pain-%{_p}%" of {_target} to {_SWPDuration}
+                            if metadata value "Shadow Word: Pain-%{_p}%" of {_target} is not set:
+                                set metadata value "Shadow Word: Pain-%{_p}%" of {_target} to {_SWPDuration}
                                 amountOfDotsSet({_p}, {_target})
-                                ShadowWordPain({_p}, {_target})
+                                ShadowWordPainDamage({_p}, {_target})
                                 ShadowWordPainExpire({_p}, {_target})
                             else:
                                 ShadowWordPainRefresh({_p}, {_target})
@@ -478,17 +496,17 @@ function MindFlayAbilityCast(p: player):
                     if cooldown "Shadow Word: Pain%{_p}%" is finished:
                         if cooldown "Shadow Word: Death%{_p}%" is finished:
                             if cooldown "Global Cooldown Interrupted Cast%{_p}%" is finished:
-                                if metadata tag "channeling" of {_p} is not set:
+                                if metadata value "channeling" of {_p} is not set:
                                     set {_pospiech} to Haste({_p})
                                     #set {_casttime} to (3/{_pospiech})
-                                    set {_casttime} to 3
-                                    if metadata tag "cast" of {_p} is set:
-                                        set {_maxCastTime} to seconds of metadata tag "casttimemax" of {_p}
-                                        set {_currentCastTime} to seconds of metadata tag "casttimeleft" of {_p}
+                                    set {_casttime} to AbilityUpgradeValue({_p}, "Brother Therold", "Mind Flay", "DURATION")
+                                    if metadata value "cast" of {_p} is set:
+                                        set {_maxCastTime} to seconds of metadata value "casttimemax" of {_p}
+                                        set {_currentCastTime} to seconds of metadata value "casttimeleft" of {_p}
                                         if {_currentCastTime} > 0.4*{_maxCastTime}:
-                                            clear metadata tag "cast" of {_p}
-                                            clear metadata tag "casttimemax" of {_p}
-                                            clear metadata tag "casttimeleft" of {_p}
+                                            clear metadata value "cast" of {_p}
+                                            clear metadata value "casttimemax" of {_p}
+                                            clear metadata value "casttimeleft" of {_p}
                                             StopCastSoundTherold({_p})
                                             send action bar "&cInterrupted" to {_p}
                                         else:
@@ -502,8 +520,8 @@ function MindFlayAbilityCast(p: player):
                                         set {_abilitiesItems::*} to light gray dye, orange dye, gray dye, cyan dye, purple dye, black dye, light gray dye and yellow dye
                                         GlobalCooldownSpells({_p}, {_abilities::*}, {_abilitiesItems::*}, {_cd})
                                     create cooldown "Mind Flay%{_p}%" for 1 tick
-                                    set metadata tag "lastspellTherold" of {_p} to (uncolored {_p}'s tool's name)
-                                    set metadata tag "channeling" of {_p} to true
+                                    set metadata value "lastspellTherold" of {_p} to (uncolored {_p}'s tool's name)
+                                    set metadata value "channeling" of {_p} to true
                                     MindFlay({_p}, {_target}, {_casttime})
                                     AbilityUse({_p}, "Mind Flay")
                                     #set the cooldown of {_p}'s held item for {_p} to ("%{_casttime}% seconds" parsed as timespan)
@@ -532,7 +550,7 @@ function MindFlayAbilityCast(p: player):
 function VampiricTouchAbilityCast(p: player):
     if {kartaname::%{_p}%} = "Brother Therold":
         if CanUseAbility({_p}) != false:
-            if metadata tag "casting" of {_p} is not set:
+            if metadata value "casting" of {_p} is not set:
                 set {_target} to Target({_p}, 100, false)
                 if {_target} is set:
                     if cooldown "Vampiric Touch%{_p}%" is finished:
@@ -541,50 +559,49 @@ function VampiricTouchAbilityCast(p: player):
                                 if cooldown "Global Cooldown Interrupted Cast%{_p}%" is finished:
                                     set {_pospiech} to Haste({_p})
                                     set {_casttime} to "%round((1.5/{_pospiech}), 1)% seconds" parsed as timespan
+                                    set {_VPTDuration} to AbilityUpgradeValue({_p}, "Brother Therold", "Vampiric Touch", "DURATION")
                                     if boolean tag "Constellation;Dark Evangelism" of (custom nbt of {karta::%{_p}%}) is set:
-                                        set {_VPTDuration} to 21
-                                    else:
-                                        set {_VPTDuration} to 18
-                                    if metadata tag "cast" of {_p} is not set:
-                                        set metadata tag "casttimemax" of {_p} to {_casttime}
+                                        set {_VPTDuration} to {_VPTDuration} + 3
+                                    if metadata value "cast" of {_p} is not set:
+                                        set metadata value "casttimemax" of {_p} to {_casttime}
                                         play sound "skill.therold.mindflay_channel_whisper" with volume 3 and pitch 1 at (location of {_p})
-                                        set metadata tag "casting" of {_p} to true
-                                        if metadata tag "channeling" of {_p} is set:
-                                            clear metadata tag "channeling" of {_p}
+                                        set metadata value "casting" of {_p} to true
+                                        if metadata value "channeling" of {_p} is set:
+                                            clear metadata value "channeling" of {_p}
                                             StopCastSoundTherold({_p})
-                                        set metadata tag "lastspellTherold" of {_p} to uncolored {_p}'s tool's name
-                                        set metadata tag "cast" of {_p} to {_casttime}
-                                        while metadata tag "casting" of {_p} = true:
-                                            set {_voidformStacks} to metadata tag "Voidform Stacks" of {_p}
-                                            set {_insanityDrain} to 6 + 0.68*{_voidformStacks}
+                                        set metadata value "lastspellTherold" of {_p} to uncolored {_p}'s tool's name
+                                        set metadata value "cast" of {_p} to {_casttime}
+                                        while metadata value "casting" of {_p} = true:
+                                            set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
+                                            set {_insanityDrain} to AbilityUpgradeValue({_p}, "Brother Therold", "Voidform", "INSANITYDRAIN") + 0.68*{_voidformStacks}
                                             set {_insanityInfo} to "Insanity: %round({insanity::%{_p}%}, 0)%"
-                                            if metadata tag "Voidform" of {_p} is set:
+                                            if metadata value "Voidform" of {_p} is set:
                                                 set {_insanityInfo} to "%{_insanityInfo}%   %round({_insanityDrain}, 1)%p/s    %{_voidformStacks}%"
                                             if (string tag "Talents;Row 3" of (custom nbt of {karta::%{_p}%})) = "Lingering Insanity":
                                                 if {lingeringInsanityHaste::%{_p}%} is set:
                                                     set {_insanityInfo} to "%{_insanityInfo}% |  %{lingeringInsanityHaste::%{_p}%}/4%%% "
-                                            if metadata tag "cast" of {_p} is not set:
-                                                clear metadata tag "casting" of {_p}
+                                            if metadata value "cast" of {_p} is not set:
+                                                clear metadata value "casting" of {_p}
                                                 stop sound "skill.therold.mindflay_channel_whisper" for (all players in radius 2 around {_p})
                                                 stop
                                             if {_p} can not see {_target}:
-                                                clear metadata tag "casting" of {_p}
+                                                clear metadata value "casting" of {_p}
                                                 stop
                                             if {_casttime} > 0 seconds:
                                                 set {_cst} to "%{_casttime}%"
-                                                set metadata tag "casttimeleft" of {_p} to {_casttime}
+                                                set metadata value "casttimeleft" of {_p} to {_casttime}
                                                 send action bar "Casting... %{_cst}% | %{_insanityInfo}%" to {_p}
                                                 wait 0.1 seconds
                                                 remove 0.1 seconds from {_casttime}
                                             else:
-                                                clear metadata tag "casting" of {_p}
+                                                clear metadata value "casting" of {_p}
                                                 send action bar "" to {_p}
                                     else:
                                         stop
-                                    clear metadata tag "casting" of {_p}
-                                    clear metadata tag "cast" of {_p}
-                                    clear metadata tag "casttimeleft" of {_p}
-                                    clear metadata tag "casttimemax" of {_p}
+                                    clear metadata value "casting" of {_p}
+                                    clear metadata value "cast" of {_p}
+                                    clear metadata value "casttimeleft" of {_p}
+                                    clear metadata value "casttimemax" of {_p}
                                     stop sound "skill.therold.mindflay_channel_whisper" for (all players in radius 2 around {_p})
                                     if {_casttime} > 0 seconds:
                                         send action bar "&cInterrupted" to {_p}
@@ -597,8 +614,8 @@ function VampiricTouchAbilityCast(p: player):
                                     draw 15 of (((rgb(44, 30, 77) dust particle of size 1) with an extra value of 0.05) with offset vector(0.5, 0.5, 0.5)) at ({_loc} ~ {_v})
                                     if (string tag "Talents;Row 5" of (custom nbt of {karta::%{_p}%})) = "Misery":
                                         ShadowWordPainAbilityCast({_p})
-                                    if metadata tag "Vampiric Touch-%{_p}%" of {_target} is not set:
-                                        set metadata tag "Vampiric Touch-%{_p}%" of {_target} to {_VPTDuration}
+                                    if metadata value "Vampiric Touch-%{_p}%" of {_target} is not set:
+                                        set metadata value "Vampiric Touch-%{_p}%" of {_target} to {_VPTDuration}
                                         amountOfDotsSet({_p}, {_target})
                                         VampiricTouch({_p}, {_target})
                                         VampiricTouchExpire({_p}, {_target})
@@ -627,7 +644,7 @@ function ShadowWordVoidAbilityCast(p: player):
     if {kartaname::%{_p}%} = "Brother Therold":
         if (string tag "Talents;Row 1" of (custom nbt of {karta::%{_p}%})) = "Shadow Word: Void":
             if CanUseAbility({_p}) != false:
-                if metadata tag "casting" of {_p} is not set:
+                if metadata value "casting" of {_p} is not set:
                     set {_target} to Target({_p}, 100, false)
                     if {_target} is set:
                         if isCastableTherold({_p}) = true:
@@ -637,62 +654,63 @@ function ShadowWordVoidAbilityCast(p: player):
                                         set {_pospiech} to Haste({_p})
                                         set {_casttime} to "%round((1.5/{_pospiech}), 1)% seconds" parsed as timespan
                                         set {_casttimeText} to {_casttime}
-                                        set {_cd} to "%9/{_pospiech}% seconds" parsed as timespan
-                                        if metadata tag "ShadowyInsight" of {_p} != true:
-                                            if metadata tag "cast" of {_p} is not set:
-                                                set metadata tag "casttimemax" of {_p} to {_casttime}
+                                        set {_cdBase} to AbilityUpgradeValue({_p}, "Brother Therold", "Shadow Word: Void", "COOLDOWN")
+                                        set {_cd} to "%{_cdBase}/{_pospiech}% seconds" parsed as timespan
+                                        if metadata value "ShadowyInsight" of {_p} != true:
+                                            if metadata value "cast" of {_p} is not set:
+                                                set metadata value "casttimemax" of {_p} to {_casttime}
                                                 play sound "skill.therold.shadow_word_void_precast" with volume 3 and pitch 1 at (location of {_p})
-                                                set metadata tag "casting" of {_p} to true
-                                                if metadata tag "channeling" of {_p} is set:
-                                                    clear metadata tag "channeling" of {_p}
+                                                set metadata value "casting" of {_p} to true
+                                                if metadata value "channeling" of {_p} is set:
+                                                    clear metadata value "channeling" of {_p}
                                                     StopCastSoundTherold({_p})
-                                                set metadata tag "lastspellTherold" of {_p} to uncolored {_p}'s tool's name
-                                                set metadata tag "cast" of {_p} to {_casttime}
-                                                while metadata tag "casting" of {_p} = true:
-                                                    set {_voidformStacks} to metadata tag "Voidform Stacks" of {_p}
-                                                    set {_insanityDrain} to 6 + 0.68*{_voidformStacks}
+                                                set metadata value "lastspellTherold" of {_p} to uncolored {_p}'s tool's name
+                                                set metadata value "cast" of {_p} to {_casttime}
+                                                while metadata value "casting" of {_p} = true:
+                                                    set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
+                                                    set {_insanityDrain} to AbilityUpgradeValue({_p}, "Brother Therold", "Voidform", "INSANITYDRAIN") + 0.68*{_voidformStacks}
                                                     set {_insanityInfo} to "Insanity: %round({insanity::%{_p}%}, 0)%"
-                                                    if metadata tag "Voidform" of {_p} is set:
+                                                    if metadata value "Voidform" of {_p} is set:
                                                         set {_insanityInfo} to "%{_insanityInfo}%   %round({_insanityDrain}, 1)%p/s    %{_voidformStacks}%"
                                                     if (string tag "Talents;Row 3" of (custom nbt of {karta::%{_p}%})) = "Lingering Insanity":
                                                         if {lingeringInsanityHaste::%{_p}%} is set:
                                                             set {_insanityInfo} to "%{_insanityInfo}% |  %{lingeringInsanityHaste::%{_p}%}/4%%% "
-                                                    if metadata tag "cast" of {_p} is not set:
-                                                        clear metadata tag "casting" of {_p}
+                                                    if metadata value "cast" of {_p} is not set:
+                                                        clear metadata value "casting" of {_p}
                                                         stop sound "skill.therold.mindblast_precast" for (all players in radius 2 around {_p})
                                                         stop
                                                     if {_p} can not see {_target}:
-                                                        clear metadata tag "casting" of {_p}
+                                                        clear metadata value "casting" of {_p}
                                                         stop
                                                     if {_casttime} > 0 seconds:
-                                                        set metadata tag "casttimeleft" of {_p} to {_casttime}
+                                                        set metadata value "casttimeleft" of {_p} to {_casttime}
                                                         set {_cst} to "%{_casttime}%"
                                                         send action bar "Casting... %{_cst}% | %{_insanityInfo}%" to {_p}
                                                         wait 0.1 seconds
                                                         remove 0.1 seconds from {_casttime}
                                                     else:
-                                                        clear metadata tag "casting" of {_p}
+                                                        clear metadata value "casting" of {_p}
                                                         send action bar "" to {_p}
                                             else:
                                                 stop
-                                            clear metadata tag "casting" of {_p}
-                                            clear metadata tag "cast" of {_p}
-                                            clear metadata tag "casttimeleft" of {_p}
-                                            clear metadata tag "casttimemax" of {_p}
+                                            clear metadata value "casting" of {_p}
+                                            clear metadata value "cast" of {_p}
+                                            clear metadata value "casttimeleft" of {_p}
+                                            clear metadata value "casttimemax" of {_p}
                                             stop sound "skill.therold.shadow_word_void_precast" for (all players in radius 2 around {_p})
                                             if {_casttime} > 0 seconds:
                                                 send action bar "&cInterrupted" to {_p}
                                                 stop
-                                            set {_charges} to metadata tag "ShadowWordVoidCharges" of {_p}
+                                            set {_charges} to metadata value "ShadowWordVoidCharges" of {_p}
                                             remove 1 from {_charges}
-                                            set metadata tag "ShadowWordVoidCharges" of {_p} to {_charges}
+                                            set metadata value "ShadowWordVoidCharges" of {_p} to {_charges}
                                             ShadowWordVoidRecharge({_p}, {_cd})
                                         else:
-                                            clear metadata tag "ShadowyInsight" of {_p}
-                                            set {_charges} to metadata tag "ShadowWordVoidCharges" of {_p}
+                                            clear metadata value "ShadowyInsight" of {_p}
+                                            set {_charges} to metadata value "ShadowWordVoidCharges" of {_p}
                                             send title " " with subtitle " " to {_p} for 1 second with fade in 0.0 second and fade out 0.0 second
                                         AbilityUse({_p}, "Shadow Word: Void")
-                                        set {_insanity} to 15
+                                        set {_insanity} to AbilityUpgradeValue({_p}, "Brother Therold", "Shadow Word: Void", "INSANITY")
                                         if (string tag "Talents;Row 1" of (custom nbt of {karta::%{_p}%})) = "Fortress of the Mind":
                                             set {_insanity} to {_insanity}*1.2
                                         GrantInsanity({_p}, {_insanity})
@@ -704,18 +722,18 @@ function ShadowWordVoidAbilityCast(p: player):
                                         draw 24 of (((rgb(41, 22, 92) dust particle of size 1) with an extra value of 0.04) with offset vector(0.37, 0.45, 0.37)) at ({_target}'s head)
                                         if {_target} is alive:
                                             set {_crit} to CriticalHit({_p})
-                                            set {_damage} to (5 + (({damage::%{_p}%}/22) + ({versatility::%{_p}%}/66)) + ({primarystat::%{_p}%}/11)) * (1.096 + (({mastery::%{_p}%}/6.25)/100))
-                                            add offensiveTrait({_p}, "Brother Therold", "Whispers of the Damned") to {_damage}
-                                            if metadata tag "Voidform" of {_p} is set:
-                                                set {_damage} to {_damage}*1.2
+                                            set {_damage} to TheroldDamageFormula({_p}, "Shadow Word: Void")
+                                            set {_damage} to {_damage} + offensiveTrait({_p}, "Brother Therold", "Whispers of the Damned")
+                                            if metadata value "Voidform" of {_p} is set:
+                                                set {_damage} to {_damage}*TheroldVoidformMultiplier({_p})
                                             if (string tag "Talents;Row 1" of (custom nbt of {karta::%{_p}%})) = "Fortress of the Mind":
                                                 set {_damage} to {_damage}*1.1
                                             if boolean tag "Constellation;Mass Hysteria" of (custom nbt of {karta::%{_p}%}) is set:
-                                                set {_voidformStacks} to metadata tag "Voidform Stacks" of {_p}
+                                                set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
                                                 set {_damage} to {_damage}*(1 + ({_voidformStacks}/100))
                                             if boolean tag "Constellation;Dark Evangelism" of (custom nbt of {karta::%{_p}%}) is set:
-                                                if metadata tag "Vampiric Touch-%{_p}%" of {_target} is set:
-                                                    if metadata tag "Shadow Word: Pain-%{_p}%" of {_target} is set:
+                                                if metadata value "Vampiric Touch-%{_p}%" of {_target} is set:
+                                                    if metadata value "Shadow Word: Pain-%{_p}%" of {_target} is set:
                                                         set {_damage} to {_damage}*1.55
                                             if {_charges} = 1:
                                                 set {_chargesLore} to "%{_charges}% Charge"
@@ -733,9 +751,9 @@ function ShadowWordVoidAbilityCast(p: player):
                                                         set the cooldown of loop-item for {_p} to {_cd}
                                                     stop loop
                                             set {_target}'s last damage cause to sweep attack
-                                            set metadata tag "Element" of {_p} to "Ghost"
-                                            set metadata tag "LastDamageCause" of {_target} to "<##462566>Shadow Word: Void"
-                                            set metadata tag "LastDamageCauseLore" of {_target} to {_lore}
+                                            set metadata value "Element" of {_p} to "Ghost"
+                                            set metadata value "LastDamageCause" of {_target} to "<##462566>Shadow Word: Void"
+                                            set metadata value "LastDamageCauseLore" of {_target} to {_lore}
                                             set {_damageBeforeCrit} to {_damage}
                                             set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage})
                                             if {_damage} > {_damageBeforeCrit}:
@@ -775,36 +793,38 @@ function ShadowWordDeathAbilityCast(p: player):
                 if (string tag "Talents;Row 3" of (custom nbt of {karta::%{_p}%})) = "Reaper of Souls":
                     set {_hpRequired} to 0.35
                 else:
-                    set {_hpRequired} to 0.2
+                    set {_hpRequired} to AbilityUpgradeValue({_p}, "Brother Therold", "Shadow Word: Death", "THRESHOLD")/100
                 if {_hpRequired}*({_target}'s max health) >= {_target}'s health:
-                    if metadata tag "ShadowWordDeathCharges" of {_p} > 0:
+                    if metadata value "ShadowWordDeathCharges" of {_p} > 0:
                         if cooldown "Shadow Word: Pain%{_p}%" is finished:
                             if cooldown "Shadow Word: Death%{_p}%" is finished:
                                 if cooldown "Global Cooldown Interrupted Cast%{_p}%" is finished:
                                     set {_pospiech} to Haste({_p})
                                     set {_globalcd} to "%1.5/{_pospiech}% seconds" parsed as timespan
-                                    set {_cd} to "%9/{_pospiech}% seconds" parsed as timespan
+                                    set {_cdBase} to 9
+                                    set {_cd} to "%{_cdBase}/{_pospiech}% seconds" parsed as timespan
                                     set the cooldown of {_p}'s held item for {_p} to {_globalcd}
                                     create cooldown "Shadow Word: Death%{_p}%" for {_globalcd}
                                     AbilityUse({_p}, "Shadow Word: Death")
-                                    if metadata tag "channeling" of {_p} is set:
-                                        clear metadata tag "channeling" of {_p}
+                                    if metadata value "channeling" of {_p} is set:
+                                        clear metadata value "channeling" of {_p}
                                         StopCastSoundTherold({_p})
-                                    if metadata tag "casting" of {_p} is set:
-                                        clear metadata tag "cast" of {_p}
+                                    if metadata value "casting" of {_p} is set:
+                                        clear metadata value "cast" of {_p}
                                         StopCastSoundTherold({_p})
                                         send action bar "&cInterrupted" to {_p}
-                                    set metadata tag "lastspellTherold" of {_p} to uncolored {_p}'s tool's name
-                                    set {_charges} to metadata tag "ShadowWordDeathCharges" of {_p}
+                                    set metadata value "lastspellTherold" of {_p} to uncolored {_p}'s tool's name
+                                    set {_charges} to metadata value "ShadowWordDeathCharges" of {_p}
                                     remove 1 from {_charges}
-                                    set metadata tag "ShadowWordDeathCharges" of {_p} to {_charges}
+                                    set metadata value "ShadowWordDeathCharges" of {_p} to {_charges}
                                     ShadowWordDeathRecharge({_p}, {_cd})
                                     set {_crit} to CriticalHit({_p})
-                                    set {_damage} to (6 + (({primarystat::%{_p}%}/7.5) + ({damage::%{_p}%}/15) + ({versatility::%{_p}%}/22.5)))
-                                    if metadata tag "Voidform" of {_p} is set:
-                                        set {_damage} to {_damage}*1.2
+                                    set {_swdScaling} to AbilityUpgradeValue({_p}, "Brother Therold", "Shadow Word: Death", "DAMAGESCALING")
+                                    set {_damage} to AbilityUpgradeValue({_p}, "Brother Therold", "Shadow Word: Death", "BASEDAMAGE") + (PrimaryStat({_p})/({_swdScaling}/2)) + ({damage::%{_p}%}/{_swdScaling}) + (Versatility({_p})/({_swdScaling}*1.5))
+                                    if metadata value "Voidform" of {_p} is set:
+                                        set {_damage} to {_damage}*TheroldVoidformMultiplier({_p})
                                     if boolean tag "Constellation;Mass Hysteria" of (custom nbt of {karta::%{_p}%}) is set:
-                                        set {_voidformStacks} to metadata tag "Voidform Stacks" of {_p}
+                                        set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
                                         set {_damage} to {_damage}*(1 + ({_voidformStacks}/100))
                                     set {_target}'s last damage cause to sweep attack
                                     if {_charges} = 1:
@@ -820,9 +840,9 @@ function ShadowWordDeathAbilityCast(p: player):
                                             else:
                                                 set the cooldown of loop-item for {_p} to {_cd}
                                             stop loop
-                                    set metadata tag "LastDamageCause" of {_target} to "<##462566>Shadow Word: Death"
-                                    set metadata tag "LastDamageCauseLore" of {_target} to {_lore}
-                                    set metadata tag "Element" of {_p} to "Ghost"
+                                    set metadata value "LastDamageCause" of {_target} to "<##462566>Shadow Word: Death"
+                                    set metadata value "LastDamageCauseLore" of {_target} to {_lore}
+                                    set metadata value "Element" of {_p} to "Ghost"
                                     set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage})
                                     make {_p} damage {_target} by {_damage}*2
                                     play sound "skill.therold.shadow_word_death" with volume 3 and pitch 1 at (location of {_p})
@@ -865,7 +885,7 @@ function SurrenderToMadnessAbilityCast(p: player):
         if CanUseAbility({_p}) != false:
             set {_target} to Target({_p}, 100, false)
             if {_target} is set:
-                if metadata tag "Voidform" of {_p} is set:
+                if metadata value "Voidform" of {_p} is set:
                     if cooldown "Shadow Word: Pain%{_p}%" is finished:
                         if cooldown "Surrender To Madness%{_p}%" is finished:
                             if cooldown "Shadow Word: Death%{_p}%" is finished:
@@ -874,7 +894,7 @@ function SurrenderToMadnessAbilityCast(p: player):
                                     set the cooldown of {_p}'s held item for {_p} to {_cd}
                                     create cooldown "Surrender To Madness%{_p}%" for {_cd}
                                     AbilityUse({_p}, "Surrender to Madness")
-                                    set metadata tag "SurrenderToMadness" of {_p} to true
+                                    set metadata value "SurrenderToMadness" of {_p} to true
                                     play sound "skill.therold.void_eruption_cast" with volume 3 and pitch 1 at (location of {_p})
                                     play sound "skill.therold.surrender_to_madness" with volume 3 and pitch 1 at (location of {_p})
                                     play sound "entity.wither.spawn" with volume 3 and pitch 0 at {_p}
@@ -914,76 +934,78 @@ on right click:
     else if boolean tag "Mind Blast" of (custom nbt of 1 of player's tool) = true:
         cancel event
         MindBlastAbilityCast(player)
-        if metadata tag "MindBlastCharges" of player is not set:
+        if metadata value "MindBlastCharges" of player is not set:
             if boolean tag "Constellation;Thought Harvester" of (custom nbt of {karta::%player%}) is set:
-                set metadata tag "MindBlastCharges" of player to 2
+                set metadata value "MindBlastCharges" of player to 2
             else:
-                set metadata tag "MindBlastCharges" of player to 1
+                set metadata value "MindBlastCharges" of player to 1
     else if boolean tag "Vampiric Touch" of ((custom nbt of player's tool)) = true:
         cancel event
         VampiricTouchAbilityCast(player)
     else if boolean tag "Shadow Word: Void" of (custom nbt of 1 of player's tool) = true:
         cancel event
         ShadowWordVoidAbilityCast(player)
-        if metadata tag "ShadowWordVoidCharges" of player is not set:
+        if metadata value "ShadowWordVoidCharges" of player is not set:
             if boolean tag "Constellation;Thought Harvester" of (custom nbt of {karta::%player%}) is set:
-                set metadata tag "ShadowWordVoidCharges" of player to 3
+                set metadata value "ShadowWordVoidCharges" of player to 3
             else:
-                set metadata tag "ShadowWordVoidCharges" of player to 2
+                set metadata value "ShadowWordVoidCharges" of player to 2
     else if boolean tag "Shadow Word: Death" of (custom nbt of 1 of player's tool) = true:
         cancel event
         ShadowWordDeathAbilityCast(player)
-        if metadata tag "ShadowWordDeathCharges" of player is not set:
-            set metadata tag "ShadowWordDeathCharges" of player to 2
+        if metadata value "ShadowWordDeathCharges" of player is not set:
+            set metadata value "ShadowWordDeathCharges" of player to 2
     else if boolean tag "Surrender to Madness" of ((custom nbt of player's tool)) = true:
         cancel event
         SurrenderToMadnessAbilityCast(player)
 
 function ExitVoidform(p: player):
-    clear metadata tag "Voidform" of {_p}
+    clear metadata value "Voidform" of {_p}
     set gravity attribute of {_p} to 0.08
     buffClear({_p}, "Voidform")
     if (string tag "Talents;Row 3" of (custom nbt of {karta::%{_p}%})) = "Lingering Insanity":
-        set {lingeringInsanityHaste::%{_p}%} to (metadata tag "Voidform Stacks" of {_p})*4
-        set {hasteVoidform::%{_p}%} to (metadata tag "Voidform Stacks" of {_p})*4
-        if metadata tag "LingeringInsanity" of {_p} is not set:
-            set metadata tag "LingeringInsanity" of {_p} to true
+        set {lingeringInsanityHaste::%{_p}%} to (metadata value "Voidform Stacks" of {_p})*4
+        set {hasteVoidform::%{_p}%} to (metadata value "Voidform Stacks" of {_p})*4
+        if metadata value "LingeringInsanity" of {_p} is not set:
+            set metadata value "LingeringInsanity" of {_p} to true
             LingeringInsanity({_p})
     else:
         clear {hasteVoidform::%{_p}%}
-    send "&fYou exit  Voidform with %metadata tag "Voidform Stacks" of {_p}% stacks." to {_p}
-    chorusOfInsanity({_p}, metadata tag "Voidform Stacks" of {_p})
-    clear metadata tag "Voidform Stacks" of {_p}
+    send "&fYou exit  Voidform with %metadata value "Voidform Stacks" of {_p}% stacks." to {_p}
+    chorusOfInsanity({_p}, metadata value "Voidform Stacks" of {_p})
+    clear metadata value "Voidform Stacks" of {_p}
+    clear metadata value "TheroldRelicHarbingersHunger" of {_p}
+    buffClear({_p}, "Harbinger's Hunger")
     set {_pospiech} to Haste({_p})
     set {_baseCasttime} to 2
     if (string tag "Talents;Row 5" of (custom nbt of {karta::%{_p}%})) = "Legacy of the Void":
         set {_baseCasttime} to {_baseCasttime}*0.6 
     set {_casttime} to "%round(({_baseCasttime}/{_pospiech}), 1)% seconds" parsed as timespan
-    set {_damage} to (4 + (({damage::%{_p}%}/10) + ({versatility::%{_p}%}/30) + {primarystat::%{_p}%}/5)) * (1.096 + (({mastery::%{_p}%}/6.25)/100))
+    set {_damage} to (4 + (({damage::%{_p}%}/10) + (Versatility({_p})/30) + PrimaryStat({_p})/5)) * (1.096 + ((Mastery({_p})/6.25)/100))
     if (string tag "Talents;Row 5" of (custom nbt of {karta::%{_p}%})) = "Legacy of the Void":
         set {_requiredInsanity} to 60
     else:
-        set {_requiredInsanity} to 90
+        set {_requiredInsanity} to AbilityUpgradeValue({_p}, "Brother Therold", "Void Eruption", "REQUIRED")
     loop all items in the inventory of {_p}:
         if boolean tag "Void Bolt" of (custom nbt of loop-item) = true:
             set {_voidEruption} to (purple dye named "<##613e82>Void Eruption") with lore "&8Ultimate Ability%nl%&f%{_casttime}% cast%nl%&7No cooldown%nl%&7Use: &fRMB%nl%<##613e82>Releases an explosive blast of pure void%nl%<##613e82>energy, activating &f <##8165a6>Voidform <##613e82>and causing%nl%&f%{_damage}%  <##431d53>Ghost <##613e82>damage to all enemies afflicted by%nl%<##613e82>your &f <##8165a6>Shadow Word: Pain <##613e82>or &f <##8165a6>Vampiric Touch.%nl% %nl%<##613e82>During &f <##8165a6>Voidform<##613e82>, this ability is replaced%nl%<##613e82>by &f <##8165a6>Void Bolt<##613e82>.%nl% %nl%&fRequires %{_requiredInsanity}% Insanity to activate."
             add nbt from "{""minecraft:custom_model_data"":{floats:[9.0f]},""minecraft:custom_data"":{""Void Eruption"":1b}}" to nbt of {_voidEruption}
             set loop-item to {_voidEruption}
-    if metadata tag "SurrenderToMadness" of {_p} = true:
-        clear metadata tag "SurrenderToMadness" of {_p}
+    if metadata value "SurrenderToMadness" of {_p} = true:
+        clear metadata value "SurrenderToMadness" of {_p}
         set {_lore} to "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown: &8 &f10 minutes%nl%&7Use: &fRMB%nl%<##613e82>Surrender your soul to the <##8165a6>Old Gods<##613e82>, sacrificing%nl%<##613e82>your soul for <##8165a6>ultimate power<##613e82>.%nl% %nl%<##613e82>All your &f <##8165a6>Insanity-generating <##613e82>abilities generate%nl%&f200%% <##613e82>more &f <##8165a6>Insanity <##613e82>until you exit &f <##8165a6>Voidform<##613e82>.%nl% %nl%<##613e82>Then you die. Horribly."
         set {_p}'s last damage cause to sweep attack
-        set metadata tag "Element" of {_p} to "Ghost"
-        set metadata tag "LastDamageCause" of {_p} to "<##462566>Surrender to Madness"
-        set metadata tag "LastDamageCauseLore" of {_p} to {_lore}
-        set metadata tag "IgnoreModifiers" of {_p} to true
+        set metadata value "Element" of {_p} to "Ghost"
+        set metadata value "LastDamageCause" of {_p} to "<##462566>Surrender to Madness"
+        set metadata value "LastDamageCauseLore" of {_p} to {_lore}
+        set metadata value "IgnoreModifiers" of {_p} to true
         make {_p} damage {_p} by ({_p}'s max health*2)
         send " %{_p}% fell to madness." to all players
         #send " %{_p}% poddał się szaleństwu." to loop-player
 
 
 function GrantInsanity(p: player, num: number):
-    if metadata tag "SurrenderToMadness" of {_p} is true:
+    if metadata value "SurrenderToMadness" of {_p} is true:
         set {_num} to {_num}*3
     set {insanity::%{_p}%} to {insanity::%{_p}%} + {_num}
     if {insanity::%{_p}%} > 100:
@@ -991,10 +1013,10 @@ function GrantInsanity(p: player, num: number):
     Mania({_p})
 
 function UpdateInsanity(p: player):
-    set {_voidformStacks} to metadata tag "Voidform Stacks" of {_p}
-    set {_insanityDrain} to 6 + 0.68*{_voidformStacks}
+    set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
+    set {_insanityDrain} to AbilityUpgradeValue({_p}, "Brother Therold", "Voidform", "INSANITYDRAIN") + 0.68*{_voidformStacks}
     set {_insanityText} to "Insanity: %round({insanity::%{_p}%}, 0)%"
-    if metadata tag "Voidform" of {_p} is set:
+    if metadata value "Voidform" of {_p} is set:
         set {_insanityText} to "%{_insanityText}%   %round({_insanityDrain}, 1)%p/s    %{_voidformStacks}%"
     if (string tag "Talents;Row 3" of (custom nbt of {karta::%{_p}%})) = "Lingering Insanity":
         if {lingeringInsanityHaste::%{_p}%} is set:
@@ -1014,37 +1036,37 @@ function VoidEruptionVisual(p: player, target: entity):
         draw 1 of (rgb(70, 56, 107) dust particle of size 1) with offset (random vector) at ({_loc} ~ {_v})
         wait 1 tick
 
-function ShadowWordPain(p: player, target: entity):
-    while metadata tag "Shadow Word: Pain-%{_p}%" of {_target} is set:
+function ShadowWordPainDamage(p: player, target: entity):
+    while metadata value "Shadow Word: Pain-%{_p}%" of {_target} is set:
         if {_target} is alive:
             set {_pospiech} to Haste({_p})
             set {_crit} to CriticalHit({_p})
+            set {_SWPDuration} to AbilityUpgradeValue({_p}, "Brother Therold", "Shadow Word: Pain", "DURATION")
             if boolean tag "Constellation;Dark Evangelism" of (custom nbt of {karta::%{_p}%}) is set:
-                set {_SWPDuration} to 18
-            else:
-                set {_SWPDuration} to 14
-            set {_damage} to (1 + (({damage::%{_p}%}/68) + ({versatility::%{_p}%}/204) + {primarystat::%{_p}%}/34)) * (1.096 + (({mastery::%{_p}%}/6.25)/100))
+                set {_SWPDuration} to {_SWPDuration} + 4
+            set {_damage} to TheroldDamageFormula({_p}, "Shadow Word: Pain", "TICKDAMAGE", "TICKSCALING")
             set {_totalTicks} to (round({_SWPDuration}/(2/{_pospiech}), 0))
             if offensiveTrait({_p}, "Brother Therold", "Death Throes") > 0:
                 set {_deathThroes} to offensiveTrait({_p}, "Brother Therold", "Death Throes")
-                add {_deathThroes}/{_totalTicks} to {_damage}
-            if metadata tag "Voidform" of {_p} is set:
-                set {_damage} to {_damage}*1.2
+                set {_damage} to {_damage} + {_deathThroes}/{_totalTicks}
+            if metadata value "Voidform" of {_p} is set:
+                set {_damage} to {_damage}*TheroldVoidformMultiplier({_p})
             if boolean tag "Constellation;Mass Hysteria" of (custom nbt of {karta::%{_p}%}) is set:
-                set {_voidformStacks} to metadata tag "Voidform Stacks" of {_p}
+                set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
                 set {_damage} to {_damage}*(1 + ({_voidformStacks}/100))
-            set {_instantDamage} to (0.6 + ({damage::%{_p}%}/45) + ({versatility::%{_p}%}/135) + ({primarystat::%{_p}%}/22.5)) * (1.096 + (({mastery::%{_p}%}/6.25)/100))
-            if metadata tag "Voidform" of {_p} is set:
-                set {_instantDamage} to {_instantDamage}*1.2
+            set {_damage} to {_damage}*TheroldRelicHarbingersHungerMultiplier({_p})
+            set {_instantDamage} to TheroldDamageFormula({_p}, "Shadow Word: Pain")
+            if metadata value "Voidform" of {_p} is set:
+                set {_instantDamage} to {_instantDamage}*TheroldVoidformMultiplier({_p})
             set {_gcd} to "%1.5/{_pospiech}% seconds" parsed as timespan
             set {_lore} to "&8Basic Ability%nl%&fInstant cast%nl%&7Global Cooldown:  &f%{_gcd}%%nl%&7Use: &fRMB%nl%<##613e82>A word of darkness that causes%nl%&f%{_instantDamage}%  <##431d53>Ghost <##613e82>damage instantly, and%nl%<##613e82>an additional &f%{_totalTicks}*{_damage}%  <##431d53>Ghost <##613e82>damage%nl%<##613e82>over &f%{_SWPDuration}% sec<##613e82>.%nl% %nl%&fGenerates 3 Insanity."
             LoreUpdate({_p}, "Shadow Word: Pain", {_lore})
-            set {_shadowyApparitionsDamage} to (0.8 + (({damage::%{_p}%}/65.5) + ({versatility::%{_p}%}/196.5) + {primarystat::%{_p}%}/32.75))
+            set {_shadowyApparitionsDamage} to (AbilityUpgradeValue({_p}, "Brother Therold", "Shadowy Apparitions", "BASEDAMAGE") + (({damage::%{_p}%}/(AbilityUpgradeValue({_p}, "Brother Therold", "Shadowy Apparitions", "DAMAGESCALING"))) + (Versatility({_p})/((AbilityUpgradeValue({_p}, "Brother Therold", "Shadowy Apparitions", "DAMAGESCALING"))*3)) + PrimaryStat({_p})/((AbilityUpgradeValue({_p}, "Brother Therold", "Shadowy Apparitions", "DAMAGESCALING"))/2)))
             if boolean tag "Constellation;Haunting Apparitions" of (custom nbt of {karta::%{_p}%}) is set:
-                set {_shadowyApparitionsDamage} to {_shadowyApparitionsDamage} * (1.096 + (({mastery::%{_p}%}/6.25)/100))
+                set {_shadowyApparitionsDamage} to {_shadowyApparitionsDamage} * (1.096 + ((Mastery({_p})/6.25)/100))
             if (string tag "Talents;Row 4" of (custom nbt of {karta::%{_p}%})) = "Auspicious Spirits":
                 set {_shadowyApparitionsDamage} to {_shadowyApparitionsDamage}*2
-            if metadata tag "Voidform" of {_p} is set:
+            if metadata value "Voidform" of {_p} is set:
                 set {_shadowyApparitionsDamage} to {_shadowyApparitionsDamage}*1.2
             LoreUpdate({_p}, "Shadowy Apparitions", "&8Passive Ability%nl%&fNo cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fPASSIVE%nl%<##613e82>When your &f <##8165a6>Shadow Word: Pain <##613e82>damage%nl%<##613e82>over time <##8165a6> Critically Strikes<##613e82>, you also create%nl%<##613e82>a shadowy version of yourself that floats%nl%<##613e82>towards the target and deals &f%{_shadowyApparitionsDamage}%  <##431d53>Ghost%nl%<##613e82>damage.")
             set {_target}'s last damage cause to sweep attack
@@ -1052,9 +1074,9 @@ function ShadowWordPain(p: player, target: entity):
             set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage})
             if {_damage} > {_damageBeforeCrit}:
                 ShadowyApparitionSpawn({_p}, {_target})
-            set metadata tag "Element" of {_p} to "Ghost"
-            set metadata tag "LastDamageCause" of {_target} to "<##462566>Shadow Word: Pain"
-            set metadata tag "LastDamageCauseLore" of {_target} to {_lore}
+            set metadata value "Element" of {_p} to "Ghost"
+            set metadata value "LastDamageCause" of {_target} to "<##462566>Shadow Word: Pain"
+            set metadata value "LastDamageCauseLore" of {_target} to {_lore}
             make {_p} damage {_target} by {_damage}*2
             if (string tag "Talents;Row 4" of (custom nbt of {karta::%{_p}%})) = "Shadowy Insight":
                 chance of 4%:
@@ -1062,42 +1084,43 @@ function ShadowWordPain(p: player, target: entity):
             set {_tickTime} to "%2/{_pospiech}% seconds" parsed as timespan
             wait {_tickTime}
         else:
-            clear metadata tag "Shadow Word: Pain-%{_p}%" of {_target}
+            clear metadata value "Shadow Word: Pain-%{_p}%" of {_target}
             stop loop
 function ShadowWordPainExpire(p: player, target: entity):
+    set {_duration} to AbilityUpgradeValue({_p}, "Brother Therold", "Shadow Word: Pain", "DURATION")
     if boolean tag "Constellation;Dark Evangelism" of (custom nbt of {karta::%{_p}%}) is set:
-        set {_duration} to 18
-    else:
-        set {_duration} to 14
+        set {_duration} to {_duration} + 4
     set {_height} to amountOfDots({_p}, {_target})
-    set {_dots} to metadata tag "AmountOfDots%{_p}%" of {_target}
+    set {_dots} to metadata value "AmountOfDots%{_p}%" of {_target}
     while {_duration} > 0:
         if {_target} is alive:
             set {_pospiech} to Haste({_p})
             set {_tickTime} to "1 seconds" parsed as timespan
-            if metadata tag "AmountOfDots%{_p}%" of {_target} < {_dots}:
+            if metadata value "AmountOfDots%{_p}%" of {_target} < {_dots}:
                 set {_height} to amountOfDots({_p}, {_target})
-            dotsText(" %{_duration}%", {_p}, {_target}, (location {_height} above {_target}'s head), 0 seconds, {_tickTime})
+
+            set {_headLoc} to location at {_target}'s head
+            broadcast "%{_headLoc}% %{_height}% a"
+            dotsText(" %{_duration}%", {_p}, {_target}, (location {_height} above {_headLoc}), 0 seconds, {_tickTime})
             wait 1 second
             remove 1 from {_duration}
-            if metadata tag "Shadow Word: Pain - Refresh-%{_p}%" of {_target} is set:
+            if metadata value "Shadow Word: Pain - Refresh-%{_p}%" of {_target} is set:
+                set {_duration} to AbilityUpgradeValue({_p}, "Brother Therold", "Shadow Word: Pain", "DURATION")
                 if boolean tag "Constellation;Dark Evangelism" of (custom nbt of {karta::%{_p}%}) is set:
-                    set {_duration} to 18
-                else:
-                    set {_duration} to 14
-                clear metadata tag "Shadow Word: Pain - Refresh-%{_p}%" of {_target}
+                    set {_duration} to {_duration} + 4
+                clear metadata value "Shadow Word: Pain - Refresh-%{_p}%" of {_target}
         else:
             if offensiveTrait({_p}, "Brother Therold", "Death Throes") > 0:
                 GrantInsanity({_p}, 5)
                 UpdateInsanity({_p})
             stop loop
-    clear metadata tag "Shadow Word: Pain-%{_p}%" of {_target}
+    clear metadata value "Shadow Word: Pain-%{_p}%" of {_target}
     amountOfDotsSubtract({_p}, {_target})
 
 function ShadowWordPainRefresh(p: player, target: entity):
     if {_target} is alive:
-        if metadata tag "Shadow Word: Pain-%{_p}%" of {_target} is set:
-            set metadata tag "Shadow Word: Pain - Refresh-%{_p}%" of {_target} to true
+        if metadata value "Shadow Word: Pain-%{_p}%" of {_target} is set:
+            set metadata value "Shadow Word: Pain - Refresh-%{_p}%" of {_target} to true
 
 function MindFlayVisual(p: player, target: entity):
     set {_l} to location 0.5 blocks below {_p}'s head
@@ -1110,31 +1133,31 @@ function MindFlayVisual(p: player, target: entity):
 function MindFlay(p: player, target: entity, cast: number):
     set {_totalTime} to 0 seconds
     set {_castBar} to false
-    while metadata tag "channeling" of {_p} is set:
+    while metadata value "channeling" of {_p} is set:
         set {_pospiech} to Haste({_p})/1.5 #Scale with haste 0.67x as effectively
         set {_crit} to CriticalHit({_p})
         set {_casttime} to ({_cast}/4)/{_pospiech}
         set {_tickTime} to "%{_casttime}% seconds" parsed as timespan
-        set metadata tag "channeltime" of {_p} to {_cast}
+        set metadata value "channeltime" of {_p} to {_cast}
         if {_target} is alive:
-            set {_damage} to (0.6 + (({damage::%{_p}%}/120) + ({versatility::%{_p}%}/360) + {primarystat::%{_p}%}/60)) * (1.096 + (({mastery::%{_p}%}/6.25)/100))
-            if metadata tag "VoidRayStacks" of {_p} is set:
-                set {_voidRayStacksDamageBonus} to 1 + (0.1*metadata tag "VoidRayStacks" of {_p})
+            set {_damage} to TheroldDamageFormula({_p}, "Mind Flay", "TICKDAMAGE", "TICKSCALING")
+            if metadata value "VoidRayStacks" of {_p} is set:
+                set {_voidRayStacksDamageBonus} to 1 + (0.1*metadata value "VoidRayStacks" of {_p})
                 set {_damage} to {_damage}*{_voidRayStacksDamageBonus}
-            if metadata tag "TouchOfDarkness" of {_p} is set:
+            if metadata value "TouchOfDarkness" of {_p} is set:
                 set {_damage} to {_damage}*1.5
-                add 1 to metadata tag "TouchOfDarknessTicks" of {_p}
+                set metadata value "TouchOfDarknessTicks" of {_p} to metadata value "TouchOfDarknessTicks" of {_p} + 1
                 set {_fullCast} to round(({_cast}/{_casttime}), 0)
-                if metadata tag "TouchOfDarknessTicks" of {_p} = {_fullCast}:
-                    clear metadata tag "TouchOfDarkness" of {_p}
-                    clear metadata tag "TouchOfDarknessTicks" of {_p}
+                if metadata value "TouchOfDarknessTicks" of {_p} = {_fullCast}:
+                    clear metadata value "TouchOfDarkness" of {_p}
+                    clear metadata value "TouchOfDarknessTicks" of {_p}
                     buffClear({_p}, "Touch")
             if boolean tag "Constellation;Mass Hysteria" of (custom nbt of {karta::%{_p}%}) is set:
-                set {_voidformStacks} to metadata tag "Voidform Stacks" of {_p}
+                set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
                 set {_damage} to {_damage}*(1 + ({_voidformStacks}/100))
             set {_insanity} to 2
-            if metadata tag "Voidform" of {_p} is set:
-                set {_damage} to {_damage}*1.2
+            if metadata value "Voidform" of {_p} is set:
+                set {_damage} to {_damage}*TheroldVoidformMultiplier({_p})
             if (string tag "Talents;Row 1" of (custom nbt of {karta::%{_p}%})) = "Fortress of the Mind":
                 set {_damage} to {_damage}*1.1
                 set {_insanity} to {_insanity}*1.2
@@ -1145,32 +1168,32 @@ function MindFlay(p: player, target: entity, cast: number):
             set {_lore} to "&8Basic Ability%nl%&fChanneled%nl%&7No cooldown%nl%&7Use: &fRMB%nl%<##613e82>Assaults the target's mind with shadow%nl%<##613e82>energy, causing &f%{_damage}*(rounded up 3/(({_cast}/4)/{_pospiech}))%  <##431d53>Ghost <##613e82>damage over%nl%&f%{_cast}% sec <##613e82>and <##8165a6>slowing <##613e82>their movement speed%nl%<##613e82>by &f50%%<##613e82>.%nl% %nl%&fGenerates %2*(rounded up 3/(({_cast}/4)/{_pospiech}))% Insanity over the duration."
             LoreUpdate({_p}, "Mind Flay", {_lore})
             set {_target}'s last damage cause to sweep attack
-            set metadata tag "Element" of {_p} to "Ghost"
-            set metadata tag "LastDamageCause" of {_target} to "<##462566>Mind Flay"
-            set metadata tag "LastDamageCauseLore" of {_target} to {_lore}
+            set metadata value "Element" of {_p} to "Ghost"
+            set metadata value "LastDamageCause" of {_target} to "<##462566>Mind Flay"
+            set metadata value "LastDamageCauseLore" of {_target} to {_lore}
             set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage})
             make {_p} damage {_target} by {_damage}*2
             if (string tag "Talents;Row 3" of (custom nbt of {karta::%{_p}%})) = "Void Ray":
-                if metadata tag "VoidRayStacks" of {_p} is not set:
-                    set metadata tag "VoidRayDuration" of {_p} to 6 seconds
-                    set metadata tag "VoidRayStacks" of {_p} to 1
+                if metadata value "VoidRayStacks" of {_p} is not set:
+                    set metadata value "VoidRayDuration" of {_p} to 6 seconds
+                    set metadata value "VoidRayStacks" of {_p} to 1
                     VoidRay({_p})
                 else:
-                    set metadata tag "VoidRayDuration" of {_p} to 6 seconds
-                    if 4 > metadata tag "VoidRayStacks" of {_p}:
-                        set {_voidRayStacks} to metadata tag "VoidRayStacks" of {_p}
-                        add 1 to {_voidRayStacks}
-                        set metadata tag "VoidRayStacks" of {_p} to {_voidRayStacks}
-                set {_voidRayStacks} to "%metadata tag "VoidRayStacks" of {_p}%"
-                set {_voidRayDuration} to "%metadata tag "VoidRayDuration" of {_p}%"
+                    set metadata value "VoidRayDuration" of {_p} to 6 seconds
+                    if 4 > metadata value "VoidRayStacks" of {_p}:
+                        set {_voidRayStacks} to metadata value "VoidRayStacks" of {_p}
+                        set {_voidRayStacks} to {_voidRayStacks} + 1
+                        set metadata value "VoidRayStacks" of {_p} to {_voidRayStacks}
+                set {_voidRayStacks} to "%metadata value "VoidRayStacks" of {_p}%"
+                set {_voidRayDuration} to "%metadata value "VoidRayDuration" of {_p}%"
                 buffRegister({_p}, "Void Ray", 1, "", "Stacks", {_voidRayStacks}, durationShort({_voidRayDuration}))
             if canBeCCed({_target}) = true:
-                apply an ambient potion effect of slowness of tier 3.34 to {_target} for {_tickTime}:
+                apply an ambient potion effect of slowness of tier (AbilityUpgradeValue({_p}, "Brother Therold", "Mind Flay", "SLOW")*0.0668) to {_target} for {_tickTime}:
                     hide the particles
-        set {_voidformStacks} to metadata tag "Voidform Stacks" of {_p}
-        set {_insanityDrain} to 6 + 0.68*{_voidformStacks}
+        set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
+        set {_insanityDrain} to AbilityUpgradeValue({_p}, "Brother Therold", "Voidform", "INSANITYDRAIN") + 0.68*{_voidformStacks}
         set {_insanityInfo} to "Insanity: %round({insanity::%{_p}%}, 0)%"
-        if metadata tag "Voidform" of {_p} is set:
+        if metadata value "Voidform" of {_p} is set:
             set {_insanityInfo} to "%{_insanityInfo}%   %round({_insanityDrain}, 1)%p/s    %{_voidformStacks}%"
         if (string tag "Talents;Row 3" of (custom nbt of {karta::%{_p}%})) = "Lingering Insanity":
             if {lingeringInsanityHaste::%{_p}%} is set:
@@ -1184,28 +1207,28 @@ function MindFlay(p: player, target: entity, cast: number):
             if {_totalTime} >= 3 seconds:
                 stop sound "skill.therold.mindflay_channel" for (all players in radius 2 around {_p})
                 stop sound "skill.therold.mindflay_channel_whisper" for (all players in radius 2 around {_p})
-                clear metadata tag "channeling" of {_p}
+                clear metadata value "channeling" of {_p}
                 stop
             if {_target} is not alive:
                 stop sound "skill.therold.mindflay_channel" for (all players in radius 2 around {_p})
                 stop sound "skill.therold.mindflay_channel_whisper" for (all players in radius 2 around {_p})
-                clear metadata tag "channeling" of {_p}
+                clear metadata value "channeling" of {_p}
                 stop
             wait 1 tick
-            add 1 tick to {_ticks}
-            add 1 tick to {_totalTime}
+            set {_ticks} to {_ticks} + 1 tick
+            set {_totalTime} to {_totalTime} + 1 tick
             if loop-counter-2 is divisible by 3:
                 MindFlayVisual({_p}, {_target})
 
         clear {_ticks}
-        add 1 to {_totalTicks}
+        set {_totalTicks} to {_totalTicks} + 1
             
 function MindFlayCast(p: player, seconds: timespan, target: entity):
-    while metadata tag "channeling" of {_p} is set:
-        set {_voidformStacks} to metadata tag "Voidform Stacks" of {_p}
-        set {_insanityDrain} to 6 + 0.68*{_voidformStacks}
+    while metadata value "channeling" of {_p} is set:
+        set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
+        set {_insanityDrain} to AbilityUpgradeValue({_p}, "Brother Therold", "Voidform", "INSANITYDRAIN") + 0.68*{_voidformStacks}
         set {_insanityInfo} to "Insanity: %round({insanity::%{_p}%}, 0)%"
-        if metadata tag "Voidform" of {_p} is set:
+        if metadata value "Voidform" of {_p} is set:
             set {_insanityInfo} to "%{_insanityInfo}%   %round({_insanityDrain}, 1)%p/s    %{_voidformStacks}%"
         if (string tag "Talents;Row 3" of (custom nbt of {karta::%{_p}%})) = "Lingering Insanity":
             if {lingeringInsanityHaste::%{_p}%} is set:
@@ -1220,82 +1243,82 @@ function MindFlayCast(p: player, seconds: timespan, target: entity):
     #send action bar "Channeling... 0 seconds | %{_insanityInfo}%" to {_p}
 
 function VampiricTouch(p: player, target: entity):
-    while metadata tag "Vampiric Touch-%{_p}%" of {_target} is set:
+    while metadata value "Vampiric Touch-%{_p}%" of {_target} is set:
         if {_target} is alive:
             set {_pospiech} to Haste({_p})
+            set {_VPTDuration} to AbilityUpgradeValue({_p}, "Brother Therold", "Vampiric Touch", "DURATION")
             if boolean tag "Constellation;Dark Evangelism" of (custom nbt of {karta::%{_p}%}) is set:
-                set {_VPTDuration} to 21
-            else:
-                set {_VPTDuration} to 18
+                set {_VPTDuration} to {_VPTDuration} + 3
             set {_crit} to CriticalHit({_p})
-            set {_damage} to (1.5 + (({damage::%{_p}%}/62) + ({versatility::%{_p}%}/186) + {primarystat::%{_p}%}/31)) * (1.096 + (({mastery::%{_p}%}/6.25)/100))
+            set {_damage} to TheroldDamageFormula({_p}, "Vampiric Touch", "TICKDAMAGE", "TICKSCALING")
             set {_casttimeVT} to 1.5/{_pospiech}
             set {_totalTicks} to (round({_VPTDuration}/(3/{_pospiech}), 0))
             if offensiveTrait({_p}, "Brother Therold", "Touch of Darkness") > 0:
                 set {_touchOfDarkness} to offensiveTrait({_p}, "Brother Therold", "Touch of Darkness")
-                add {_touchOfDarkness}/{_totalTicks} to {_damage}
+                set {_damage} to {_damage} + {_touchOfDarkness}/{_totalTicks}
                 chance of 8%:
                     touchOfDarkness({_p})
             if (string tag "Talents;Row 4" of (custom nbt of {karta::%{_p}%})) = "San'Layn":
                 set {_damage} to {_damage}*1.2
-            if metadata tag "Voidform" of {_p} is set:
-                set {_damage} to {_damage}*1.2
+            if metadata value "Voidform" of {_p} is set:
+                set {_damage} to {_damage}*TheroldVoidformMultiplier({_p})
             if boolean tag "Constellation;Mass Hysteria" of (custom nbt of {karta::%{_p}%}) is set:
-                set {_voidformStacks} to metadata tag "Voidform Stacks" of {_p}
+                set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
                 set {_damage} to {_damage}*(1 + ({_voidformStacks}/100))
+            set {_damage} to {_damage}*TheroldRelicHarbingersHungerMultiplier({_p})
             set {_lore} to "&8Basic Ability%nl%&f%{_casttimeVT}% second cast%nl%&7No cooldown%nl%&7Use: &fRMB%nl%<##613e82>A touch of darkness that causes &f%(1 + {_totalTicks})*{_damage}%  <##431d53>Ghost%nl%<##613e82>damage over &f%{_VPTDuration}% sec<##613e82>, and <##8165a6>heals <##613e82>the priest for%nl%&f10%% <##613e82>of damage dealt.%nl% %nl%&fGenerates 6 Insanity."
+            set {_vampiricTouchLore} to {_lore}
             LoreUpdate({_p}, "Vampiric Touch", {_lore})
             set {_target}'s last damage cause to sweep attack
-            set metadata tag "Element" of {_p} to "Ghost"
-            set metadata tag "LastDamageCause" of {_target} to "<##462566>Vampiric Touch"
-            set metadata tag "LastDamageCauseLore" of {_target} to {_lore}
+            set metadata value "Element" of {_p} to "Ghost"
+            set metadata value "LastDamageCause" of {_target} to "<##462566>Vampiric Touch"
+            set metadata value "LastDamageCauseLore" of {_target} to {_lore}
             set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage})
             make {_p} damage {_target} by {_damage}*2
-            set {_heal} to 0.1*{_damage}
+            set {_heal} to (AbilityUpgradeValue({_p}, "Brother Therold", "Vampiric Touch", "HEAL")/100)*{_damage}
             set {_heal} to selfHealModifiers({_p}, {_heal})
             if {_p} is alive:
                 Heal({_p}, {_p}, {_heal}, "Vampiric Touch", "<##613e82>", {_lore}, false)
                 if {_heal} > 0:
-                    add {_heal} to {_healTotal}
+                    set {_healTotal} to {_healTotal} + {_heal}
             set {_tickTime} to "%3/{_pospiech}% seconds" parsed as timespan
             wait {_tickTime}
         else:
-            clear metadata tag "Vampiric Touch-%{_p}%" of {_target}
+            clear metadata value "Vampiric Touch-%{_p}%" of {_target}
             stop loop
     if {_healTotal} > 0:
-        send formatted "%{kartacolor::%{_p}%}%%{_p}% &fhealed you. <tooltip:<##613e82>Vampiric Touch%nl%%{_lore}%>(<##baff8c>+%{_healTotal}% HP&f)" to {_p}
+        send formatted "%{kartacolor::%{_p}%}%%{_p}% &fhealed you. <tooltip:<##613e82>Vampiric Touch%nl%%{_vampiricTouchLore}%>(<##baff8c>+%round({_healTotal}, 1)% HP&f)" to {_p}
 
 function VampiricTouchExpire(p: player, target: entity):
+    set {_duration} to AbilityUpgradeValue({_p}, "Brother Therold", "Vampiric Touch", "DURATION")
     if boolean tag "Constellation;Dark Evangelism" of (custom nbt of {karta::%{_p}%}) is set:
-        set {_duration} to 21
-    else:
-        set {_duration} to 18
+        set {_duration} to {_duration} + 3
     set {_height} to amountOfDots({_p}, {_target})
-    set {_dots} to metadata tag "AmountOfDots%{_p}%" of {_target}
+    set {_dots} to metadata value "AmountOfDots%{_p}%" of {_target}
     while {_duration} > 0:
         if {_target} is alive:
             set {_pospiech} to Haste({_p})
             set {_tickTime} to "1 seconds" parsed as timespan
-            if metadata tag "AmountOfDots%{_p}%" of {_target} < {_dots}:
+            if metadata value "AmountOfDots%{_p}%" of {_target} < {_dots}:
                 set {_height} to amountOfDots({_p}, {_target})
-            dotsText(" %{_duration}%", {_p}, {_target}, (location {_height} above {_target}'s head), 0 seconds, {_tickTime})
+            set {_headLoc} to location at {_target}'s head
+            dotsText(" %{_duration}%", {_p}, {_target}, (location {_height} above {_headLoc}), 0 seconds, {_tickTime})
             wait 1 second
             remove 1 from {_duration}
-            if metadata tag "Vampiric Touch - Refresh-%{_p}%" of {_target} is set:
+            if metadata value "Vampiric Touch - Refresh-%{_p}%" of {_target} is set:
+                set {_duration} to AbilityUpgradeValue({_p}, "Brother Therold", "Vampiric Touch", "DURATION")
                 if boolean tag "Constellation;Dark Evangelism" of (custom nbt of {karta::%{_p}%}) is set:
-                    set {_duration} to 21
-                else:
-                    set {_duration} to 18
-                clear metadata tag "Vampiric Touch - Refresh-%{_p}%" of {_target}
+                    set {_duration} to {_duration} + 3
+                clear metadata value "Vampiric Touch - Refresh-%{_p}%" of {_target}
         else:
             stop loop
-    clear metadata tag "Vampiric Touch-%{_p}%" of {_target}
+    clear metadata value "Vampiric Touch-%{_p}%" of {_target}
     amountOfDotsSubtract({_p}, {_target})
 
 function VampiricTouchRefresh(p: player, target: entity):
     if {_target} is alive:
-        if metadata tag "Vampiric Touch-%{_p}%" of {_target} is set:
-            set metadata tag "Vampiric Touch - Refresh-%{_p}%" of {_target} to true
+        if metadata value "Vampiric Touch-%{_p}%" of {_target} is set:
+            set metadata value "Vampiric Touch - Refresh-%{_p}%" of {_target} to true
 
 function ShadowyApparitionSpawn(p: player, target: entity):
     if {_p}'s world = {_target}'s world:
@@ -1328,10 +1351,10 @@ function ShadowyApparitionSpawn(p: player, target: entity):
     #    set {_damage} to 1 + {mastery::%{_p}%/32}
     #    set {_target}'s last damage cause to sweep attack
     #    set {_lore}
-    #    set metadata tag "LastDamageCauseEN" of {_target} to "<##462566>Shadowy Apparitions"
-    #    set metadata tag "LastDamageCause" of {_target} to "<##462566>Cieniste Aparycje"
-    #    set metadata tag "LastDamageCauseLore" of {_target} to {_lore}
-    #    set metadata tag "LastDamageCauseLoreEN" of {_target} to {_lore}
+    #    set metadata value "LastDamageCauseEN" of {_target} to "<##462566>Shadowy Apparitions"
+    #    set metadata value "LastDamageCause" of {_target} to "<##462566>Cieniste Aparycje"
+    #    set metadata value "LastDamageCauseLore" of {_target} to {_lore}
+    #    set metadata value "LastDamageCauseLoreEN" of {_target} to {_lore}
     #    make {_p} damage {_target} by {_damage}*2
 
 function ShadowyApparitionFloat(p: player, apparition: entity, target: entity):
@@ -1341,36 +1364,36 @@ function ShadowyApparitionFloat(p: player, apparition: entity, target: entity):
         wait 5 ticks
         stop loop if {_target} is not alive
     if {_target} is alive:
-        set {_damage} to (0.8 + (({damage::%{_p}%}/65.5) + ({versatility::%{_p}%}/196.5) + {primarystat::%{_p}%}/32.75))
-        if metadata tag "Vampiric Touch-%{_p}%" of {_target} is set:
-            add offensiveTrait({_p}, "Brother Therold", "Spiteful Apparitions") to {_damage}
+        set {_damage} to (AbilityUpgradeValue({_p}, "Brother Therold", "Shadowy Apparitions", "BASEDAMAGE") + (({damage::%{_p}%}/(AbilityUpgradeValue({_p}, "Brother Therold", "Shadowy Apparitions", "DAMAGESCALING"))) + (Versatility({_p})/((AbilityUpgradeValue({_p}, "Brother Therold", "Shadowy Apparitions", "DAMAGESCALING"))*3)) + PrimaryStat({_p})/((AbilityUpgradeValue({_p}, "Brother Therold", "Shadowy Apparitions", "DAMAGESCALING"))/2)))
+        if metadata value "Vampiric Touch-%{_p}%" of {_target} is set:
+            set {_damage} to {_damage} + offensiveTrait({_p}, "Brother Therold", "Spiteful Apparitions")
         if (string tag "Talents;Row 4" of (custom nbt of {karta::%{_p}%})) = "Auspicious Spirits":
             set {_damage} to {_damage}*2
             GrantInsanity({_p}, 3)
             UpdateInsanity({_p})
-        if metadata tag "Voidform" of {_p} is set:
-            set {_damage} to {_damage}*1.2
+        if metadata value "Voidform" of {_p} is set:
+            set {_damage} to {_damage}*TheroldVoidformMultiplier({_p})
         if boolean tag "Constellation;Haunting Apparitions" of (custom nbt of {karta::%{_p}%}) is set:
-            set {_damage} to {_damage} * (1.096 + (({mastery::%{_p}%}/6.25)/100))
+            set {_damage} to {_damage} * (1.096 + ((Mastery({_p})/6.25)/100))
             set {_crit} to CriticalHit({_p})
         if boolean tag "Constellation;Mass Hysteria" of (custom nbt of {karta::%{_p}%}) is set:
-            set {_voidformStacks} to metadata tag "Voidform Stacks" of {_p}
+            set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
             set {_damage} to {_damage}*(1 + ({_voidformStacks}/100))
         if boolean tag "Constellation;Unleash the Shadows" of (custom nbt of {karta::%{_p}%}) is set:
-            set {_voidformStacks} to metadata tag "Voidform Stacks" of {_p}
+            set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
             set {_damage} to {_damage}*(1 + (({_voidformStacks}/100)*3))
         set {_target}'s last damage cause to sweep attack
         set {_lore} to "&8Passive Ability%nl%&fNo cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fPASSIVE%nl%<##613e82>When your &f <##8165a6>Shadow Word: Pain <##613e82>damage%nl%<##613e82>over time <##8165a6> Critically Strikes<##613e82>, you also create%nl%<##613e82>a shadowy version of yourself that floats%nl%<##613e82>towards the target and deals &f%{_damage}%  <##431d53>Ghost%nl%<##613e82>damage."
-        set metadata tag "Element" of {_p} to "Ghost"
-        set metadata tag "LastDamageCause" of {_target} to "<##462566>Shadowy Apparitions"
-        set metadata tag "LastDamageCauseLore" of {_target} to {_lore}
+        set metadata value "Element" of {_p} to "Ghost"
+        set metadata value "LastDamageCause" of {_target} to "<##462566>Shadowy Apparitions"
+        set metadata value "LastDamageCauseLore" of {_target} to {_lore}
         if {_crit} is set:
             set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage})
         make {_p} damage {_target} by {_damage}*2
         if boolean tag "Constellation;Heir to the Darkness" of (custom nbt of {karta::%{_p}%}) is set:
-            if metadata tag "Heir to the Darkness" of {_p} < 300:
-                add 1 to metadata tag "Heir to the Darkness" of {_p}
-                buffRegister({_p}, "Heir", 4, "", "Stacks", "%(metadata tag "Heir to the Darkness" of {_p})%%%", "-")
+            if metadata value "Heir to the Darkness" of {_p} < 300:
+                set metadata value "Heir to the Darkness" of {_p} to metadata value "Heir to the Darkness" of {_p} + 1
+                buffRegister({_p}, "Heir", 4, "", "Stacks", "%(metadata value "Heir to the Darkness" of {_p})%%%", "-")
         LoreUpdate({_p}, "Shadowy Apparitions", {_lore})
     teleport {_apparition} to location(0, -100, 0)
     kill {_apparition}
@@ -1381,7 +1404,7 @@ function ShadowyApparitionVisual(apparition: entity):
         wait 1 tick
 
 function StopCastSoundTherold(p: player):
-    set {_ability} to metadata tag "lastspellTherold" of {_p}
+    set {_ability} to metadata value "lastspellTherold" of {_p}
     if {_ability} = "Mind Blast":
         stop sound "skill.therold.mind_blast_precast" for (all players in radius 2 around {_p})
     else if {_ability} = "Void Eruption":
@@ -1395,40 +1418,40 @@ function StopCastSoundTherold(p: player):
         stop sound "skill.therold.shadow_word_void_precast" for (all players in radius 2 around {_p})
 
 function TheroldDamage(p: player, basevalue: number, damageStat: number, damageScaling: number, versStat: number, versScaling: number) :: number:
-    set {_damage} to {_basevalue} + ({damage::%{_p}%}/{_damageScaling}) + ({versatility::%{_p}%}/{_versScaling})
-    if metadata tag "Voidform" of {_p} is set:
-        set {_damage} to {_damage}*1.2
+    set {_damage} to {_basevalue} + ({damage::%{_p}%}/{_damageScaling}) + (Versatility({_p})/{_versScaling})
+    if metadata value "Voidform" of {_p} is set:
+        set {_damage} to {_damage}*TheroldVoidformMultiplier({_p})
     return {_damage}
 
 function CheckIfDotted(p: player, target: entity) :: boolean:
-    if metadata tag "Shadow Word: Pain-%{_p}%" of {_target} is set:
+    if metadata value "Shadow Word: Pain-%{_p}%" of {_target} is set:
         set {_bool} to true
-    if metadata tag "Vampiric Touch-%{_p}%" of {_target} is set:
+    if metadata value "Vampiric Touch-%{_p}%" of {_target} is set:
         set {_bool} to true
     if {_bool} is not set:
         set {_bool} to false
     return {_bool}
 
 function TwistOfFate(p: player):
-    if metadata tag "TwistOfFate" of {_p} is true:
-        set metadata tag "TwistOfFate" of {_p} to false
-        while metadata tag "TwistOfFateDuration" of {_p} > 0 seconds:
-            set {_duration} to metadata tag "TwistOfFateDuration" of {_p}
+    if metadata value "TwistOfFate" of {_p} is true:
+        set metadata value "TwistOfFate" of {_p} to false
+        while metadata value "TwistOfFateDuration" of {_p} > 0 seconds:
+            set {_duration} to metadata value "TwistOfFateDuration" of {_p}
             buffRegister({_p}, "Twist", 1, "", "-", "-", durationShort("%{_duration}%"))
             remove 1 second from {_duration}
-            set metadata tag "TwistOfFateDuration" of {_p} to {_duration}
+            set metadata value "TwistOfFateDuration" of {_p} to {_duration}
             wait 1 second
-            if 0 seconds >= metadata tag "TwistOfFateDuration" of {_p}:
-                clear metadata tag "TwistOfFateDuration" of {_p}
-                clear metadata tag "TwistOfFate" of {_p}
+            if 0 seconds >= metadata value "TwistOfFateDuration" of {_p}:
+                clear metadata value "TwistOfFateDuration" of {_p}
+                clear metadata value "TwistOfFate" of {_p}
                 buffClear({_p}, "Twist")
                 stop loop
 
 function ShadowWordVoidRecharge(p: player, cd: timespan):
     wait {_cd}
-    set {_charges} to metadata tag "ShadowWordVoidCharges" of {_p}
-    add 1 to {_charges}
-    set metadata tag "ShadowWordVoidCharges" of {_p} to {_charges}
+    set {_charges} to metadata value "ShadowWordVoidCharges" of {_p}
+    set {_charges} to {_charges} + 1
+    set metadata value "ShadowWordVoidCharges" of {_p} to {_charges}
     loop all items in the inventory of {_p}:
         if boolean tag "Shadow Word: Void" of (custom nbt of (1 of loop-item)) = true:
             if {_charges} > 0:
@@ -1445,9 +1468,9 @@ function ShadowWordVoidRecharge(p: player, cd: timespan):
 
 function MindBlastRecharge(p: player, cd: timespan):
     wait {_cd}
-    set {_charges} to metadata tag "MindBlastCharges" of {_p}
-    add 1 to {_charges}
-    set metadata tag "MindBlastCharges" of {_p} to {_charges}
+    set {_charges} to metadata value "MindBlastCharges" of {_p}
+    set {_charges} to {_charges} + 1
+    set metadata value "MindBlastCharges" of {_p} to {_charges}
     loop all items in the inventory of {_p}:
         if boolean tag "Mind Blast" of (custom nbt of (1 of loop-item)) = true:
             if {_charges} > 0:
@@ -1463,16 +1486,16 @@ function MindBlastRecharge(p: player, cd: timespan):
             stop loop
 
 function VoidRay(p: player):
-    if metadata tag "VoidRayStacks" of {_p} is set:
-        while metadata tag "VoidRayDuration" of {_p} > 0 seconds:
-            set {_duration} to metadata tag "VoidRayDuration" of {_p}
-            buffRegister({_p}, "Void Ray", 1, "", "Stacks", "%metadata tag "VoidRayStacks" of {_p}%", durationShort("%{_duration}%"))
+    if metadata value "VoidRayStacks" of {_p} is set:
+        while metadata value "VoidRayDuration" of {_p} > 0 seconds:
+            set {_duration} to metadata value "VoidRayDuration" of {_p}
+            buffRegister({_p}, "Void Ray", 1, "", "Stacks", "%metadata value "VoidRayStacks" of {_p}%", durationShort("%{_duration}%"))
             remove 1 second from {_duration}
-            set metadata tag "VoidRayDuration" of {_p} to {_duration}
+            set metadata value "VoidRayDuration" of {_p} to {_duration}
             wait 1 second
-            if 0 seconds >= metadata tag "VoidRayDuration" of {_p}:
-                clear metadata tag "VoidRayDuration" of {_p}
-                clear metadata tag "VoidRayStacks" of {_p}
+            if 0 seconds >= metadata value "VoidRayDuration" of {_p}:
+                clear metadata value "VoidRayDuration" of {_p}
+                clear metadata value "VoidRayStacks" of {_p}
                 buffClear({_p}, "Void Ray")
                 stop loop 
 
@@ -1493,15 +1516,15 @@ function LingeringInsanity(p: player):
         else:
             set {hasteVoidform::%{_p}%} to 0
         set {lingeringInsanityHaste::%{_p}%} to {lingeringInsanityHaste::%{_p}%} - 4
-    clear metadata tag "LingeringInsanity" of {_p}
+    clear metadata value "LingeringInsanity" of {_p}
     clear {lingeringInsanityHaste::%{_p}%}
     buffClear({_p}, "Lingering")
 
 function ShadowWordDeathRecharge(p: player, cd: timespan):
     wait {_cd}
-    set {_charges} to metadata tag "ShadowWordDeathCharges" of {_p}
-    add 1 to {_charges}
-    set metadata tag "ShadowWordDeathCharges" of {_p} to {_charges}
+    set {_charges} to metadata value "ShadowWordDeathCharges" of {_p}
+    set {_charges} to {_charges} + 1
+    set metadata value "ShadowWordDeathCharges" of {_p} to {_charges}
     loop all items in the inventory of {_p}:
         if boolean tag "Shadow Word: Death" of (custom nbt of (1 of loop-item)) = true:
             if {_charges} > 0:
@@ -1517,7 +1540,7 @@ function ShadowWordDeathRecharge(p: player, cd: timespan):
     
 function ShadowyInsight(p: player):
     send title " " with subtitle "" to {_p} for 1 minute with fade in 0.25 second and fade out 0 second
-    set metadata tag "ShadowyInsight" of {_p} to true
+    set metadata value "ShadowyInsight" of {_p} to true
     play sound "skill.therold.shadowy_insight_proc" with volume 2 and pitch 1 at (location of {_p})
     clear cooldown "Mind Blast%{_p}%"
     clear cooldown "Shadow Word: Void%{_p}%"
@@ -1527,21 +1550,21 @@ function ShadowyInsight(p: player):
             reset item cooldown of loop-item for {_p}
         else if boolean tag "Shadow Word: Void" of (custom nbt of (1 of loop-item)) = true:
             reset item cooldown of loop-item for {_p}
-    while metadata tag "ShadowyInsight" of {_p} = true:
+    while metadata value "ShadowyInsight" of {_p} = true:
         wait 1 second
         remove 1 second from {_time}
         stop loop if 0 seconds >= {_time}
     send title " " with subtitle " " to {_p} for 1 second with fade in 0.0 second and fade out 0.0 second
 
 function isCastableTherold(p: player) :: boolean:
-    if metadata tag "ShadowyInsight" of {_p} = true:
+    if metadata value "ShadowyInsight" of {_p} = true:
         set {_castable} to true
     else:
         if (string tag "Talents;Row 1" of (custom nbt of {karta::%{_p}%})) = "Shadow Word: Void":
-            if metadata tag "ShadowWordVoidCharges" of {_p} > 0:
+            if metadata value "ShadowWordVoidCharges" of {_p} > 0:
                 set {_castable} to true
         else:
-            if metadata tag "MindBlastCharges" of {_p} > 0:
+            if metadata value "MindBlastCharges" of {_p} > 0:
                 set {_castable} to true
     if {_castable} is not set:
         set {_castable} to false
@@ -1551,17 +1574,17 @@ function chorusOfInsanity(p: player, voidformStacks: integer):
     set {_itemLevels::*} to getTrait({_p}, "Chorus of Insanity")
     if {_itemLevels::*} is set:
         set {_voidformStacks} to 20 if {_voidformStacks} > 20
-        if metadata tag "ChorusOfInsanity" of {_p} is not set:
+        if metadata value "ChorusOfInsanity" of {_p} is not set:
             set {_crit} to chorusOfInsanityCrit({_p}, {_itemLevels::*}, {_voidformStacks})
-            while metadata tag "ChorusOfInsanity" of {_p} > 0 seconds:
-                set {_duration} to "%metadata tag "ChorusOfInsanity" of {_p}%"
-                set {_roundedCrit} to round(metadata tag "ChorusOfInsanityCrit" of {_p}, 0)
+            while metadata value "ChorusOfInsanity" of {_p} > 0 seconds:
+                set {_duration} to "%metadata value "ChorusOfInsanity" of {_p}%"
+                set {_roundedCrit} to round(metadata value "ChorusOfInsanityCrit" of {_p}, 0)
                 buffRegister({_p}, "Chorus", 1, "", "Stacks", "%{_roundedCrit}% ", durationShort({_duration}))
                 wait 1 second
-                remove {_crit}/20 from metadata tag "ChorusOfInsanityCrit" of {_p}
-                remove 1 second from metadata tag "ChorusOfInsanity" of {_p}
-            clear metadata tag "ChorusOfInsanity" of {_p}
-            clear metadata tag "ChorusOfInsanityCrit" of {_p}
+                remove {_crit}/20 from metadata value "ChorusOfInsanityCrit" of {_p}
+                remove 1 second from metadata value "ChorusOfInsanity" of {_p}
+            clear metadata value "ChorusOfInsanity" of {_p}
+            clear metadata value "ChorusOfInsanityCrit" of {_p}
             buffClear({_p}, "Chorus")
         else:
             chorusOfInsanityCrit({_p}, {_itemLevels::*}, {_voidformStacks})
@@ -1572,59 +1595,99 @@ function chorusOfInsanityCrit(p: player, itemLevels: integers, voidformStacks: i
     set {_lowestIlvl} to yaml value "Azerite Armor.Minimum Values.Item Level" in "AzeriteArmorSources"
     loop {_itemLevels::*}:
         if loop-value > {_lowestIlvl}:
-            add ((loop-value-{_lowestIlvl})*{_scaling}) to {_critPerStack}
+            set {_critPerStack} to {_critPerStack} + ((loop-value-{_lowestIlvl})*{_scaling})
     set {_crit} to round(({_critPerStack}*{_voidformStacks}), 0)
-    set metadata tag "ChorusOfInsanity" of {_p} to 20 seconds
-    set metadata tag "ChorusOfInsanityCrit" of {_p} to {_crit}
+    set metadata value "ChorusOfInsanity" of {_p} to 20 seconds
+    set metadata value "ChorusOfInsanityCrit" of {_p} to {_crit}
     return {_crit}
 
 function touchOfDarkness(p: player):
-    set metadata tag "TouchOfDarknessTicks" of {_p} to 0
-    if metadata tag "TouchOfDarkness" of {_p} is not set:
-        set metadata tag "TouchOfDarkness" of {_p} to 20 seconds
-        while metadata tag "TouchOfDarkness" of {_p} > 0 seconds:
-            set {_duration} to "%metadata tag "TouchOfDarkness" of {_p}%"
+    set metadata value "TouchOfDarknessTicks" of {_p} to 0
+    if metadata value "TouchOfDarkness" of {_p} is not set:
+        set metadata value "TouchOfDarkness" of {_p} to 20 seconds
+        while metadata value "TouchOfDarkness" of {_p} > 0 seconds:
+            set {_duration} to "%metadata value "TouchOfDarkness" of {_p}%"
             buffRegister({_p}, "Touch", 2, "", "Value", "-", durationShort({_duration}))
             wait 1 second
-            stop if metadata tag "TouchOfDarkness" of {_p} is not set
-            remove 1 second from (metadata tag "TouchOfDarkness" of {_p})
-        clear metadata tag "TouchOfDarknessTicks" of {_p}
+            stop if metadata value "TouchOfDarkness" of {_p} is not set
+            remove 1 second from (metadata value "TouchOfDarkness" of {_p})
+        clear metadata value "TouchOfDarknessTicks" of {_p}
     else:
-        set metadata tag "TouchOfDarkness" of {_p} to 20 seconds
+        set metadata value "TouchOfDarkness" of {_p} to 20 seconds
 
 function sinisterThoughts(p: player):
-    if metadata tag "Voidform" of {_p} is not set:
-        set metadata tag "SinisterThoughts" of {_p} to true
+    if metadata value "Voidform" of {_p} is not set:
+        set metadata value "SinisterThoughts" of {_p} to true
         set {_pospiech} to Haste({_p})
         loop all items in the inventory of {_p}:
             if boolean tag "Void Eruption" of (custom nbt of loop-item) = true:
                 set {_cd} to "%4.5/{_pospiech}% seconds" parsed as timespan
-                set {_damage} to (3 + (({damage::%{_p}%}/15) + ({versatility::%{_p}%}/45)))
+                set {_damage} to (3 + (({damage::%{_p}%}/15) + (Versatility({_p})/45)))
                 set {_lore} to "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown:  &f%{_cd}%%nl%&7Use: &fRMB%nl%<##613e82>Sends a bolt of pure void energy at the%nl%<##613e82>enemy, causing &f%{_damage}%  <##431d53>Ghost <##613e82>damage and%nl%<##8165a6>extending <##613e82>the duration of &f <##8165a6>Shadow Word:%nl%<##8165a6>Pain <##613e82>and &f <##8165a6>Vampiric Touch <##613e82>to their original%nl%<##613e82>duration.%nl% %nl%<##613e82>Requires &f <##8165a6>Voidform<##613e82>.%nl% %nl%&fGenerates 16 Insanity."
                 set {_voidBolt} to (black dye named "<##613e82>Void Bolt") with lore {_lore}
                 add nbt from ("{""minecraft:custom_model_data"":{floats:[3.0f]},""minecraft:custom_data"":{""Void Bolt"":1b}}") to (nbt of {_voidBolt})
                 set loop-item to {_voidBolt}
 
-function dotsText(t: text, p: player, e: entity, loc: location, wait: timespan, waitDelete: timespan):
-    wait {_wait}
+function getTheroldRelic(p: player) :: item:
+    set {_relic} to yaml value "Gear.Relic" in "activeCard-%{_p}%"
+    if {_relic} is set:
+        if boolean tag "Relic" of (custom nbt of {_relic}) is set:
+            return {_relic}
+    return air
 
+function getTheroldRelicEffectValue(p: player) :: number:
+    set {_relic} to getTheroldRelic({_p})
+    if {_relic} is air:
+        return 0
+    set {_value} to long tag "EffectValue" of (custom nbt of {_relic})
+    if {_value} is not set:
+        return 0
+    return {_value}
+
+function TheroldRelicHasEffect(p: player, effect: text) :: boolean:
+    set {_relic} to getTheroldRelic({_p})
+    if {_relic} is air:
+        return false
+    if uncolored (name of {_relic}) contains {_effect}:
+        return true
+    return false
+
+function TheroldRelicHarbingersHunger(p: player):
+    if TheroldRelicHasEffect({_p}, "Xal'Atath") is true:
+        if metadata value "Voidform" of {_p} is set:
+            set {_value} to getTheroldRelicEffectValue({_p})
+            if {_value} > 0:
+                set {_stacks} to metadata value "TheroldRelicHarbingersHunger" of {_p}
+                if {_stacks} is not set:
+                    set {_stacks} to 0
+                set {_stacks} to {_stacks} + {_value}
+                set metadata value "TheroldRelicHarbingersHunger" of {_p} to {_stacks}
+                buffRegister({_p}, "Harbinger's Hunger", 1, "", "Value", "%round({_stacks}, 1)%%% ", "-")
+
+function TheroldRelicHarbingersHungerMultiplier(p: player) :: number:
+    set {_stacks} to metadata value "TheroldRelicHarbingersHunger" of {_p}
+    if {_stacks} is not set:
+        return 1
+    return 1 + ({_stacks}/100)
+
+function dotsText(t: text, p: player, e: entity, loc: location, wait: timespan, waitDelete: timespan):
     set {_id} to a random integer between 0 and 999999999999
 
     spawn fake text display entity at (location 0.25 above {_loc}) for {_p} with id {_id}
-
     set {_packet} to new metadata packet with id {_id}:
         display text: {_t}
         display billboard: center
         display brightness block: 15
         display brightness sky: 15
         display seethrough: true
+        display scale: vector(1, 1, 1)
     send packet {_packet} to {_p}
 
-    wait ({_waitDelete})
+    wait {_waitDelete}
     remove fake entity with id {_id} for {_p}
 
 on inventory click:
-    if metadata tag "Voidform" of player is set:
+    if metadata value "Voidform" of player is set:
         if boolean tag "Void Bolt" of (custom nbt of event-slot) is set:
             cancel event
 on drop:
@@ -1634,13 +1697,14 @@ on drop:
 on death:
     if victim is a player:
         if {kartaname::%victim%} = "Brother Therold":
-            if metadata tag "Voidform" of victim is set:
+            if metadata value "Voidform" of victim is set:
                 ExitVoidform(victim)
             set gravity attribute of victim to 0.08
 
 on quit:
     if {kartaname::%player%} = "Brother Therold":
-        if metadata tag "Voidform" of player is set:
-            clear metadata tag "Voidform" of player
-            clear metadata tag "Voidform Stacks" of player
+        if metadata value "Voidform" of player is set:
+            clear metadata value "Voidform" of player
+            clear metadata value "Voidform Stacks" of player
+            clear metadata value "TheroldRelicHarbingersHunger" of player
         set gravity attribute of player to 0.08
