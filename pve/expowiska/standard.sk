@@ -6,6 +6,9 @@ variables:
 import:
     java.lang.Math
     org.bukkit.event.entity.EntityEvent
+    java.lang.System
+
+
 
 function ExpAreaMayan(p: player):
     wait 1 tick
@@ -54,7 +57,7 @@ function ExpAreaMayanMobSpawn(p: player, loc: location):
     if {expAreaMayanMobCount} is divisible by 100:        
         ExpAreaMayanBossSpawn()
     #Gets the player's Card Level to spawn a mob at an appropriate level
-    set {_id} to string tag "Id" of custom nbt of {karta::%{_p}%}
+    set {_id} to string tag "Id" of (custom nbt of {karta::%{_p}%})
     set {_cardLevel} to yaml value "Card.Level" in "activeCard-%{_p}%"
 
     set {_mobLevel} to {_cardLevel}
@@ -84,9 +87,10 @@ function ExpAreaMayanMobSpawn(p: player, loc: location):
     set {_randomMob} to (a random element of {_mobList::*} parsed as entity type)
 
     if "%{_randomMob}%" = "slime":
-        spawn {_randomMob} at {_loc} with nbt from "{Size:3}"
-        set long tag "ECModelHeight" of custom nbt of last spawned entity to 1.825
+        spawn {_randomMob} at {_loc}
+        set int tag "Size" of (nbt of {_randomMob}) to 3
         set last spawned entity's max health to 14
+        set string tag "MobType" of (custom nbt of {_mob}) to "Cube"
     else:
         spawn {_randomMob} at {_loc}
     
@@ -99,29 +103,31 @@ function ExpAreaMayanMobSpawn(p: player, loc: location):
     set boolean tag "ECMob" of custom nbt of {_mob} to true
     set int tag "ECLvl" of custom nbt of {_mob} to {_mobLevel}
 
+    onECMobSpawn({_mob})
+
     if {_mob} is a zombie or a skeleton:
-        set long tag "ECModelHeight" of custom nbt of {_mob} to 1.70
         set {_element} to "Ghost"
         if {_mob} is a skeleton:
             set {_mob}'s max health to 17
         if {_mob} is a zombie:
             set {_mob}'s max health to 20
+        set string tag "MobType" of (custom nbt of {_mob}) to "Tall"
     else if {_mob} is a magma cube:
         set {_element} to "Lava"
-        set long tag "ECModelHeight" of custom nbt of {_mob} to 1.825
         set {_mob}'s max health to 18.5
-        add nbt from "{Size:3}" to nbt of {_mob}
+        set int tag "Size" of (nbt of {_mob}) to 3
+        set string tag "MobType" of (custom nbt of {_mob}) to "Cube"
     else if {_mob} is a spider:
-        set long tag "ECModelHeight" of custom nbt of {_mob} to 0.65
         set {_element} to "Dark"
         set {_mob}'s max health to 13 + 5
+        set string tag "MobType" of (custom nbt of {_mob}) to "Short"
     else:
         if {_mob} is a cave spider:
-            set long tag "ECModelHeight" of custom nbt of {_mob} to 0.25
             set {_mob}'s max health to 12 + 5
+            set string tag "MobType" of (custom nbt of {_mob}) to "Short"
         else if {_mob} is a witch:
-            set long tag "ECModelHeight" of custom nbt of {_mob} to 1.7
             set {_mob}'s max health to 24
+            set string tag "MobType" of (custom nbt of {_mob}) to "Tall"
         set {_element} to "Poison"
     
     set string tag "ECElement" of nbt of custom nbt of {_mob} to {_element}
@@ -152,6 +158,8 @@ function ExpAreaMayanMobSpawn(p: player, loc: location):
     set string tag "ECTextAboveLevel" of custom nbt of {_mob} to uuid of last spawned armor stand
 
     add 1 to {expAreaMayanMobs}
+
+    push {_mob} upwards with velocity 0.01
 
 function ExpAreaMayanBossSpawn():
     #Checks if a boss is already alive, if yes, replaces it with a new one
@@ -217,8 +225,8 @@ function ExpAreaMayanBossSpawn():
         set {_mob} to last spawned mob
         set the display name of {_mob} to "&fPaileao"
         disguise {_mob} as {_randomMob}
-        set {_pot} to potion effect of speed of tier 1.35 without particles for 1 day
-        add {_pot} to potion effects of {_mob}
+        apply infinite speed 1.35 to {_mob}:
+            hide the particles
         set {_colorBar} to orange
         set string tag "ECElement" of nbt of custom nbt of {_mob} to "Beast"
         set {_maxHealthMob} to (60 * Math.pow(1.09, ({_mobLevel})))*({_players}*({_averageLevel}/{_mobLevel}))
@@ -229,6 +237,8 @@ function ExpAreaMayanBossSpawn():
     set boolean tag "ECMob" of custom nbt of {_mob} to true
     set int tag "ECLvl" of custom nbt of {_mob} to {_mobLevel}
     set boolean tag "ECBoss" of custom nbt of {_mob} to true
+
+    onECMobSpawn({_mob})
 
     set {_id} to random 5 char string from charset `0-9` `a-z`
     clear boss bar with id {_id}
@@ -259,31 +269,30 @@ function ExpAreaMayanMobDrop(p: player, e: entity, dropChanceMultiplier: number,
     set {_mobLevel} to (int tag "ECLvl" of custom nbt of {_e})
     if {_mobLevel} is not a number:
         set {_mobLevel} to rounded ({_mobLevel} parsed as number)
-    set {_starFactor} to (1 + ({_mobLevel}/100))
-    set {_ilvlFactor} to (1 + ({_mobLevel}/100)) 
+    set {_starFactor} to {_mobLevel} / {maxCardLevel}
+    set {_ilvlFactor} to {_mobLevel} / {maxCardLevel}
     set {_starLevelDrop} to a random number between 0 and 100
     if {_type} = "mob":
         #Artifacts
         chance of 6*{_dropChanceMultiplier}%:
             #Determines the random item drop
-            if {language::%{_p}%} = "English":
-                set {_lootTableArtifacts::*} to "Marksman's Anemone", "Vision of the Hunt", "Archer's Belt Pouch", "Hunter's Manuscript"
-            else:
-                set {_lootTableArtifacts::*} to "Anemon Strzelca", "Wizja Myślistwa", "Bukłak Łucznika", "Rękopis Łowcy"
+            set {_lootTableArtifacts::*} to "Marksman's Anemone", "Vision of the Hunt", "Archer's Belt Pouch", "Hunter's Manuscript"
             set {_lootItem} to a random element of {_lootTableArtifacts::*}
 
-            #Assigns the star level and an appropriate item level
-            set {_chance2Star} to 21.5 ^ {_starFactor}
-            set {_chance3Star} to 0.3 ^ {_starFactor}
-            if {_starLevelDrop} is between 0 and {_chance3Star}:
-                #Drops a 3 star artifact
+            set {_chance1Star} to 100 
+            set {_chance2Star} to 40 * {_starFactor}
+            set {_chance3Star} to 5 * ({_starFactor} ^ 3)
+
+            set {_totalWeight} to {_chance1Star} + {_chance2Star} + {_chance3Star}
+            set {_roll} to random number between 0 and {_totalWeight}
+
+            if {_roll} <= {_chance3Star}:
                 set {_starlvl} to 3
-            else if {_starLevelDrop} is between {_chance3Star}+0.001 and {_chance2Star}:
-                #Drops a 2 star artifact
+            else if {_roll} <= ({_chance3Star} + {_chance2Star}):
                 set {_starlvl} to 2
             else:
-                #Drops a 1 star artifact
                 set {_starlvl} to 1
+
             set {_ilvl} to ArtifactStarLevel({_starlvl}, {_mobLevel})
             giveItem({_p}, Artifact({_lootItem}, {_starlvl}, {_ilvl}))
             play sound "block.enchantment_table.use" with volume 3 and pitch 2 to {_p}
@@ -299,39 +308,39 @@ function ExpAreaMayanMobDrop(p: player, e: entity, dropChanceMultiplier: number,
             set {_lootItem} to {_lootTableGear::%{_randomIndex}%}
             set {_itemType} to {_lootTableGearTypes::%{_randomIndex}%}
 
-            set {_chanceType} to a random integer between 1 and 100
-            set {_chanceRare} to 2 ^ {_ilvlFactor}
-            set {_chanceUncommon} to 30 ^ {_ilvlFactor}
 
-            if {_chanceType} is between 1 and {_chanceRare}:
-                set {_itemLevel} to round(1 + ({_mobLevel}*0.82), 0)
+            #FOR FUTURE ME, THIS IS NEW SYSTEM
+            #USE THIS IN EVERY DROP. ALSO UPDATE ARTIFACT STAR LEVEL TO NEW
+            set {_chanceCommon} to 100
+            set {_chanceUncommon} to 50 * {_ilvlFactor}
+            set {_chanceRare} to 20 * ({_ilvlFactor} ^ 2)
+
+            set {_totalWeight} to {_chanceCommon} + {_chanceUncommon} + {_chanceRare}
+            set {_roll} to random number between 0 and {_totalWeight}
+
+            if {_roll} <= {_chanceRare}:
+                set {_itemLevel} to round(1 + ({_mobLevel} * 0.82), 0)
                 set {_rarity} to "<##0070dd>Rare"
-            else if {_chanceType} is between {_chanceRare}+0.001 and {_chanceUncommon}:
-                set {_itemLevel} to round(1 + ({_mobLevel}*0.74), 0)
+            else if {_roll} <= ({_chanceRare} + {_chanceUncommon}):
+                set {_itemLevel} to round(1 + ({_mobLevel} * 0.74), 0)
                 set {_rarity} to "<##1fef00>Uncommon"
             else:
-                set {_itemLevel} to round(1 + ({_mobLevel}*0.66), 0)
+                set {_itemLevel} to round(1 + ({_mobLevel} * 0.66), 0)
                 set {_rarity} to "<##cccccc>Common"
 
-            set {_item} to Gear({_lootItem}, {_itemType}, {_itemLevel}, {_rarity}, (string tag "PrimaryStat" of nbt of {karta::%{_p}%}))
+            set {_item} to Gear({_lootItem}, {_itemType}, {_itemLevel}, {_rarity}, (string tag "PrimaryStat" of nbt of {karta::%{_p}%}), "Forest")
             giveItem({_p}, {_item})
             play sound "item.armor.equip_netherite" with volume 3 and pitch 1 to {_p}
             send "&d&oReceived &f%{_lootItem}% &e(Ilvl %{_itemLevel}%&e) &d&ofrom %name of {_e}%&d&o." to {_p}
             play sound "entity.chicken.egg" with volume 3 and pitch 0 to {_p}
             #Assigns an appropriate item level
         chance of 12%:
-            if {language::%{_p}%} = "English":
-                set {_book} to {noviceexpbookEN}
-            else:
-                set {_book} to {noviceexpbook}
+            set {_book} to {noviceexpbookEN}
             giveItem({_p}, {_book})
             send "&3&oReceived a &f%name of {_book}%&3&o." to {_p}
             play sound "entity.chicken.egg" with volume 3 and pitch 0 to {_p}
         chance of 2%:
-            if {language::%{_p}%} = "English":
-                set {_book} to {apprenticeexpbookEN}
-            else:
-                set {_book} to {apprenticeexpbook}
+            set {_book} to {apprenticeexpbookEN}
             giveItem({_p}, {_book})
             send "&3&oReceived a &f%name of {_book}%&3&o." to {_p}
             play sound "entity.chicken.egg" with volume 3 and pitch 0 to {_p}
@@ -339,10 +348,7 @@ function ExpAreaMayanMobDrop(p: player, e: entity, dropChanceMultiplier: number,
         #Artifacts
         chance of 6*{_dropChanceMultiplier}%:
             #Determines the random item drop
-            if {language::%{_p}%} = "English":
-                set {_lootTableArtifacts::*} to "Marksman's Anemone", "Vision of the Hunt", "Archer's Belt Pouch", "Hunter's Manuscript"
-            else:
-                set {_lootTableArtifacts::*} to "Anemon Strzelca", "Wizja Myślistwa", "Bukłak Łucznika", "Rękopis Łowcy"
+            set {_lootTableArtifacts::*} to "Marksman's Anemone", "Vision of the Hunt", "Archer's Belt Pouch", "Hunter's Manuscript"
             set {_lootItem} to a random element of {_lootTableArtifacts::*}
 
             #Assigns the star level and an appropriate item level
@@ -390,24 +396,18 @@ function ExpAreaMayanMobDrop(p: player, e: entity, dropChanceMultiplier: number,
                 set {_itemLevel} to round(1 + ({_mobLevel}*0.66), 0)
                 set {_rarity} to "<##cccccc>Common"
 
-            set {_item} to Gear({_lootItem}, {_itemType}, {_itemLevel}, {_rarity}, (string tag "PrimaryStat" of nbt of {karta::%{_p}%}))
+            set {_item} to Gear({_lootItem}, {_itemType}, {_itemLevel}, {_rarity}, (string tag "PrimaryStat" of nbt of {karta::%{_p}%}), "Forest")
             giveItem({_p}, {_item})
             play sound "item.armor.equip_netherite" with volume 3 and pitch 1 to {_p}
             send "&d&oReceived &f%{_lootItem}% &e(Ilvl %{_itemLevel}%&e) &d&ofrom %name of {_e}%&d&o." to {_p}
             play sound "entity.chicken.egg" with volume 3 and pitch 0 to {_p}
         chance of 32%:
-            if {language::%{_p}%} = "English":
-                set {_book} to {noviceexpbookEN}
-            else:
-                set {_book} to {noviceexpbook}
+            set {_book} to {noviceexpbook}
             giveItem({_p}, {_book})
             send "&3&oReceived a &f%name of {_book}%&3&o." to {_p}
             play sound "entity.chicken.egg" with volume 3 and pitch 0 to {_p}
         chance of 16%:
-            if {language::%{_p}%} = "English":
-                set {_book} to {apprenticeexpbookEN}
-            else:
-                set {_book} to {apprenticeexpbook}
+            set {_book} to {apprenticeexpbook}
             giveItem({_p}, {_book})
             send "&3&oReceived a &f%name of {_book}%&3&o." to {_p}
             play sound "entity.chicken.egg" with volume 3 and pitch 0 to {_p}
@@ -469,7 +469,7 @@ function ExpAreaMayanMobDrop(p: player, e: entity, dropChanceMultiplier: number,
                 set {_itemLevel} to round(1 + ({_mobLevel}*0.66), 0)
                 set {_rarity} to "<##cccccc>Common"
 
-            set {_item} to Gear({_lootItem}, {_itemType}, {_itemLevel}, {_rarity}, (string tag "PrimaryStat" of nbt of {karta::%{_p}%}))
+            set {_item} to Gear({_lootItem}, {_itemType}, {_itemLevel}, {_rarity}, (string tag "PrimaryStat" of nbt of {karta::%{_p}%}), "Forest")
             giveItem({_p}, {_item})
             play sound "item.armor.equip_netherite" with volume 3 and pitch 1 to {_p}
             send "&d&oReceived &f%{_lootItem}% &e(Ilvl %{_itemLevel}%&e) &d&ofrom %name of {_e}%&d&o." to {_p}
