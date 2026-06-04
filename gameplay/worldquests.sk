@@ -16,25 +16,17 @@ import:
     com.sk89q.worldedit.bukkit.BukkitAdapter
     java.io.PrintWriter
     java.io.File
+    java.lang.System
+
+
 
 variables:
     {worldQuestCount} = 0
 
 using script reflection
 
-command /testdialogue:
-    trigger:
-        set {worldQuestCount} to 0
-        portraitDialogue(player, "", "Magni Bronzebeard", "Someone's drawin' power from Azerite in this area. Ye need tae stop 'em!")
-        set {_dialogue} to "No need tae panic! Though I suppose my entrance was a bit abrupt..."
-        #portraitDialogue(player, "", "Magni Bronzebeard", {_dialogue})
-        #play sound "npc.magnibronzebeard.heart_introduction" with volume 5 and pitch 1 to player
-        set {_citizens} to Bukkit.getPluginManager().getPlugin("Citizens")
-        set {_magni} to {_citizens}.getNPCRegistry().getById(6748).getEntity()
-        broadcast {_magni}
-        
-
 function portraitDialogue(p: player, icon: string, name: string, text: string, faction: string = ""):
+    replace all "<br>" in {_text} with " "
     set {_words::*} to {_text} split at " "
     set {_currentLine} to ""
     set {_lineCount} to 1
@@ -89,20 +81,11 @@ command /ly:
         else:
             load yaml "plugins/Skript/lists/WorldQuestList" as "WorldQuestList"
             broadcast "&bloaded yaml"
-command /ly3:
-    trigger:
-        if yaml "WorldQuestLocations" is loaded:
-            save yaml "WorldQuestLocations"
-            unload yaml "WorldQuestLocations"
-            broadcast "&dunloaded yaml"
-        else:
-            load yaml "plugins/Skript/worldquests/locations" as "WorldQuestLocations"
-            broadcast "&aloaded yaml"
 
 on rightclick:
     if player's tool is glistering melon slice:
-        set {_var} to "Azerite Elemental"
-        set {_wq} to "Azerite Madness"
+        set {_var} to "Eclair Goat"
+        set {_wq} to "Eclair Goats"
         set {_loc} to player's location
         if yaml list "Locations.%{_var}%" in "WorldQuestLocations%{_wq}%" does not contain {_loc}:
             add {_loc} to yaml list "Locations.%{_var}%" in "WorldQuestLocations%{_wq}%"
@@ -112,20 +95,17 @@ on rightclick:
         set {_t::*} to yaml list "Locations.%{_var}%" in "WorldQuestLocations%{_wq}%"
         broadcast size of {_t::*}
 
+command /testdialogue:
+    trigger:
+        set {_citizens} to Bukkit.getPluginManager().getPlugin("Citizens")
+        set {_magni} to {_citizens}.getNPCRegistry().getById(6748).getEntity()
+        broadcast {_magni}
+
 function showSpawnPoint(p: player, loc: location):
     while "%region at {_p}%" contains "WorldQuest_":
         make {_p} see block at {_loc} as diamond block
         wait 1 tick
-#on rightclick:
-#    if yaml list "Collect Things.Paca en mi Caballo.Locations" in "WorldQuestLocations" does not contain location of
- #       add location of event-block to yaml list "Collect Things.Paca en mi Caballo.Locations" in "WorldQuestLocations"
- #       upd(player, location of event-block)
-#        save yaml "WorldQuestLocations"
- #       broadcast size of yaml list "Collect Things.Paca en mi Caballo.Locations" in "WorldQuestLocations"
-#function upd(p: player, loc: location):
-#    while "%regions at {_p}%" contains "worldquest_":
-  #      make {_p} see block at {_loc} as diamond block
- #       wait 1 tick
+
 command /wq [<text>]:
     trigger:
         if arg-1 = "tst":
@@ -166,7 +146,6 @@ command /wq [<text>]:
 #6. set {_yamlValue} to "Achievement.Mining.Klejnot.1000"
 #achievementYaml({_p}, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Klejnot: 1000", "Find 1000 Klejnots while mining.")
 #7. Also keep track o WQs completed for a specific faction.
-
 #8. Display the progress of all world quests that were picked up somewhere.
 
 function WorldQuestSpawn(wq: string):
@@ -201,6 +180,7 @@ function WorldQuestSpawn(wq: string):
             set {_showName} to yaml value "Tasks.%{_wqType}%.%{_wq}%.%loop-value-1%.Show Name" in "WorldQuestList"
             set {_noGravity} to yaml value "Tasks.%{_wqType}%.%{_wq}%.%loop-value-1%.No Gravity" in "WorldQuestList"
             set {_invulnerable} to yaml value "Tasks.%{_wqType}%.%{_wq}%.%loop-value-1%.Invulnerable" in "WorldQuestList"
+            set {_silent} to yaml value "Tasks.%{_wqType}%.%{_wq}%.%loop-value-1%.Silent" in "WorldQuestList"
             if {_spawnOffset} is not set:
                 set {_spawnOffset} to 0
 
@@ -223,7 +203,6 @@ function WorldQuestSpawn(wq: string):
 
                 if {_movementSpeed} is set:
                     set generic movement speed attribute of {_spawnedEntity} to {_movementSpeed}
-                    
 
                 if {_entityModel} is set:
                     set {_model} to BetterModel.model({_entityModel}).get().getOrCreate({_spawnedEntity})
@@ -248,6 +227,8 @@ function WorldQuestSpawnMob(loc: location, wq: string, mobType: string, entity: 
     set string tag "WorldQuest" of custom nbt of {_mob} to {_wq}
     set long tag "MobDamageModifier" of custom nbt of {_mob} to 1 * Math.pow(1.026, ({_level}))
 
+    onECMobSpawn({_mob})
+
     set metadata value "ECSpawnLocation" of {_mob} to {_loc}
     if {_item} is set:
         set {_mob}'s held item to {_item}
@@ -257,6 +238,8 @@ function WorldQuestSpawnMob(loc: location, wq: string, mobType: string, entity: 
             set {_pitch} to yaml value "Mobs.%{_mobType}%.Sound Pitch" in "WorldQuestList"
         set {_sounds::*} to yaml list "Mobs.%{_mobType}%.Sounds" in "WorldQuestList"
         WorldQuestMobSounds({_mob}, {_sounds::*}, {_pitch})
+    else:
+        playEntitySound({_mob}, "Ambient")
 
     set {_scale} to yaml value "Mobs.%{_mobType}%.Scale" in "WorldQuestList"
     set scale attribute of {_mob} to {_scale}
@@ -280,8 +263,7 @@ function WorldQuestSpawnMob(loc: location, wq: string, mobType: string, entity: 
     else:
         MobInfoAssignments({_mob}, {_loc})
 
-function WorldQuestRespawnMob(mob: entity):
-    set {_loc} to metadata value "ECSpawnLocation" of {_mob}
+function WorldQuestRespawnMob(mob: entity, loc: location):
     set {_mobType} to string tag "MobType" of custom nbt of {_mob}
     set {_wq} to string tag "WorldQuest" of custom nbt of {_mob}
     clear metadata value "ECSpawnLocation" of {_mob}
@@ -517,12 +499,13 @@ function sendObjectiveProgressionPacket(p: player, loc: location, text: string):
                 stop loop
     spawn fake text display entity at location 0.5 above {_loc} for {_players::*} with id {_id}
     
-    set {_packet} to raw metadata packet with id {_id}
     set {_text} to mini message from {_text}
-    add data from "display text %{_text}%" to packet {_packet}
-    add data from "display billboard center" to packet {_packet}
-    add data from "display brightness 15 15" to packet {_packet}
-    add data from "display see_through true" to packet {_packet}
+    set {_packet} to new metadata packet with id {_id}:
+        display text: {_text}
+        display billboard: center
+        display brightness block: 15
+        display brightness sky: 15
+        display seethrough: true
     send packet {_packet} to {_players::*}
     
     loop 80 times:
@@ -530,9 +513,9 @@ function sendObjectiveProgressionPacket(p: player, loc: location, text: string):
         
         send move entity packet with id {_id} by 0, 51, 0 for {_players::*}
         
-        set {_meta} to raw metadata packet with id {_id}
-        add data from "display scale %{_scale}% %{_scale}% %{_scale}%" to packet {_meta}
-        send packet {_meta} to {_players::*}
+        set {_packet} to new metadata packet with id {_id}:
+            display scale: vector({_scale}, {_scale}, {_scale})
+        send packet {_packet} to {_players::*}
         
         wait 1 tick if loop-counter is divisible by 5
         
@@ -546,14 +529,18 @@ on rightclick:
                 set {_worldQuestType} to yaml value "World Quests.%{_worldQuest}%.Type" in "WorldQuestList"
                 set {_elements::*} to yaml node keys "Tasks.%{_worldQuestType}%.%{_worldQuest}%" in "WorldQuestList"
 
-                if clicked block exists:
-                    if "%regions at clicked block%" contains "WorldQuest_":
+                set {_unformattedWQ} to {_worldQuest} in lowercase
+                replace all " ", "'", "," in {_unformattedWQ} with ""
+
+                if clicked block exists:       
+                    if "%regions at clicked block%" contains "WorldQuest_%{_unformattedWQ}%":
                         set {_loc} to location of clicked block
                         loop {_elements::*}:
                             set {_element} to loop-value-2
                             set {_requirement} to yaml value "Tasks.%{_worldQuestType}%.%{_worldQuest}%.%{_element}%.Requirement" in "WorldQuestList"
                             set {_collected} to yaml value "%{_worldQuestType}%.%{_worldQuest}%.%{_element}%.Completed" in "WorldQuests%player%"
-                            if {_worldQuestType} = "Collect Things":     
+                            broadcast {_requirement} and {_collected}
+                            if {_worldQuestType} = "Collect Things": 
                                 if yaml list "Locations.%{_element}%" in "WorldQuestLocations%{_worldQuest}%" contains {_loc}:
                                     if {_collected} < {_requirement}:
                                         set {_locs::*} to yaml list "Collect Things.%{_worldQuest}%.%{_element}%.Completed Locations" in "WorldQuests%player%"
@@ -616,7 +603,7 @@ on rightclick:
                                     sendObjectiveProgressionPacket(player, {_loc}, "<color:red>You must wait before interacting with this block again.")
 
                 else if clicked entity exists:
-                    if "%regions at clicked entity%" contains "WorldQuest_":
+                    if "%regions at clicked entity%" contains "WorldQuest_%{_unformattedWQ}%":
                         if player can see clicked entity:
                             set {_uuid} to uuid of clicked entity
                             set {_loc} to location of clicked entity
@@ -640,10 +627,31 @@ on rightclick:
                                             else:
                                                 send "&c&oYou have already interacted with this &l%{_element}%&c." to player
 
-function WorldQuestAddCompletion(p: player, loc: location, worldQuest: string, worldQuestType: string, element: string):
+                                        if string tag "WorldQuestInteractEntityType" of custom nbt of clicked entity = "Eclair Goat":
+                                            if cooldown "EclairGoatHarvest%uuid of clicked entity%" is finished:
+                                                create cooldown "EclairGoatHarvest%uuid of clicked entity%" for 30 seconds
+                                                
+                                                EclairGoatCooldown(clicked entity)
+                                                set {_randomPointlessQuote} to a random integer between 1 and 3
+                                                if {_randomPointlessQuote} = 1:
+                                                    send "&fEclair Goat >> This is how the cookie crumbles, my dear..." to player
+                                                else if {_randomPointlessQuote} = 2:
+                                                    send "&fEclair Goat >> The leaf that falls in the morning is rarely the same leaf that regrets the afternoon..." to player
+                                                else:
+                                                    send "&fEclair Goat >> If the mountain moves, it is likely because it has found better rent elsewhere..."  to player
+                                                set target of clicked entity to player
+                                                EclairGoatInteraction(player, clicked entity)
+                                                stop
+                                                
+                                            else:
+                                                send "&fEclair Goat >> &fThe cream is currently meditating. Do not disturb its internal fluffiness."   to player
+                                                stop
+
+function WorldQuestAddCompletion(p: player, loc: location, worldQuest: string, worldQuestType: string, element: string, collected: number = 0):
     set {_requirement} to yaml value "Tasks.%{_worldQuestType}%.%{_worldQuest}%.%{_element}%.Requirement" in "WorldQuestList"
-    set {_collected} to yaml value "%{_worldQuestType}%.%{_worldQuest}%.%{_element}%.Completed" in "WorldQuests%{_p}%"
-    set {_collected} to {_collected} + 1
+    if {_collected} = 0:
+        set {_collected} to yaml value "%{_worldQuestType}%.%{_worldQuest}%.%{_element}%.Completed" in "WorldQuests%{_p}%"
+        set {_collected} to {_collected} + 1
     set yaml value "%{_worldQuestType}%.%{_worldQuest}%.%{_element}%.Completed" in "WorldQuests%{_p}%" to {_collected}
     
     save yaml "WorldQuests%{_p}%"
@@ -846,7 +854,7 @@ function epicWorldQuestCompletionVisual(p: player):
         draw 3 of dust_color_transition using dustTransition(rgb(255, 105, 180), rgb(255, 255, 255), 1.5) at {_loc} ~ {_v2} with offset vector(0.1, 0.1, 0.1) with extra 0.02
         
         if loop-counter is divisible by 3:
-            draw 1 flash particle at {_loc} ~ vector(0, {_y}, 0) with offset vector(0, 0, 0) with extra 0
+            draw 1 white flash particle at {_loc} ~ vector(0, {_y}, 0) with offset vector(0, 0, 0) with extra 0
             play sound "block.amethyst_block.place" with volume 0.4 and pitch 2.0 at {_loc} ~ vector(0, {_y}, 0)
 
         wait 1 tick
@@ -857,7 +865,7 @@ function epicWorldQuestCompletionVisual(p: player):
     draw 100 soul particle at {_top} with offset vector(3, 3, 3) with extra 0.2
     draw 100 dragon_breath particle at {_top} with offset vector(2, 2, 2) with extra 0.1
     draw 50 trial_spawner_detection_ominous particle at {_top} with offset vector(1, 1, 1) with extra 0.15
-    draw 30 flash particle at {_top} with offset vector(0.5, 0.5, 0.5) with extra 0.1
+    draw 30 white flash particle at {_top} with offset vector(0.5, 0.5, 0.5) with extra 0.1
 
 function rareWorldQuestCompletionVisual(p: player):
     set {_loc} to location of {_p}
@@ -1051,15 +1059,6 @@ function addDynmapWorldQuestMarker(label: text, id: integer, WQLocation: locatio
     set {_marker} to {_markerSet}.createMarker("%{_id}%", " ", {_world}, {_x}, {_y}, {_z}, {_icon}, true)
     {_marker}.setLabel({_label}, true)
     
-command /ly2:
-    trigger:
-        if yaml "WorldQuestHTML" is loaded:
-            save yaml "WorldQuestHTML"
-            unload yaml "WorldQuestHTML"
-            broadcast "&cunloaded yaml"
-        else:
-            load yaml "plugins/Skript/worldquests/WorldQuestHTML" as "WorldQuestHTML"
-            broadcast "&bloaded yaml"
 command /wqtest:
     trigger:
         loop getActiveWorldQuests():
@@ -1088,14 +1087,12 @@ function clearAllYamlKeys(path: string):
         add 1 to {_count}
 
 function WorldQuestCombatEngage(e: entity):
-    #///Animation section
-    if string tag "MobType" of custom nbt of {_e} = "Azerite Elemental":
-        animationPlayEntity({_e}, "rage", 1 second)
-
     clear boolean tag "NoAI" of nbt of {_e}
-    if string tag "MobType" of custom nbt of {_e} = "Gosha Imitation":
-        GoshaImitation({_e})
-
+    set {_mobType} to string tag "MobType" of custom nbt of {_e}
+    replace all " " in {_mobType} with ""
+    set {_function} to function named "WorldQuest%{_mobType}%"
+    if {_function} is set:
+        execute {_function} with arguments {_e}
 
 expression [model] height of %entity%:
     get:
@@ -1310,3 +1307,30 @@ on tame:
                             if boolean tag "WorldQuestInteractEntity" of custom nbt of loop-entity is true:
                                 if string tag "WorldQuest" of custom nbt of loop-entity = {_worldQuest}:
                                     hide loop-entity for tamer
+
+function EclairGoatCooldown(e: entity):
+    set {_id} to entity id of {_e}
+    while cooldown "EclairGoatHarvest%uuid of {_e}%" is not finished:
+        set {_duration} to seconds of cooldown "EclairGoatHarvest%uuid of {_e}%"
+        set {_name} to "%name of {_e}% | (%{_duration}%s)"
+        fake {_e}'s name to {_name} for all players in radius 100 around {_e}
+        wait 1 second
+    if {_e} is alive:
+        fake {_e}'s name to (name of {_e}) for all players in radius 100 around {_e}
+
+function EclairGoatInteraction(p: player, e: entity):
+    set {_loc} to location 1 above {_e}
+
+    set {_itemDrop} to yaml value "Tasks.Interact With.Eclair Goats.Eclairs obtained.Item Drop" in "WorldQuestList"
+
+    giveItem({_p}, {_itemDrop})
+    play sound "entity.chicken.egg" with volume 3 and pitch 1 to {_p}
+    play sound "entity.goat.milk" with volume 3 and pitch 1 to {_p}
+    loop all items in the inventory of {_p}:
+        if (1 of loop-item) = {_itemDrop}:
+            set {_amount} to item amount of loop-item
+            if {_amount} >= 15:
+                remove loop-item from {_p}'s inventory
+            stop loop
+
+    WorldQuestAddCompletion({_p}, {_loc}, "Eclair Goats", "Interact With", "Eclairs obtained", {_amount})
