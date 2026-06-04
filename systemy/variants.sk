@@ -36,7 +36,7 @@ function VariantMenu(p: player) :: number:
         set {_colourDesc} to yaml value "Variant Options.Description Colour" in "VariantList"
 
         if loop-value != "Classic":
-            set {_colour} to yaml value "Variant List.%loop-value%.Colour.Primary" in "VariantList"
+            set {_colour} to yaml value "Variant List.%loop-value%.Colour" in "VariantList"
             set name of {_item} to (mini message from "%{_colour}%%loop-value% %{_card}%")
             set {_source} to yaml value "%{_card}%.%loop-value%.Source" in "VariantList"
             set {_acquired} to yaml value "%{_card}%.%loop-value%.Acquired" in "Variants%{_p}%"
@@ -64,7 +64,7 @@ function VariantMenu(p: player) :: number:
         if {_acquired} is not set:
             set {_acquired} to "Not unlocked"
 
-        set {_lore} to "%{_}%  <##9376E0>✨ %{_card}% Card Variant ✨%nl%%{_}%  %nl%%{_}%  🌠 %{_description}%%nl%%{_}%%nl%%{_}%  <##9376E0>Source: &f%{_source}%%nl%%{_}%  <##9376E0>Acquired: &f%{_acquired}%"
+        set {_lore} to "%{_}%  <#9376E0>✨ %{_card}% Card Variant ✨%nl%%{_}%  %nl%%{_}%  🌠 %{_description}%%nl%%{_}%%nl%%{_}%  <#9376E0>Source: &f%{_source}%%nl%%{_}%  <#9376E0>Acquired: &f%{_acquired}%"
         
         set {_currentVariant} to getCurrentVariant({_p}, {_card})
         if {_currentVariant} = loop-value:
@@ -90,16 +90,33 @@ function VariantMenu(p: player) :: number:
     open {_gui} to {_p}
 
 function getCurrentVariant(p: player, card: string) :: text:
-    set {_id} to cardId({_p})
-    set {_currentVariant} to yaml value "%{_card}%.Current Variant.%{_id}%" in "Variants%{_p}%"
+    if yaml "Variants%{_p}%" is loaded:
+        set {_id} to cardId({_p})
+        set {_currentVariant} to yaml value "%{_card}%.Current Variant.%{_id}%" in "Variants%{_p}%"
     return {_currentVariant}
 
 function setCurrentVariant(p: player, card: string, variant: string):
-    set {_id} to cardId({_p})
-    set yaml value "%{_card}%.Current Variant.%{_id}%" in "Variants%{_p}%" to {_variant}
-    save yaml "Variants%{_p}%"
+    if yaml "Variants%{_p}%" is loaded:
+        set {_id} to cardId({_p})
+        set yaml value "%{_card}%.Current Variant.%{_id}%" in "Variants%{_p}%" to {_variant}
+        save yaml "Variants%{_p}%"
 
-function getPrimaryCardColour(p: player, card: string) :: text:
+    set {_cardIcon} to getCardGlobalIcon({_p})
+    set string tag "CardIcon" of (custom nbt of {_p}'s tool) to {_cardIcon}
+    set {cardicon::%{_p}%} to {_cardIcon}
+    
+    SetCardIcon({_p})
+
+    if yaml value "%{_card}%.%{_variant}%.Colour.Primary" in "VariantList" is set:
+        set {kartacolor::%{_p}%} to yaml value "%{_card}%.%{_variant}%.Colour.Primary" in "VariantList"
+    else:
+        set {kartacolor::%{_p}%} to last string color code of (name of {karta::%{_p}%})
+
+    UpdateCard({_p})
+    UpdateScoreboard({_p})
+
+function getPrimaryCardColour(p: player) :: text:
+    set {_card} to {kartaname::%{_p}%}
     set {_id} to cardId({_p})
     set {_variant} to getCurrentVariant({_p}, {_card})
 
@@ -110,7 +127,9 @@ function getPrimaryCardColour(p: player, card: string) :: text:
 
     return {_colour}
 
-function getSecondaryCardColour(p: player, card: string) :: text:
+function getSecondaryCardColour(p: player) :: text:
+    set {_card} to {kartaname::%{_p}%}
+
     set {_id} to cardId({_p})
     set {_variant} to getCurrentVariant({_p}, {_card})
 
@@ -120,6 +139,26 @@ function getSecondaryCardColour(p: player, card: string) :: text:
         set {_colour} to last string color code of (name of {karta::%{_p}%})
 
     return {_colour}
+
+function getCardIcon(p: player, ability: string) :: text:
+    set {_card} to {kartaname::%{_p}%}
+    set {_variant} to getCurrentVariant({_p}, {_card})
+
+    if yaml value "Card.%{_card}%.%{_ability}%.Icons.%{_variant}%" in "SpellList" is set:
+        set {_icon} to yaml value "Card.%{_card}%.%{_ability}%.Icons.%{_variant}%" in "SpellList"
+    else:
+        set {_icon} to yaml value "Card.%{_card}%.%{_ability}%.Icons.Classic" in "SpellList"
+
+    return {_icon}
+
+function getCardGlobalIcon(p: player) :: text:
+    set {_card} to {kartaname::%{_p}%}
+    set {_variant} to getCurrentVariant({_p}, {_card})
+    
+    if yaml value "%{_card}%.%{_variant}%.Icon" in "VariantList" is set:
+        set {_icon} to yaml value "%{_card}%.%{_variant}%.Icon" in "VariantList"
+
+    return {_icon}
 
 command /variantitem:
     trigger:
@@ -158,6 +197,7 @@ on inventory click:
                 play sound "ui.hud.bubble_pop" with volume 1 and pitch 1 to player
                 play sound "ui.select" with volume 1 and pitch 1.5 to player
                 play sound "entity.experience_orb.pickup" with volume 1 and pitch 1.75 to player
+                
             else:
                 send "&6&oYou already have this Variant selected." to player
                 play sound "ui.no_function" with volume 1 and pitch 1 to player
