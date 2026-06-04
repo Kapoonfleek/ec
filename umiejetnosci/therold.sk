@@ -1,5 +1,10 @@
 
 
+function TheroldDamage(p: player, x: entity, amount: number):
+    if world of {_p} = world of {_x}:
+        if chunk at location of {_x} is loaded:
+            make {_p} damage {_x} by {_amount}
+
 function TheroldDamageFormula(p: player, ability: text, baseKey: text = "BASEDAMAGE", scalingKey: text = "DAMAGESCALING") :: number:
     set {_scaling} to AbilityUpgradeValue({_p}, "Brother Therold", {_ability}, {_scalingKey})
     set {_base} to AbilityUpgradeValue({_p}, "Brother Therold", {_ability}, {_baseKey})
@@ -109,7 +114,10 @@ function VoidEruptionAbilityCast(p: player):
                                         if boolean tag "Void Eruption" of (custom nbt of loop-item) = true:
                                             set {_cdVoidbolt} to "%4.5/{_pospiech}% seconds" parsed as timespan
                                             set {_dmgVoidbolt} to (3 + (({damage::%{_p}%}/15) + (Versatility({_p})/45)))
-                                            set {_voidBolt} to (black dye named "<#613e82>Void Bolt") with lore "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown:  &f%{_cdVoidbolt}%%nl%&7Use: &fRMB%nl%<#613e82>Sends a bolt of pure void energy at the%nl%<#613e82>enemy, causing &f%{_dmgVoidbolt}%  <#431d53>Ghost <#613e82>damage and%nl%<#8165a6>extending <#613e82>the duration of &f <#8165a6>Shadow Word:%nl%<#8165a6>Pain <#613e82>and &f <#8165a6>Vampiric Touch <#613e82>to their original%nl%<#613e82>duration.%nl% %nl%<#613e82>Requires &f <#8165a6>Voidform<#613e82>.%nl% %nl%&fGenerates 16 Insanity."
+                                            set {_valueNames::*} to "COOLDOWN", "DAMAGE"
+                                            set {_values::*} to {_cdVoidbolt}, {_dmgVoidbolt}
+                                            set {_voidBoltLore} to GetAbilityDescription({_p}, "Brother Therold", "Void Bolt", {_valueNames::*}, {_values::*})
+                                            set {_voidBolt} to (black dye named "<#613e82>Void Bolt") with lore {_voidBoltLore}
                                             add nbt from "{""minecraft:custom_model_data"":{floats:[3.0f]},""minecraft:custom_data"":{""Void Bolt"":1b}}" to nbt of {_voidBolt}
                                             set loop-item to {_voidBolt}
                                     set {_lore} to join (lore of {_p}'s tool) by nl
@@ -127,7 +135,7 @@ function VoidEruptionAbilityCast(p: player):
                                                             set metadata value "LastDamageCauseLore" of loop-entity to {_lore}
                                                             set metadata value "Element" of {_p} to "Ghost"
                                                             set {_damage} to Crit({_p}, loop-entity, {_crit}, {_damage})
-                                                            make {_p} damage loop-entity by {_damage}*2
+                                                            TheroldDamage({_p}, loop-entity, {_damage})
                                     set {_voidformStacks} to 0
                                     set metadata value "Voidform Stacks" of {_p} to 0
                                     set metadata value "VoidformDrained" of {_p} to 0
@@ -215,13 +223,15 @@ function VoidBoltCast(p: player, target: entity):
     if metadata value "Voidform" of {_p} is set:
         set {_damage} to {_damage}*TheroldVoidformMultiplier({_p})
     set {_target}'s last damage cause to sweep attack
-    set {_lore} to "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown:  &f%{_cd}% seconds%nl%&7Use: &fRMB%nl%<#613e82>Sends a bolt of pure void energy at the%nl%<#613e82>enemy, causing &f%{_damage}%  <#431d53>Ghost <#613e82>damage and%nl%<#8165a6>extending <#613e82>the duration of &f <#8165a6>Shadow Word:%nl%<#8165a6>Pain <#613e82>and &f <#8165a6>Vampiric Touch <#613e82>to their original%nl%<#613e82>duration.%nl% %nl%<#613e82>Requires &f <#8165a6>Voidform<#613e82>.%nl% %nl%&fGenerates 16 Insanity."
+    set {_valueNames::*} to "COOLDOWN", "DAMAGE"
+    set {_values::*} to {_cd}, {_damage}
+    set {_lore} to GetAbilityDescription({_p}, "Brother Therold", "Void Bolt", {_valueNames::*}, {_values::*})
     set metadata value "LastDamageCause" of {_target} to "<#462566>Void Bolt"
     set metadata value "LastDamageCauseLore" of {_target} to {_lore}
     set metadata value "Element" of {_p} to "Ghost"
     LoreUpdate({_p}, "Void Bolt", {_lore})
     set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage})
-    make {_p} damage {_target} by {_damage}*2
+    TheroldDamage({_p}, {_target}, {_damage})
 
     if boolean tag "Constellation;Unleash the Shadows" of (custom nbt of {karta::%{_p}%}) is set:
         ShadowyApparitionSpawn({_p}, {_target})
@@ -257,7 +267,7 @@ function TheroldTierIIIVoidEruption(p: player, target: entity):
                             set metadata value "LastDamageCauseLore" of loop-entity to {_lore}
                             set metadata value "Element" of {_p} to "Ghost"
                             set {_damage} to Crit({_p}, loop-entity, {_crit}, {_damage})
-                            make {_p} damage loop-entity by {_damage}*2
+                            TheroldDamage({_p}, loop-entity, {_damage})
 
 function VoidBoltAbilityCast(p: player):
     if {kartaname::%{_p}%} = "Brother Therold":
@@ -286,7 +296,9 @@ function VoidBoltAbilityCast(p: player):
                                                 if (string tag "Talents;Row 5" of (custom nbt of {karta::%{_p}%})) = "Legacy of the Void":
                                                     set {_baseCasttime} to {_baseCasttime}*0.6 
                                                 set {_casttime} to "%round(({_baseCasttime}/{_pospiech}), 1)% seconds" parsed as timespan
-                                                set {_lore} to "&8Ultimate Ability%nl%&f%{_casttime}% cast%nl%&7No cooldown%nl%&7Use: &fRMB%nl%<#613e82>Releases an explosive blast of pure void%nl%<#613e82>energy, activating &f<#8165a6>Voidform <#613e82>and causing%nl%&f%{_damage}% <#431d53>Ghost <#613e82>damage to all enemies afflicted by%nl%<#613e82>your &f<#8165a6>Shadow Word: Pain <#613e82>or &f<#8165a6>Vampiric Touch.%nl% %nl%<#613e82>During &f<#8165a6>Voidform<#613e82>, this ability is replaced%nl%<#613e82>by &f<#8165a6>Void Bolt<#613e82>.%nl% %nl%&fRequires %{_requiredInsanity}% Insanity to activate."
+                                                set {_valueNames::*} to "CASTTIME", "DAMAGE", "REQUIRED"
+                                                set {_values::*} to {_casttime}, {_damage}, {_requiredInsanity}
+                                                set {_lore} to GetAbilityDescription({_p}, "Brother Therold", "Void Eruption", {_valueNames::*}, {_values::*})
                                                 set {_voidEruption} to (purple dye named "<#613e82>Void Eruption") with lore {_lore}
                                                 add nbt from ("{""minecraft:custom_model_data"":{floats:[9.0f]},""minecraft:custom_data"":{""Void Eruption"":1b}}") to (nbt of {_voidEruption})
                                                 set loop-item to {_voidEruption}
@@ -412,11 +424,9 @@ function MindBlastAbilityCast(p: player):
                                                 set {_chargesLore} to "%{_charges}% Charge"
                                             else:
                                                 set {_chargesLore} to "%{_charges}% Charges"
-                                            if boolean tag "Constellation;Thought Harvester" of (custom nbt of {karta::%{_p}%}) is set:
-                                                set {_mindBlastLore} to "&8Basic Ability%nl%&f%{_chargesLore}%%nl%&f%1.5/{_pospiech}% second cast%nl%&7Recharge time:  &f%{_cd}%"
-                                            else:
-                                                set {_mindBlastLore} to "&8Basic Ability%nl%&f%{_chargesLore}%%nl%&f%1.5/{_pospiech}% second cast%nl%&7Cooldown:  &f%{_cd}%"
-                                            set {_lore} to "%{_mindBlastLore}%%nl%&7Use: &fRMB%nl%<#613e82>Blasts the target's mind for &f%{_damage}%%nl%&f <#431d53>Ghost damage.%nl% %nl%&fGenerates %{_insanity}% Insanity."
+                                            set {_valueNames::*} to "CHARGES", "CASTTIME", "COOLDOWN", "DAMAGE", "INSANITY"
+                                            set {_values::*} to {_chargesLore}, ("%round((1.5/{_pospiech}), 1)% seconds" parsed as timespan), {_cd}, {_damage}, {_insanity}
+                                            set {_lore} to GetAbilityDescription({_p}, "Brother Therold", "Mind Blast", {_valueNames::*}, {_values::*})
                                             loop all items in the inventory of {_p}:
                                                 if boolean tag "Mind Blast" of (custom nbt of (1 of loop-item)) = true:
                                                     set lore of loop-item to {_lore}
@@ -435,7 +445,7 @@ function MindBlastAbilityCast(p: player):
                                                 if offensiveTrait({_p}, "Brother Therold", "Whispers of the Damned") > 0:
                                                     GrantInsanity({_p}, 20)
                                                     UpdateInsanity({_p})
-                                            make {_p} damage {_target} by {_damage}*2
+                                            TheroldDamage({_p}, {_target}, {_damage})
 
                                             if boolean tag "Constellation;Unleash the Shadows" of (custom nbt of {karta::%{_p}%}) is set:
                                                 ShadowyApparitionSpawn({_p}, {_target})
@@ -508,12 +518,14 @@ function ShadowWordPainAbilityCast(p: player):
                             set {_damage} to {_damage}*{_relicHarbingersHunger}
                             set {_damageSWPTicks} to {_damageSWPTicks}*{_relicHarbingersHunger}
                             set {_target}'s last damage cause to sweep attack
-                            set {_lore} to "&8Basic Ability%nl%&fInstant cast%nl%&7Global Cooldown:  &f%{_cd}%%nl%&7Use: &fRMB%nl%<#613e82>A word of darkness that causes%nl%&f%{_damage}%  <#431d53>Ghost <#613e82>damage instantly, and%nl%<#613e82>an additional &f%{_totalTicks}*{_damageSWPTicks}%  <#431d53>Ghost <#613e82>damage%nl%<#613e82>over &f%{_SWPDuration}% sec<#613e82>.%nl% %nl%&fGenerates 3 Insanity."
+                            set {_valueNames::*} to "GCD", "DAMAGE", "TICKTOTAL", "DURATION"
+                            set {_values::*} to {_cd}, {_damage}, ({_totalTicks}*{_damageSWPTicks}), {_SWPDuration}
+                            set {_lore} to GetAbilityDescription({_p}, "Brother Therold", "Shadow Word: Pain", {_valueNames::*}, {_values::*})
                             set metadata value "LastDamageCause" of {_target} to "<#462566>Shadow Word: Pain"
                             set metadata value "LastDamageCauseLore" of {_target} to {_lore}
                             set metadata value "Element" of {_p} to "Ghost"
                             set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage})
-                            make {_p} damage {_target} by {_damage}*2
+                            TheroldDamage({_p}, {_target}, {_damage})
                             GrantInsanity({_p}, 3)
                             UpdateInsanity({_p})
                             play sound "skill.therold.shadow_word_pain" with volume 3 and pitch 1 at (location of {_p})
@@ -795,8 +807,9 @@ function ShadowWordVoidAbilityCast(p: player):
                                                 set {_chargesLore} to "%{_charges}% Charge"
                                             else:
                                                 set {_chargesLore} to "%{_charges}% Charges"
-                                            set {_shadowWordVoidLore} to "&8Basic Ability%nl%&f%{_chargesLore}%%nl%&f%1.5/{_pospiech}% second cast%nl%&7Recharge time:  &f%{_cd}%"
-                                            set {_lore} to "%{_shadowWordVoidLore}%%nl%&7Use: &fRMB%nl%<#613e82>Blasts the target's mind for &f%{_damage}%%nl%&f <#431d53>Ghost <#613e82>damage.%nl% %nl%&fGenerates %{_insanity}% Insanity."
+                                            set {_valueNames::*} to "CHARGES", "CASTTIME", "COOLDOWN", "DAMAGE", "INSANITY"
+                                            set {_values::*} to {_chargesLore}, ("%round((1.5/{_pospiech}), 1)% seconds" parsed as timespan), {_cd}, {_damage}, {_insanity}
+                                            set {_lore} to GetAbilityDescription({_p}, "Brother Therold", "Shadow Word: Void", {_valueNames::*}, {_values::*})
                                             loop all items in the inventory of {_p}:
                                                 if boolean tag "Shadow Word: Void" of (custom nbt of (1 of loop-item)) = true:
                                                     set lore of loop-item to {_lore}
@@ -816,7 +829,7 @@ function ShadowWordVoidAbilityCast(p: player):
                                                 if offensiveTrait({_p}, "Brother Therold", "Whispers of the Damned") > 0:
                                                     GrantInsanity({_p}, 20)
                                                     UpdateInsanity({_p})
-                                            make {_p} damage {_target} by {_damage}*2
+                                            TheroldDamage({_p}, {_target}, {_damage})
 
                                             if boolean tag "Constellation;Unleash the Shadows" of (custom nbt of {karta::%{_p}%}) is set:
                                                 ShadowyApparitionSpawn({_p}, {_target})
@@ -888,7 +901,9 @@ function ShadowWordDeathAbilityCast(p: player):
                                         set {_chargesLore} to "%{_charges}% Charge"
                                     else:
                                         set {_chargesLore} to "%{_charges}% Charges"
-                                    set {_lore} to "&8Basic Ability%nl%&f%{_chargesLore}%%nl%&fInstant Cast%nl%&7Global Cooldown:  &f%{_globalcd}%%nl%&7Recharge Time:  &f%{_cd}%%nl%&7Use: &fRMB%nl%<#613e82>A word of dark binding that inflicts%nl%&f%{_damage}%  <#431d53>Ghost <#613e82>damage to the target. Only%nl%<#613e82>usable on enemies that have less%nl%<#613e82>than &f%{_hpRequired}*100%%% <#8165a6>health<#613e82>.%nl% %nl%&fGenerates 15 Insanity, or 30 Insanity%nl%&fif the target dies."
+                                    set {_valueNames::*} to "CHARGES", "GCD", "COOLDOWN", "DAMAGE", "THRESHOLD"
+                                    set {_values::*} to {_chargesLore}, {_globalcd}, {_cd}, {_damage}, ({_hpRequired}*100)
+                                    set {_lore} to GetAbilityDescription({_p}, "Brother Therold", "Shadow Word: Death", {_valueNames::*}, {_values::*})
                                     loop all items in the inventory of {_p}:
                                         if boolean tag "Shadow Word: Death" of (custom nbt of (1 of loop-item)) = true:
                                             set lore of loop-item to {_lore}
@@ -901,7 +916,7 @@ function ShadowWordDeathAbilityCast(p: player):
                                     set metadata value "LastDamageCauseLore" of {_target} to {_lore}
                                     set metadata value "Element" of {_p} to "Ghost"
                                     set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage})
-                                    make {_p} damage {_target} by {_damage}*2
+                                    TheroldDamage({_p}, {_target}, {_damage})
                                     play sound "skill.therold.shadow_word_death" with volume 3 and pitch 1 at (location of {_p})
                                     play sound "skill.therold.shadow_word_death_cast" with volume 3 and pitch 1 at (location of {_p})
                                     play sound "skill.therold.shadow_word_death_impact" with volume 3 and pitch 1 at (location of {_p})
@@ -1046,12 +1061,15 @@ function ExitVoidform(p: player):
         set {_requiredInsanity} to AbilityUpgradeValue({_p}, "Brother Therold", "Void Eruption", "REQUIRED")
     loop all items in the inventory of {_p}:
         if boolean tag "Void Bolt" of (custom nbt of loop-item) = true:
-            set {_voidEruption} to (purple dye named "<#613e82>Void Eruption") with lore "&8Ultimate Ability%nl%&f%{_casttime}% cast%nl%&7No cooldown%nl%&7Use: &fRMB%nl%<#613e82>Releases an explosive blast of pure void%nl%<#613e82>energy, activating &f <#8165a6>Voidform <#613e82>and causing%nl%&f%{_damage}%  <#431d53>Ghost <#613e82>damage to all enemies afflicted by%nl%<#613e82>your &f <#8165a6>Shadow Word: Pain <#613e82>or &f <#8165a6>Vampiric Touch.%nl% %nl%<#613e82>During &f <#8165a6>Voidform<#613e82>, this ability is replaced%nl%<#613e82>by &f <#8165a6>Void Bolt<#613e82>.%nl% %nl%&fRequires %{_requiredInsanity}% Insanity to activate."
+            set {_valueNames::*} to "CASTTIME", "DAMAGE", "REQUIRED"
+            set {_values::*} to {_casttime}, {_damage}, {_requiredInsanity}
+            set {_voidEruptionLore} to GetAbilityDescription({_p}, "Brother Therold", "Void Eruption", {_valueNames::*}, {_values::*})
+            set {_voidEruption} to (purple dye named "<#613e82>Void Eruption") with lore {_voidEruptionLore}
             add nbt from "{""minecraft:custom_model_data"":{floats:[9.0f]},""minecraft:custom_data"":{""Void Eruption"":1b}}" to nbt of {_voidEruption}
             set loop-item to {_voidEruption}
     if metadata value "SurrenderToMadness" of {_p} = true:
         clear metadata value "SurrenderToMadness" of {_p}
-        set {_lore} to "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown: &8 &f10 minutes%nl%&7Use: &fRMB%nl%<#613e82>Surrender your soul to the <#8165a6>Old Gods<#613e82>, sacrificing%nl%<#613e82>your soul for <#8165a6>ultimate power<#613e82>.%nl% %nl%<#613e82>All your &f <#8165a6>Insanity-generating <#613e82>abilities generate%nl%&f200%% <#613e82>more &f <#8165a6>Insanity <#613e82>until you exit &f <#8165a6>Voidform<#613e82>.%nl% %nl%<#613e82>Then you die. Horribly."
+        set {_lore} to GetAbilityDescription({_p}, "Brother Therold", "Surrender to Madness", "", 0)
         set {_p}'s last damage cause to sweep attack
         set metadata value "Element" of {_p} to "Ghost"
         set metadata value "LastDamageCause" of {_p} to "<#462566>Surrender to Madness"
@@ -1121,7 +1139,9 @@ function ShadowWordPainDamage(p: player, target: entity):
             if metadata value "Voidform" of {_p} is set:
                 set {_instantDamage} to {_instantDamage}*TheroldVoidformMultiplier({_p})
             set {_gcd} to "%1.5/{_pospiech}% seconds" parsed as timespan
-            set {_lore} to "&8Basic Ability%nl%&fInstant cast%nl%&7Global Cooldown:  &f%{_gcd}%%nl%&7Use: &fRMB%nl%<#613e82>A word of darkness that causes%nl%&f%{_instantDamage}%  <#431d53>Ghost <#613e82>damage instantly, and%nl%<#613e82>an additional &f%{_totalTicks}*{_damage}%  <#431d53>Ghost <#613e82>damage%nl%<#613e82>over &f%{_SWPDuration}% sec<#613e82>.%nl% %nl%&fGenerates 3 Insanity."
+            set {_valueNames::*} to "GCD", "DAMAGE", "TICKTOTAL", "DURATION"
+            set {_values::*} to {_gcd}, {_instantDamage}, ({_totalTicks}*{_damage}), {_SWPDuration}
+            set {_lore} to GetAbilityDescription({_p}, "Brother Therold", "Shadow Word: Pain", {_valueNames::*}, {_values::*})
             LoreUpdate({_p}, "Shadow Word: Pain", {_lore})
             set {_shadowyApparitionsDamage} to TheroldApparitionDamage({_p})
             if boolean tag "Constellation;Haunting Apparitions" of (custom nbt of {karta::%{_p}%}) is set:
@@ -1142,7 +1162,7 @@ function ShadowWordPainDamage(p: player, target: entity):
             set metadata value "Element" of {_p} to "Ghost"
             set metadata value "LastDamageCause" of {_target} to "<#462566>Shadow Word: Pain"
             set metadata value "LastDamageCauseLore" of {_target} to {_lore}
-            make {_p} damage {_target} by {_damage}*2
+            TheroldDamage({_p}, {_target}, {_damage})
             if (string tag "Talents;Row 4" of (custom nbt of {karta::%{_p}%})) = "Shadowy Insight":
                 chance of 4%:
                     ShadowyInsight({_p})
@@ -1233,14 +1253,16 @@ function MindFlay(p: player, target: entity, cast: number):
                 chance of 4.5%:
                     sinisterThoughts({_p})
                     
-            set {_lore} to "&8Basic Ability%nl%&fChanneled%nl%&7No cooldown%nl%&7Use: &fRMB%nl%<#613e82>Assaults the target's mind with shadow%nl%<#613e82>energy, causing &f%{_damage}*(rounded up 3/(({_cast}/4)/{_pospiech}))%  <#431d53>Ghost <#613e82>damage over%nl%&f%{_cast}% sec <#613e82>and <#8165a6>slowing <#613e82>their movement speed%nl%<#613e82>by &f50%%<#613e82>.%nl% %nl%&fGenerates %2*(rounded up 3/(({_cast}/4)/{_pospiech}))% Insanity over the duration."
+            set {_valueNames::*} to "DAMAGE", "DURATION", "SLOW", "INSANITY"
+            set {_values::*} to ({_damage}*(rounded up 3/(({_cast}/4)/{_pospiech}))), {_cast}, AbilityUpgradeValue({_p}, "Brother Therold", "Mind Flay", "SLOW"), (2*(rounded up 3/(({_cast}/4)/{_pospiech})))
+            set {_lore} to GetAbilityDescription({_p}, "Brother Therold", "Mind Flay", {_valueNames::*}, {_values::*})
             LoreUpdate({_p}, "Mind Flay", {_lore})
             set {_target}'s last damage cause to sweep attack
             set metadata value "Element" of {_p} to "Ghost"
             set metadata value "LastDamageCause" of {_target} to "<#462566>Mind Flay"
             set metadata value "LastDamageCauseLore" of {_target} to {_lore}
             set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage})
-            make {_p} damage {_target} by {_damage}*2
+            TheroldDamage({_p}, {_target}, {_damage})
             if (string tag "Talents;Row 3" of (custom nbt of {karta::%{_p}%})) = "Void Ray":
                 if metadata value "VoidRayStacks" of {_p} is not set:
                     set metadata value "VoidRayDuration" of {_p} to 6 seconds
@@ -1334,7 +1356,9 @@ function VampiricTouch(p: player, target: entity):
                 set {_voidformStacks} to metadata value "Voidform Stacks" of {_p}
                 set {_damage} to {_damage}*(1 + ({_voidformStacks}/100))
             set {_damage} to {_damage}*TheroldRelicHarbingersHungerMultiplier({_p})
-            set {_lore} to "&8Basic Ability%nl%&f%{_casttimeVT}% second cast%nl%&7No cooldown%nl%&7Use: &fRMB%nl%<#613e82>A touch of darkness that causes &f%(1 + {_totalTicks})*{_damage}%  <#431d53>Ghost%nl%<#613e82>damage over &f%{_VPTDuration}% sec<#613e82>, and <#8165a6>heals <#613e82>the priest for%nl%&f10%% <#613e82>of damage dealt.%nl% %nl%&fGenerates 6 Insanity."
+            set {_valueNames::*} to "CASTTIME", "TOTALDAMAGE", "DURATION", "HEAL"
+            set {_values::*} to {_casttimeVT}, ((1 + {_totalTicks})*{_damage}), {_VPTDuration}, AbilityUpgradeValue({_p}, "Brother Therold", "Vampiric Touch", "HEAL")
+            set {_lore} to GetAbilityDescription({_p}, "Brother Therold", "Vampiric Touch", {_valueNames::*}, {_values::*})
             set {_vampiricTouchLore} to {_lore}
             LoreUpdate({_p}, "Vampiric Touch", {_lore})
             set {_target}'s last damage cause to sweep attack
@@ -1342,7 +1366,7 @@ function VampiricTouch(p: player, target: entity):
             set metadata value "LastDamageCause" of {_target} to "<#462566>Vampiric Touch"
             set metadata value "LastDamageCauseLore" of {_target} to {_lore}
             set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage})
-            make {_p} damage {_target} by {_damage}*2
+            TheroldDamage({_p}, {_target}, {_damage})
             set {_heal} to (AbilityUpgradeValue({_p}, "Brother Therold", "Vampiric Touch", "HEAL")/100)*{_damage}
             set {_heal} to selfHealModifiers({_p}, {_heal})
             if {_p} is alive:
@@ -1390,31 +1414,32 @@ function VampiricTouchRefresh(p: player, target: entity):
 
 function ShadowyApparitionSpawn(p: player, target: entity, effectiveness: number = 1):
     if {_p}'s world = {_target}'s world:
-        if distance between {_p} and {_target} < 300:
-            spawn 1 bee at {_p}
-            set boolean tag "Silent" of (nbt of last spawned bee) to true
-            modelApply(last spawned bee, "shadowyapparitions", 0.9)
-            set string tag "ECSummoned" of (custom nbt of last spawned bee) to uuid of {_p}
-            set boolean tag "TargetableByAllies" of (custom nbt of last spawned bee) to false
-            set boolean tag "RemoveOnReset" of (custom nbt of last spawned bee) to true
-            set {_shadowyApparition} to last spawned bee
-            set {_floatSpeed} to 1
-            if HasStarforgedBonus({_p}, "Brother Therold", "Tier I", "2Set") is true:
-                set {_floatSpeed} to 1.2
-            set generic flying speed attribute of {_shadowyApparition} to (0.6*{_floatSpeed})
-            set generic movement speed attribute of {_shadowyApparition} to (0.3*{_floatSpeed})
-            ShadowyApparitionFloat({_p}, {_shadowyApparition}, {_target}, {_effectiveness})
-            ShadowyApparitionVisual({_shadowyApparition})
-            play sound "skill.therold.shadowy_apparitions" with volume 2 and pitch 1 at (location of {_p})
-            if cooldown "Shadowy Apparition Sound-%{_p}%" is finished:
-                set {_pitch} to a random number between 0.8 and 1.1
-                play sound "skill.therold.shadowy_apparitions_whisper" with volume 2 and pitch {_pitch} at {_p}
-                set {_random} to a random number between 1 and 1.5
-                create cooldown "Shadowy Apparition Sound-%{_p}%" for ("%{_random}% seconds" parsed as timespan)
-            if {_effectiveness} >= 1:
-                if HasStarforgedBonus({_p}, "Brother Therold", "Tier I", "4Set") is true:
-                    chance of 20%:
-                        ShadowyApparitionSpawn({_p}, {_target}, 0.5)
+        if chunk at location of {_target} is loaded:
+            if distance between {_p} and {_target} < 300:
+                spawn 1 bee at {_p}
+                set boolean tag "Silent" of (nbt of last spawned bee) to true
+                modelApply(last spawned bee, "shadowyapparitions", 0.9)
+                set string tag "ECSummoned" of (custom nbt of last spawned bee) to uuid of {_p}
+                set boolean tag "TargetableByAllies" of (custom nbt of last spawned bee) to false
+                set boolean tag "RemoveOnReset" of (custom nbt of last spawned bee) to true
+                set {_shadowyApparition} to last spawned bee
+                set {_floatSpeed} to 1
+                if HasStarforgedBonus({_p}, "Brother Therold", "Tier I", "2Set") is true:
+                    set {_floatSpeed} to 1.2
+                set generic flying speed attribute of {_shadowyApparition} to (0.6*{_floatSpeed})
+                set generic movement speed attribute of {_shadowyApparition} to (0.3*{_floatSpeed})
+                ShadowyApparitionFloat({_p}, {_shadowyApparition}, {_target}, {_effectiveness})
+                ShadowyApparitionVisual({_shadowyApparition})
+                play sound "skill.therold.shadowy_apparitions" with volume 2 and pitch 1 at (location of {_p})
+                if cooldown "Shadowy Apparition Sound-%{_p}%" is finished:
+                    set {_pitch} to a random number between 0.8 and 1.1
+                    play sound "skill.therold.shadowy_apparitions_whisper" with volume 2 and pitch {_pitch} at {_p}
+                    set {_random} to a random number between 1 and 1.5
+                    create cooldown "Shadowy Apparition Sound-%{_p}%" for ("%{_random}% seconds" parsed as timespan)
+                if {_effectiveness} >= 1:
+                    if HasStarforgedBonus({_p}, "Brother Therold", "Tier I", "4Set") is true:
+                        chance of 20%:
+                            ShadowyApparitionSpawn({_p}, {_target}, 0.5)
 
 function ShadowyApparitionFloat(p: player, apparition: entity, target: entity, effectiveness: number = 1):
     while {_apparition} is alive:
@@ -1458,7 +1483,7 @@ function ShadowyApparitionFloat(p: player, apparition: entity, target: entity, e
                 set metadata value "LastDamageCauseLore" of {_target} to {_lore}
                 if {_crit} is set:
                     set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage})
-                make {_p} damage {_target} by {_damage}*2
+                TheroldDamage({_p}, {_target}, {_damage})
                 if {_effectiveness} >= 1:
                     if HasStarforgedBonus({_p}, "Brother Therold", "Tier I", "2Set") is true:
                         GrantInsanity({_p}, 1)
@@ -1691,7 +1716,9 @@ function sinisterThoughts(p: player):
             if boolean tag "Void Eruption" of (custom nbt of loop-item) = true:
                 set {_cd} to "%4.5/{_pospiech}% seconds" parsed as timespan
                 set {_damage} to (3 + (({damage::%{_p}%}/15) + (Versatility({_p})/45)))
-                set {_lore} to "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown:  &f%{_cd}%%nl%&7Use: &fRMB%nl%<#613e82>Sends a bolt of pure void energy at the%nl%<#613e82>enemy, causing &f%{_damage}%  <#431d53>Ghost <#613e82>damage and%nl%<#8165a6>extending <#613e82>the duration of &f <#8165a6>Shadow Word:%nl%<#8165a6>Pain <#613e82>and &f <#8165a6>Vampiric Touch <#613e82>to their original%nl%<#613e82>duration.%nl% %nl%<#613e82>Requires &f <#8165a6>Voidform<#613e82>.%nl% %nl%&fGenerates 16 Insanity."
+                set {_valueNames::*} to "COOLDOWN", "DAMAGE"
+                set {_values::*} to {_cd}, {_damage}
+                set {_lore} to GetAbilityDescription({_p}, "Brother Therold", "Void Bolt", {_valueNames::*}, {_values::*})
                 set {_voidBolt} to (black dye named "<#613e82>Void Bolt") with lore {_lore}
                 add nbt from ("{""minecraft:custom_model_data"":{floats:[3.0f]},""minecraft:custom_data"":{""Void Bolt"":1b}}") to (nbt of {_voidBolt})
                 set loop-item to {_voidBolt}
