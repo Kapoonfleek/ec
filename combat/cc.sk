@@ -1,3 +1,9 @@
+import:
+	kr.toxicity.model.api.tracker.EntityTrackerRegistry
+	kr.toxicity.model.api.BetterModel
+	kr.toxicity.model.api.animation.AnimationModifier
+	java.lang.Runnable
+
 on player walk:
 	if metadata value "Stun" of player is true:
 		cancel event
@@ -24,23 +30,25 @@ on player walk:
 			set {_y} to (y-coordinate of {_locNow}) - (y-coordinate of {_locThen})
 			set {_z} to (z-coordinate of {_locNow}) - (z-coordinate of {_locThen})
 			move entity with id loop-value by {_x}*4096 {_y}*4096 {_z}*4096 for all players
-on rightclick:
-	set yaml value "Model Types.Short.Level" in "ModelHeights" to 0.5
-	set yaml value "Model Types.Short.HP" in "ModelHeights" to -0.15
-	save yaml "ModelHeights"
 
 on entity move:
 	if metadata value "Stun" of event-entity is set:
 		cancel event
-	set {_entity} to string tag "ECTextAbove" of custom nbt of event-entity parsed as entity
+	if metadata value "MovementFrozen" of event-entity is set:
+		cancel event
+	set {_entity} to string tag "ECTextAbove" of (custom nbt of event-entity) parsed as entity
 	if {_entity} is set:
 		set {_loc} to location of event-entity
 		set {_eyeLoc} to event-entity.getEyeLocation()
 
 		set {_entityType} to "%type of event-entity%"
+		set {_mobType} to string tag "MobType" of (custom nbt of event-entity)
 		
 		loop yaml node keys "Model Types" in "ModelHeights":
-			if yaml list "Model Types.%loop-value%.List" in "ModelHeights" contains {_entityType}:
+			if any:
+				loop-value = {_mobType}
+				yaml list "Model Types.%loop-value%.List" in "ModelHeights" contains {_entityType}
+			then:
 				set {_hpBarOffset} to yaml value "Model Types.%loop-value%.HP" in "ModelHeights"
 				set {_levelOffset} to yaml value "Model Types.%loop-value%.Level" in "ModelHeights"
 				stop loop
@@ -48,35 +56,40 @@ on entity move:
 		increase {_eyeLoc}'s y-coordinate by {_hpBarOffset}
 		teleport {_entity} to {_eyeLoc}
 
-		if boolean tag "ECMob" of custom nbt of event-entity is set:
-			if boolean tag "ECDungeonMob" of custom nbt of event-entity is set:
+		if string tag "ECCustomName" of (custom nbt of event-entity) is set:
+			set {_entity} to string tag "ECCustomName" of (custom nbt of event-entity) parsed as entity
+			increase {_eyeLoc}'s y-coordinate by 0.25
+			teleport {_entity} to {_eyeLoc}
+
+		if boolean tag "ECMob" of (custom nbt of event-entity) is set:
+			if boolean tag "ECDungeonMob" of (custom nbt of event-entity) is set:
 				if metadata value "ECPulled" of event-entity is not set:
 					cancel event
 
-		if string tag "ECTextAboveLevel" of custom nbt of event-entity is set:
-			set {_entity} to string tag "ECTextAboveLevel" of custom nbt of event-entity parsed as entity
+		if string tag "ECTextAboveLevel" of (custom nbt of event-entity) is set:
+			set {_entity} to string tag "ECTextAboveLevel" of (custom nbt of event-entity) parsed as entity
 			
 			increase {_eyeLoc}'s y-coordinate by {_levelOffset}
 			teleport {_entity} to {_eyeLoc}
 			
-		if string tag "ECTextAboveCastBar" of custom nbt of event-entity is set:
+		if string tag "ECTextAboveCastBar" of (custom nbt of event-entity) is set:
 			wait 1 tick
 			set {_loc} to location of event-entity
-			set {_entity} to string tag "ECTextAboveCastBar" of custom nbt of event-entity parsed as entity
-			if long tag "ECModelHeight" of custom nbt of event-entity is set:
+			set {_entity} to string tag "ECTextAboveCastBar" of (custom nbt of event-entity) parsed as entity
+			if long tag "ECModelHeight" of (custom nbt of event-entity) is set:
 				set {_increase} to 1
-				if long tag "ECCastBarExtraHeight" of custom nbt of event-entity is set:
-					add long tag "ECCastBarExtraHeight" of custom nbt of event-entity to {_increase}
-				increase {_loc}'s y-coordinate by (long tag "ECModelHeight" of custom nbt of event-entity) + {_increase}
+				if long tag "ECCastBarExtraHeight" of (custom nbt of event-entity) is set:
+					add long tag "ECCastBarExtraHeight" of (custom nbt of event-entity) to {_increase}
+				increase {_loc}'s y-coordinate by (long tag "ECModelHeight" of (custom nbt of event-entity)) + {_increase}
 			else:
 				increase {_loc}'s y-coordinate by 2.05
 			teleport {_entity} to {_loc}
 	if any:
-		uuid tag "ECEntityTitle" of custom nbt of event-entity is set
+		uuid tag "ECEntityTitle" of (custom nbt of event-entity) is set
 		{ECEntityTitle::%uuid of event-entity%} is set
 	then:
-		set {_title} to (uuid tag "ECEntityTitle" of custom nbt of event-entity) parsed as entity
-		set {_y} to (double tag "ECEntityTitleHeight" of custom nbt of event-entity) + y-coordinate of event-entity + 2.35
+		set {_title} to (uuid tag "ECEntityTitle" of (custom nbt of event-entity)) parsed as entity
+		set {_y} to (double tag "ECEntityTitleHeight" of (custom nbt of event-entity)) + y-coordinate of event-entity + 2.35
 		if {_title} is not set:
 			set {_title} to {ECEntityTitle::%uuid of event-entity%} parsed as entity
 			set {_y} to {_y}-1.25
@@ -103,7 +116,7 @@ on entity move:
 		else:
 			increase {_loc}'s y-coordinate by 1.55
 		teleport {_entity} to {_loc}
-	if boolean tag "WinterPet" of custom nbt of event-entity is set:
+	if boolean tag "WinterPet" of (custom nbt of event-entity) is set:
 		if cooldown "JingleSound%event-entity%" is finished:
 			create cooldown "JingleSound%event-entity%" for 0.25 seconds
 			play sound "pet.winterpet_jingle" with volume 2 and pitch 1 at event-entity
@@ -111,17 +124,28 @@ on entity move:
 		if cooldown "FootstepSound%event-entity%" is finished:
 			create cooldown "FootstepSound%event-entity%" for 0.25 seconds
 			play sound "pet.winterpet_footstep" with volume 1.5 and pitch 1 at event-entity
-	else if boolean tag "ECFrostKnight" of custom nbt of event-entity is set:
+	else if boolean tag "ECFrostKnight" of (custom nbt of event-entity) is set:
 		if cooldown "ClingSound%event-entity%" is finished:
 			create cooldown "ClingSound%event-entity%" for 0.5 seconds
 			play sound "item.armor.equip_iron" with volume 1.75 and pitch 0.5 at event-entity
-	else if boolean tag "ECMingHua" of custom nbt of event-entity is set:
+	else if boolean tag "ECMingHua" of (custom nbt of event-entity) is set:
 		if cooldown "WaterTentacleSound%event-entity%" is finished:
 			set {_pitch} to a random number between 0.8 and 1.2
 			set {_cd} to a random number between 0.5 and 0.75
 			set {_cd} to "%{_cd}% seconds" parsed as timespan
 			create cooldown "WaterTentacleSound%event-entity%" for {_cd}
 			play sound "block.water.ambient" with volume 1.75 and pitch {_pitch} at event-entity
+	else if string tag "MobType" of (custom nbt of event-entity) = "Azerite Elemental":
+		if cooldown "StepSound%event-entity%" is finished:
+			play sound "entity.warden.step" with volume 1.75 and pitch 1 at event-entity
+	
+	if string tag "ECModelName" of (custom nbt of event-entity) is set:
+		if boolean tag "NoAI" of nbt of event-entity != true:
+			set {_modelName} to string tag "ECModelName" of (custom nbt of event-entity)
+			if string tag "ECAIState" of (custom nbt of event-entity) is not set:
+				if 1 >= int tag "ECAnimationPriority" of (custom nbt of event-entity):
+					setAIState(event-entity, "walk")
+
 	if event-entity is a sheep:
 		if "%region at block under event-entity%" contains "DreamcatcherPlatforms":
 			loop all blocks in radius 6 around the event-entity where [input = blue glazed terracotta]:
@@ -176,6 +200,14 @@ function canBeCCed(e: entity) :: boolean:
 					stop loop
 	return {_canBeCCed}
 
+function checkIfStopsMoving(e: entity, modelName: string):
+	set {_loc} to {_e}'s location
+	wait 10 ticks
+	if {_loc} = {_e}'s location:
+		clear cooldown "%uuid of {_e}%WalkingAnimation"
+		set {_tracker} to EntityTrackerRegistry.registry(uuid of {_e}).tracker({_modelName})
+		{_tracker}.stopAnimation("walk")
+
 on input key press:
 	if metadata value "Hypercognition" of player is set:
 		play sound "block.note_block.hat" with volume 3 and pitch 1 to player
@@ -202,3 +234,29 @@ on input key press:
 		set {_cancelAction::*} to "forward movement key", "backward movement key", "left movement key", "right movement key"
 		if {_keys} contains any of {_cancelAction::*}:
 			clear metadata value "mining" of player
+
+function unfreezeMovementEntity(e: entity, wait: timespan):
+	wait {_wait}
+	clear metadata value "MovementFrozen" of {_e}
+
+on packet event play_server_animation:
+	set {_entityID} to field 0 of event-packet
+	set {_animation} to field 1 of event-packet
+
+	if {_animation} = 0:
+		set {_entity} to entity from id {_entityID} in event-world
+
+command /asynctest:
+	trigger:
+		create section stored in {_def}:
+			broadcast "met"
+
+		create section stored in {_abc}:
+			set {_x} to 1
+			while {_x} < 100:
+				add 1 to {_x}
+				wait 1 tick
+			run section {_def} async
+		
+		loop 5 times:
+			run section {_abc} async
