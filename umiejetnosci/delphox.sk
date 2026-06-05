@@ -8,7 +8,7 @@ on rightclick:
 				if CanUseAbility(player) != false:
 					cancel event
 					set {_haste} to Haste(player) 
-					set {_cd} to 14/{_haste}
+					set {_cd} to AbilityUpgradeValue(player, "Delphox", "Flamethrower", "COOLDOWN")/{_haste}
 					set {_cd} to "%{_cd}% seconds" parsed as timespan
 
 					if cooldown "Flamethrower%player%-%uuid of {_target}%" is finished:
@@ -35,17 +35,19 @@ on rightclick:
 			if CanUseAbility(player) != false:
 				if cooldown "Heat Snap%player%" is finished:
 					set {_haste} to Haste(player)
-					set {_lore} to "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown: &8 &f%{_cd}%%nl%&7Use: &fRMB%nl%<##fa4420>Resets the cooldown of &f <##f2636a>Flamethrower <##fa4420>on all%nl%<##fa4420>targets who have recently been affected%nl%<##fa4420>by the ability and immediately <##f2636a>traps them <##fa4420>in%nl%<##fa4420>an &f <##f2636a>Inferno<##fa4420>, all with the snap of a finger."
 					if string tag "Talents;Row 5" of (custom nbt of {karta::%player%}) = "Flaming Finale":
-						set {_flamingFinaleDamage} to 4 + (Versatility(player)/96) + ({damage::%player%}/32)  + (PrimaryStat(player)/16)
-						set {_lore} to "%{_lore}%%nl% %nl%&f <##eb6146>Flaming Finale%nl%<##fa4420>Deals &f%{_flamingFinaleDamage}% <##ff4d00>Fire <##fa4420>damage to all affected targets%nl%<##fa4420>and detonates all &f <##f2636a>Infernos <##fa4420>for &f160%% <##fa4420>of the%nl%<##fa4420>normal damage."
-						set {_cd} to "%75/{_haste}% seconds" parsed as timespan
+						set {_cd} to "%(AbilityUpgradeValue(player, "Delphox", "Heat Snap", "COOLDOWN") + 30)% seconds" parsed as timespan
 					else:
-						set {_cd} to "%45/{_haste}% seconds" parsed as timespan
+						set {_cd} to "%AbilityUpgradeValue(player, "Delphox", "Heat Snap", "COOLDOWN")% seconds" parsed as timespan
 
 					set {_snuffedWick} to getRunePower(player, "Snuffed Wick")
 					if {_snuffedWick} > 0:
 						set {_cd} to {_cd} - ("%{_snuffedWick}% seconds" parsed as timespan)
+
+					set {_lore} to GetAbilityDescription(player, "Delphox", "Heat Snap", "COOLDOWN", "%{_cd}%")
+					if string tag "Talents;Row 5" of (custom nbt of {karta::%player%}) = "Flaming Finale":
+						set {_flamingFinaleDamage} to 4 + (Versatility(player)/96) + ({damage::%player%}/32)  + (PrimaryStat(player)/16)
+						set {_lore} to "%{_lore}%%nl% %nl%&f <##eb6146>Flaming Finale%nl%<##fa4420>Deals &f%{_flamingFinaleDamage}% <##ff4d00>Fire <##fa4420>damage to all affected targets%nl%<##fa4420>and detonates all &f <##f2636a>Infernos <##fa4420>for &f160%% <##fa4420>of the%nl%<##fa4420>normal damage."
 					create cooldown "Heat Snap%player%" for {_cd}
 					set the cooldown of player's held item for player to {_cd}
 					AbilityUse(player, "Heat Snap")
@@ -88,15 +90,17 @@ on rightclick:
 			if CanUseAbility(player) != false:
 
 				set {_haste} to Haste(player) 
-				set {_cd} to "%130/{_haste}% seconds" parsed as timespan
-				set {_barrierDuration} to 6 + ((Resistance(player)/25))
+				set {_cd} to "%AbilityUpgradeValue(player, "Delphox", "Flame Barrier", "COOLDOWN")% seconds" parsed as timespan
+				set {_barrierDuration} to AbilityUpgradeValue(player, "Delphox", "Flame Barrier", "DURATION") + (Resistance(player)/25)
 
 				if cooldown "Flame Barrier%player%" is finished:
 					create cooldown "Flame Barrier%player%" for {_cd}
 					set the cooldown of player's held item for player to {_cd}
 					AbilityUse(player, "Flame Barrier")
 
-					set {_lore} to "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown: &8 &f%{_cd}%%nl%&7Use: &fRMB%nl%<##fa4420>Surround yourself with a <##f2636a>flame barrier<##fa4420>,%nl%<##f2636a>negating <##fa4420>any incoming damage for the%nl%<##fa4420>next &f%{_barrierDuration}% sec<##fa4420>. The duration of &f <##f2636a>Flame Barrier%nl%<##fa4420>is increased based on your <##f2636a> Resistance<##fa4420>."
+					set {_fbValueNames::*} to "COOLDOWN", "DURATION"
+					set {_fbValues::*} to "%{_cd}%", {_barrierDuration}
+					set {_lore} to GetAbilityDescription(player, "Delphox", "Flame Barrier", {_fbValueNames::*}, {_fbValues::*})
 					LoreUpdate(player, "Flame Barrier", {_lore})
 
 					set {_duration} to "%{_barrierDuration}% seconds" parsed as timespan
@@ -222,7 +226,8 @@ function Blaze(p: player, target: entity, source: string):
 			clear metadata value "BlazingTricksReady" of {_p}
 		loop {_entities::*}:
 			set {_loopCount} to {_loopCount} + 1
-			set {_dmgBlaze} to 3 + (Versatility({_p})/180) + ({damage::%{_p}%}/60) + PrimaryStat({_p})/30
+			set {_blazeScaling} to AbilityUpgradeValue({_p}, "Delphox", "Blaze", "DAMAGESCALING")
+			set {_dmgBlaze} to AbilityUpgradeValue({_p}, "Delphox", "Blaze", "BASEDAMAGE") + (Versatility({_p})/({_blazeScaling}*3)) + ({damage::%{_p}%}/{_blazeScaling}) + (PrimaryStat({_p})/({_blazeScaling}/2))
 			set {_crit} to CriticalHit({_p}) + DelphoxPyrelordCritBonus({_p})
 			set {_mastery} to DelphoxMastery({_p})
 			if boolean tag "Constellation;Sly as a Fox" of (custom nbt of {karta::%{_p}%}) is set:
@@ -280,8 +285,7 @@ function Blaze(p: player, target: entity, source: string):
 		buffClear({_p}, "Blaze")
 
 function HeatSnap(p: player):
-	set {_haste} to Haste({_p}) 
-	set {_cd} to 14/{_haste}
+	set {_cd} to AbilityUpgradeValue({_p}, "Delphox", "Flamethrower", "COOLDOWN")
 	set {_cd} to "%{_cd}% seconds" parsed as timespan
 	if string tag "Talents;Row 5" of (custom nbt of {karta::%{_p}%}) = "Flaming Finale":
 		set {_effectiveness} to 1.6
@@ -292,9 +296,9 @@ function HeatSnap(p: player):
 		if boolean tag "Constellation;Sly as a Fox" of (custom nbt of {karta::%{_p}%}) is set:
 			set {_mastery} to {_mastery} + (({_crit}*10)*0.2)/135
 		set {_mastery} to DelphoxIncineration({_p}, {_mastery}, {_entity})
-		set {_cdHeatSnap} to "%75/{_haste}% seconds" parsed as timespan
-		set {_lore} to "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown: &8 &f%{_cdHeatSnap}%%nl%&7Use: &fRMB%nl%<##fa4420>Resets the cooldown of &f <##f2636a>Flamethrower <##fa4420>on all%nl%<##fa4420>targets who have recently been affected%nl%<##fa4420>by the ability and immediately <##f2636a>traps them <##fa4420>in%nl%<##fa4420>an &f <##f2636a>Inferno<##fa4420>, all with the snap of a finger."
-		set {_lore} to "%{_lore}%%nl% %nl%&f <##eb6146>Flaming Finale%nl%<##fa4420>Deals &f%{_flamingFinaleDamage}% <##ff4d00>Fire <##fa4420>damage to all affected targets%nl%<##fa4420>and detonates all &f <##f2636a>Infernos <##fa4420>for &f160%% <##fa4420>of the%nl%<##fa4420>normal damage."
+		set {_cdHeatSnap} to "%(AbilityUpgradeValue({_p}, "Delphox", "Heat Snap", "COOLDOWN") + 30)% seconds" parsed as timespan
+		set {_lore} to GetAbilityDescription({_p}, "Delphox", "Heat Snap", "COOLDOWN", "%{_cdHeatSnap}%")
+		set {_lore} to "%{_lore}%%nl% %nl%&f <##eb6146>Flaming Finale%nl%<##fa4420>Deals &f%{_flamingFinaleDamage}% <##ff4d00>Fire <##fa4420>damage to all affected targets%nl%<##fa4420>and detonates all &f <##f2636a>Infernos <##fa4420>for &f160%% <##fa4420>of the%nl%<##fa4420>normal damage."
 	else:
 		set {_effectiveness} to 1
 
@@ -351,7 +355,7 @@ function Kindling(p: player):
 
 function Flamethrower(p: player, target: entity, abilityCast: boolean, freeTick: boolean = false):
 	set {_haste} to Haste({_p}) 
-	set {_cd} to 14/{_haste}
+	set {_cd} to AbilityUpgradeValue({_p}, "Delphox", "Flamethrower", "COOLDOWN")/{_haste}
 	set {_hasteModifier} to 1/{_haste}
 	if string tag "Talents;Row 2" of (custom nbt of {karta::%{_p}%}) = "Flame Accelerant":
 		if {_abilityCast} = true:
@@ -366,8 +370,10 @@ function Flamethrower(p: player, target: entity, abilityCast: boolean, freeTick:
 	set {_cdd} to {_cd}
 	set {_cd} to "%{_cd}% seconds" parsed as timespan
 
-	set {_damage} to 1.25 + (Versatility({_p})/360) + ({damage::%{_p}%}/120) + PrimaryStat({_p})/60
-	set {_dmgBlaze} to 3 + (Versatility({_p})/180) + ({damage::%{_p}%}/60) + PrimaryStat({_p})/30
+	set {_ftScaling} to AbilityUpgradeValue({_p}, "Delphox", "Flamethrower", "DAMAGESCALING")
+	set {_damage} to AbilityUpgradeValue({_p}, "Delphox", "Flamethrower", "BASEDAMAGE") + (Versatility({_p})/({_ftScaling}*3)) + ({damage::%{_p}%}/{_ftScaling}) + (PrimaryStat({_p})/({_ftScaling}/2))
+	set {_blazeScaling} to AbilityUpgradeValue({_p}, "Delphox", "Blaze", "DAMAGESCALING")
+	set {_dmgBlaze} to AbilityUpgradeValue({_p}, "Delphox", "Blaze", "BASEDAMAGE") + (Versatility({_p})/({_blazeScaling}*3)) + ({damage::%{_p}%}/{_blazeScaling}) + (PrimaryStat({_p})/({_blazeScaling}/2))
 
 	if string tag "Talents;Row 5" of (custom nbt of {karta::%{_p}%}) = "Hot Spree":
 		if {_abilityCast} = true:
@@ -402,8 +408,10 @@ function Flamethrower(p: player, target: entity, abilityCast: boolean, freeTick:
 
 	set metadata value "FlamethrowerBurn" of {_target} to true
 
-	set {_lore} to "&8Basic Ability%nl%&fInstant cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fRMB%nl%<##f2636a>Ignites <##fa4420>the target for &f%{_seconds}% sec<##fa4420>, inflicting &f%{_damage}%%nl%<##ff4d00>Fire <##fa4420>damage every &f%{_hasteModifier}% sec <##fa4420>for a total of &f%{_damage}*{_seconds}% <##ff4d00>Fire%nl%<##fa4420>damage. &f <##f2636a>Flamethrower <##fa4420>cannot be used on%nl%<##fa4420>the same target for the next &f%{_cdd}% sec<##fa4420>."
-	set {_loreBlaze} to "&8Passive Ability%nl%&fNo cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fPASSIVE%nl%<##fa4420>Every &fthird  <##f2636a>Flamethrower <##fa4420>used deals%nl%&f%{_dmgBlaze}% <##ff4d00>Fire <##fa4420>damage to the target and up to%nl%<##fa4420>&ftwo <##fa4420>nearby enemies around the target."
+	set {_ftValueNames::*} to "DURATION", "DAMAGE", "TICKRATE", "TOTALDAMAGE", "COOLDOWN"
+	set {_ftValues::*} to {_seconds}, {_damage}, {_hasteModifier}, ({_damage}*{_seconds}), {_cdd}
+	set {_lore} to GetAbilityDescription({_p}, "Delphox", "Flamethrower", {_ftValueNames::*}, {_ftValues::*})
+	set {_loreBlaze} to GetAbilityDescription({_p}, "Delphox", "Blaze", "DAMAGE", {_dmgBlaze})
 	
 	LoreUpdate({_p}, "Blaze", {_loreBlaze})
 	play sound "skill.delphox.flamethrower" with volume 2 and pitch 1 at location of {_target}
@@ -418,7 +426,8 @@ function Flamethrower(p: player, target: entity, abilityCast: boolean, freeTick:
 
 		while metadata value "FlamethrowerTicks%{_p}%" of {_target} > 0:
 			if {_target} is alive:
-				set {_damage} to 1.25 + (Versatility({_p})/360) + ({damage::%{_p}%}/120) + PrimaryStat({_p})/60
+				set {_ftScaling} to AbilityUpgradeValue({_p}, "Delphox", "Flamethrower", "DAMAGESCALING")
+				set {_damage} to AbilityUpgradeValue({_p}, "Delphox", "Flamethrower", "BASEDAMAGE") + (Versatility({_p})/({_ftScaling}*3)) + ({damage::%{_p}%}/{_ftScaling}) + (PrimaryStat({_p})/({_ftScaling}/2))
 				set {_crit} to CriticalHit({_p}) + DelphoxPyrelordCritBonus({_p})
 				set {_mastery} to DelphoxMastery({_p})
 				if boolean tag "Constellation;Sly as a Fox" of (custom nbt of {karta::%{_p}%}) is set:
@@ -533,14 +542,17 @@ function Inferno(p: player, target: entity, effectiveness: number = 1):
 	if boolean tag "Constellation;Sly as a Fox" of (custom nbt of {karta::%{_p}%}) is set:
 		set {_mastery} to {_mastery} + (({_crit}*10)*0.2)/135
 	set {_mastery} to DelphoxIncineration({_p}, {_mastery}, {_target})
-	set {_damage} to 3.5 + (Versatility({_p})/114) + ({damage::%{_p}%}/38)  + (PrimaryStat({_p})/19)
-	set {_stun} to "%2 + (({crowdcontrol::%{_p}%}/60))% seconds" parsed as timespan
-	set {_stuntekst} to 2 + (({crowdcontrol::%{_p}%}/60))
+	set {_infScaling} to AbilityUpgradeValue({_p}, "Delphox", "Inferno", "DAMAGESCALING")
+	set {_damage} to AbilityUpgradeValue({_p}, "Delphox", "Inferno", "BASEDAMAGE") + (Versatility({_p})/({_infScaling}*3)) + ({damage::%{_p}%}/{_infScaling}) + (PrimaryStat({_p})/({_infScaling}/2))
+	set {_stun} to "%AbilityUpgradeValue({_p}, "Delphox", "Inferno", "STUN") + (CrowdControlStat({_p})/60)% seconds" parsed as timespan
+	set {_stuntekst} to AbilityUpgradeValue({_p}, "Delphox", "Inferno", "STUN") + (CrowdControlStat({_p})/60)
 	set {_explotekst} to 6 + (Versatility({_p})/52.5) + ({damage::%{_p}%}/17.5) + (PrimaryStat({_p})/8.75)
 
 	clear metadata value "FlamethrowerBurn" of {_target}
 
-	set {_lore} to "&8Basic Ability%nl%&fInstant cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fRMB/SHIFT%nl%<##fa4420>RIGHT-CLICK:%nl%<##f2636a>Imprisons <##fa4420>a target affected by &f <##f2636a>Flamethrower%nl%<##fa4420>in a fiery prison, &f <##f2636a>Stunning <##fa4420>them for &f%{_stuntekst}% sec <##fa4420>and%nl%<##fa4420>inflicting &f%{_damage}% <##ff4d00>Fire <##fa4420>damage.%nl% %nl%<##fa4420>SHIFT:%nl%<##f2636a>Detonates <##fa4420>an active &f <##f2636a>Inferno<##fa4420>, dealing &f%{_explotekst}% <##ff4d00>Fire%nl%<##fa4420>damage and <##f2636a>tossing <##fa4420>the enemy into the air."
+	set {_infValueNames::*} to "STUN", "DAMAGE", "DETONATEDAMAGE"
+	set {_infValues::*} to {_stuntekst}, {_damage}, {_explotekst}
+	set {_lore} to GetAbilityDescription({_p}, "Delphox", "Inferno", {_infValueNames::*}, {_infValues::*})
 	LoreUpdate({_p}, "Inferno", {_lore})
 
 	if {_target} is alive:
@@ -588,7 +600,8 @@ function InfernoDetonate(p: player, target: entity, bonusEffectiveness: number =
 		set {_mastery} to {_mastery} + (({_crit}*10)*0.2)/135
 	set {_mastery} to DelphoxIncineration({_p}, {_mastery}, {_target})
 
-	set {_damage} to 6 + (Versatility({_p})/60) + ({damage::%{_p}%}/20) + (PrimaryStat({_p})/10)
+	set {_detScaling} to AbilityUpgradeValue({_p}, "Delphox", "Inferno", "DETONATESCALING")
+	set {_damage} to AbilityUpgradeValue({_p}, "Delphox", "Inferno", "DETONATEDAMAGE") + (Versatility({_p})/({_detScaling}*3)) + ({damage::%{_p}%}/{_detScaling}) + (PrimaryStat({_p})/({_detScaling}/2))
 	set {_effectiveness} to metadata value "InfernoEffectiveness%{_p}%" of {_target}
 	set {_damage} to {_damage}*{_effectiveness}
 	if {_bonusEffectiveness} > 0:
@@ -609,10 +622,13 @@ function InfernoDetonate(p: player, target: entity, bonusEffectiveness: number =
 	
 	set {_knock} to 1 + ({crowdcontrol::%{_p}%}/100)
 
-	set {_damageTrigger} to 3.5 + (Versatility({_p})/114) + ({damage::%{_p}%}/38)  + (PrimaryStat({_p})/19)
-	set {_stuntekst} to 2 + (({crowdcontrol::%{_p}%}/60))
+	set {_infScaling} to AbilityUpgradeValue({_p}, "Delphox", "Inferno", "DAMAGESCALING")
+	set {_damageTrigger} to AbilityUpgradeValue({_p}, "Delphox", "Inferno", "BASEDAMAGE") + (Versatility({_p})/({_infScaling}*3)) + ({damage::%{_p}%}/{_infScaling}) + (PrimaryStat({_p})/({_infScaling}/2))
+	set {_stuntekst} to AbilityUpgradeValue({_p}, "Delphox", "Inferno", "STUN") + (CrowdControlStat({_p})/60)
 
-	set {_lore} to "&8Basic Ability%nl%&fInstant cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fRMB/SHIFT%nl%<##fa4420>RIGHT-CLICK:%nl%<##f2636a>Imprisons <##fa4420>a target affected by &f <##f2636a>Flamethrower%nl%<##fa4420>in a fiery prison, <##f2636a> Stunning <##fa4420>them for &f%{_stuntekst}% sec <##fa4420>and%nl%<##fa4420>inflicting &f%{_damageTrigger}% <##ff4d00>Fire <##fa4420>damage.%nl% %nl%<##fa4420>SHIFT:%nl%<##f2636a>Detonates <##fa4420>an active &f <##f2636a>Inferno<##fa4420>, dealing &f%{_damage}% <##ff4d00>Fire%nl%<##fa4420>damage and <##f2636a>tossing <##fa4420>the enemy into the air."
+	set {_infValueNames::*} to "STUN", "DAMAGE", "DETONATEDAMAGE"
+	set {_infValues::*} to {_stuntekst}, {_damageTrigger}, {_damage}
+	set {_lore} to GetAbilityDescription({_p}, "Delphox", "Inferno", {_infValueNames::*}, {_infValues::*})
 	LoreUpdate({_p}, "Inferno", {_lore})
 
 	play sound "entity.dragon_fireball.explode" with volume 1 and pitch 1 at location of {_p}
@@ -867,7 +883,7 @@ function DelphoxIncineration(p: player, mastery: number, target: entity) :: numb
 	return {_mastery}
 
 function DelphoxMastery(p: player) :: number:
-	set {_mastery} to 2.5 + ((Mastery({_p})/135))
+	set {_mastery} to 2.5 + ((Mastery({_p})/AbilityUpgradeValue({_p}, "Delphox", "Incineration", "MASTERYSCALING")))
 	set {_searingIntensity} to getRunePower({_p}, "Searing Intensity")
 	if {_searingIntensity} > 0:
 		set {_mastery} to {_mastery} + ({_searingIntensity}/100)
