@@ -400,12 +400,14 @@ on rightclick:
 
 					loop (all living entities in radius 100 around the player) where [getAllShieldsOnEntity(input) is set]:
 						if loop-entity is alive:
+							set {_shieldTotalHeal} to 0
 							loop getAllShieldsOnEntity(loop-entity):
 								set {_shield} to "%loop-value-2%" parsed as number
 								set {_index} to loop-index parsed as integer
+								set {_shieldTotalHeal} to {_shieldTotalHeal} + {_shield}
 								shieldExpire(loop-entity, {_index})
 							
-							set {_heal} to {_shield}
+							set {_heal} to {_shieldTotalHeal}
 							if metadata value "Undercurrent" of player > 0:
 								set {_undercurrent} to metadata value "Undercurrent" of player
 								set {_heal} to {_heal}*(1 + 0.08*{_undercurrent})
@@ -883,46 +885,53 @@ function Shield(p: player, x: entity, shield: number, spell: text, col: text, lo
 		if yaml "Shields%uuid of {_x}%" is not loaded:
 			load yaml "plugins/Skript/combat/Shields/%uuid of {_x}%" as "Shields%uuid of {_x}%"
 
-		set {_shieldsActive} to yaml value "ShieldsActive" in "Shields%uuid of {_x}%"
-
 		set {_shield} to cardShieldModifiers({_p}, {_x}, {_shield}, {_spell})
 
-		loop {_shieldsActive} times:
-			if yaml value "Shields.%loop-number%.Caster" in "Shields%uuid of {_x}%" = {_p}:
-				if yaml value "Shields.%loop-number%.Name" in "Shields%uuid of {_x}%" = {_spell}:
+		loop yaml node keys "Shields" in "Shields%uuid of {_x}%":
+			set {_index} to loop-value
+			if yaml value "Shields.%{_index}%.Caster" in "Shields%uuid of {_x}%" = {_p}:
+				if yaml value "Shields.%{_index}%.Name" in "Shields%uuid of {_x}%" = {_spell}:
 					set {_shieldAlreadyActive} to true
-					set {_amount} to yaml value "Shields.%loop-number%.Amount" in "Shields%uuid of {_x}%"
-					if {_maxShield} > {0}:
+					set {_amount} to yaml value "Shields.%{_index}%.Amount" in "Shields%uuid of {_x}%"
+					if {_maxShield} > 0:
 						if {_amount} + {_shield} > {_maxShield}:
 							set {_shield} to {_maxShield} - {_amount}
-						if {_shield} < {0}:
+						if {_shield} < 0:
 							set {_shield} to 0
 
 					set {_amount} to {_amount} + {_shield}
 					set {_existingShield} to {_existingShield} + {_shield}
 
 					set metadata value "ShieldTotal" of {_x} to {_existingShield}
-					set yaml value "Shields.%loop-number%.Amount" in "Shields%uuid of {_x}%" to {_amount}
+					set yaml value "Shields.%{_index}%.Amount" in "Shields%uuid of {_x}%" to {_amount}
+					set {_returnedIndex} to {_index} parsed as integer
 					stop loop
 
 		if {_shieldAlreadyActive} != true:
-			set {_shieldsActive} to {_shieldsActive} + 1
-			set yaml value "Shields.%{_shieldsActive}%.Name" in "Shields%uuid of {_x}%" to {_spell}
-			set yaml value "Shields.%{_shieldsActive}%.Caster" in "Shields%uuid of {_x}%" to {_p}
-			set yaml value "Shields.%{_shieldsActive}%.Amount" in "Shields%uuid of {_x}%" to {_shield}
-			set yaml value "Shields.%{_shieldsActive}%.ID" in "Shields%uuid of {_x}%" to (random 8 char string from charset `0-9` `a-z`)
+			set {_newIndex} to 1
+			while yaml value "Shields.%{_newIndex}%.Name" in "Shields%uuid of {_x}%" is set:
+				set {_newIndex} to {_newIndex} + 1
+			set yaml value "Shields.%{_newIndex}%.Name" in "Shields%uuid of {_x}%" to {_spell}
+			set yaml value "Shields.%{_newIndex}%.Caster" in "Shields%uuid of {_x}%" to {_p}
+			set yaml value "Shields.%{_newIndex}%.Amount" in "Shields%uuid of {_x}%" to {_shield}
+			set yaml value "Shields.%{_newIndex}%.ID" in "Shields%uuid of {_x}%" to (random 8 char string from charset `0-9` `a-z`)
 			set metadata value "ShieldTotal" of {_x} to {_shield}
+			set {_returnedIndex} to {_newIndex}
 
+		set {_shieldKeys::*} to yaml node keys "Shields" in "Shields%uuid of {_x}%"
+		set {_shieldsActive} to size of {_shieldKeys::*}
 		set yaml value "ShieldsActive" in "Shields%uuid of {_x}%" to {_shieldsActive}
-		if metadata value "ShieldTotal" of {_x} < {0}:
+
+		if metadata value "ShieldTotal" of {_x} < 0:
 			set metadata value "ShieldTotal" of {_x} to 0
 
 		set {_shieldTotal} to 0
-		loop {_shieldsActive} times:
-			set {_entryAmount} to yaml value "Shields.%loop-number%.Amount" in "Shields%uuid of {_x}%"
+		loop yaml node keys "Shields" in "Shields%uuid of {_x}%":
+			set {_index} to loop-value
+			set {_entryAmount} to yaml value "Shields.%{_index}%.Amount" in "Shields%uuid of {_x}%"
 			if {_entryAmount} is set:
 				set {_shieldTotal} to {_shieldTotal} + {_entryAmount}
-		if {_shieldTotal} < {0}:
+		if {_shieldTotal} < 0:
 			set {_shieldTotal} to 0
 
 		set metadata value "ShieldTotal" of {_x} to {_shieldTotal}
@@ -931,24 +940,23 @@ function Shield(p: player, x: entity, shield: number, spell: text, col: text, lo
 			if {_sendMessage} != false:
 				send formatted "%{kartacolor::%{_p}%}%%{_p}% &fshielded you. <tooltip:%{_col}%%{_spell}%%nl%%{_lore}%>(<#baff8c>+%{_shield}% Shield&f)" to {_x}
 			if {_sendActionBar} != false:
-				send action bar "%{kartacolor::%{_p}%}% Shield: &f%{_shieldTotal}%" to {_x}
+				send action bar "%{kartacolor::%{_x}%}% Shield: &f%{_shieldTotal}%" to {_x}
 		save yaml "Shields%uuid of {_x}%"
-	return {_shieldsActive}
+	return {_returnedIndex}
 
 function shieldFind(p: entity, x: entity, shield: text, global: boolean = false) :: integer:
 	if yaml "Shields%uuid of {_x}%" is not loaded:
 		load yaml "plugins/Skript/combat/Shields/%uuid of {_x}%" as "Shields%uuid of {_x}%"
 		
-	set {_shieldsActive} to yaml value "ShieldsActive" in "Shields%uuid of {_x}%"
-
-	loop {_shieldsActive} times:
-		if yaml value "Shields.%loop-number%.Name" in "Shields%uuid of {_x}%" = {_shield}:
+	loop yaml node keys "Shields" in "Shields%uuid of {_x}%":
+		set {_index} to loop-value
+		if yaml value "Shields.%{_index}%.Name" in "Shields%uuid of {_x}%" = {_shield}:
 			if {_global} = true:
-				set {_num} to {_shieldsActive}
+				set {_num} to {_index} parsed as integer
 				stop loop
 			else:
-				if yaml value "Shields.%loop-number%.Caster" in "Shields%uuid of {_x}%" = {_p}:
-					set {_num} to {_shieldsActive}
+				if yaml value "Shields.%{_index}%.Caster" in "Shields%uuid of {_x}%" = {_p}:
+					set {_num} to {_index} parsed as integer
 					stop loop
 	return {_num}
 
@@ -976,24 +984,26 @@ function shieldExpire(x: entity, num: integer):
 
 	set {_amount} to yaml value "Shields.%{_num}%.Amount" in "Shields%uuid of {_x}%"
 	clear yaml value "Shields.%{_num}%" in "Shields%uuid of {_x}%"
-	set {_shieldsActive} to yaml value "ShieldsActive" in "Shields%uuid of {_x}%"
-	remove 1 from {_shieldsActive}
+	
+	set {_shieldKeys::*} to yaml node keys "Shields" in "Shields%uuid of {_x}%"
+	set {_shieldsActive} to size of {_shieldKeys::*}
 	set yaml value "ShieldsActive" in "Shields%uuid of {_x}%" to {_shieldsActive}
+	
 	set {_totalShields} to metadata value "ShieldTotal" of {_x}
-	remove {_amount} from {_totalShields}
+	set {_totalShields} to {_totalShields} - {_amount}
 	set metadata value "ShieldTotal" of {_x} to {_totalShields}
 	save yaml "Shields%uuid of {_x}%"
 
 function shieldsClear(x: entity):
 	if yaml "Shields%uuid of {_x}%" is loaded:
-		set {_amount} to yaml value "ShieldsActive" in "Shields%uuid of {_x}%"
-		loop {_amount} times:
-			if yaml value "Shield.%loop-number%.Name" in "Shields%uuid of {_x}%" is set:
-				clear yaml value "Shields.%loop-number%.Amount" in "Shields%uuid of {_x}%"
-				clear yaml value "Shields.%loop-number%.Name" in "Shields%uuid of {_x}%"
-				clear yaml value "Shields.%loop-number%.Caster" in "Shields%uuid of {_x}%"
-				clear yaml value "Shields.%loop-number%.ID" in "Shields%uuid of {_x}%"
-				clear yaml value "Shields.%loop-number%" in "Shields%uuid of {_x}%"
+		loop yaml node keys "Shields" in "Shields%uuid of {_x}%":
+			set {_index} to loop-value
+			clear yaml value "Shields.%{_index}%.Amount" in "Shields%uuid of {_x}%"
+			clear yaml value "Shields.%{_index}%.Name" in "Shields%uuid of {_x}%"
+			clear yaml value "Shields.%{_index}%.Caster" in "Shields%uuid of {_x}%"
+			clear yaml value "Shields.%{_index}%.ID" in "Shields%uuid of {_x}%"
+			clear yaml value "Shields.%{_index}%" in "Shields%uuid of {_x}%"
+		set yaml value "ShieldsActive" in "Shields%uuid of {_x}%" to 0
 		save yaml "Shields%uuid of {_x}%"
 	clear metadata value "ShieldTotal" of {_x}
 
@@ -1001,55 +1011,57 @@ function shieldDamageEvent(x: entity, dmg: number) :: number:
 	if yaml "Shields%uuid of {_x}%" is not loaded:
 		load yaml "plugins/Skript/combat/Shields/%uuid of {_x}%" as "Shields%uuid of {_x}%"
 
-	set {_shieldsActive} to yaml value "ShieldsActive" in "Shields%uuid of {_x}%"
-
-	set {_num} to 1
-	while {_oldestShield} is not set:
-		if yaml value "Shields.%{_num}%.Amount" in "Shields%uuid of {_x}%" is set:
-			set {_oldestShield} to {_num}
-			set {_shieldCaster} to (yaml value "Shields.%{_num}%.Caster" in "Shields%uuid of {_x}%")
-			set {_shieldAmount} to (yaml value "Shields.%{_num}%.Amount" in "Shields%uuid of {_x}%")
-			set {_shieldName} to (yaml value "Shields.%{_num}%.Name" in "Shields%uuid of {_x}%")
-		add 1 to {_num}
-	if ({_shieldAmount}-{_dmg}) > {0}:
-		set {_shieldTotal} to metadata value "ShieldTotal" of {_x}
-		set {_shieldTotal} to {_shieldTotal} - {_dmg}
-		set metadata value "ShieldTotal" of {_x} to {_shieldTotal}
-		if {_shieldCaster} is a player:
-			set {_id} to cardId({_shieldCaster})
-			set {healtotal::%{_shieldCaster}%} to {healtotal::%{_shieldCaster}%} + {_dmg}
-			set {healcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%} to {healcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%} + {_dmg}
-			set {healcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%::%{_shieldName}%} to {healcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%::%{_shieldName}%} + {_dmg}
-			set {shieldtotal::%{_shieldCaster}%} to {shieldtotal::%{_shieldCaster}%} + {_dmg}
-			set {shieldcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%} to {shieldcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%} + {_dmg}
-			set {shieldcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%::%{_shieldName}%} to {shieldcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%::%{_shieldName}%} + {_dmg}
-			SyncCardShieldYaml({_shieldCaster}, {_shieldName}, {_dmg})
-			HealAssist({_shieldCaster}, {_x})
-			HealRefresh({_shieldCaster}, {_dmg})
-		remove {_dmg} from {_shieldAmount}
-		set yaml value "Shields.%{_oldestShield}%.Amount" in "Shields%uuid of {_x}%" to {_shieldAmount}
-		if metadata value "DungeonInstance" of {_x} is set:
-			DungeonShield({_shieldCaster}, {_x}, {_dmg}, {_shieldName})
-		set {_dmg} to 0
-	else:
-		set {_dmg} to {_dmg}-{_shieldAmount}
-		if {_shieldCaster} is a player:
-			set {_id} to cardId({_shieldCaster})
-			set {healtotal::%{_shieldCaster}%} to {healtotal::%{_shieldCaster}%} + {_shieldAmount}
-			set {healcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%} to {healcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%} + {_shieldAmount}
-			set {healcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%::%{_shieldName}%} to {healcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%::%{_shieldName}%} + {_shieldAmount}
-			set {shieldtotal::%{_shieldCaster}%} to {shieldtotal::%{_shieldCaster}%} + {_shieldAmount}
-			set {shieldcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%} to {shieldcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%} + {_shieldAmount}
-			set {shieldcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%::%{_shieldName}%} to {shieldcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%::%{_shieldName}%} + {_shieldAmount}
-			SyncCardShieldYaml({_shieldCaster}, {_shieldName}, {_shieldAmount})
-			HealAssist({_shieldCaster}, {_x})
-			HealRefresh({_shieldCaster}, {_shieldAmount})
-		if metadata value "DungeonInstance" of {_x} is set:
-			DungeonShield({_shieldCaster}, {_x}, {_shieldAmount}, {_shieldName})
-		set metadata value "ShieldTotal" of {_x} to 0
-		shieldExpire({_x}, {_oldestShield})
-	if metadata value "ShieldTotal" of {_x} > 0:
-		set {_shield} to metadata value "ShieldTotal" of {_x}
+	while {_dmg} > 0:
+		set {_shieldKeys::*} to yaml node keys "Shields" in "Shields%uuid of {_x}%"
+		if size of {_shieldKeys::*} <= 0:
+			stop loop
+		
+		set {_oldestShield} to {_shieldKeys::1} parsed as integer
+		set {_shieldCaster} to yaml value "Shields.%{_oldestShield}%.Caster" in "Shields%uuid of {_x}%"
+		set {_shieldAmount} to yaml value "Shields.%{_oldestShield}%.Amount" in "Shields%uuid of {_x}%"
+		set {_shieldName} to yaml value "Shields.%{_oldestShield}%.Name" in "Shields%uuid of {_x}%"
+		
+		if ({_shieldAmount} - {_dmg}) > 0:
+			set {_shieldTotal} to metadata value "ShieldTotal" of {_x}
+			set {_shieldTotal} to {_shieldTotal} - {_dmg}
+			set metadata value "ShieldTotal" of {_x} to {_shieldTotal}
+			if {_shieldCaster} is a player:
+				set {_id} to cardId({_shieldCaster})
+				set {healtotal::%{_shieldCaster}%} to {healtotal::%{_shieldCaster}%} + {_dmg}
+				set {healcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%} to {healcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%} + {_dmg}
+				set {healcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%::%{_shieldName}%} to {healcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%::%{_shieldName}%} + {_dmg}
+				set {shieldtotal::%{_shieldCaster}%} to {shieldtotal::%{_shieldCaster}%} + {_dmg}
+				set {shieldcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%} to {shieldcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%} + {_dmg}
+				set {shieldcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%::%{_shieldName}%} to {shieldcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%::%{_shieldName}%} + {_dmg}
+				SyncCardShieldYaml({_shieldCaster}, {_shieldName}, {_dmg})
+				HealAssist({_shieldCaster}, {_x})
+				HealRefresh({_shieldCaster}, {_dmg})
+			set {_shieldAmount} to {_shieldAmount} - {_dmg}
+			set yaml value "Shields.%{_oldestShield}%.Amount" in "Shields%uuid of {_x}%" to {_shieldAmount}
+			if metadata value "DungeonInstance" of {_x} is set:
+				DungeonShield({_shieldCaster}, {_x}, {_dmg}, {_shieldName})
+			set {_dmg} to 0
+		else:
+			if {_shieldCaster} is a player:
+				set {_id} to cardId({_shieldCaster})
+				set {healtotal::%{_shieldCaster}%} to {healtotal::%{_shieldCaster}%} + {_shieldAmount}
+				set {healcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%} to {healcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%} + {_shieldAmount}
+				set {healcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%::%{_shieldName}%} to {healcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%::%{_shieldName}%} + {_shieldAmount}
+				set {shieldtotal::%{_shieldCaster}%} to {shieldtotal::%{_shieldCaster}%} + {_shieldAmount}
+				set {shieldcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%} to {shieldcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%} + {_shieldAmount}
+				set {shieldcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%::%{_shieldName}%} to {shieldcard::%{kartaname::%{_shieldCaster}%}%::%{_id}%::%{_shieldName}%} + {_shieldAmount}
+				SyncCardShieldYaml({_shieldCaster}, {_shieldName}, {_shieldAmount})
+				HealAssist({_shieldCaster}, {_x})
+				HealRefresh({_shieldCaster}, {_shieldAmount})
+			if metadata value "DungeonInstance" of {_x} is set:
+				DungeonShield({_shieldCaster}, {_x}, {_shieldAmount}, {_shieldName})
+			set {_dmg} to {_dmg} - {_shieldAmount}
+			shieldExpire({_x}, {_oldestShield})
+	
+	set {_shield} to metadata value "ShieldTotal" of {_x}
+	if {_shield} is not set:
+		set {_shield} to 0
+	if {_shield} > 0:
 		send action bar "%{kartacolor::%{_x}%}% SHIELD: &f%{_shield}%" to {_x}
 		play sound "item.shield.block" with volume 3 and pitch 0.5 to {_x}
 	else:
@@ -1110,10 +1122,10 @@ function coalescingTides(p: player, x: entity, radius: number, heal: number, lor
 		if size of {_allies::*} > 0:
 			loop {_allies::*}:
 				draw 15 of ((rain particle) with an extra value of 0.03) with offset vector(0.5, 0.5, 0.5) at (location above loop-value)
-				Heal({_p}, loop-value, {_heal}*0.3, "Healing Stream", "<#7cafbf>", {_lore})
+				Heal({_p}, loop-value, {_heal}, "Healing Stream", "<#7cafbf>", {_lore})
 		else:
 			draw 15 of ((rain particle) with an extra value of 0.03) with offset vector(0.5, 0.5, 0.5) at (location above {_x})
-			Heal({_p}, {_x}, {_heal}*0.3, "Healing Stream", "<#7cafbf>", {_lore})
+			Heal({_p}, {_x}, {_heal}, "Healing Stream", "<#7cafbf>", {_lore})
 	else:
 		set {_enemies::*} to LoopEntitiesAroundTarget({_x}, {_radius}, false)
 		wait 1 tick
@@ -1161,13 +1173,13 @@ function OceanicUnison(p: player, target: entity, mastery: number, duration: tim
 			buffRegister({_target}, "Unison", 1, "", "-", "-", "<#f53b98> &f| %{_currentMasteryBonus}% %{_durShort}%")
 
 		clear metadata value "OceanicUnisonDuration%{_p}%" of {_target}
-		remove (metadata value "OceanicUnison%{_p}%" of {_target}) from {bonusMastery::%{_target}%}
+		set {bonusMastery::%{_target}%} to {bonusMastery::%{_target}%} - (metadata value "OceanicUnison%{_p}%" of {_target})
 		clear metadata value "OceanicUnison%{_p}%" of {_target}
 		buffClear({_target}, "Unison")
 
 	else:
-		set {_currentMasteryBonus} to metadata value "OceanicUnisonDuration%{_p}%" of {_target}
-		remove {_currentMasteryBonus} from {bonusMastery::%{_target}%}
+		set {_currentMasteryBonus} to metadata value "OceanicUnison%{_p}%" of {_target}
+		set {bonusMastery::%{_target}%} to {bonusMastery::%{_target}%} - {_currentMasteryBonus}
 
 		set metadata value "OceanicUnisonDuration%{_p}%" of {_target} to {_duration}
 		set metadata value "OceanicUnison%{_p}%" of {_target} to {_mastery}
@@ -1183,7 +1195,6 @@ function DropletsHeal(p: player, entity: player, heal: number, partyMember: play
 	set {_lore} to "&7When you or your allies deal <#d5ff57> Supereffective%nl%&7damage, conjure &f <#7cafbf>Restorative Droplets&7.%nl% %nl%&7The droplets heal all party members for &f0.5%% &7of%nl%&7their max HP every &f1.0 sec &7for &f3.0 sec&7. One%nl%&7droplet can be created per player every%nl%&f3.0 sec&7, reduced by <#19943e> Haste&7.%nl% %nl%&7Healing is increased by &f200%% &7when &f <#7cafbf>Restorative%nl%<#7cafbf>Droplets &7are formed by <#7cafbf>Vaporeon&7."
 	while {_duration} > 0 seconds:
 		wait 1 second
-		stop if {_victim} is not alive
 		set {_duration} to {_duration} - 1 second
 		Heal({_p}, {_partyMember}, {_heal}, "Restorative Droplets", "<#7cafbf>", {_lore})
 		draw 30 of (((fishing particle) with an extra value of 0.06) with offset vector(0.1, 0, 0.1)) at (location above {_partyMember})
