@@ -28,14 +28,12 @@ function IcicleForm(p: player, icicle: integer):
 
 	if {_modelName} is not set:
 		set {_modelName} to "icicle"
-
-	set {_model} to BetterModel.model({_modelName}).get().getOrCreate({_icicleModel})
-	{_model}.scaler({_model}.scaler().multiply(1.0))
-	{_model}.registry().reload()
+	
+	modelApply({_icicleModel}, {_modelName}, 1.0)
 
 	if {icicle%{_icicle}%::%{_p}%} is not set:
 		set {icicle%{_icicle}%::%{_p}%} to {_icicleModel}
-		IcicleMove({_p}, {_icicle}, {_icicleModel})
+		StartIcicleMasterLoop({_p})
 
 function IcicleHurl(p: player, icicle: entity, target: entity, rgb: color):
 	set {_l} to location of {_icicle}
@@ -51,56 +49,59 @@ function IcicleHurl(p: player, icicle: entity, target: entity, rgb: color):
 		teleport {_icicle} to {_l} ~ {_vec}
 		set {_icicleLoc} to location of {_icicle}
 		increase y-coordinate of {_icicleLoc} by 2 
-		draw 1 of dust using dustOption({_rgb}, 1) at {_icicleLoc}
+		draw 1 of ({_rgb} dust particle of size 1) at {_icicleLoc}
 		wait 1 tick
 	kill {_icicle}
 
-function IcicleMove(p: player, num: integer, x: entity):
-	while {icicle%{_num}%::%{_p}%} = {_x}:
-		set {_loc3} to {_p}'s location
-		increase {_loc3}'s y-coordinate by 1.75
-		set {_loc%{_num}%} to {_loc3}
-		if boolean tag "Constellation;Eternal Winter" of (custom nbt of {karta::%{_p}%}) is not set:
-			#Horizontal
-			if {_p}'s horizontal facing is west:
-				increase {_loc%{_num}%}'s z-coordinate by (-0.5 + 0.3*{_num})
-			else if {_p}'s horizontal facing is south:
-				increase {_loc%{_num}%}'s x-coordinate by (-0.5 + 0.3*{_num})
-
-			else if {_p}'s horizontal facing is east:
-				increase {_loc%{_num}%}'s z-coordinate by (0.5 - 0.3*{_num})
-			else if {_p}'s horizontal facing is north:
-				increase {_loc%{_num}%}'s x-coordinate by (0.5 - 0.3*{_num})
-			
-			#Vertical
-			if 3 >= {_num}:
-				increase {_loc%{_num}%}'s y-coordinate by -0.3 + (0.1*{_num})
-			else:
-				increase {_loc%{_num}%}'s y-coordinate by (-0.1*{_num}) + 0.3
-
-		else:
-			#Horizontal
-			if {_p}'s horizontal facing is west:
-				increase {_loc%{_num}%}'s z-coordinate by (-0.8 + 0.3*{_num})
-			else if {_p}'s horizontal facing is south:
-				increase {_loc%{_num}%}'s x-coordinate by (-0.8 + 0.3*{_num})
-
-			else if {_p}'s horizontal facing is east:
-				increase {_loc%{_num}%}'s z-coordinate by (0.8 - 0.3*{_num})
-			else if {_p}'s horizontal facing is north:
-				increase {_loc%{_num}%}'s x-coordinate by (0.8 - 0.3*{_num})
-			
-			#Vertical
-			if 4 >= {_num}:
-				increase {_loc%{_num}%}'s y-coordinate by (0.1*{_num})
-			else:
-				increase {_loc%{_num}%}'s y-coordinate by (-0.1*{_num}) + 0.8
-
-		teleport {_x} to {_loc%{_num}%}
-		set {_x}'s yaw to {_p}'s yaw
-		set {_x}'s pitch to {_p}'s pitch
-		wait 1 tick
-
+function StartIcicleMasterLoop(p: player):
+	if metadata value "IcicleLoopRunning" of {_p} is not set:
+		set metadata value "IcicleLoopRunning" of {_p} to true
+		while metadata value "IcicleLoopRunning" of {_p} is true:
+			if {_p} is not online:
+				stop loop
+			if {icicles::%{_p}%} <= 0:
+				clear metadata value "IcicleLoopRunning" of {_p}
+				stop loop
+			set {_max} to 5
+			if boolean tag "Constellation;Eternal Winter" of (custom nbt of {karta::%{_p}%}) is set:
+				set {_max} to 7
+			loop {icicles::%{_p}%} times:
+				set {_num} to loop-number
+				set {_x} to {icicle%{_num}%::%{_p}%}
+				if {_x} is set:
+					if {_x} is alive:
+						set {_loc} to {_p}'s location
+						increase {_loc}'s y-coordinate by 1.75
+						if boolean tag "Constellation;Eternal Winter" of (custom nbt of {karta::%{_p}%}) is not set:
+							if {_p}'s horizontal facing is west:
+								increase {_loc}'s z-coordinate by (-0.5 + 0.3 * {_num})
+							else if {_p}'s horizontal facing is south:
+								increase {_loc}'s x-coordinate by (-0.5 + 0.3 * {_num})
+							else if {_p}'s horizontal facing is east:
+								increase {_loc}'s z-coordinate by (0.5 - 0.3 * {_num})
+							else if {_p}'s horizontal facing is north:
+								increase {_loc}'s x-coordinate by (0.5 - 0.3 * {_num})
+							if 3 >= {_num}:
+								increase {_loc}'s y-coordinate by -0.3 + (0.1 * {_num})
+							else:
+								increase {_loc}'s y-coordinate by (-0.1 * {_num}) + 0.3
+						else:
+							if {_p}'s horizontal facing is west:
+								increase {_loc}'s z-coordinate by (-0.8 + 0.3 * {_num})
+							else if {_p}'s horizontal facing is south:
+								increase {_loc}'s x-coordinate by (-0.8 + 0.3 * {_num})
+							else if {_p}'s horizontal facing is east:
+								increase {_loc}'s z-coordinate by (0.8 - 0.3 * {_num})
+							else if {_p}'s horizontal facing is north:
+								increase {_loc}'s x-coordinate by (0.8 - 0.3 * {_num})
+							if 4 >= {_num}:
+								increase {_loc}'s y-coordinate by (0.1 * {_num})
+							else:
+								increase {_loc}'s y-coordinate by (-0.1 * {_num}) + 0.8
+						teleport {_x} to {_loc}
+						set {_x}'s yaw to {_p}'s yaw
+						set {_x}'s pitch to {_p}'s pitch
+			wait 1 tick
 function frostboltSound(p: player):
 	play sound "skill.glaceon.frostbolt_cast" with volume 2 and pitch 1 to {_p}
 function frostboltHitSound(p: location):
@@ -161,9 +162,7 @@ function IcicleFormIcicleStorm(p: player, icicle: integer, blackIce: boolean = f
 	set boolean tag "Invisible" of nbt of last spawned armor stand to true
 	IcicleAssignments({_icicleModel})
 
-	set {_model} to BetterModel.model({_modelName}).get().getOrCreate({_icicleModel})
-	{_model}.scaler({_model}.scaler().multiply(1.0))
-	{_model}.registry().reload()
+	modelApply({_icicleModel}, {_modelName}, 1.0)
 
 	return {_icicleModel}
 
@@ -176,9 +175,7 @@ function GlacialSpike(p: player) :: entity:
 	set boolean tag "Invisible" of nbt of last spawned armor stand to true
 	IcicleAssignments({_glacialSpikeModel})
 
-	set {_model} to BetterModel.model("icicle").get().getOrCreate({_glacialSpikeModel})
-	{_model}.scaler({_model}.scaler().multiply(3.0))
-	{_model}.registry().reload()
+	modelApply({_icicleModel}, {_modelName}, 3.0)
 
 	return {_glacialSpikeModel}
 
@@ -216,7 +213,7 @@ function GlacialSpikeHurl(p: player, glacialspike: entity, target: entity):
 		teleport {_glacialspike} to {_l} ~ {_vec}
 		set {_glacialspikeLoc} to location of {_glacialspike}
 		increase y-coordinate of {_glacialspikeLoc} by 2 
-		draw 1 of dust using dustOption({_rgb}, 1) at {_glacialspikeLoc}
+		draw 1 of ({_rgb} dust particle of size 1) at {_glacialspikeLoc}
 		wait 1 tick
 	kill {_glacialspike}
 
@@ -238,9 +235,22 @@ on rightclick:
 						set {_crit} to 25 + ({criticalhit::%player%}/10)
 						set {_cd} to 1.5
 						set {_pospiech} to Haste(player)
-						set {_damageicicles} to (0.4 + {damage::%player%}/75 + {versatility::%player%}/225 + {primarystat::%player%}/37.5) * (1 + ({mastery::%player%}/3.75/100))
+						set {_baseHeal} to AbilityUpgradeValue(player, "Glaceon", "Icicles", "BASEDAMAGE")
+						set {_scaling} to AbilityUpgradeValue(player, "Glaceon", "Icicles", "DAMAGESCALING")
+						set {_damageicicles} to ({_baseHeal} + ({damage::%player%}/75) + ({versatility::%player%}/225) + ({primarystat::%player%}/{_scaling})) * (1 + ({mastery::%player%}/3.75/100))
+						set {_rune} to getRunePower(player, "Glacial Wrath")
+						set {_damageicicles} to {_damageicicles} * (1 + {_rune} * {icicles::%player%}/100)
+						set {_flashFreezeDmg} to offensiveTrait(player, "Glaceon", "Flash Freeze")
+						set {_damageicicles} to {_damageicicles} + {_flashFreezeDmg}
+
 						set {_cd} to {_cd}/{_pospiech}
-						set {_damage} to 2.5 + {damage::%player%}/34 + {versatility::%player%}/102 + {primarystat::%player%}/17
+						set {_baseDamage} to AbilityUpgradeValue(player, "Glaceon", "Ice Lance", "BASEDAMAGE")
+						set {_damageScaling} to AbilityUpgradeValue(player, "Glaceon", "Ice Lance", "DAMAGESCALING")
+						set {_damage} to {_baseDamage} + {damage::%player%}/34 + {versatility::%player%}/102 + {primarystat::%player%}/{_damageScaling}
+						set {_whiteoutDmg} to offensiveTrait(player, "Glaceon", "Whiteout")
+						set {_damage} to {_damage} + {_whiteoutDmg}
+						if getTrait(player, "Whiteout") is set:
+							remove 0.5 seconds from cooldown "Icy Veins%player%" 
 
 						if string tag "Talents;Row 2" of (custom nbt of {karta::%player%}) = "Lonely Winter":
 							set {_damage} to {_damage}*1.25
@@ -318,9 +328,10 @@ on rightclick:
 									add 1 second to metadata value "ExtraSecondsIcyVeins" of player
 							if {_frozen} is true:
 								set {_damage} to {_damage}*2
-								add 50 to {_crit}
+								set {_crit} to {_crit} + 50
 								if boolean tag "Constellation;Subzero" of (custom nbt of {karta::%player%}) is set:
 									set {_damage} to {_damage}*1.05
+
 							icelancehurlSound(player)
 							set {_l} to location 0.3 blocks below player's head
 							set {_l} to location 0.4 blocks left of {_l}
@@ -330,8 +341,8 @@ on rightclick:
 							loop round(distance between {_l} and {_target}) / 0.5 times:
 								set {_vec} to vector between {_l} and {_target}'s head
 								set vector length of {_vec} to loop-value * 0.5
-								draw 1 of dust using dustOption((rgb 156, 255, 252), 1) at {_l} ~ {_vec}
-								make 1 of block particle using packed ice at {_l} ~ {_vec}
+								draw 1 of ((rgb 156, 255, 252) dust particle of size 1) at {_l} ~ {_vec}
+								draw 1 of packed ice block particle at {_l} ~ {_vec}
 							#drawLine particle redstone, RGB 156, 255, 252, center location of {_l}, target location of {_target}'s head, id "%{_pid}%", rainbowMode false, solid true, density 25, length 0, zigZag count 5, height 0, visibleRange 32, displacementXYZ 0, 1, 0, pulseDelay 3
 							if {_r} > 10:
 								set {_r} to distance between player and {_target}
@@ -353,6 +364,12 @@ on rightclick:
 							set metadata value "Element" of player to "Ice"
 							set metadata value "LastDamageCause" of {_target} to "<##4bbfe2>Ice Lance"
 							set metadata value "LastDamageCauseLore" of {_target} to {_lore}
+							set {_rune} to getRunePower(player, "Brittle Ice")
+							if metadata value "WintersChill%player%" of {_target} > 0:
+								set {_damage} to {_damage} * (1 + {_rune}/100)
+							set {_rune} to getRunePower(player, "Brittle Ice")
+							if metadata value "WintersChill%player%" of {_target} > 0:
+								set {_damage} to {_damage} * (1 + {_rune}/100)
 							set {_damage} to Crit(player, {_target}, {_crit}, {_damage}, {_critModifier})
 							make player damage {_target} by {_damage}*2
 
@@ -372,7 +389,7 @@ on rightclick:
 										if {_damage} != {_damageBeforeCrit}:
 											CritVisual(loop-entity)
 											set metadata value "Crit%player%" of loop-entity to true
-										make player damage loop-entity by 0.2*({_damage}*2)
+										make player damage loop-entity by 0.2*({_damage})
 
 							clear {_damageBeforeCrit}
 							ChainReaction(player)
@@ -417,8 +434,28 @@ on rightclick:
 						if {_target} is set:
 							if {_target} is alive:
 								set {_crit} to 25 + {criticalhit::%player%}/10
-								set {_damage} to 2 + {damage::%player%}/40 + {versatility::%player%}/120 + {primarystat::%player%}/20
-								set {_damageicicles} to (0.4 + {damage::%player%}/75 + {versatility::%player%}/225 + {primarystat::%player%}/37.5) * (1 + ({mastery::%player%}/3.75/100))
+								set {_baseDamage} to AbilityUpgradeValue(player, "Glaceon", "Frostbolt", "BASEDAMAGE")
+								set {_damageScaling} to AbilityUpgradeValue(player, "Glaceon", "Frostbolt", "DAMAGESCALING")
+								set {_damage} to {_baseDamage} + {damage::%player%}/40 + {versatility::%player%}/120 + {primarystat::%player%}/{_damageScaling}
+								
+								set {_toiDmg} to offensiveTrait(player, "Glaceon", "Tunnel of Ice")
+								if {_toiDmg} > 0:
+									if metadata value "TunnelOfIceTarget" of player != {_target}:
+										set metadata value "TunnelOfIceTarget" of player to {_target}
+										set metadata value "TunnelOfIceStacks" of player to 1
+									else:
+										set {_toiStacks} to metadata value "TunnelOfIceStacks" of player
+										if {_toiStacks} < 3:
+											set {_toiStacks} to {_toiStacks} + 1
+											set metadata value "TunnelOfIceStacks" of player to {_toiStacks}
+									set {_damage} to {_damage} + ({_toiDmg} * (metadata value "TunnelOfIceStacks" of player))
+
+								set {_rune} to getRunePower(player, "Frozen Focus")
+								set {_damage} to {_damage} * (1 + {_rune}/100)
+
+								set {_baseHeal} to AbilityUpgradeValue(player, "Glaceon", "Icicles", "BASEDAMAGE")
+								set {_scaling} to AbilityUpgradeValue(player, "Glaceon", "Icicles", "DAMAGESCALING")
+								set {_damageicicles} to ({_baseHeal} + ({damage::%player%}/75) + ({versatility::%player%}/225) + ({primarystat::%player%}/{_scaling})) * (1 + ({mastery::%player%}/3.75/100))
 
 								if string tag "Talents;Row 2" of (custom nbt of {karta::%player%}) = "Lonely Winter":
 									set {_damage} to {_damage}*1.25
@@ -562,7 +599,9 @@ on rightclick:
 							if {_target} is alive:
 								set {_crit} to 25 + ({criticalhit::%player%}/10)
 								set {_damage} to (2 + (({damage::%player%}/36) + ({versatility::%player%}/108) + ({primarystat::%player%}/18)))/3
-								set {_damageicicles} to (0.4 + {damage::%player%}/75 + {versatility::%player%}/225 + {primarystat::%player%}/37.5) * (1 + ({mastery::%player%}/3.75/100))
+								set {_baseHeal} to AbilityUpgradeValue(player, "Glaceon", "Icicles", "BASEDAMAGE")
+								set {_scaling} to AbilityUpgradeValue(player, "Glaceon", "Icicles", "DAMAGESCALING")
+								set {_damageicicles} to ({_baseHeal} + ({damage::%player%}/75) + ({versatility::%player%}/225) + ({primarystat::%player%}/{_scaling})) * (1 + ({mastery::%player%}/3.75/100))
 
 								if string tag "Talents;Row 2" of (custom nbt of {karta::%player%}) = "Lonely Winter":
 									set {_damage} to {_damage}*1.25
@@ -639,17 +678,18 @@ on rightclick:
 									chance of {_extraicicles}%:
 										set {_iciclesBefore} to {icicles::%player%}
 										add 2 to {icicles::%player%}
-									#if metadata value "Icicles" of player is not set:
-										#Icicles(player)
 									if {icicles::%player%} > {_iciclesCap}:
-										
 										HurlIcicle(player, {_target}, {_iciclesCap})
-
 									else:
 										if {_iciclesBefore} is set:
 											loop 2 times:
 												IcicleForm(player, ({_iciclesBefore} + loop-number))
 									send action bar " Icicles: %{icicles::%player%}%" to player
+									if getTrait(player, "Splintering Cold") is set:
+										chance of 10%:
+											loop 2 times:
+												add 1 to {icicles::%player%}
+												TrackIcicleGeneration(player, {_target})
 									wait 1 tick
 									loop 3 times:
 										if {_target} is alive:
@@ -659,8 +699,8 @@ on rightclick:
 											loop round(distance between {_l} and {_target}) / 1 times:
 												set {_v} to vector between {_l} and {_target}'s head
 												set vector length of {_v} to loop-value-2 * 1
-												draw 1 of dust using dustOption((rgb 63, 188, 242), 1) at {_l} ~ {_v}
-												make 1 of block particle using ice at {_l} ~ {_v}
+												draw 1 of ((rgb 63, 188, 242) dust particle of size 1) at {_l} ~ {_v}
+												draw 1 of ice block particle at {_l} ~ {_v}
 											
 											if boolean tag "Constellation;Subzero" of (custom nbt of {karta::%player%}) is set:
 												set {_critModifier} to 2.2
@@ -674,7 +714,15 @@ on rightclick:
 											set metadata value "LastDamageCause" of {_target} to "<##4bbfe2>Flurry"
 											set metadata value "LastDamageCauseLore" of {_target} to {_lore}
 											set {_damage} to Crit(player, {_target}, {_crit}, {_damage}, {_critModifier})
-											make player damage {_target} by {_damage}*2
+											make player damage {_target} by {_damage}
+											if getTrait(player, "Glacial Assault") is set:
+												chance of 20%:
+													set {_gaDmg} to offensiveTrait(player, "Glaceon", "Glacial Assault")
+													GlacialAssaultComet(player, {_target}, {_gaDmg})
+											if getTrait(player, "Glacial Assault") is set:
+												chance of 20%:
+													set {_gaDmg} to offensiveTrait(player, "Glaceon", "Glacial Assault")
+													GlacialAssaultComet(player, {_target}, {_gaDmg})
 											
 											if {_damage} != {_damageBeforeCrit}:
 												if boolean tag "Constellation;Icy Propulsion" of (custom nbt of {karta::%player%}) is set:
@@ -691,7 +739,8 @@ on rightclick:
 												WintersChillDebuff(player, {_target})
 
 											if canBeCCed({_target}) = true:
-												apply slowness of tier 4.67 without particles to {_target} for {_slowtime}
+												apply an ambient potion effect of slowness of tier 4.67 to {_target} for {_slowtime}:
+													hide the particles
 											play sound "skill.glaceon.flurry_impact" with volume 3 and pitch 1 at location of {_target}
 											wait 6 ticks
 			else:
@@ -702,8 +751,10 @@ on rightclick:
 		cancel event
 		if {kartaname::%player%} = "Glaceon":
 			if CanUseAbility(player) != false:
-				set {_cd} to 180
-				set {_seconds} to 20
+				set {_baseCd} to AbilityUpgradeValue(player, "Glaceon", "Icy Veins", "COOLDOWN")
+				set {_rune} to getRunePower(player, "Deep Freeze")
+				set {_cd} to {_baseCd} - {_rune}
+				set {_seconds} to AbilityUpgradeValue(player, "Glaceon", "Icy Veins", "DURATION")
 				set {_haste} to 120
 				if string tag "Talents;Row 1" of (custom nbt of {karta::%player%}) = "Winter's Blessing":
 					set {_haste} to {_haste}*1.1
@@ -711,6 +762,9 @@ on rightclick:
 				set {_id} to line 19 of lore of {karta::%player%}
 				if string tag "Talents;Row 2" of (custom nbt of {karta::%player%}) = "Thermal Void":
 					add 10 to {_seconds}
+				set {_valueNames::*} to "COOLDOWN", "DURATION", "HASTE"
+				set {_values::*} to "%{_cd}% seconds" parsed as timespan, {_seconds}, {_haste}
+				set {_lore} to GetAbilityDescription(player, "Glaceon", "Icy Veins", {_valueNames::*}, {_values::*})
 				if cooldown "Icy Veins%player%" is finished:
 					set cooldown "Icy Veins%player%" to "%{_cd}% seconds" parsed as timespan
 					set the cooldown of player's held item for player to "%{_cd}% seconds" parsed as timespan
@@ -719,12 +773,10 @@ on rightclick:
 						set metadata value "IcyVeinsReapply" of player to true
 					else:
 						add {_haste} to {haste::%player%}
-					set {_czas} to 20 seconds
-					if string tag "Talents;Row 2" of (custom nbt of {karta::%player%}) = "Thermal Void":
-						add 10 seconds to {_czas}
+					set {_czas} to "%{_seconds}% seconds" parsed as timespan
 					set metadata value "Icy Veins" of player to true
 
-					if {frigiddmg::%player%} is set:
+					if getTrait(player, "Frigid Grasp") is set:
 						FrigidGrasp(player)
 						if metadata value "Fingers of Frost" of player < 2:
 							add 1 to metadata value "Fingers of Frost" of player
@@ -740,9 +792,9 @@ on rightclick:
 								send title " " with subtitle "                    " to player for 1 minute with fade in 0.25 second and fade out 0 second
 					play sound "skill.glaceon.icy_veins_cast" with volume 3 and pitch 1 at location of player
 					loop all blocks in radius 2.5 around the player:
-						draw 1 of dust using dustOption((rgb 106, 184, 230), 1) at loop-block
-						make 1 of block particle using blue ice at loop-block
-						make 1 of block particle using blue stained glass at loop-block
+						draw 1 of ((rgb 106, 184, 230) dust particle of size 1) at loop-block
+						draw 1 of blue ice block particle at loop-block
+						draw 1 of blue stained glass block particle at loop-block
 					play sound "skill.glaceon.icy_veins_active" with volume 3 and pitch 1 at location of player
 					if string tag "Talents;Row 4" of (custom nbt of {karta::%player%}) = "Icicle Storm":
 						set {_target} to metadata value "MostRecentlyDamagedEnemy" of player
@@ -791,14 +843,26 @@ on rightclick:
 							set {_iciclesCap} to 7
 						else:
 							set {_iciclesCap} to 5
+
+						set {_canCast} to false
 						if {icicles::%player%} = {_iciclesCap}:
+							set {_canCast} to true
+						if metadata value "GlacialSpikeFreeActive" of player is true:
+							set {_canCast} to true
+
+						if {_canCast} is true:
 							set {_target} to Target(player, 100, false)
 							if {_target} is set:
 								if metadata value "cast" of player is not set:
 									set {_crit} to 25 + ({criticalhit::%player%}/10)
 									set {_pospiech} to Haste(player)
-									set {_damage} to 5 + {damage::%player%}/14 + {versatility::%player%}/42 + {primarystat::%player%}/7
-									set {_casttime} to "%round((2.75/{_pospiech}), 1)% seconds" parsed as timespan
+									set {_baseCastTime} to AbilityUpgradeValue(player, "Glaceon", "Glacial Spike", "CASTTIME")
+									if HasStarforgedBonus(player, "Glaceon", "Tier I", "2Set") is true:
+										set {_baseCastTime} to {_baseCastTime} - 0.25
+									set {_casttime} to "%round(({_baseCastTime}/{_pospiech}), 1)% seconds" parsed as timespan
+									set {_baseDamage} to AbilityUpgradeValue(player, "Glaceon", "Glacial Spike", "BASEDAMAGE")
+									set {_damageScaling} to AbilityUpgradeValue(player, "Glaceon", "Glacial Spike", "DAMAGESCALING")
+									set {_damage} to {_baseDamage} + {damage::%player%}/14 + {versatility::%player%}/42 + {primarystat::%player%}/{_damageScaling}
 
 									if string tag "Talents;Row 5" of (custom nbt of {karta::%player%}) = "Chilled to the Core":
 										if metadata value "Icy Veins" of player is true:
@@ -815,7 +879,10 @@ on rightclick:
 											play sound "skill.glaceon.glacial_spike_precast" with volume 3 and pitch 1 to player
 											set metadata value "casting" of player to true
 											set metadata value "cast" of player to {_casttime}
-											GlacialSpikeForm(player, {_crit}, {_target})
+											set {_freeGS} to metadata value "GlacialSpikeFreeActive" of player
+											if {_freeGS} is true:
+												set {_freeGSBool} to true
+											GlacialSpikeForm(player, {_crit}, {_target}, {_freeGSBool})
 											set {_totaldmgicicles} to metadata value "IciclesTotalDmg" of player
 											clear metadata value "IciclesTotalDmg" of player
 											while metadata value "casting" of player = true:
@@ -855,27 +922,20 @@ on rightclick:
 										play sound "skill.glaceon.glacial_spike_cast" with volume 3 and pitch 1 at location of player
 										set {_glacialspike} to metadata value "GlacialSpike" of player
 										clear metadata value "GlacialSpike" of player
-										set {_l} to location of {_glacialspike}
-										set {_yaw} to yaw of player
-										set {_pitch} to pitch of player
-										set yaw of {_l} to {_yaw}
-										set pitch of {_l} to {_pitch}
-										set {_targetLoc} to location 0.5 below {_target}
-										loop round(distance between {_l} and {_targetLoc}) / 1 times:
-											set {_targetLoc} to location 0.5 below {_target}
-											set {_vec} to vector between {_l} and {_targetLoc}
-											set vector length of {_vec} to loop-value * 2
-											teleport {_glacialspike} to {_l} ~ {_vec}
-											set {_glacialspikeLoc} to location of {_glacialspike}
-											increase y-coordinate of {_glacialspikeLoc} by 2 
-											draw 1 of dust using dustOption((rgb 106, 184, 230), 1) at {_glacialspikeLoc}
-											wait 1 tick
-										kill {_glacialspike}
+										GlacialSpikeHurl(player, {_glacialspike}, {_target})
 
 										if boolean tag "Constellation;Subzero" of (custom nbt of {karta::%player%}) is set:
 											set {_critModifier} to 2.2
 										else:
 											set {_critModifier} to 2
+
+										if {_freeGSBool} is true:
+											set {_damage} to {_damage} * 1.25
+											clear metadata value "GlacialSpikeFreeActive" of player
+											set metadata value "GlacialSpikeFreeCounter" of player to 0
+											loop all items in player's inventory:
+												if boolean tag "Glacial Spike" of (custom nbt of loop-item) is set:
+													set item amount of loop-item to 1
 
 										add {_totaldmgicicles} to {_damage}
 										set {_damageBeforeCrit} to {_damage}
@@ -885,7 +945,7 @@ on rightclick:
 										set metadata value "LastDamageCause" of {_target} to "<##4bbfe2>Glacial Spike"
 										set metadata value "LastDamageCauseLore" of {_target} to {_lore}
 										set {_damage} to Crit(player, {_target}, {_crit}, {_damage}, {_critModifier})
-										make player damage {_target} by {_damage}*2
+										make player damage {_target} by {_damage}
 
 										play sound "skill.glaceon.glacial_spike_impact" with volume 3 and pitch 1 at location of player
 										play sound "skill.glaceon.glacial_spike_hit" with volume 3 and pitch 1 at location of player
@@ -905,7 +965,7 @@ on rightclick:
 													if {_damage} != {_damageBeforeCrit}:
 														CritVisual(loop-entity)
 														set metadata value "Crit%player%" of loop-entity to true
-													make player damage loop-entity by 0.2*({_damage}*2)
+													make player damage loop-entity by 0.2*({_damage})
 									else: 
 										cancel event
 										if {tekstcd::%player%} = true:
@@ -946,14 +1006,14 @@ function Frostbolt(p: player, target: entity, crit: number, damage: number, slow
 			set vector length of {_v} to loop-value * 0.9
 			if vector length of {_v} < 6:
 				#ZAMIENIĆ PARTICLE JAK BĘDZIE SKDRAGON
-				draw 1 of dust using dustOption((rgb 52, 119, 235), 1) at {_l} ~ {_v}
+				draw 1 of ((rgb 52, 119, 235) dust particle of size 1) at {_l} ~ {_v}
 				#drawDot count 1, particle "redstone", RGB 52, 119, 235, center {_l} ~ {_v}, rainbowMode false, visibleRange 32, pulseDelay 0, keepFor 5 ticks
 			if vector length of {_v} > 4:
 				#ZAMIENIĆ PARTICLE JAK BĘDZIE SKDRAGON
-				draw 1 of dust using dustOption((rgb 119, 164, 242), 1) at {_l} ~ {_v}
+				draw 1 of ((rgb 119, 164, 242) dust particle of size 1) at {_l} ~ {_v}
 				#drawDot count 1, particle "redstone", RGB 119, 164, 242, center {_l} ~ {_v}, rainbowMode false, visibleRange 32, pulseDelay 0, keepFor 5 ticks
-			make 1 of block particle using light blue stained glass at {_l} ~ {_v}
-			make 1 of block particle using ice at {_l} ~ {_v}
+			draw 1 of light blue stained glass block particle at {_l} ~ {_v}
+			draw 1 of ice block particle at {_l} ~ {_v}
 			wait 1 tick
 
 		if metadata value "WintersChill%{_p}%" of {_target} > 0:
@@ -977,9 +1037,10 @@ function Frostbolt(p: player, target: entity, crit: number, damage: number, slow
 		set metadata value "LastDamageCause" of {_target} to "<##4bbfe2>Frostbolt"
 		set metadata value "LastDamageCauseLore" of {_target} to {_lore}
 		set {_damage} to Crit({_p}, {_target}, {_crit}, {_damage}, {_critModifier})
-		make {_p} damage {_target} by {_damage}*2
+		make {_p} damage {_target} by {_damage}
 		if canBeCCed({_target}) = true:
-			apply slowness of tier 2.67 without particles to {_target} for {_slowtime}
+			apply an ambient potion effect of slowness of tier 2.67 to {_target} for {_slowtime}:
+				hide the particles
 
 		frostboltHitSound({_target})
 
@@ -990,82 +1051,87 @@ function Frostbolt(p: player, target: entity, crit: number, damage: number, slow
 		
 		clear {_damageBeforeCrit}
 
-function GlacialSpikeForm(p: player, crit: number, target: entity):
+function GlacialSpikeForm(p: player, crit: number, target: entity, free: boolean = false):
 	if {_p} is alive:
 		if metadata value "WintersChill%{_p}%" of {_target} > 0:
 			set {_crit} to {_crit} + 50
-		loop {icicles::%{_p}%} times:
-			set {_damageicicles} to (0.4 + {damage::%{_p}%}/75 + {damage::%{_p}%}/225 + {primarystat::%{_p}%}/37.5) * (1 + ({mastery::%{_p}%}/3.75/100))
-			if string tag "Talents;Row 5" of (custom nbt of {karta::%{_p}%}) = "Chilled to the Core":
-				if metadata value "Icy Veins" of {_p} is true:
-					set {_damageicicles} to {_damageicicles}*1.2
-			if string tag "Talents;Row 4" of (custom nbt of {karta::%{_p}%}) = "Splitting Ice":
-				set {_damageicicles} to {_damageicicles}*1.05
-			if string tag "Talents;Row 2" of (custom nbt of {karta::%{_p}%}) = "Ice Nine":
-				add 1 to {icicleCount::%{_p}%}
-			set {_rgb} to (rgb 106, 184, 230)
-			if boolean tag "BlackIce" of custom nbt of {icicle%loop-number%::%{_p}%} = true:
-				set {_damageicicles} to {_damageicicles}*1.7
+		set {_baseDamage} to AbilityUpgradeValue({_p}, "Glaceon", "Icicles", "BASEDAMAGE")
+		set {_damageScaling} to AbilityUpgradeValue({_p}, "Glaceon", "Icicles", "DAMAGESCALING")
+		set {_damageicicles} to ({_baseDamage} + ({damage::%{_p}%}/75) + ({versatility::%{_p}%}/225) + ({primarystat::%{_p}%}/{_damageScaling})) * (1 + ({mastery::%{_p}%}/3.75/100))
+		set {_rune} to getRunePower({_p}, "Glacial Wrath")
+		set {_damageicicles} to {_damageicicles} * (1 + ({_rune} * {icicles::%{_p}%})/100)
+		set {_flashFreezeDmg} to offensiveTrait({_p}, "Glaceon", "Flash Freeze")
+		set {_damageicicles} to {_damageicicles} + {_flashFreezeDmg}
 
-			if boolean tag "Constellation;Eternal Winter" of (custom nbt of {karta::%{_p}%}) is set:
+		if string tag "Talents;Row 5" of (custom nbt of {karta::%{_p}%}) = "Chilled to the Core":
+			if metadata value "Icy Veins" of {_p} is true:
 				set {_damageicicles} to {_damageicicles}*1.2
+		if string tag "Talents;Row 4" of (custom nbt of {karta::%{_p}%}) = "Splitting Ice":
+			set {_damageicicles} to {_damageicicles}*1.05
+		if string tag "Talents;Row 2" of (custom nbt of {karta::%{_p}%}) = "Ice Nine":
+			add 1 to {icicleCount::%{_p}%}
 
-			if metadata value "WintersChill%{_p}%" of {_target} > 0:
-				if boolean tag "Constellation;Subzero" of (custom nbt of {karta::%{_p}%}) is set:
-					set {_damageicicles} to {_damageicicles}*1.05
+		if boolean tag "Constellation;Eternal Winter" of (custom nbt of {karta::%{_p}%}) is set:
+			set {_damageicicles} to {_damageicicles}*1.2
 
-			if {icicleCount::%{_p}%} = 9:
-				set {_damageicicles} to {_damageicicles}*1.9
-				set {icicleCount::%{_p}%} to 0
+		if metadata value "WintersChill%{_p}%" of {_target} > 0:
+			if boolean tag "Constellation;Subzero" of (custom nbt of {karta::%{_p}%}) is set:
+				set {_damageicicles} to {_damageicicles}*1.05
 
-			chance of {_crit}%:
-				if boolean tag "Constellation;Subzero" of (custom nbt of {karta::%{_p}%}) is set:
-					set {_damageicicles} to {_damageicicles}*2.2
-				else:
-					set {_damageicicles} to {_damageicicles}*2
-				if boolean tag "Constellation;Icy Propulsion" of (custom nbt of {karta::%{_p}%}) is set:
-					if metadata value "Icy Veins" of {_p} is true:
-						remove 0.75 seconds from cooldown "Icy Veins%{_p}%"
-			if {_chanceicicles} is set:
-				chance of {_chanceicicles}%:
-					if metadata value "Fingers of Frost" of {_p} < 2:
-						add 1 to metadata value "Fingers of Frost" of {_p}
-					if metadata value "Fingers of Frost" of {_p} = 1:
-						if metadata value "BrainFreeze" of {_p} is true:
-							send title " " with subtitle "           " to {_p} for 1 minute with fade in 0.25 second and fade out 0 second
-						else:
-							send title " " with subtitle "                     " to {_p} for 1 minute with fade in 0.25 second and fade out 0 second
-					if metadata value "Fingers of Frost" of {_p} = 2:
-						if metadata value "BrainFreeze" of {_p} is true:
-							send title " " with subtitle "    " to {_p} for 1 minute with fade in 0.25 second and fade out 0 second
-						else:
-							send title " " with subtitle "                    " to {_p} for 1 minute with fade in 0.25 second and fade out 0 second
-			add {_damageicicles} to {_totaldmgicicles}
-			clear {_damageicicles}
-			set {_speed} to 0.15 / Haste({_p})
-			set {_wait} to "%0.1 / Haste({_p})% seconds" parsed as timespan
-			if string tag "Talents;Row 1" of (custom nbt of {karta::%{_p}%}) = "Ice Cycle":
-				chance of 8%:
-					set {_iceCycle} to true
-			if {_iceCycle} is not set:
+		if {icicleCount::%{_p}%} = 9:
+			set {_damageicicles} to {_damageicicles}*1.9
+			set {icicleCount::%{_p}%} to 0
+
+		chance of {_crit}%:
+			if boolean tag "Constellation;Subzero" of (custom nbt of {karta::%{_p}%}) is set:
+				set {_damageicicles} to {_damageicicles}*2.2
+			else:
+				set {_damageicicles} to {_damageicicles}*2
+				
+			if boolean tag "Constellation;Icy Propulsion" of (custom nbt of {karta::%{_p}%}) is set:
+				if metadata value "Icy Veins" of {_p} is true:
+					remove 0.75 seconds from cooldown "Icy Veins%{_p}%"
+
+		if getTrait({_p}, "Flash Freeze") is set:
+			chance of 5%:
+				if metadata value "Fingers of Frost" of {_p} < 2:
+					add 1 to metadata value "Fingers of Frost" of {_p}
+				if metadata value "Fingers of Frost" of {_p} = 1:
+					if metadata value "BrainFreeze" of {_p} is true:
+						send title " " with subtitle "           " to {_p} for 1 minute with fade in 0.25 second and fade out 0 second
+					else:
+						send title " " with subtitle "                     " to {_p} for 1 minute with fade in 0.25 second and fade out 0 second
+				if metadata value "Fingers of Frost" of {_p} = 2:
+					if metadata value "BrainFreeze" of {_p} is true:
+						send title " " with subtitle "    " to {_p} for 1 minute with fade in 0.25 second and fade out 0 second
+					else:
+						send title " " with subtitle "                    " to {_p} for 1 minute with fade in 0.25 second and fade out 0 second
+
+		set {_numIcicles} to {icicles::%{_p}%}
+		set {_totaldmgicicles} to {_damageicicles} * {_numIcicles}
+
+		if HasStarforgedBonus({_p}, "Glaceon", "Tier I", "2Set") is true:
+			set {_totaldmgicicles} to {_totaldmgicicles} * 1.4
+
+		if {_free} is not true:
+			loop {_numIcicles} times:
 				set {_icicleVisual} to {icicle%{icicles::%{_p}%}%::%{_p}%}
 				clear {icicle%{icicles::%{_p}%}%::%{_p}%}
 				set {icicles::%{_p}%} to {icicles::%{_p}%} - 1
 				GlacialSpikeFormAnimation({_p}, {_icicleVisual})
-			clear {_iceCycle}
-		#clear metadata value "Icicles" of {_p}
+
 		set metadata value "GlacialSpike" of {_p} to GlacialSpike({_p})
 		GlacialSpikeMove({_p}, metadata value "GlacialSpike" of {_p})
 
 		set metadata value "IciclesTotalDmg" of {_p} to {_totaldmgicicles}
-
 function GlacialSpikeFormAnimation(p: player, icicleVisual: entity):
 	set {_loc} to {_p}'s location
 	increase {_loc}'s y-coordinate by 0.2
 	set {_speed} to 0.15 / Haste({_p})
 	set {_wait} to "%0.1 / Haste({_p})% seconds" parsed as timespan
 	set {_l} to location of {_icicleVisual}
-	set yaw of {_l} to 90
+	set {_yaw} to yaw of {_p}
+	set {_pitch} to pitch of {_p}
 	set yaw of {_l} to {_yaw}
 	set pitch of {_l} to {_pitch}
 	loop round(distance between {_l} and {_loc}) / {_speed} times:
@@ -1103,10 +1169,23 @@ function HurlIcicle(p: player, target: entity, iciclesCap: integer):
 	loop {_extraamount} times:
 		stop loop if {_target} is not alive
 		set {icicles::%{_p}%} to {icicles::%{_p}%} - 1
-		set {_randomIcicle} to a random integer between 1 and {_iciclesCap}
-		set {_icicleVisual} to {icicle%{_randomIcicle}%::%{_p}%}
-		clear {icicle%{_randomIcicle}%::%{_p}%}
-		set {_damageicicles} to (0.4 + {damage::%{_p}%}/75 + {versatility::%{_p}%}/225 + {primarystat::%{_p}%}/37.5) * (1 + ({mastery::%{_p}%}/3.75/100))
+		set {_icicleVisual} to {icicle1::%{_p}%}
+		clear {icicle1::%{_p}%}
+		loop {_iciclesCap} times:
+			set {_next} to loop-number-2 + 1
+			set {icicle%loop-number-2%::%{_p}%} to {icicle%{_next}%::%{_p}%}
+
+		set {_icicleToClear} to {_iciclesCap} + 1
+		clear {icicle%{_icicleToClear}%::%{_p}%}
+
+		set {_baseDamage} to AbilityUpgradeValue({_p}, "Glaceon", "Icicles", "BASEDAMAGE")
+		set {_damageScaling} to AbilityUpgradeValue({_p}, "Glaceon", "Icicles", "DAMAGESCALING")
+		set {_damageicicles} to ({_baseDamage} + ({damage::%{_p}%}/75) + ({versatility::%{_p}%}/225) + ({primarystat::%{_p}%}/{_damageScaling})) * (1 + ({mastery::%{_p}%}/3.75/100))
+		set {_rune} to getRunePower({_p}, "Glacial Wrath")
+		set {_damageicicles} to {_damageicicles} * (1 + ({_rune} * {icicles::%{_p}%})/100)
+		set {_flashFreezeDmg} to offensiveTrait({_p}, "Glaceon", "Flash Freeze")
+		set {_damageicicles} to {_damageicicles} + {_flashFreezeDmg}
+
 		set {_crit} to 25 + ({criticalhit::%{_p}%}/10)
 		if boolean tag "Constellation;Subzero" of (custom nbt of {karta::%{_p}%}) is set:
 			set {_damageicicles} to {_damageicicles}*1.05
@@ -1135,7 +1214,7 @@ function HurlIcicle(p: player, target: entity, iciclesCap: integer):
 		if {_frozen} is true:
 			add 50 to {_crit}
 			if boolean tag "Constellation;Subzero" of (custom nbt of {karta::%{_p}%}) is set:
-				set {_damage} to {_damage}*1.05
+				set {_damageicicles} to {_damageicicles}*1.05
 
 		set {_locIce} to location of {_icicleVisual}
 		set {_yaw} to yaw of {_p}
@@ -1147,76 +1226,65 @@ function HurlIcicle(p: player, target: entity, iciclesCap: integer):
 		loop {_loop} times:
 			set {_targetLoc} to location 0.5 below {_target}
 			set {_vec} to vector between {_locIce} and {_targetLoc}
-			set vector length of {_vec} to loop-value-2 * 2
+			set vector length of {_vec} to loop-value-2 * 1
 			teleport {_icicleVisual} to {_locIce} ~ {_vec}
-			set {_icicleLoc} to location of {_icicleVisual}
-			increase y-coordinate of {_icicleLoc} by 2 
-			draw 1 of dust using dustOption({_rgb}, 1) at {_icicleLoc}
+			set {_icicleVisualLoc} to location of {_icicleVisual}
+			increase y-coordinate of {_icicleVisualLoc} by 2 
+			draw 1 of ({_rgb} dust particle of size 1) at {_icicleVisualLoc}
 			wait 1 tick
 		kill {_icicleVisual}
 
-		IcicleForm({_p}, {_randomIcicle})
-
-		if {icicleCount::%{_p}%} = 9:
-			set {_damageicicles} to {_damageicicles}*1.9
-			set {icicleCount::%{_p}%} to 0
-		
 		if boolean tag "Constellation;Subzero" of (custom nbt of {karta::%{_p}%}) is set:
 			set {_critModifier} to 2.2
 		else:
 			set {_critModifier} to 2
 
 		set {_damageBeforeCrit} to {_damageicicles}
-
 		set {_target}'s last damage cause to sweep attack
 		set metadata value "Element" of {_p} to "Ice"
 		set metadata value "LastDamageCause" of {_target} to "<##4bbfe2>Icicles"
 		set metadata value "LastDamageCauseLore" of {_target} to {_lore}
 		set {_damageicicles} to Crit({_p}, {_target}, {_crit}, {_damageicicles}, {_critModifier})
-		make {_p} damage {_target} by ({_damageicicles}*2)
+		make {_p} damage {_target} by ({_damageicicles})
 
 		if {_damageicicles} != {_damageBeforeCrit}:
 			if boolean tag "Constellation;Icy Propulsion" of (custom nbt of {karta::%{_p}%}) is set:
 				if metadata value "Icy Veins" of {_p} is true:
 					remove 0.75 seconds from cooldown "Icy Veins%{_p}%"
 
-		if string tag "Talents;Row 4" of (custom nbt of {karta::%{_p}%}) = "Splitting Ice":
-			loop all entities in radius 5 around {_target}:
-				if boolean tag "ECMob" of custom nbt of loop-entity is set:
-					set loop-entity's last damage cause to sweep attack
-					set metadata value "LastDamageCause" of loop-entity to "<##4bbfe2>Icicles"
-					set metadata value "LastDamageCauseLore" of loop-entity to {_lore}
-					set metadata value "Element" of {_p} to "Ice"
-					if {_damageicicles} != {_damageBeforeCrit}:
-						CritVisual(loop-entity)
-						set metadata value "Crit%{_p}%" of loop-entity to true
-					make {_p} damage loop-entity by 0.2*({_damageicicles}*2)
-
-		clear {_damageBeforeCrit}
-
-		chance of {_chanceicicles}%:
-			if metadata value "Fingers of Frost" of {_p} < 2:
-				add 1 to metadata value "Fingers of Frost" of {_p}
-			if metadata value "Fingers of Frost" of {_p} = 1:
-				if metadata value "BrainFreeze" of {_p} is true:
-					send title " " with subtitle "           " to {_p} for 1 minute with fade in 0.25 second and fade out 0 second
-				else:
-					send title " " with subtitle "                     " to {_p} for 1 minute with fade in 0.25 second and fade out 0 second
-			if metadata value "Fingers of Frost" of {_p} = 2:
-				if metadata value "BrainFreeze" of {_p} is true:
-					send title " " with subtitle "    " to {_p} for 1 minute with fade in 0.25 second and fade out 0 second
-				else:
-					send title " " with subtitle "                    " to {_p} for 1 minute with fade in 0.25 second and fade out 0 second
+		if getTrait({_p}, "Flash Freeze") is set:
+			chance of 5%:
+				if metadata value "Fingers of Frost" of {_p} < 2:
+					add 1 to metadata value "Fingers of Frost" of {_p}
+				if metadata value "Fingers of Frost" of {_p} = 1:
+					if metadata value "BrainFreeze" of {_p} is true:
+						send title " " with subtitle "           " to {_p} for 1 minute with fade in 0.25 second and fade out 0 second
+					else:
+						send title " " with subtitle "                     " to {_p} for 1 minute with fade in 0.25 second and fade out 0 second
+				if metadata value "Fingers of Frost" of {_p} = 2:
+					if metadata value "BrainFreeze" of {_p} is true:
+						send title " " with subtitle "    " to {_p} for 1 minute with fade in 0.25 second and fade out 0 second
+					else:
+						send title " " with subtitle "                    " to {_p} for 1 minute with fade in 0.25 second and fade out 0 second
 		clear {_damageicicles}
 		if {_extraamount} > 1:
 			wait 2 ticks
-
 function HurlIcicleIceLance(p: player, target: entity, frozen: boolean):
 	if {icicles::%{_p}%} > 0:
 		if metadata value "IcicleLaunch" of {_p} is not false:
 			set metadata value "IcicleLaunch" of {_p} to false
-			loop {icicles::%{_p}%} times:
-				set {_damageicicles} to (0.4 + {damage::%{_p}%}/75 + {versatility::%{_p}%}/225 + {primarystat::%{_p}%}/37.5) * (1 + ({mastery::%{_p}%}/3.75/100))
+			set {_totaldmgicicles} to 0
+			set {_current} to {icicles::%{_p}%}
+			loop {_current} times:
+				set {_idx} to loop-number
+				set {_baseDamage} to AbilityUpgradeValue({_p}, "Glaceon", "Icicles", "BASEDAMAGE")
+				set {_damageScaling} to AbilityUpgradeValue({_p}, "Glaceon", "Icicles", "DAMAGESCALING")
+				set {_damageicicles} to ({_baseDamage} + ({damage::%{_p}%}/75) + ({versatility::%{_p}%}/225) + ({primarystat::%{_p}%}/{_damageScaling})) * (1 + ({mastery::%{_p}%}/3.75/100))
+				set {_rune} to getRunePower({_p}, "Glacial Wrath")
+				set {_damageicicles} to {_damageicicles} * (1 + ({_rune} * {icicles::%{_p}%})/100)
+				set {_flashFreezeDmg} to offensiveTrait({_p}, "Glaceon", "Flash Freeze")
+				set {_damageicicles} to {_damageicicles} + {_flashFreezeDmg}
+
 				if {_frozen} is true:
 					if boolean tag "Constellation;Subzero" of (custom nbt of {karta::%{_p}%}) is set:
 						set {_damageicicles} to {_damageicicles}*1.05
@@ -1228,10 +1296,10 @@ function HurlIcicleIceLance(p: player, target: entity, frozen: boolean):
 				if string tag "Talents;Row 2" of (custom nbt of {karta::%{_p}%}) = "Ice Nine":
 					add 1 to {icicleCount::%{_p}%}
 				set {_rgb} to (rgb 106, 184, 230)
-				if boolean tag "BlackIce" of custom nbt of {icicle%loop-number%::%{_p}%} = true:
+				if boolean tag "BlackIce" of custom nbt of {icicle%{_idx}%::%{_p}%} = true:
 					set {_damageicicles} to {_damageicicles}*1.7
 					set {_rgb} to (rgb 28, 28, 28)
-				set {_rgb::%loop-number%} to {_rgb}
+				set {_rgb::%{_idx}%} to {_rgb}
 				if {_rgb} = (rgb 28, 28, 28):
 					play sound "skill.glaceon.icelance_hurl" with volume 3 and pitch 0.7 at location of {_p}
 				else:
@@ -1252,26 +1320,27 @@ function HurlIcicleIceLance(p: player, target: entity, frozen: boolean):
 				set metadata value "LastDamageCause" of {_target} to "<##4bbfe2>Icicles"
 				set metadata value "LastDamageCauseLore" of {_target} to {_lore}
 				set {_damageicicles} to Crit({_p}, {_target}, {_crit}, {_damageicicles}, {_critModifier})
-				make {_p} damage {_target} by ({_damageicicles}*2)
+				make {_p} damage {_target} by ({_damageicicles})
 
 				if {_damageicicles} != {_damageBeforeCrit}:
 					if boolean tag "Constellation;Icy Propulsion" of (custom nbt of {karta::%{_p}%}) is set:
 						if metadata value "Icy Veins" of {_p} is true:
 							remove 0.75 seconds from cooldown "Icy Veins%{_p}%"
 
-				chance of {_chanceicicles}%:
-					if metadata value "Fingers of Frost" of {_p} < 2:
-						add 1 to metadata value "Fingers of Frost" of {_p}
-					if metadata value "Fingers of Frost" of {_p} = 1:
-						if metadata value "BrainFreeze" of {_p} is true:
-							send title " " with subtitle "           " to {_p} for 1 minute with fade in 0.25 second and fade out 0 second
-						else:
-							send title " " with subtitle "                     " to {_p} for 1 minute with fade in 0.25 second and fade out 0 second
-					if metadata value "Fingers of Frost" of {_p} = 2:
-						if metadata value "BrainFreeze" of {_p} is true:
-							send title " " with subtitle "    " to {_p} for 1 minute with fade in 0.25 second and fade out 0 second
-						else:
-							send title " " with subtitle "                    " to {_p} for 1 minute with fade in 0.25 second and fade out 0 second
+				if getTrait({_p}, "Flash Freeze") is set:
+					chance of 5%:
+						if metadata value "Fingers of Frost" of {_p} < 2:
+							add 1 to metadata value "Fingers of Frost" of {_p}
+						if metadata value "Fingers of Frost" of {_p} = 1:
+							if metadata value "BrainFreeze" of {_p} is true:
+								send title " " with subtitle "           " to {_p} for 1 minute with fade in 0.25 second and fade out 0 second
+							else:
+								send title " " with subtitle "                     " to {_p} for 1 minute with fade in 0.25 second and fade out 0 second
+						if metadata value "Fingers of Frost" of {_p} = 2:
+							if metadata value "BrainFreeze" of {_p} is true:
+								send title " " with subtitle "    " to {_p} for 1 minute with fade in 0.25 second and fade out 0 second
+							else:
+								send title " " with subtitle "                    " to {_p} for 1 minute with fade in 0.25 second and fade out 0 second
 
 				add {_damageicicles} to {_totaldmgicicles}
 				if string tag "Talents;Row 4" of (custom nbt of {karta::%{_p}%}) = "Splitting Ice":
@@ -1284,44 +1353,50 @@ function HurlIcicleIceLance(p: player, target: entity, frozen: boolean):
 							if {_damageicicles} != {_damageBeforeCrit}:
 								CritVisual(loop-entity)
 								set metadata value "Crit%{_p}%" of loop-entity to true
-							make {_p} damage loop-entity by 0.2*({_damageicicles}*2)
-							add {_damageicicles}*0.2 to {_totaldamageiciclesSplittingIce}
+							make {_p} damage loop-entity by 0.2*({_damageicicles})
 				clear {_damageicicles}
 				clear {_damageBeforeCrit}
 				wait 2 ticks
 
 		clear metadata value "IcicleLaunch" of {_p}
-		loop {icicles::%{_p}%} times:
+		set {_kept} to 0
+		loop {_current} times:
+			set {_idx} to {_current} - loop-value + 1
+			set {_iceCycle} to false
 			if string tag "Talents;Row 1" of (custom nbt of {karta::%{_p}%}) = "Ice Cycle":
 				chance of 5%:
 					set {_iceCycle} to true
-			if {_iceCycle} is not set:
-				set {_icicleVisual} to {icicle%{icicles::%{_p}%}%::%{_p}%}
-				clear {icicle%{icicles::%{_p}%}%::%{_p}%}
-				set {icicles::%{_p}%} to {icicles::%{_p}%} - 1
-				#kill {_icicleVisual}
-				IcicleHurl({_p}, {_icicleVisual}, {_target}, {_rgb::%loop-number%})
-			clear {_iceCycle}
+			if {_iceCycle} is false:
+				set {_icicleVisual} to {icicle%{_idx}%::%{_p}%}
+				clear {icicle%{_idx}%::%{_p}%}
+				IcicleHurl({_p}, {_icicleVisual}, {_target}, {_rgb::%{_idx}%})
+			else:
+				set {_kept} to {_kept} + 1
+				set {_keptIcicles::%{_kept}%} to {icicle%{_idx}%::%{_p}%}
+				clear {icicle%{_idx}%::%{_p}%}
+
+		set {icicles::%{_p}%} to {_kept}
+		loop {_kept} times:
+			set {icicle%loop-value%::%{_p}%} to {_keptIcicles::%loop-value%}
+
 		send action bar " Icicles: %{icicles::%{_p}%}%" to {_p}
 	wait 1 tick
 	if boolean tag "Constellation;Hailstones" of (custom nbt of {karta::%{_p}%}) is set:
 		if {_frozen} is true:
 			add 1 to {icicles::%{_p}%}
-			if {icicles::%{_p}%} > {_iciclesCap}:
-
-				HurlIcicle({_p}, {_target}, {_iciclesCap})
-
-			else:
-				IcicleForm({_p}, {icicles::%{_p}%})
-			send action bar " Icicles: %{icicles::%{_p}%}%" to {_p}	
-
+			TrackIcicleGeneration({_p}, {_target})
+			send action bar " Icicles: %{icicles::%{_p}%}%" to {_p}
 function IcicleStorm(p: player, target: entity):
-	set {_damageicicles} to 0.5*(0.4 + {damage::%{_p}%}/75 + {damage::%{_p}%}/225 + {primarystat::%{_p}%}/37.5) * (1 + ({mastery::%{_p}%}/3.75/100))
+	set {_baseDamage} to AbilityUpgradeValue({_p}, "Glaceon", "Icicles", "BASEDAMAGE")
+	set {_damageScaling} to AbilityUpgradeValue({_p}, "Glaceon", "Icicles", "DAMAGESCALING")
+	set {_damageicicles} to 0.5 * ({_baseDamage} + ({damage::%{_p}%}/75) + ({versatility::%{_p}%}/225) + ({primarystat::%{_p}%}/{_damageScaling})) * (1 + ({mastery::%{_p}%}/3.75/100))
 	set {_loops} to 20
 
 	loop {_loops} times:
 		set {_crit} to 25 + ({criticalhit::%{_p}%}/10)
-		set {_damageicicles} to 0.5*(0.4 + {damage::%{_p}%}/75 + {damage::%{_p}%}/225 + {primarystat::%{_p}%}/37.5) * (1 + ({mastery::%{_p}%}/3.75/100))
+		set {_baseDamage} to AbilityUpgradeValue({_p}, "Glaceon", "Icicles", "BASEDAMAGE")
+		set {_damageScaling} to AbilityUpgradeValue({_p}, "Glaceon", "Icicles", "DAMAGESCALING")
+		set {_damageicicles} to 0.5 * ({_baseDamage} + ({damage::%{_p}%}/75) + ({versatility::%{_p}%}/225) + ({primarystat::%{_p}%}/{_damageScaling})) * (1 + ({mastery::%{_p}%}/3.75/100))
 		set {_randomIcicle} to a random integer between 1 and {_iciclesCap}
 		set {_rgb} to (rgb 106, 184, 230)
 		if string tag "Talents;Row 3" of (custom nbt of {karta::%{_p}%}) = "Black Ice":
@@ -1368,7 +1443,7 @@ function IcicleStorm(p: player, target: entity):
 		set metadata value "LastDamageCause" of {_target} to "<##4bbfe2>Icicles"
 		set metadata value "LastDamageCauseLore" of {_target} to {_lore}
 		set {_damageicicles} to Crit({_p}, {_target}, {_crit}, {_damageicicles}, {_critModifier})
-		make {_p} damage {_target} by ({_damageicicles}*2)
+		make {_p} damage {_target} by ({_damageicicles})
 
 		if {_damageicicles} != {_damageBeforeCrit}:
 			if boolean tag "Constellation;Icy Propulsion" of (custom nbt of {karta::%{_p}%}) is set:
@@ -1448,3 +1523,48 @@ on world change:
 		if {_icicle} is set:
 			teleport {_icicle} to player
 		clear {_icicle}
+
+function GlacialAssaultComet(p: player, target: entity, damage: number):
+	set {_skyLoc} to location 8 above {_target}
+	set {_targetLoc} to location 0.5 below {_target}
+	play sound "block.glass.break" with volume 2 and pitch 0.5 at {_target}
+	loop 8 times:
+		set {_vec} to vector between {_skyLoc} and {_targetLoc}
+		set vector length of {_vec} to loop-value * 1.0
+		draw 15 of (((snowball item particle) with an extra value of 0.05) with offset vector(0.2, 0.2, 0.2)) at ({_skyLoc} ~ {_vec})
+		draw 15 of (((ice block particle) with an extra value of 0.03) with offset vector(0.15, 0.15, 0.15)) at ({_skyLoc} ~ {_vec})
+		wait 1 tick
+	play sound "entity.elder_guardian.death" with volume 3 and pitch 1.8 at {_target}
+	draw 40 of (((snowflake particle) with an extra value of 0.08) with offset vector(0.6, 0.6, 0.6)) at ({_target})
+	loop LoopEntitiesAroundTarget({_target}, 6, true):
+		if boolean tag "ECMob" of (custom nbt of loop-entity) is set:
+			set loop-entity's last damage cause to sweep attack
+			set metadata value "Element" of {_p} to "Ice"
+			set metadata value "LastDamageCause" of loop-entity to "<##4bbfe2>Glacial Assault"
+			set metadata value "LastDamageCauseLore" of loop-entity to "A freezing comet crashed from the sky."
+			make {_p} damage loop-entity by {_damage}
+
+function TrackIcicleGeneration(p: player, target: entity):
+	if HasStarforgedBonus({_p}, "Glaceon", "Tier I", "4Set") is true:
+		set {_gsCounter} to metadata value "GlacialSpikeFreeCounter" of {_p}
+		if {_gsCounter} is not set:
+			set {_gsCounter} to 0
+		set {_gsCounter} to {_gsCounter} + 1
+		set metadata value "GlacialSpikeFreeCounter" of {_p} to {_gsCounter}
+		if {_gsCounter} = 50:
+			set metadata value "GlacialSpikeFreeActive" of {_p} to true
+			play sound "entity.player.levelup" with volume 3 and pitch 1.8 to {_p}
+			loop all items in {_p}'s inventory:
+				if boolean tag "Glacial Spike" of (custom nbt of loop-item) is set:
+					set item amount of loop-item to 2
+
+	if boolean tag "Constellation;Eternal Winter" of (custom nbt of {karta::%{_p}%}) is set:
+		set {_iciclesCap} to 7
+	else:
+		set {_iciclesCap} to 5
+	if {icicles::%{_p}%} > {_iciclesCap}:
+		HurlIcicle({_p}, {_target}, {_iciclesCap})
+	else:
+		IcicleForm({_p}, {icicles::%{_p}%})
+
+
