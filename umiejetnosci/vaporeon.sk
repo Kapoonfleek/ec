@@ -132,7 +132,11 @@ on rightclick:
 							set {_id} to cardId(player)
 							set {_crit} to CriticalHit(player)
 							set {_pospiech} to Haste(player)
-							set {_cd} to "%8/{_pospiech}% seconds" parsed as timespan
+							set {_rune} to getRunePower(player, "Murmuring Springs")
+							set {_cdSeconds} to (8 / {_pospiech}) - {_rune}
+							if {_cdSeconds} < 0.5:
+								set {_cdSeconds} to 0.5
+							set {_cd} to "%{_cdSeconds}% seconds" parsed as timespan
 
 							set {_versatility} to Versatility(player)
 							set {_heal} to 1.5 + ({utility::%player%}/80) + ({_versatility}/240) + ({primarystat::%player%}/40)
@@ -309,6 +313,8 @@ on rightclick:
 						if cooldown "Undertow%player%" is finished:
 							set {_haste} to Haste(player)
 							set {_baseCastTime} to 1.5
+							if HasStarforgedBonus(player, "Vaporeon", "Tier I", "2Set") is true:
+								set {_baseCastTime} to {_baseCastTime} - 0.3
 							set {_baseCd} to 3
 							set {_casttime} to "%round(({_baseCastTime}/{_haste}), 1)% seconds" parsed as timespan
 							set {_casttimeLore} to "%round(({_baseCastTime}/{_haste}), 1)% sec"
@@ -330,7 +336,7 @@ on rightclick:
 										set {_message} to "Casting... %{_cst}%"
 										send action bar {_message} to player
 										wait 0.1 seconds
-										remove 0.1 seconds from {_casttime}
+										set {_casttime} to {_casttime} - 0.1 seconds
 									else:
 										clear metadata value "casting" of player
 										send action bar "" to player
@@ -357,6 +363,10 @@ on rightclick:
 							
 							set {_crit} to CriticalHit(player)
 							set {_damage} to 1 + ({damage::%player%}/65) + (Versatility(player)/195) + {primarystat::%player%}/32.5
+							if HasStarforgedBonus(player, "Vaporeon", "Tier I", "2Set") is true:
+								set {_damage} to {_damage} * 1.2
+							set {_rune} to getRunePower(player, "Abyssal Pull")
+							set {_damage} to {_damage} * (1 + {_rune}/100)
 							set {_damage} to Crit(player, {_target}, {_crit}, {_damage})
 							set {_lore} to "&8Basic Ability%nl%&f%{_casttimeLore}% cast%nl%&7Cooldown:  &f%{_cdLore}%%nl%&7Use: &fRMB%nl%<#7cafbf>Deal &f%{_damage}% <#1ebbd7>Water <#7cafbf>damage to the target."
 
@@ -370,6 +380,18 @@ on rightclick:
 							set particle of {_shape} to rain particle
 							draw shape {_shape} at {_target}
 
+							if HasStarforgedBonus(player, "Vaporeon", "Tier I", "4Set") is true:
+								chance of 25%:
+									play sound "entity.player.splash" with volume 3 and pitch 0.8 at location of {_target}
+									draw 30 of (((fishing particle) with an extra value of 0.08) with offset vector(0.4, 0.4, 0.4)) at ({_target})
+									set {_splashDamage} to {_damage} * 0.6
+									loop LoopEntitiesAroundTarget({_target}, 6, false):
+										set loop-entity's last damage cause to sweep attack
+										set metadata value "LastDamageCause" of loop-entity to "<#7cafbf>Undertow"
+										set metadata value "LastDamageCauseLore" of loop-entity to {_lore}
+										set metadata value "Element" of player to "Water"
+										make player damage loop-entity by {_splashDamage}
+
 					else:
 						if {tekstcd::%player%} = true:
 							set {_cdd} to cooldown "Global Cooldown Interrupted Cast%player%"
@@ -382,7 +404,11 @@ on rightclick:
 				set {_id} to cardId(player)
 				set {_crit} to CriticalHit(player)
 				set {_pospiech} to Haste(player)
-				set {_cd} to "%300/{_pospiech}% seconds" parsed as timespan
+				set {_rune} to getRunePower(player, "Ebbing Tide")
+				set {_cdSeconds} to (300 / {_pospiech}) - {_rune}
+				if {_cdSeconds} < 10:
+					set {_cdSeconds} to 10
+				set {_cd} to "%{_cdSeconds}% seconds" parsed as timespan
 				set {_lore} to "&8Ultimate Ability%nl%&fInstant cast%nl%&7Cooldown: &8 &f%{_cd}%%nl%&7Use: &fRMB%nl%<#7cafbf>Reverses all <#ffef45> Shields <#7cafbf>to <#ae78d0> Healing <#7cafbf>in a huge%nl%<#7cafbf>radius around the player. &f <#8bbdf0>Reversal <#7cafbf>dispels all%nl%&fCurse<#7cafbf>, &fDisease<#7cafbf>, &fMagic <#7cafbf>and &fPoison <#7cafbf>debuffs from%nl%<#7cafbf>affected allies."
 				LoreUpdate(player, "Reversal", {_lore})
 				if cooldown "Reversal%player%" is finished:
@@ -483,6 +509,8 @@ function ExplosiveBubble(p: player, target: entity, turnOfTheTide: boolean = fal
 
 	set {_versatility} to Versatility({_p})
 	set {_shield} to 6 + ({utility::%{_p}%}/52) + ({_versatility}/156) + PrimaryStat({_p})/26
+	set {_rune} to getRunePower({_p}, "Pearlescent Shell")
+	set {_shield} to {_shield} * (1 + {_rune}/100)
 	set {_damage} to 1 + ({damage::%{_p}%}/60) + ({_versatility}/180) + PrimaryStat({_p})/30
 	
 	if {_target} is set:
@@ -648,6 +676,8 @@ function CircleOfWaterApply(p: player, x: entity, ability: string):
 function CircleOfWaterDetonate(p: player, x: entity, effectiveness: number = 1):
 	set {_versatility} to Versatility({_p})
 	set {_healcircle} to 0.8 + ({utility::%{_p}%}/100) + ({_versatility}/300) + (PrimaryStat({_p})/50)
+	set {_rune} to getRunePower({_p}, "Soothing Ripple")
+	set {_healcircle} to {_healcircle} * (1 + {_rune}/100)
 
 	set {_crit} to CriticalHit({_p})
 
