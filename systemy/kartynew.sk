@@ -445,7 +445,7 @@ on inventory click:
 						if string tag "Talents;Row 1" of {_customnbt} = "Clarity of Thought":
 							add 5 to {_brainFreezeChance}
 
-						set {_glacialSpikeCast} to "%2.75/{_haste}% seconds"
+						set {_glacialSpikeCast} to "%round(2.75/{_pospiech}, 1)% sec"
 						set {_damageGlacialSpike} to 5 + {damage::%player%}/14 + Versatility(player)/42 + {primarystat::%player%}/7
 
 						if boolean tag "Constellation;Eternal Winter" of {_customnbt} is set:
@@ -472,7 +472,8 @@ on inventory click:
 						set slot 28 of {_gui} to {_item}
 						
 						if string tag "Talents;Row 5" of {_customnbt} = "Glacial Spike":
-							set slot 29 of {_gui} to prismarine crystals named "<#4bbfe2>Glacial Spike" with lore "&8Ultimate Ability%nl%&f%{_glacialSpikeCast}% cast%nl%&7Cooldown: &8 &fnone%nl%&7Use: &fRMB%nl%<#4bbfe2>Conjures a massive spike of ice, and merges%nl%<#4bbfe2>your current &f <#7fd6f0>Icicles <#4bbfe2>into it. It impales your%nl%<#4bbfe2>target, dealing &f%{_damageGlacialSpike}% <#add8e6>Ice <#4bbfe2>damage plus all of the%nl%<#4bbfe2>damage stored in your &f <#7fd6f0>Icicles.<#4bbfe2>%nl% %nl%<#4bbfe2>Requires &f5  <#7fd6f0>Icicles to cast.%nl% %nl%&f <#7fd6f0>Ice Lance <#4bbfe2>no longer launches &f <#7fd6f0>Icicles<#4bbfe2>." with nbt from "{""minecraft:custom_model_data"":{floats:[1.0f]}}"
+							set {_item} to prismarine crystals named "<#4bbfe2>Glacial Spike" with lore GlaceonAbilityPreviewLore(player, "Glacial Spike") with nbt from "{""minecraft:custom_model_data"":{floats:[1.0f]}}"
+							set slot 29 of {_gui} to {_item}
 					
 					else if uncolored (name of player's tool) = "Buckshot":
 						set slot 1 of {_gui} to arrow named "<#866da4>Mastery: Portal Mastery" with lore BuckshotAbilityPreviewLore(player, "Portal Mastery") with nbt from "{""minecraft:custom_model_data"":{floats:[3.0f]}}"
@@ -1906,9 +1907,30 @@ function DelphoxAbilityUpgradePreviewLore(p: player, ability: text, level: integ
 		set {_description} to AbilityUpgradeDescription({_p}, "Delphox", "Flame Barrier", {_valueNames::*}, {_values::*})
 		return "%{_levelLine}%%nl%%{_description}%"
 
+function GlaceonAbilityPreviewLore(p: player, ability: text) :: text:
+	set {_customnbt} to custom nbt of {karta::%{_p}%}
+	set {_hasteTt} to Haste({_p})
+	set {_pospiech} to Haste({_p})
+
+	if {_ability} = "Glacial Spike":
+		set {_baseCastTime} to 2.75
+		if HasStarforgedBonus({_p}, "Glaceon", "Tier I", "2Set") is true:
+			set {_baseCastTime} to {_baseCastTime} - 0.25
+		set {_castTime} to "%round({_baseCastTime}/{_hasteTt}, 1)% sec"
+		set {_damage} to 5.0 + ({damage::%{_p}%}/14) + (Versatility({_p})/42) + ({primarystat::%{_p}%}/7.0)
+		if boolean tag "Constellation;Eternal Winter" of {_customnbt} is set:
+			set {_icicleCap} to 7
+		else:
+			set {_icicleCap} to 5
+		set {_valueNames::*} to "CASTTIME", "DAMAGE", "ICICLECAP"
+		set {_values::*} to {_castTime}, {_damage}, {_icicleCap}
+		set {_description} to AbilityUpgradeDescription({_p}, "Glaceon", "Glacial Spike", {_valueNames::*}, {_values::*})
+		return {_description}
+
 function GlaceonAbilityUpgradePreviewLore(p: player, ability: text, level: integer, colour: text, compareLevel: integer = -1) :: text:
 	set {_customnbt} to custom nbt of {karta::%{_p}%}
 	set {_hasteTt} to Haste({_p})
+	set {_pospiech} to Haste({_p})
 	set {_levelLine} to "&9Level %{_level}%"
 
 	if {_ability} = "Shatter":
@@ -1945,10 +1967,15 @@ function GlaceonAbilityUpgradePreviewLore(p: player, ability: text, level: integ
 
 	else if {_ability} = "Frostbolt":
 		set {_baseDamage} to AbilityUpgradeValue({_p}, "Glaceon", "Frostbolt", "BASEDAMAGE", {_level})
+		if {_baseDamage} <= 0: set {_baseDamage} to 2.0
 		set {_scaling} to AbilityUpgradeValue({_p}, "Glaceon", "Frostbolt", "DAMAGESCALING", {_level})
+		if {_scaling} <= 0: set {_scaling} to 20.0
 		set {_damage} to {_baseDamage} + ({damage::%{_p}%}/40) + (Versatility({_p})/120) + ({primarystat::%{_p}%}/{_scaling})
-		set {_castTime} to "%round(3/{_hasteTt}, 1)% sec"
+		set {_baseCastTime} to AbilityUpgradeValue({_p}, "Glaceon", "Frostbolt", "CASTTIME", {_level})
+		if {_baseCastTime} <= 0: set {_baseCastTime} to 2.0
+		set {_castTime} to "%round(({_baseCastTime}/{_hasteTt}), 1)% sec"
 		set {_slowtime} to AbilityUpgradeValue({_p}, "Glaceon", "Frostbolt", "SLOWTIME", {_level})
+		if {_slowtime} <= 0: set {_slowtime} to 2.0
 		set {_slowtimeText} to "%{_slowtime} + ({crowdcontrol::%{_p}%}/100)% sec"
 		set {_chance} to 15 + getRunePower({_p}, "Piercing Cold")
 		set {_brainFreezeChance} to 30
@@ -1956,15 +1983,21 @@ function GlaceonAbilityUpgradePreviewLore(p: player, ability: text, level: integ
 			set {_brainFreezeChance} to {_brainFreezeChance} + 5
 		set {_oldDamage} to {_damage}
 		set {_oldSlowtime} to {_slowtimeText}
-		set {_oldScaling} to {_scaling}
+		set {_oldCastTimeText} to {_castTime}
 		if {_compareLevel} >= 0:
 			set {_oldBaseDamage} to AbilityUpgradeValue({_p}, "Glaceon", "Frostbolt", "BASEDAMAGE", {_compareLevel})
+			if {_oldBaseDamage} <= 0: set {_oldBaseDamage} to 2.0
 			set {_oldScaling} to AbilityUpgradeValue({_p}, "Glaceon", "Frostbolt", "DAMAGESCALING", {_compareLevel})
+			if {_oldScaling} <= 0: set {_oldScaling} to 20.0
 			set {_oldDamage} to {_oldBaseDamage} + ({damage::%{_p}%}/40) + (Versatility({_p})/120) + ({primarystat::%{_p}%}/{_oldScaling})
 			set {_oldSlowtimeNum} to AbilityUpgradeValue({_p}, "Glaceon", "Frostbolt", "SLOWTIME", {_compareLevel})
+			if {_oldSlowtimeNum} <= 0: set {_oldSlowtimeNum} to 2.0
 			set {_oldSlowtime} to "%{_oldSlowtimeNum} + ({crowdcontrol::%{_p}%}/100)% sec"
+			set {_oldBaseCastTime} to AbilityUpgradeValue({_p}, "Glaceon", "Frostbolt", "CASTTIME", {_compareLevel})
+			if {_oldBaseCastTime} <= 0: set {_oldBaseCastTime} to 2.0
+			set {_oldCastTimeText} to "%round(({_oldBaseCastTime}/{_hasteTt}), 1)% sec"
 		set {_valueNames::*} to "CASTTIME", "DAMAGE", "SLOWTIME", "CHANCE", "BRAINFREEZECHANCE"
-		set {_values::*} to {_castTime}, AbilityUpgradePreviewValue({_damage}, {_colour}, {_oldDamage}), AbilityUpgradePreviewValue({_slowtimeText}, {_colour}, {_oldSlowtime}), {_chance}, {_brainFreezeChance}
+		set {_values::*} to AbilityUpgradePreviewValue({_castTime}, {_colour}, {_oldCastTimeText}), AbilityUpgradePreviewValue({_damage}, {_colour}, {_oldDamage}), AbilityUpgradePreviewValue({_slowtimeText}, {_colour}, {_oldSlowtime}), {_chance}, {_brainFreezeChance}
 		set {_description} to AbilityUpgradeDescription({_p}, "Glaceon", "Frostbolt", {_valueNames::*}, {_values::*})
 		return "%{_levelLine}%%nl%%{_description}%"
 
@@ -1974,33 +2007,40 @@ function GlaceonAbilityUpgradePreviewLore(p: player, ability: text, level: integ
 		set {_baseDamage} to AbilityUpgradeValue({_p}, "Glaceon", "Ice Lance", "BASEDAMAGE", {_level})
 		set {_scaling} to AbilityUpgradeValue({_p}, "Glaceon", "Ice Lance", "DAMAGESCALING", {_level})
 		set {_damage} to {_baseDamage} + ({damage::%{_p}%}/34) + (Versatility({_p})/102) + ({primarystat::%{_p}%}/{_scaling})
+		set {_freezeBonus} to AbilityUpgradeValue({_p}, "Glaceon", "Ice Lance", "FREEZEBONUS", {_level})
 		set {_oldCooldown} to {_cooldown}
 		set {_oldDamage} to {_damage}
+		set {_oldFreezeBonus} to {_freezeBonus}
 		if {_compareLevel} >= 0:
 			set {_oldDamage} to AbilityUpgradeValue({_p}, "Glaceon", "Ice Lance", "BASEDAMAGE", {_compareLevel}) + ({damage::%{_p}%}/34) + (Versatility({_p})/102) + ({primarystat::%{_p}%}/{_scaling})
-		set {_valueNames::*} to "COOLDOWN", "DAMAGE"
-		set {_values::*} to AbilityUpgradePreviewValue({_cooldown}, {_colour}, {_oldCooldown}), AbilityUpgradePreviewValue({_damage}, {_colour}, {_oldDamage})
+			set {_oldFreezeBonus} to AbilityUpgradeValue({_p}, "Glaceon", "Ice Lance", "FREEZEBONUS", {_compareLevel})
+		set {_valueNames::*} to "COOLDOWN", "DAMAGE", "FREEZEBONUS"
+		set {_values::*} to AbilityUpgradePreviewValue({_cooldown}, {_colour}, {_oldCooldown}), AbilityUpgradePreviewValue({_damage}, {_colour}, {_oldDamage}), AbilityUpgradePreviewValue({_freezeBonus}, {_colour}, {_oldFreezeBonus})
 		set {_description} to AbilityUpgradeDescription({_p}, "Glaceon", "Ice Lance", {_valueNames::*}, {_values::*})
 		return "%{_levelLine}%%nl%%{_description}%"
 
 	else if {_ability} = "Flurry":
-		set {_baseCd} to AbilityUpgradeValue({_p}, "Glaceon", "Flurry", "COOLDOWN", {_level})
-		set {_cooldown} to "%{_baseCd}% seconds" parsed as timespan
 		set {_baseDamage} to AbilityUpgradeValue({_p}, "Glaceon", "Flurry", "BASEDAMAGE", {_level})
 		set {_scaling} to AbilityUpgradeValue({_p}, "Glaceon", "Flurry", "DAMAGESCALING", {_level})
 		set {_damage} to {_baseDamage} + ({damage::%{_p}%}/36) + (Versatility({_p})/108) + ({primarystat::%{_p}%}/{_scaling})
 		set {_castTime} to "%round(3/{_hasteTt}, 1)% sec"
 		set {_slowtime} to "%2 + ({crowdcontrol::%{_p}%}/100)% sec"
-		set {_oldCooldown} to {_cooldown}
+		set {_bfBonus} to AbilityUpgradeValue({_p}, "Glaceon", "Flurry", "BRAINFREEZEBONUS", {_level})
+		set {_slow} to AbilityUpgradeValue({_p}, "Glaceon", "Flurry", "SLOW", {_level})
+		set {_hits} to AbilityUpgradeValue({_p}, "Glaceon", "Flurry", "HITS", {_level})
 		set {_oldDamage} to {_damage}
+		set {_oldBfBonus} to {_bfBonus}
+		set {_oldSlow} to {_slow}
+		set {_oldHits} to {_hits}
 		if {_compareLevel} >= 0:
-			set {_oldBaseCd} to AbilityUpgradeValue({_p}, "Glaceon", "Flurry", "COOLDOWN", {_compareLevel})
-			set {_oldCooldown} to "%{_oldBaseCd}% seconds" parsed as timespan
 			set {_oldBaseDamage} to AbilityUpgradeValue({_p}, "Glaceon", "Flurry", "BASEDAMAGE", {_compareLevel})
 			set {_oldScaling} to AbilityUpgradeValue({_p}, "Glaceon", "Flurry", "DAMAGESCALING", {_compareLevel})
 			set {_oldDamage} to {_oldBaseDamage} + ({damage::%{_p}%}/36) + (Versatility({_p})/108) + ({primarystat::%{_p}%}/{_oldScaling})
-		set {_valueNames::*} to "CASTTIME", "COOLDOWN", "DAMAGE", "SLOWTIME"
-		set {_values::*} to {_castTime}, AbilityUpgradePreviewValue({_cooldown}, {_colour}, {_oldCooldown}), AbilityUpgradePreviewValue({_damage}, {_colour}, {_oldDamage}), {_slowtime}
+			set {_oldBfBonus} to AbilityUpgradeValue({_p}, "Glaceon", "Flurry", "BRAINFREEZEBONUS", {_compareLevel})
+			set {_oldSlow} to AbilityUpgradeValue({_p}, "Glaceon", "Flurry", "SLOW", {_compareLevel})
+			set {_oldHits} to AbilityUpgradeValue({_p}, "Glaceon", "Flurry", "HITS", {_compareLevel})
+		set {_valueNames::*} to "CASTTIME", "DAMAGE", "SLOWTIME", "BRAINFREEZEBONUS", "SLOW", "HITS"
+		set {_values::*} to {_castTime}, AbilityUpgradePreviewValue({_damage}, {_colour}, {_oldDamage}), {_slowtime}, AbilityUpgradePreviewValue({_bfBonus}, {_colour}, {_oldBfBonus}), AbilityUpgradePreviewValue({_slow}, {_colour}, {_oldSlow}), AbilityUpgradePreviewValue({_hits}, {_colour}, {_oldHits})
 		set {_description} to AbilityUpgradeDescription({_p}, "Glaceon", "Flurry", {_valueNames::*}, {_values::*})
 		return "%{_levelLine}%%nl%%{_description}%"
 
@@ -2008,45 +2048,21 @@ function GlaceonAbilityUpgradePreviewLore(p: player, ability: text, level: integ
 		set {_baseCd} to AbilityUpgradeValue({_p}, "Glaceon", "Icy Veins", "COOLDOWN", {_level}) - getRunePower({_p}, "Deep Freeze")
 		set {_cooldown} to "%{_baseCd}% seconds" parsed as timespan
 		set {_duration} to AbilityUpgradeValue({_p}, "Glaceon", "Icy Veins", "DURATION", {_level})
+		set {_haste} to AbilityUpgradeValue({_p}, "Glaceon", "Icy Veins", "HASTE", {_level})
 		set {_oldCooldown} to {_cooldown}
 		set {_oldDuration} to {_duration}
+		set {_oldHaste} to {_haste}
 		if {_compareLevel} >= 0:
 			set {_oldBaseCd} to AbilityUpgradeValue({_p}, "Glaceon", "Icy Veins", "COOLDOWN", {_compareLevel}) - getRunePower({_p}, "Deep Freeze")
 			set {_oldCooldown} to "%{_oldBaseCd}% seconds" parsed as timespan
 			set {_oldDuration} to AbilityUpgradeValue({_p}, "Glaceon", "Icy Veins", "DURATION", {_compareLevel})
+			set {_oldHaste} to AbilityUpgradeValue({_p}, "Glaceon", "Icy Veins", "HASTE", {_compareLevel})
 		set {_valueNames::*} to "COOLDOWN", "DURATION", "HASTE"
-		set {_values::*} to AbilityUpgradePreviewValue({_cooldown}, {_colour}, {_oldCooldown}), AbilityUpgradePreviewValue({_duration}, {_colour}, {_oldDuration}), 120
+		set {_values::*} to AbilityUpgradePreviewValue({_cooldown}, {_colour}, {_oldCooldown}), AbilityUpgradePreviewValue({_duration}, {_colour}, {_oldDuration}), AbilityUpgradePreviewValue({_haste}, {_colour}, {_oldHaste})
 		set {_description} to AbilityUpgradeDescription({_p}, "Glaceon", "Icy Veins", {_valueNames::*}, {_values::*})
 		return "%{_levelLine}%%nl%%{_description}%"
 
-	else if {_ability} = "Glacial Spike":
-		set {_baseCastTime} to AbilityUpgradeValue({_p}, "Glaceon", "Glacial Spike", "CASTTIME", {_level})
-		if HasStarforgedBonus({_p}, "Glaceon", "Tier I", "2Set") is true:
-			set {_baseCastTime} to {_baseCastTime} - 0.25
-		set {_castTime} to "%round({_baseCastTime}/{_hasteTt}, 1)% sec"
-		set {_baseDamage} to AbilityUpgradeValue({_p}, "Glaceon", "Glacial Spike", "BASEDAMAGE", {_level})
-		set {_scaling} to AbilityUpgradeValue({_p}, "Glaceon", "Glacial Spike", "DAMAGESCALING", {_level})
-		set {_damage} to {_baseDamage} + ({damage::%{_p}%}/14) + (Versatility({_p})/42) + ({primarystat::%{_p}%}/{_scaling})
-		if boolean tag "Constellation;Eternal Winter" of {_customnbt} is set:
-			set {_icicleCap} to 7
-		else:
-			set {_icicleCap} to 5
-		set {_oldCastTime} to {_castTime}
-		set {_oldDamage} to {_damage}
-		if {_compareLevel} >= 0:
-			set {_oldBaseCastTime} to AbilityUpgradeValue({_p}, "Glaceon", "Glacial Spike", "CASTTIME", {_compareLevel})
-			if HasStarforgedBonus({_p}, "Glaceon", "Tier I", "2Set") is true:
-				set {_oldBaseCastTime} to {_oldBaseCastTime} - 0.25
-			set {_oldCastTime} to "%round({_oldBaseCastTime}/{_hasteTt}, 1)% sec"
-			set {_oldBaseDamage} to AbilityUpgradeValue({_p}, "Glaceon", "Glacial Spike", "BASEDAMAGE", {_compareLevel})
-			set {_oldScaling} to AbilityUpgradeValue({_p}, "Glaceon", "Glacial Spike", "DAMAGESCALING", {_compareLevel})
-			set {_oldDamage} to {_oldBaseDamage} + ({damage::%{_p}%}/14) + (Versatility({_p})/42) + ({primarystat::%{_p}%}/{_oldScaling})
-		set {_valueNames::*} to "CASTTIME", "DAMAGE", "ICICLECAP"
-		set {_values::*} to AbilityUpgradePreviewValue({_castTime}, {_colour}, {_oldCastTime}), AbilityUpgradePreviewValue({_damage}, {_colour}, {_oldDamage}), {_icicleCap}
-		set {_description} to AbilityUpgradeDescription({_p}, "Glaceon", "Glacial Spike", {_valueNames::*}, {_values::*})
-		return "%{_levelLine}%%nl%%{_description}%"
-
-
+	
 function VaporeonAbilityUpgradePreviewLore(p: player, ability: text, level: integer, colour: text, compareLevel: integer = -1) :: text:
 	set {_customnbt} to custom nbt of {karta::%{_p}%}
 	set {_hasteTt} to Haste({_p})
