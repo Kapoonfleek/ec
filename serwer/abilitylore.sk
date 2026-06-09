@@ -1,0 +1,736 @@
+function AbilityUpgradePreviewValue(value: object, colour: text, oldValue: object = "") :: text:
+	if {_oldValue} is set:
+		if "%{_oldValue}%" != "":
+			if "%{_value}%" = "%{_oldValue}%":
+				return "&f%{_value}%"
+	return "%{_colour}%%{_value}%"
+
+function GhazanAbilityUpgradePreviewLore(p: player, ability: text, level: integer, colour: text, compareLevel: integer = -1) :: text:
+	set {_customnbt} to custom nbt of {karta::%{_p}%}
+	set {_hasteTt} to Haste({_p})
+	set {_levelLine} to "&9Level %{_level}%"
+
+	if {_ability} = "Lava Technique":
+		set {_mastery} to AbilityUpgradeValue({_p}, "Ghazan", "Lava Technique", "MASTERY", {_level}) + (Mastery({_p})/26)
+		set {_oldMastery} to {_mastery}
+		if {_compareLevel} >= 0:
+			set {_oldMastery} to AbilityUpgradeValue({_p}, "Ghazan", "Lava Technique", "MASTERY", {_compareLevel})
+		if string tag "Talents;Row 1" of {_customnbt} = "Advanced Technique":
+			set {_mastery} to {_mastery} + 0.1
+			set {_oldMastery} to {_oldMastery} + 0.1
+			
+		set {_mastery} to {_mastery} + getRunePower({_p}, "Thermal Buildup")
+		set {_oldMastery} to {_oldMastery} + getRunePower({_p}, "Thermal Buildup")
+
+		set {_maxStacks} to GhazanLavaTechniqueMaxStacks({_p})
+		set {_maxDamage} to round(((1 + ({_mastery}/100))^{_maxStacks}) * 100, 2)
+		set {_oldMaxDamage} to round(((1 + ({_oldMastery}/100))^{_maxStacks}) * 100, 2)
+
+		set {_valueNames::*} to "MASTERY", "MAXSTACKS", "MAXDAMAGE", "DURATION"
+		set {_values::*} to AbilityUpgradePreviewValue({_mastery}, {_colour}, {_oldMastery}), {_maxStacks}, AbilityUpgradePreviewValue({_maxDamage}, {_colour}, {_oldMaxDamage}), 16
+		set {_description} to AbilityUpgradeDescription({_p}, "Ghazan", "Lava Technique", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	else if {_ability} = "Lava Surge":
+		set {_chance} to AbilityUpgradeValue({_p}, "Ghazan", "Lava Surge", "CHANCE", {_level})
+		set {_oldChance} to {_chance}
+		if {_compareLevel} >= 0:
+			set {_oldChance} to AbilityUpgradeValue({_p}, "Ghazan", "Lava Surge", "CHANCE", {_compareLevel})
+		if string tag "Talents;Row 1" of {_customnbt} = "Hot Hand":
+			set {_chance} to {_chance} + 2
+			set {_oldChance} to {_oldChance} + 2
+		if getTrait({_p}, "Lava Resurgence") is set:
+			set {_chance} to {_chance} + 2.5
+			set {_oldChance} to {_oldChance} + 2.5
+		set {_chance} to {_chance} + getRunePower({_p}, "Seeping Lava")
+		set {_oldChance} to {_oldChance} + getRunePower({_p}, "Seeping Lava")
+		set {_valueNames::*} to "CHANCE"
+		set {_values::*} to AbilityUpgradePreviewValue({_chance}, {_colour}, {_oldChance})
+		set {_description} to AbilityUpgradeDescription({_p}, "Ghazan", "Lava Surge", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	else if {_ability} = "Lava Burst":
+		set {_baseCd} to AbilityUpgradeValue({_p}, "Ghazan", "Lava Burst", "COOLDOWN", {_level}) - getRunePower({_p}, "Igneous Flow")
+		set {_oldBaseCd} to {_baseCd}
+		if {_compareLevel} >= 0:
+			set {_oldBaseCd} to AbilityUpgradeValue({_p}, "Ghazan", "Lava Burst", "COOLDOWN", {_compareLevel}) - getRunePower({_p}, "Igneous Flow")
+		set {_cooldown} to "%round({_baseCd} / {_hasteTt}, 1)% seconds" parsed as timespan
+		set {_oldCooldown} to "%round({_oldBaseCd} / {_hasteTt}, 1)% seconds" parsed as timespan
+		set {_castTime} to round(AbilityUpgradeValue({_p}, "Ghazan", "Lava Burst", "CASTTIME", {_level}) / {_hasteTt}, 1)
+		set {_oldCastTime} to {_castTime}
+		if {_compareLevel} >= 0:
+			set {_oldCastTime} to round(AbilityUpgradeValue({_p}, "Ghazan", "Lava Burst", "CASTTIME", {_compareLevel}) / {_hasteTt}, 1)
+		set {_scaling} to AbilityUpgradeValue({_p}, "Ghazan", "Lava Burst", "DAMAGESCALING", {_level})
+		set {_damage} to AbilityUpgradeValue({_p}, "Ghazan", "Lava Burst", "BASEDAMAGE", {_level}) + ({damage::%{_p}%}/{_scaling}) + (Versatility({_p})/({_scaling} * 3)) + (PrimaryStat({_p})/({_scaling} / 2))
+		set {_damage} to round({_damage} * (1 + getRunePower({_p}, "Core Intensity")), 2)
+		set {_oldDamage} to {_damage}
+		if {_compareLevel} >= 0:
+			set {_oldScaling} to AbilityUpgradeValue({_p}, "Ghazan", "Lava Burst", "DAMAGESCALING", {_compareLevel})
+			set {_oldDamageRaw} to AbilityUpgradeValue({_p}, "Ghazan", "Lava Burst", "BASEDAMAGE", {_compareLevel}) + ({damage::%{_p}%}/{_oldScaling}) + (Versatility({_p})/({_oldScaling} * 3)) + (PrimaryStat({_p})/({_oldScaling} / 2))
+			set {_oldDamage} to round({_oldDamageRaw} * (1 + getRunePower({_p}, "Core Intensity")), 2)
+		set {_valueNames::*} to "CASTTIME", "COOLDOWN", "DAMAGE"
+		set {_values::*} to AbilityUpgradePreviewValue({_castTime}, {_colour}, {_oldCastTime}), AbilityUpgradePreviewValue({_cooldown}, {_colour}, {_oldCooldown}), AbilityUpgradePreviewValue({_damage}, {_colour}, {_oldDamage})
+		set {_description} to AbilityUpgradeDescription({_p}, "Ghazan", "Lava Burst", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	else if {_ability} = "Molten Lava":
+		set {_cooldown} to "%round(AbilityUpgradeValue({_p}, "Ghazan", "Molten Lava", "COOLDOWN", {_level}) / {_hasteTt}, 1)% seconds" parsed as timespan
+		set {_oldCooldown} to {_cooldown}
+		if {_compareLevel} >= 0:
+			set {_oldCooldown} to "%round(AbilityUpgradeValue({_p}, "Ghazan", "Molten Lava", "COOLDOWN", {_compareLevel}) / {_hasteTt}, 1)% seconds" parsed as timespan
+		set {_duration} to AbilityUpgradeValue({_p}, "Ghazan", "Molten Lava", "DURATION", {_level})
+		set {_oldDuration} to {_duration}
+		if {_compareLevel} >= 0:
+			set {_oldDuration} to AbilityUpgradeValue({_p}, "Ghazan", "Molten Lava", "DURATION", {_compareLevel})
+		set {_scaling} to AbilityUpgradeValue({_p}, "Ghazan", "Molten Lava", "DAMAGESCALING", {_level})
+		set {_damage} to round(AbilityUpgradeValue({_p}, "Ghazan", "Molten Lava", "BASEDAMAGE", {_level}) + ({damage::%{_p}%}/{_scaling}) + (Versatility({_p})/({_scaling} * 3)) + (PrimaryStat({_p})/({_scaling} / 2)), 2)
+		set {_oldDamage} to {_damage}
+		if {_compareLevel} >= 0:
+			set {_oldScaling} to AbilityUpgradeValue({_p}, "Ghazan", "Molten Lava", "DAMAGESCALING", {_compareLevel})
+			set {_oldDamage} to round(AbilityUpgradeValue({_p}, "Ghazan", "Molten Lava", "BASEDAMAGE", {_compareLevel}) + ({damage::%{_p}%}/{_oldScaling}) + (Versatility({_p})/({_oldScaling} * 3)) + (PrimaryStat({_p})/({_oldScaling} / 2)), 2)
+		set {_valueNames::*} to "COOLDOWN", "RADIUS", "DURATION", "DAMAGE", "TICKRATE"
+		set {_values::*} to AbilityUpgradePreviewValue({_cooldown}, {_colour}, {_oldCooldown}), round(2 + (CrowdControl({_p})/40), 2), AbilityUpgradePreviewValue({_duration}, {_colour}, {_oldDuration}), AbilityUpgradePreviewValue({_damage}, {_colour}, {_oldDamage}), GhazanMoltenLavaTickRate({_p})
+		set {_description} to AbilityUpgradeDescription({_p}, "Ghazan", "Molten Lava", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	else if {_ability} = "Rain of Lava":
+		set {_cooldown} to "%round(AbilityUpgradeValue({_p}, "Ghazan", "Rain of Lava", "COOLDOWN", {_level}) / {_hasteTt}, 1)% seconds" parsed as timespan
+		set {_oldCooldown} to {_cooldown}
+		if {_compareLevel} >= 0:
+			set {_oldCooldown} to "%round(AbilityUpgradeValue({_p}, "Ghazan", "Rain of Lava", "COOLDOWN", {_compareLevel}) / {_hasteTt}, 1)% seconds" parsed as timespan
+		set {_duration} to AbilityUpgradeValue({_p}, "Ghazan", "Rain of Lava", "DURATION", {_level})
+		set {_oldDuration} to {_duration}
+		if {_compareLevel} >= 0:
+			set {_oldDuration} to AbilityUpgradeValue({_p}, "Ghazan", "Rain of Lava", "DURATION", {_compareLevel})
+		if string tag "Talents;Row 1" of {_customnbt} = "Unrivaled Finesse":
+			set {_duration} to {_duration} + 1.5
+			set {_oldDuration} to {_oldDuration} + 1.5
+		set {_valueNames::*} to "COOLDOWN", "DURATION", "INTERVAL"
+		set {_values::*} to AbilityUpgradePreviewValue({_cooldown}, {_colour}, {_oldCooldown}), AbilityUpgradePreviewValue({_duration}, {_colour}, {_oldDuration}), GhazanRainOfLavaIntervalSeconds({_p})
+		set {_description} to AbilityUpgradeDescription({_p}, "Ghazan", "Rain of Lava", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	else if {_ability} = "Lava Wave":
+		set {_baseCd} to AbilityUpgradeValue({_p}, "Ghazan", "Lava Wave", "COOLDOWN", {_level})
+		set {_cooldown} to "%{_baseCd}% seconds" parsed as timespan
+		set {_baseDamage} to AbilityUpgradeValue({_p}, "Ghazan", "Lava Wave", "BASEDAMAGE", {_level})
+		set {_damageScaling} to AbilityUpgradeValue({_p}, "Ghazan", "Lava Wave", "DAMAGESCALING", {_level})
+		set {_damage} to {_baseDamage} + ({damage::%{_p}%}/35) + (Versatility({_p})/105) + ({primarystat::%{_p}%}/{_damageScaling})
+		set {_bonus} to AbilityUpgradeValue({_p}, "Ghazan", "Lava Wave", "BONUSDAMAGE", {_level})
+		set {_oldCooldown} to {_cooldown}
+		set {_oldDamage} to {_damage}
+		set {_oldBonus} to {_bonus}
+		if {_compareLevel} >= 0:
+			set {_oldBaseCd} to AbilityUpgradeValue({_p}, "Ghazan", "Lava Wave", "COOLDOWN", {_compareLevel})
+			set {_oldCooldown} to "%{_oldBaseCd}% seconds" parsed as timespan
+			set {_oldBaseDamage} to AbilityUpgradeValue({_p}, "Ghazan", "Lava Wave", "BASEDAMAGE", {_compareLevel})
+			set {_oldDamageScaling} to AbilityUpgradeValue({_p}, "Ghazan", "Lava Wave", "DAMAGESCALING", {_compareLevel})
+			set {_oldDamage} to {_oldBaseDamage} + ({damage::%{_p}%}/35) + (Versatility({_p})/105) + ({primarystat::%{_p}%}/{_oldDamageScaling})
+			set {_oldBonus} to AbilityUpgradeValue({_p}, "Ghazan", "Lava Wave", "BONUSDAMAGE", {_compareLevel})
+		set {_valueNames::*} to "COOLDOWN", "DAMAGE", "BONUSDAMAGE"
+		set {_values::*} to AbilityUpgradePreviewValue({_cooldown}, {_colour}, {_oldCooldown}), AbilityUpgradePreviewValue({_damage}, {_colour}, {_oldDamage}), AbilityUpgradePreviewValue({_bonus}, {_colour}, {_oldBonus})
+		set {_description} to AbilityUpgradeDescription({_p}, "Ghazan", "Lava Wave", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	else if {_ability} = "Lavakeeper":
+		set {_baseCd} to AbilityUpgradeValue({_p}, "Ghazan", "Lavakeeper", "COOLDOWN", {_level})
+		set {_cooldown} to "%{_baseCd}% seconds" parsed as timespan
+		set {_bonus} to AbilityUpgradeValue({_p}, "Ghazan", "Lavakeeper", "BONUSDAMAGE", {_level})
+		set {_castTime} to round(1.5 / {_hasteTt}, 2)
+		set {_oldCooldown} to {_cooldown}
+		set {_oldBonus} to {_bonus}
+		if {_compareLevel} >= 0:
+			set {_oldBaseCd} to AbilityUpgradeValue({_p}, "Ghazan", "Lavakeeper", "COOLDOWN", {_compareLevel})
+			set {_oldCooldown} to "%{_oldBaseCd}% seconds" parsed as timespan
+			set {_oldBonus} to AbilityUpgradeValue({_p}, "Ghazan", "Lavakeeper", "BONUSDAMAGE", {_compareLevel})
+		set {_valueNames::*} to "CASTTIME", "CHARGES", "COOLDOWN", "BONUSDAMAGE"
+		set {_values::*} to {_castTime}, 2, AbilityUpgradePreviewValue({_cooldown}, {_colour}, {_oldCooldown}), AbilityUpgradePreviewValue({_bonus}, {_colour}, {_oldBonus})
+		set {_description} to AbilityUpgradeDescription({_p}, "Ghazan", "Lavakeeper", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	else if {_ability} = "Lavafury":
+		set {_baseCd} to AbilityUpgradeValue({_p}, "Ghazan", "Lavafury", "COOLDOWN", {_level})
+		set {_cooldown} to "%{_baseCd}% seconds" parsed as timespan
+		set {_baseDamage} to AbilityUpgradeValue({_p}, "Ghazan", "Lavafury", "BASEDAMAGE", {_level})
+		set {_damageScaling} to AbilityUpgradeValue({_p}, "Ghazan", "Lavafury", "DAMAGESCALING", {_level})
+		set {_damage} to {_baseDamage} + ({damage::%{_p}%}/18) + (Versatility({_p})/36) + ({primarystat::%{_p}%}/{_damageScaling})
+		set {_bonus} to AbilityUpgradeValue({_p}, "Ghazan", "Lavafury", "BONUSDAMAGE", {_level})
+		set {_stacks} to 3
+		if boolean tag "Constellation;Splintered Lava" of {_customnbt} is set:
+			set {_stacks} to 4
+			set {_bonus} to {_bonus} + 40
+		set {_castTime} to round(1.5 / {_hasteTt}, 2)
+		set {_oldCooldown} to {_cooldown}
+		set {_oldDamage} to {_damage}
+		set {_oldBonus} to {_bonus}
+		if {_compareLevel} >= 0:
+			set {_oldBaseCd} to AbilityUpgradeValue({_p}, "Ghazan", "Lavafury", "COOLDOWN", {_compareLevel})
+			set {_oldCooldown} to "%{_oldBaseCd}% seconds" parsed as timespan
+			set {_oldBaseDamage} to AbilityUpgradeValue({_p}, "Ghazan", "Lavafury", "BASEDAMAGE", {_compareLevel})
+			set {_oldDamageScaling} to AbilityUpgradeValue({_p}, "Ghazan", "Lavafury", "DAMAGESCALING", {_compareLevel})
+			set {_oldDamage} to {_oldBaseDamage} + ({damage::%{_p}%}/18) + (Versatility({_p})/36) + ({primarystat::%{_p}%}/{_oldDamageScaling})
+			set {_oldBonus} to AbilityUpgradeValue({_p}, "Ghazan", "Lavafury", "BONUSDAMAGE", {_compareLevel})
+			if boolean tag "Constellation;Splintered Lava" of {_customnbt} is set:
+				set {_oldBonus} to {_oldBonus} + 40
+		set {_valueNames::*} to "CASTTIME", "DAMAGE", "STACKS", "COOLDOWN", "BONUSDAMAGE"
+		set {_values::*} to {_castTime}, AbilityUpgradePreviewValue({_damage}, {_colour}, {_oldDamage}), {_stacks}, AbilityUpgradePreviewValue({_cooldown}, {_colour}, {_oldCooldown}), AbilityUpgradePreviewValue({_bonus}, {_colour}, {_oldBonus})
+		set {_description} to AbilityUpgradeDescription({_p}, "Ghazan", "Lavafury", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+function CresseliaAbilityUpgradePreviewLore(p: player, ability: text, level: integer, colour: text, compareLevel: integer = -1) :: text:
+	set {_customnbt} to custom nbt of {karta::%{_p}%}
+	set {_hasteTt} to Haste({_p})
+	set {_levelLine} to "&9Level %{_level}%"
+
+	if {_ability} = "Shooting Stars":
+		set {_baseDamage} to (0.8 + (({damage::%{_p}%}/61) + (Versatility({_p})/183) + ({primarystat::%{_p}%}/30.5))) * (1 + (Mastery({_p})/108))
+		set {_damage} to {_baseDamage} * AbilityUpgradeValue({_p}, "Cresselia", "Shooting Stars", "DAMAGE_MULTIPLIER", {_level})
+		set {_oldDamage} to {_damage}
+		if {_compareLevel} >= 0:
+			set {_oldDamage} to {_baseDamage} * AbilityUpgradeValue({_p}, "Cresselia", "Shooting Stars", "DAMAGE_MULTIPLIER", {_compareLevel})
+		set {_chance} to 8 + getRunePower({_p}, "Astral Cascade")
+		if boolean tag "Constellation;Stellar Command" of {_customnbt} is set:
+			set {_chance} to {_chance} + 2
+		if metadata value "CelestialAlignment" of {_p} is set:
+			set {_chance} to {_chance} * (1 + (AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "SHOOTINGSTARSFREQUENCY") / 100))
+			set {_damage} to {_damage} * 1.15
+			set {_damage} to {_damage} * (1 + (AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "SHOOTINGSTARSDAMAGE") / 100))
+			set {_oldDamage} to {_oldDamage} * 1.15
+			set {_oldDamage} to {_oldDamage} * (1 + (AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "SHOOTINGSTARSDAMAGE") / 100))
+		if metadata value "Solstice" of {_p} is set:
+			set {_chance} to {_chance} * 3
+		set {_astralPower} to AbilityUpgradeValue({_p}, "Cresselia", "Shooting Stars", "ASTRALPOWER", {_level})
+		set {_oldAstralPower} to {_astralPower}
+		if {_compareLevel} >= 0:
+			set {_oldAstralPower} to AbilityUpgradeValue({_p}, "Cresselia", "Shooting Stars", "ASTRALPOWER", {_compareLevel})
+		if string tag "Talents;Row 3" of {_customnbt} = "Whirling Stars":
+			if {_astralPower} < 3:
+				set {_astralPower} to 3
+			if {_oldAstralPower} < 3:
+				set {_oldAstralPower} to 3
+			set {_damage} to {_damage} * 1.09
+			set {_oldDamage} to {_oldDamage} * 1.09
+		if string tag "Talents;Row 4" of {_customnbt} = "Stellar Collision":
+			set {_damage} to {_damage} * 1.15
+			set {_oldDamage} to {_oldDamage} * 1.15
+		set {_valueNames::*} to "CHANCE", "DAMAGE", "ASTRALPOWER"
+		set {_values::*} to AbilityUpgradePreviewValue({_chance}, {_colour}, {_chance}), AbilityUpgradePreviewValue({_damage}, {_colour}, {_oldDamage}), AbilityUpgradePreviewValue({_astralPower}, {_colour}, {_oldAstralPower})
+		set {_description} to AbilityUpgradeDescription({_p}, "Cresselia", "Shooting Stars", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	else if {_ability} = "Boundless Moonlight":
+		set {_apGen} to 3/{_hasteTt}
+		set {_ap} to AbilityUpgradeValue({_p}, "Cresselia", "Boundless Moonlight", "AP", {_level}) * (1 + getRunePower({_p}, "Astral Flow") / 100)
+		set {_oldAp} to {_ap}
+		set {_invocChance} to AbilityUpgradeValue({_p}, "Cresselia", "Boundless Moonlight", "INVOCATIONCHANCE", {_level})
+		set {_oldInvocChance} to {_invocChance}
+		if {_compareLevel} >= 0:
+			set {_oldAp} to AbilityUpgradeValue({_p}, "Cresselia", "Boundless Moonlight", "AP", {_compareLevel}) * (1 + getRunePower({_p}, "Astral Flow") / 100)
+			set {_oldInvocChance} to AbilityUpgradeValue({_p}, "Cresselia", "Boundless Moonlight", "INVOCATIONCHANCE", {_compareLevel})
+		set {_valueNames::*} to "APGEN", "AP", "INVOCATIONCHANCE"
+		set {_values::*} to {_apGen}, AbilityUpgradePreviewValue({_ap}, {_colour}, {_oldAp}), AbilityUpgradePreviewValue({_invocChance}, {_colour}, {_oldInvocChance})
+		set {_description} to AbilityUpgradeDescription({_p}, "Cresselia", "Boundless Moonlight", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	else if {_ability} = "Starfire":
+		set {_baseCastTime} to AbilityUpgradeValue({_p}, "Cresselia", "Starfire", "CASTTIME", {_level})
+		set {_oldBaseCastTime} to {_baseCastTime}
+		set {_scaling} to AbilityUpgradeValue({_p}, "Cresselia", "Starfire", "DAMAGESCALING", {_level})
+		set {_oldScaling} to {_scaling}
+		if {_compareLevel} >= 0:
+			set {_oldBaseCastTime} to AbilityUpgradeValue({_p}, "Cresselia", "Starfire", "CASTTIME", {_compareLevel})
+			set {_oldScaling} to AbilityUpgradeValue({_p}, "Cresselia", "Starfire", "DAMAGESCALING", {_compareLevel})
+		set {_castTime} to round(({_baseCastTime} / {_hasteTt}), 1)
+		set {_oldCastTime} to round(({_oldBaseCastTime} / {_hasteTt}), 1)
+		set {_damage} to AbilityUpgradeValue({_p}, "Cresselia", "Starfire", "BASEDAMAGE", {_level}) + ({damage::%{_p}%}/{_scaling}) + (Versatility({_p})/({_scaling} * 3)) + ({primarystat::%{_p}%}/({_scaling} / 2))
+		set {_oldDamage} to {_damage}
+		if {_compareLevel} >= 0:
+			set {_oldDamage} to AbilityUpgradeValue({_p}, "Cresselia", "Starfire", "BASEDAMAGE", {_compareLevel}) + ({damage::%{_p}%}/{_oldScaling}) + (Versatility({_p})/({_oldScaling} * 3)) + ({primarystat::%{_p}%}/({_oldScaling} / 2))
+		if metadata value "CelestialAlignment" of {_p} is set:
+			if string tag "Talents;Row 3" of {_customnbt} = "Aetherial Kindling":
+				set {_damage} to {_damage} * 1.15
+				set {_oldDamage} to {_oldDamage} * 1.15
+		if metadata value "AstronomicalImpact" of {_p} is set:
+			set {_damagePreview} to {_damage} * 1.6
+			set {_oldDamagePreview} to {_oldDamage} * 1.6
+		else:
+			set {_damagePreview} to {_damage}
+			set {_oldDamagePreview} to {_oldDamage}
+		set {_aoeDamage} to {_damagePreview} * (AbilityUpgradeValue({_p}, "Cresselia", "Starfire", "AOE", {_level}) / 100)
+		set {_oldAoeDamage} to {_aoeDamage}
+		if {_compareLevel} >= 0:
+			set {_oldAoeDamage} to {_oldDamagePreview} * (AbilityUpgradeValue({_p}, "Cresselia", "Starfire", "AOE", {_compareLevel}) / 100)
+		if string tag "Talents;Row 3" of {_customnbt} = "Aetherial Kindling":
+			if metadata value "CelestialAlignment" of {_p} is set:
+				set {_aoeDamage} to {_aoeDamage} * 1.3
+				set {_oldAoeDamage} to {_oldAoeDamage} * 1.3
+		set {_valueNames::*} to "CASTTIME", "DAMAGE", "AOEDAMAGE"
+		set {_values::*} to AbilityUpgradePreviewValue({_castTime}, {_colour}, {_oldCastTime}), AbilityUpgradePreviewValue({_damagePreview}, {_colour}, {_oldDamagePreview}), AbilityUpgradePreviewValue({_aoeDamage}, {_colour}, {_oldAoeDamage})
+		set {_description} to AbilityUpgradeDescription({_p}, "Cresselia", "Starfire", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	else if {_ability} = "Starsurge":
+		set {_cost} to AbilityUpgradeValue({_p}, "Cresselia", "Starsurge", "COST", {_level})
+		set {_oldCost} to {_cost}
+		if {_compareLevel} >= 0:
+			set {_oldCost} to AbilityUpgradeValue({_p}, "Cresselia", "Starsurge", "COST", {_compareLevel})
+		if string tag "Talents;Row 2" of {_customnbt} = "Astral Communion":
+			if metadata value "CelestialAlignment" of {_p} is set:
+				set {_cost} to {_cost} - 10
+				set {_oldCost} to {_oldCost} - 10
+				if {_cost} < 0:
+					set {_cost} to 0
+				if {_oldCost} < 0:
+					set {_oldCost} to 0
+		set {_scaling} to AbilityUpgradeValue({_p}, "Cresselia", "Starsurge", "DAMAGESCALING", {_level})
+		set {_oldScaling} to {_scaling}
+		if {_compareLevel} >= 0:
+			set {_oldScaling} to AbilityUpgradeValue({_p}, "Cresselia", "Starsurge", "DAMAGESCALING", {_compareLevel})
+		set {_damage} to AbilityUpgradeValue({_p}, "Cresselia", "Starsurge", "BASEDAMAGE", {_level}) + ({damage::%{_p}%}/{_scaling}) + (Versatility({_p})/({_scaling} * 3)) + ({primarystat::%{_p}%}/({_scaling} / 2))
+		set {_oldDamage} to {_damage}
+		if {_compareLevel} >= 0:
+			set {_oldDamage} to AbilityUpgradeValue({_p}, "Cresselia", "Starsurge", "BASEDAMAGE", {_compareLevel}) + ({damage::%{_p}%}/{_oldScaling}) + (Versatility({_p})/({_oldScaling} * 3)) + ({primarystat::%{_p}%}/({_oldScaling} / 2))
+		if boolean tag "Constellation;Rattle the Stars" of {_customnbt} is set:
+			set {_cost} to {_cost} * 0.9
+			set {_oldCost} to {_oldCost} * 0.9
+			set {_damage} to {_damage} * 1.08
+			set {_oldDamage} to {_oldDamage} * 1.08
+		if metadata value "CelestialAlignment" of {_p} is set:
+			set {_damage} to {_damage} * 1.15
+			set {_oldDamage} to {_oldDamage} * 1.15
+		if metadata value "UmbralInspiration" of {_p} is set:
+			set {_damage} to {_damage} * 1.3
+			set {_oldDamage} to {_oldDamage} * 1.3
+		set {_amp} to ((AbilityUpgradeValue({_p}, "Cresselia", "Starsurge", "AMPBASE", {_level}) / 100) + getRunePower({_p}, "Stellar Compression")) + (0.25 * (Haste({_p}) - 1))
+		set {_oldAmp} to {_amp}
+		if {_compareLevel} >= 0:
+			set {_oldAmp} to ((AbilityUpgradeValue({_p}, "Cresselia", "Starsurge", "AMPBASE", {_compareLevel}) / 100) + getRunePower({_p}, "Stellar Compression")) + (0.25 * (Haste({_p}) - 1))
+		set {_maxStacks} to AbilityUpgradeValue({_p}, "Cresselia", "Starsurge", "MAXSTACKS", {_level})
+		set {_oldMaxStacks} to {_maxStacks}
+		if {_compareLevel} >= 0:
+			set {_oldMaxStacks} to AbilityUpgradeValue({_p}, "Cresselia", "Starsurge", "MAXSTACKS", {_compareLevel})
+		if boolean tag "Constellation;Stellar Amplification" of {_customnbt} is set:
+			set {_maxStacks} to 4
+			set {_oldMaxStacks} to 4
+		set {_valueNames::*} to "COST", "DAMAGE", "AMP", "MAXSTACKS"
+		set {_ampPreview} to {_amp} * 100
+		set {_oldAmpPreview} to {_oldAmp} * 100
+		set {_values::*} to AbilityUpgradePreviewValue({_cost}, {_colour}, {_oldCost}), AbilityUpgradePreviewValue({_damage}, {_colour}, {_oldDamage}), AbilityUpgradePreviewValue({_ampPreview}, {_colour}, {_oldAmpPreview}), AbilityUpgradePreviewValue({_maxStacks}, {_colour}, {_oldMaxStacks})
+		set {_description} to AbilityUpgradeDescription({_p}, "Cresselia", "Starsurge", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	else if {_ability} = "Starfall":
+		set {_cost} to AbilityUpgradeValue({_p}, "Cresselia", "Starfall", "COST", {_level})
+		set {_oldCost} to {_cost}
+		if {_compareLevel} >= 0:
+			set {_oldCost} to AbilityUpgradeValue({_p}, "Cresselia", "Starfall", "COST", {_compareLevel})
+		if string tag "Talents;Row 2" of {_customnbt} = "Astral Communion":
+			if metadata value "CelestialAlignment" of {_p} is set:
+				set {_cost} to {_cost} - 10
+				set {_oldCost} to {_oldCost} - 10
+				if {_cost} < 0:
+					set {_cost} to 0
+				if {_oldCost} < 0:
+					set {_oldCost} to 0
+		if boolean tag "Constellation;Rattle the Stars" of {_customnbt} is set:
+			set {_cost} to {_cost} * 0.9
+			set {_oldCost} to {_oldCost} * 0.9
+
+		set {_duration} to 8 + getRunePower({_p}, "Astral Rain")
+
+		if string tag "Talents;Row 4" of {_customnbt} = "Hail of Stars":
+			set {_duration} to {_duration} + 3
+			set {_starfallHaste} to Haste({_p}, 3.6)
+		else:
+			set {_starfallHaste} to Haste({_p})
+		if boolean tag "Constellation;Stellar Amplification" of {_customnbt} is set:
+			set {_duration} to {_duration} + 3
+
+		set {_durationScalarStrength} to 0.22
+		set {_scaling} to AbilityUpgradeValue({_p}, "Cresselia", "Starfall", "DAMAGESCALING", {_level})
+		set {_oldScaling} to {_scaling}
+		if {_compareLevel} >= 0:
+			set {_oldScaling} to AbilityUpgradeValue({_p}, "Cresselia", "Starfall", "DAMAGESCALING", {_compareLevel})
+		set {_damage} to AbilityUpgradeValue({_p}, "Cresselia", "Starfall", "BASEDAMAGE", {_level}) + ({damage::%{_p}%}/{_scaling}) + (Versatility({_p})/({_scaling} * 3)) + ({primarystat::%{_p}%}/({_scaling} / 2))
+		set {_oldDamage} to {_damage}
+		if {_compareLevel} >= 0:
+			set {_oldDamage} to AbilityUpgradeValue({_p}, "Cresselia", "Starfall", "BASEDAMAGE", {_compareLevel}) + ({damage::%{_p}%}/{_oldScaling}) + (Versatility({_p})/({_oldScaling} * 3)) + ({primarystat::%{_p}%}/({_oldScaling} / 2))
+		set {_damage} to {_damage} * {_durationScalar}
+		set {_oldDamage} to {_oldDamage} * {_oldDurationScalar}
+		if metadata value "CelestialAlignment" of {_p} is set:
+			set {_damage} to {_damage} * 1.15
+			set {_oldDamage} to {_oldDamage} * 1.15
+		if metadata value "UmbralInspiration" of {_p} is set:
+			set {_damage} to {_damage} * 1.3
+			set {_oldDamage} to {_oldDamage} * 1.3
+		if string tag "Talents;Row 2" of {_customnbt} = "Stellar Drift":
+			set {_damage} to {_damage} * 1.3
+			set {_oldDamage} to {_oldDamage} * 1.3
+		if boolean tag "Constellation;Rattle the Stars" of {_customnbt} is set:
+			set {_damage} to {_damage} * 1.08
+			set {_oldDamage} to {_oldDamage} * 1.08
+		set {_ticks} to rounded ({_duration} / (1 / {_starfallHaste}))
+		set {_oldTicks} to rounded ({_oldDuration} / (1 / {_starfallHaste}))
+		set {_damageTotal} to {_damage} * {_ticks}
+		set {_oldDamageTotal} to {_oldDamage} * {_oldTicks}
+		set {_aoe} to AbilityUpgradeValue({_p}, "Cresselia", "Starfall", "AOE", {_level})
+		set {_oldAoe} to {_aoe}
+		if {_compareLevel} >= 0:
+			set {_oldAoe} to AbilityUpgradeValue({_p}, "Cresselia", "Starfall", "AOE", {_compareLevel})
+		set {_valueNames::*} to "COST", "DAMAGE", "DURATION", "AOE"
+		set {_values::*} to AbilityUpgradePreviewValue({_cost}, {_colour}, {_oldCost}), AbilityUpgradePreviewValue({_damageTotal}, {_colour}, {_oldDamageTotal}), AbilityUpgradePreviewValue({_duration}, {_colour}, {_oldDuration}), AbilityUpgradePreviewValue({_aoe}, {_colour}, {_oldAoe})
+		set {_description} to AbilityUpgradeDescription({_p}, "Cresselia", "Starfall", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	else if {_ability} = "Celestial Alignment":
+		set {_cdSeconds} to AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "COOLDOWN", {_level})
+		set {_oldCdSeconds} to {_cdSeconds}
+		if {_compareLevel} >= 0:
+			set {_oldCdSeconds} to AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "COOLDOWN", {_compareLevel})
+		set {_cd} to "%{_cdSeconds}% seconds" parsed as timespan
+		set {_oldCd} to "%{_oldCdSeconds}% seconds" parsed as timespan
+		if boolean tag "Constellation;The Eternal Moon" of {_customnbt} is set:
+			set {_cd} to {_cd} - 30 seconds
+			set {_oldCd} to {_oldCd} - 30 seconds
+		set {_ap} to AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "ASTRALPOWER", {_level})
+		set {_crit} to AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "CRIT", {_level})
+		set {_frequency} to AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "SHOOTINGSTARSFREQUENCY", {_level})
+		set {_damageBonus} to AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "SHOOTINGSTARSDAMAGE", {_level})
+		set {_oldAp} to {_ap}
+		set {_oldCrit} to {_crit}
+		set {_oldFrequency} to {_frequency}
+		set {_oldDamageBonus} to {_damageBonus}
+		if {_compareLevel} >= 0:
+			set {_oldAp} to AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "ASTRALPOWER", {_compareLevel})
+			set {_oldCrit} to AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "CRIT", {_compareLevel})
+			set {_oldFrequency} to AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "SHOOTINGSTARSFREQUENCY", {_compareLevel})
+			set {_oldDamageBonus} to AbilityUpgradeValue({_p}, "Cresselia", "Celestial Alignment", "SHOOTINGSTARSDAMAGE", {_compareLevel})
+		set {_valueNames::*} to "COOLDOWN", "ASTRALPOWER", "CRIT", "DURATION", "SHOOTINGSTARSFREQUENCY", "SHOOTINGSTARSDAMAGE"
+		set {_values::*} to AbilityUpgradePreviewValue({_cd}, {_colour}, {_oldCd}), AbilityUpgradePreviewValue({_ap}, {_colour}, {_oldAp}), AbilityUpgradePreviewValue({_crit}, {_colour}, {_oldCrit}), AbilityUpgradePreviewValue(20, {_colour}, 20), AbilityUpgradePreviewValue({_frequency}, {_colour}, {_oldFrequency}), AbilityUpgradePreviewValue({_damageBonus}, {_colour}, {_oldDamageBonus})
+		set {_description} to AbilityUpgradeDescription({_p}, "Cresselia", "Celestial Alignment", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	return AbilityUpgradeModifierLore({_p}, "Cresselia", {_ability}, {_level}, {_colour})
+
+function TheroldAbilityUpgradePreviewLore(p: player, ability: text, level: integer, colour: text, compareLevel: integer = -1) :: text:
+	set {_customnbt} to custom nbt of {karta::%{_p}%}
+	set {_hasteTt} to Haste({_p})
+	set {_masteryMult} to 1.096 + ((Mastery({_p})/6.25)/100)
+	set {_levelLine} to "&9Level %{_level}%"
+
+	if {_ability} = "Madness":
+		set {_mastery} to AbilityUpgradeValue({_p}, "Brother Therold", "Madness", "MASTERY", {_level})
+		set {_oldMastery} to {_mastery}
+		if {_compareLevel} >= 0:
+			set {_oldMastery} to AbilityUpgradeValue({_p}, "Brother Therold", "Madness", "MASTERY", {_compareLevel})
+		set {_valueNames::*} to "MASTERY"
+		set {_values::*} to AbilityUpgradePreviewValue({_mastery}, {_colour}, {_oldMastery})
+		set {_description} to AbilityUpgradeDescription({_p}, "Brother Therold", "Madness", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	else if {_ability} = "Shadowy Apparitions":
+		set {_scaling} to AbilityUpgradeValue({_p}, "Brother Therold", "Shadowy Apparitions", "DAMAGESCALING", {_level})
+		set {_damage} to round((AbilityUpgradeValue({_p}, "Brother Therold", "Shadowy Apparitions", "BASEDAMAGE", {_level}) + ({damage::%{_p}%}/{_scaling}) + (Versatility({_p})/({_scaling} * 3)) + ({primarystat::%{_p}%}/({_scaling} / 2))), 2)
+		set {_oldDamage} to {_damage}
+		if {_compareLevel} >= 0:
+			set {_oldScaling} to AbilityUpgradeValue({_p}, "Brother Therold", "Shadowy Apparitions", "DAMAGESCALING", {_compareLevel})
+			set {_oldDamage} to round((AbilityUpgradeValue({_p}, "Brother Therold", "Shadowy Apparitions", "BASEDAMAGE", {_compareLevel}) + ({damage::%{_p}%}/{_oldScaling}) + (Versatility({_p})/({_oldScaling} * 3)) + ({primarystat::%{_p}%}/({_oldScaling} / 2))), 2)
+		set {_valueNames::*} to "DAMAGE"
+		set {_values::*} to AbilityUpgradePreviewValue({_damage}, {_colour}, {_oldDamage})
+		set {_description} to AbilityUpgradeDescription({_p}, "Brother Therold", "Shadowy Apparitions", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	else if {_ability} = "Voidform":
+		set {_damageBonus} to AbilityUpgradeValue({_p}, "Brother Therold", "Voidform", "DAMAGE", {_level})
+		set {_oldDamageBonus} to {_damageBonus}
+		set {_drain} to AbilityUpgradeValue({_p}, "Brother Therold", "Voidform", "INSANITYDRAIN", {_level})
+		set {_oldDrain} to {_drain}
+		if {_compareLevel} >= 0:
+			set {_oldDamageBonus} to AbilityUpgradeValue({_p}, "Brother Therold", "Voidform", "DAMAGE", {_compareLevel})
+			set {_oldDrain} to AbilityUpgradeValue({_p}, "Brother Therold", "Voidform", "INSANITYDRAIN", {_compareLevel})
+		set {_valueNames::*} to "DAMAGE", "INSANITYDRAIN"
+		set {_values::*} to AbilityUpgradePreviewValue({_damageBonus}, {_colour}, {_oldDamageBonus}), AbilityUpgradePreviewValue({_drain}, {_colour}, {_oldDrain})
+		set {_description} to AbilityUpgradeDescription({_p}, "Brother Therold", "Voidform", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	else if {_ability} = "Mind Blast":
+		set {_cooldown} to "%round(AbilityUpgradeValue({_p}, "Brother Therold", "Mind Blast", "COOLDOWN", {_level}) / {_hasteTt}, 1)% seconds" parsed as timespan
+		set {_oldCooldown} to {_cooldown}
+		if {_compareLevel} >= 0:
+			set {_oldCooldown} to "%round(AbilityUpgradeValue({_p}, "Brother Therold", "Mind Blast", "COOLDOWN", {_compareLevel}) / {_hasteTt}, 1)% seconds" parsed as timespan
+		set {_scaling} to AbilityUpgradeValue({_p}, "Brother Therold", "Mind Blast", "DAMAGESCALING", {_level})
+		set {_damage} to round((AbilityUpgradeValue({_p}, "Brother Therold", "Mind Blast", "BASEDAMAGE", {_level}) + ({damage::%{_p}%}/{_scaling}) + (Versatility({_p})/({_scaling} * 3)) + ({primarystat::%{_p}%}/({_scaling} / 2))) * {_masteryMult}, 2)
+		set {_oldDamage} to {_damage}
+		if {_compareLevel} >= 0:
+			set {_oldScaling} to AbilityUpgradeValue({_p}, "Brother Therold", "Mind Blast", "DAMAGESCALING", {_compareLevel})
+			set {_oldDamage} to round((AbilityUpgradeValue({_p}, "Brother Therold", "Mind Blast", "BASEDAMAGE", {_compareLevel}) + ({damage::%{_p}%}/{_oldScaling}) + (Versatility({_p})/({_oldScaling} * 3)) + ({primarystat::%{_p}%}/({_oldScaling} / 2))) * {_masteryMult}, 2)
+		set {_insanity} to AbilityUpgradeValue({_p}, "Brother Therold", "Mind Blast", "INSANITY", {_level})
+		set {_oldInsanity} to {_insanity}
+		if {_compareLevel} >= 0:
+			set {_oldInsanity} to AbilityUpgradeValue({_p}, "Brother Therold", "Mind Blast", "INSANITY", {_compareLevel})
+		set {_castTime} to round(1.5 / {_hasteTt}, 1)
+		if boolean tag "Constellation;Thought Harvester" of {_customnbt} is set:
+			set {_charges} to "2 Charges"
+		else:
+			set {_charges} to "1 Charge"
+		set {_valueNames::*} to "CHARGES", "CASTTIME", "COOLDOWN", "DAMAGE", "INSANITY"
+		set {_values::*} to {_charges}, {_castTime}, AbilityUpgradePreviewValue({_cooldown}, {_colour}, {_oldCooldown}), AbilityUpgradePreviewValue({_damage}, {_colour}, {_oldDamage}), AbilityUpgradePreviewValue({_insanity}, {_colour}, {_oldInsanity})
+		set {_description} to AbilityUpgradeDescription({_p}, "Brother Therold", "Mind Blast", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	else if {_ability} = "Shadow Word: Void":
+		set {_cooldown} to "%round(AbilityUpgradeValue({_p}, "Brother Therold", "Shadow Word: Void", "COOLDOWN", {_level}) / {_hasteTt}, 1)% seconds" parsed as timespan
+		set {_oldCooldown} to {_cooldown}
+		if {_compareLevel} >= 0:
+			set {_oldCooldown} to "%round(AbilityUpgradeValue({_p}, "Brother Therold", "Shadow Word: Void", "COOLDOWN", {_compareLevel}) / {_hasteTt}, 1)% seconds" parsed as timespan
+		set {_scaling} to AbilityUpgradeValue({_p}, "Brother Therold", "Shadow Word: Void", "DAMAGESCALING", {_level})
+		set {_damage} to round((AbilityUpgradeValue({_p}, "Brother Therold", "Shadow Word: Void", "BASEDAMAGE", {_level}) + ({damage::%{_p}%}/{_scaling}) + (Versatility({_p})/({_scaling} * 3)) + ({primarystat::%{_p}%}/({_scaling} / 2))) * {_masteryMult}, 2)
+		set {_oldDamage} to {_damage}
+		if {_compareLevel} >= 0:
+			set {_oldScaling} to AbilityUpgradeValue({_p}, "Brother Therold", "Shadow Word: Void", "DAMAGESCALING", {_compareLevel})
+			set {_oldDamage} to round((AbilityUpgradeValue({_p}, "Brother Therold", "Shadow Word: Void", "BASEDAMAGE", {_compareLevel}) + ({damage::%{_p}%}/{_oldScaling}) + (Versatility({_p})/({_oldScaling} * 3)) + ({primarystat::%{_p}%}/({_oldScaling} / 2))) * {_masteryMult}, 2)
+		set {_insanity} to AbilityUpgradeValue({_p}, "Brother Therold", "Shadow Word: Void", "INSANITY", {_level})
+		set {_oldInsanity} to {_insanity}
+		if {_compareLevel} >= 0:
+			set {_oldInsanity} to AbilityUpgradeValue({_p}, "Brother Therold", "Shadow Word: Void", "INSANITY", {_compareLevel})
+		set {_castTime} to round(1.5 / {_hasteTt}, 1)
+		if boolean tag "Constellation;Thought Harvester" of {_customnbt} is set:
+			set {_charges} to "3 Charges"
+		else:
+			set {_charges} to "2 Charges"
+		set {_valueNames::*} to "CHARGES", "CASTTIME", "COOLDOWN", "DAMAGE", "INSANITY"
+		set {_values::*} to {_charges}, {_castTime}, AbilityUpgradePreviewValue({_cooldown}, {_colour}, {_oldCooldown}), AbilityUpgradePreviewValue({_damage}, {_colour}, {_oldDamage}), AbilityUpgradePreviewValue({_insanity}, {_colour}, {_oldInsanity})
+		set {_description} to AbilityUpgradeDescription({_p}, "Brother Therold", "Shadow Word: Void", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	else if {_ability} = "Shadow Word: Pain":
+		set {_gcd} to "%round(1.5 / {_hasteTt}, 1)% seconds" parsed as timespan
+		set {_scaling} to AbilityUpgradeValue({_p}, "Brother Therold", "Shadow Word: Pain", "DAMAGESCALING", {_level})
+		set {_damage} to round((AbilityUpgradeValue({_p}, "Brother Therold", "Shadow Word: Pain", "BASEDAMAGE", {_level}) + ({damage::%{_p}%}/{_scaling}) + (Versatility({_p})/({_scaling} * 3)) + ({primarystat::%{_p}%}/({_scaling} / 2))) * {_masteryMult}, 2)
+		set {_oldDamage} to {_damage}
+		set {_tickScaling} to AbilityUpgradeValue({_p}, "Brother Therold", "Shadow Word: Pain", "TICKSCALING", {_level})
+		set {_tickDamage} to (AbilityUpgradeValue({_p}, "Brother Therold", "Shadow Word: Pain", "TICKDAMAGE", {_level}) + ({damage::%{_p}%}/{_tickScaling}) + (Versatility({_p})/({_tickScaling} * 3)) + ({primarystat::%{_p}%}/({_tickScaling} / 2))) * {_masteryMult}
+		set {_duration} to AbilityUpgradeValue({_p}, "Brother Therold", "Shadow Word: Pain", "DURATION", {_level})
+		set {_oldDuration} to {_duration}
+		set {_totalTicks} to round({_duration}/(2/{_hasteTt}), 0)
+		set {_tickTotal} to round({_totalTicks} * {_tickDamage}, 2)
+		set {_oldTickTotal} to {_tickTotal}
+		if {_compareLevel} >= 0:
+			set {_oldScaling} to AbilityUpgradeValue({_p}, "Brother Therold", "Shadow Word: Pain", "DAMAGESCALING", {_compareLevel})
+			set {_oldDamage} to round((AbilityUpgradeValue({_p}, "Brother Therold", "Shadow Word: Pain", "BASEDAMAGE", {_compareLevel}) + ({damage::%{_p}%}/{_oldScaling}) + (Versatility({_p})/({_oldScaling} * 3)) + ({primarystat::%{_p}%}/({_oldScaling} / 2))) * {_masteryMult}, 2)
+			set {_oldTickScaling} to AbilityUpgradeValue({_p}, "Brother Therold", "Shadow Word: Pain", "TICKSCALING", {_compareLevel})
+			set {_oldTickDamage} to (AbilityUpgradeValue({_p}, "Brother Therold", "Shadow Word: Pain", "TICKDAMAGE", {_compareLevel}) + ({damage::%{_p}%}/{_oldTickScaling}) + (Versatility({_p})/({_oldTickScaling} * 3)) + ({primarystat::%{_p}%}/({_oldTickScaling} / 2))) * {_masteryMult}
+			set {_oldDuration} to AbilityUpgradeValue({_p}, "Brother Therold", "Shadow Word: Pain", "DURATION", {_compareLevel})
+			set {_oldTotalTicks} to round({_oldDuration}/(2/{_hasteTt}), 0)
+			set {_oldTickTotal} to round({_oldTotalTicks} * {_oldTickDamage}, 2)
+		set {_valueNames::*} to "GCD", "DAMAGE", "TICKTOTAL", "DURATION"
+		set {_values::*} to "%{_gcd}%", AbilityUpgradePreviewValue({_damage}, {_colour}, {_oldDamage}), AbilityUpgradePreviewValue({_tickTotal}, {_colour}, {_oldTickTotal}), AbilityUpgradePreviewValue({_duration}, {_colour}, {_oldDuration})
+		set {_description} to AbilityUpgradeDescription({_p}, "Brother Therold", "Shadow Word: Pain", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	else if {_ability} = "Vampiric Touch":
+		set {_castTime} to round(1.5 / {_hasteTt}, 1)
+		set {_tickScaling} to AbilityUpgradeValue({_p}, "Brother Therold", "Vampiric Touch", "TICKSCALING", {_level})
+		set {_tickDamage} to (AbilityUpgradeValue({_p}, "Brother Therold", "Vampiric Touch", "TICKDAMAGE", {_level}) + ({damage::%{_p}%}/{_tickScaling}) + (Versatility({_p})/({_tickScaling} * 3)) + ({primarystat::%{_p}%}/({_tickScaling} / 2))) * {_masteryMult}
+		set {_duration} to AbilityUpgradeValue({_p}, "Brother Therold", "Vampiric Touch", "DURATION", {_level})
+		set {_oldDuration} to {_duration}
+		set {_totalTicks} to round({_duration}/(3/{_hasteTt}), 0)
+		set {_totalDamage} to round((1 + {_totalTicks}) * {_tickDamage}, 2)
+		set {_oldTotalDamage} to {_totalDamage}
+		set {_heal} to AbilityUpgradeValue({_p}, "Brother Therold", "Vampiric Touch", "HEAL", {_level})
+		set {_oldHeal} to {_heal}
+		if {_compareLevel} >= 0:
+			set {_oldTickScaling} to AbilityUpgradeValue({_p}, "Brother Therold", "Vampiric Touch", "TICKSCALING", {_compareLevel})
+			set {_oldTickDamage} to (AbilityUpgradeValue({_p}, "Brother Therold", "Vampiric Touch", "TICKDAMAGE", {_compareLevel}) + ({damage::%{_p}%}/{_oldTickScaling}) + (Versatility({_p})/({_oldTickScaling} * 3)) + ({primarystat::%{_p}%}/({_oldTickScaling} / 2))) * {_masteryMult}
+			set {_oldDuration} to AbilityUpgradeValue({_p}, "Brother Therold", "Vampiric Touch", "DURATION", {_compareLevel})
+			set {_oldTotalTicks} to round({_oldDuration}/(3/{_hasteTt}), 0)
+			set {_oldTotalDamage} to round((1 + {_oldTotalTicks}) * {_oldTickDamage}, 2)
+			set {_oldHeal} to AbilityUpgradeValue({_p}, "Brother Therold", "Vampiric Touch", "HEAL", {_compareLevel})
+		set {_valueNames::*} to "CASTTIME", "TOTALDAMAGE", "DURATION", "HEAL"
+		set {_values::*} to {_castTime}, AbilityUpgradePreviewValue({_totalDamage}, {_colour}, {_oldTotalDamage}), AbilityUpgradePreviewValue({_duration}, {_colour}, {_oldDuration}), AbilityUpgradePreviewValue({_heal}, {_colour}, {_oldHeal})
+		set {_description} to AbilityUpgradeDescription({_p}, "Brother Therold", "Vampiric Touch", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	else if {_ability} = "Mind Flay":
+		set {_duration} to AbilityUpgradeValue({_p}, "Brother Therold", "Mind Flay", "DURATION", {_level})
+		set {_oldDuration} to {_duration}
+		set {_mfHaste} to {_hasteTt}/1.5
+		set {_tickScaling} to AbilityUpgradeValue({_p}, "Brother Therold", "Mind Flay", "TICKSCALING", {_level})
+		set {_tickDamage} to (AbilityUpgradeValue({_p}, "Brother Therold", "Mind Flay", "TICKDAMAGE", {_level}) + ({damage::%{_p}%}/{_tickScaling}) + (Versatility({_p})/({_tickScaling} * 3)) + ({primarystat::%{_p}%}/({_tickScaling} / 2))) * {_masteryMult}
+		set {_ticks} to rounded up ({_duration}/(({_duration}/4)/{_mfHaste}))
+		set {_damage} to round({_tickDamage} * {_ticks}, 2)
+		set {_oldDamage} to {_damage}
+		set {_slow} to AbilityUpgradeValue({_p}, "Brother Therold", "Mind Flay", "SLOW", {_level})
+		set {_oldSlow} to {_slow}
+		set {_insanity} to 2 * {_ticks}
+		set {_oldInsanity} to {_insanity}
+		if {_compareLevel} >= 0:
+			set {_oldDuration} to AbilityUpgradeValue({_p}, "Brother Therold", "Mind Flay", "DURATION", {_compareLevel})
+			set {_oldTickScaling} to AbilityUpgradeValue({_p}, "Brother Therold", "Mind Flay", "TICKSCALING", {_compareLevel})
+			set {_oldTickDamage} to (AbilityUpgradeValue({_p}, "Brother Therold", "Mind Flay", "TICKDAMAGE", {_compareLevel}) + ({damage::%{_p}%}/{_oldTickScaling}) + (Versatility({_p})/({_oldTickScaling} * 3)) + ({primarystat::%{_p}%}/({_oldTickScaling} / 2))) * {_masteryMult}
+			set {_oldTicks} to rounded up ({_oldDuration}/(({_oldDuration}/4)/{_mfHaste}))
+			set {_oldDamage} to round({_oldTickDamage} * {_oldTicks}, 2)
+			set {_oldSlow} to AbilityUpgradeValue({_p}, "Brother Therold", "Mind Flay", "SLOW", {_compareLevel})
+			set {_oldInsanity} to 2 * {_oldTicks}
+		set {_valueNames::*} to "DAMAGE", "DURATION", "SLOW", "INSANITY"
+		set {_values::*} to AbilityUpgradePreviewValue({_damage}, {_colour}, {_oldDamage}), AbilityUpgradePreviewValue({_duration}, {_colour}, {_oldDuration}), AbilityUpgradePreviewValue({_slow}, {_colour}, {_oldSlow}), AbilityUpgradePreviewValue({_insanity}, {_colour}, {_oldInsanity})
+		set {_description} to AbilityUpgradeDescription({_p}, "Brother Therold", "Mind Flay", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	else if {_ability} = "Shadow Word: Death":
+		set {_gcd} to "%round(1.5 / {_hasteTt}, 1)% seconds" parsed as timespan
+		set {_cooldown} to "%round(9 / {_hasteTt}, 1)% seconds" parsed as timespan
+		set {_scaling} to AbilityUpgradeValue({_p}, "Brother Therold", "Shadow Word: Death", "DAMAGESCALING", {_level})
+		set {_damage} to round(AbilityUpgradeValue({_p}, "Brother Therold", "Shadow Word: Death", "BASEDAMAGE", {_level}) + ({primarystat::%{_p}%}/({_scaling} / 2)) + ({damage::%{_p}%}/{_scaling}) + (Versatility({_p})/({_scaling} * 1.5)), 2)
+		set {_oldDamage} to {_damage}
+		set {_threshold} to AbilityUpgradeValue({_p}, "Brother Therold", "Shadow Word: Death", "THRESHOLD", {_level})
+		set {_oldThreshold} to {_threshold}
+		if {_compareLevel} >= 0:
+			set {_oldScaling} to AbilityUpgradeValue({_p}, "Brother Therold", "Shadow Word: Death", "DAMAGESCALING", {_compareLevel})
+			set {_oldDamage} to round(AbilityUpgradeValue({_p}, "Brother Therold", "Shadow Word: Death", "BASEDAMAGE", {_compareLevel}) + ({primarystat::%{_p}%}/({_oldScaling} / 2)) + ({damage::%{_p}%}/{_oldScaling}) + (Versatility({_p})/({_oldScaling} * 1.5)), 2)
+			set {_oldThreshold} to AbilityUpgradeValue({_p}, "Brother Therold", "Shadow Word: Death", "THRESHOLD", {_compareLevel})
+		if string tag "Talents;Row 3" of {_customnbt} = "Reaper of Souls":
+			set {_threshold} to 35
+			set {_oldThreshold} to 35
+		set {_valueNames::*} to "CHARGES", "GCD", "COOLDOWN", "DAMAGE", "THRESHOLD"
+		set {_values::*} to "2 Charges", "%{_gcd}%", "%{_cooldown}%", AbilityUpgradePreviewValue({_damage}, {_colour}, {_oldDamage}), AbilityUpgradePreviewValue({_threshold}, {_colour}, {_oldThreshold})
+		set {_description} to AbilityUpgradeDescription({_p}, "Brother Therold", "Shadow Word: Death", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	else if {_ability} = "Void Eruption":
+		set {_baseCasttime} to 2
+		if string tag "Talents;Row 5" of {_customnbt} = "Legacy of the Void":
+			set {_baseCasttime} to {_baseCasttime}*0.6
+		set {_castTime} to "%round({_baseCasttime} / {_hasteTt}, 1)% seconds" parsed as timespan
+		set {_scaling} to AbilityUpgradeValue({_p}, "Brother Therold", "Void Eruption", "DAMAGESCALING", {_level})
+		set {_damage} to round((AbilityUpgradeValue({_p}, "Brother Therold", "Void Eruption", "BASEDAMAGE", {_level}) + ({damage::%{_p}%}/{_scaling}) + (Versatility({_p})/({_scaling} * 3)) + ({primarystat::%{_p}%}/({_scaling} / 2))) * {_masteryMult}, 2)
+		set {_oldDamage} to {_damage}
+		set {_required} to AbilityUpgradeValue({_p}, "Brother Therold", "Void Eruption", "REQUIRED", {_level})
+		set {_oldRequired} to {_required}
+		if {_compareLevel} >= 0:
+			set {_oldScaling} to AbilityUpgradeValue({_p}, "Brother Therold", "Void Eruption", "DAMAGESCALING", {_compareLevel})
+			set {_oldDamage} to round((AbilityUpgradeValue({_p}, "Brother Therold", "Void Eruption", "BASEDAMAGE", {_compareLevel}) + ({damage::%{_p}%}/{_oldScaling}) + (Versatility({_p})/({_oldScaling} * 3)) + ({primarystat::%{_p}%}/({_oldScaling} / 2))) * {_masteryMult}, 2)
+			set {_oldRequired} to AbilityUpgradeValue({_p}, "Brother Therold", "Void Eruption", "REQUIRED", {_compareLevel})
+		if string tag "Talents;Row 5" of {_customnbt} = "Legacy of the Void":
+			set {_required} to 60
+			set {_oldRequired} to 60
+		set {_valueNames::*} to "CASTTIME", "DAMAGE", "REQUIRED"
+		set {_values::*} to "%{_castTime}%", AbilityUpgradePreviewValue({_damage}, {_colour}, {_oldDamage}), AbilityUpgradePreviewValue({_required}, {_colour}, {_oldRequired})
+		set {_description} to AbilityUpgradeDescription({_p}, "Brother Therold", "Void Eruption", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	else if {_ability} = "Void Bolt":
+		set {_cooldown} to "%round(AbilityUpgradeValue({_p}, "Brother Therold", "Void Bolt", "COOLDOWN", {_level}) / {_hasteTt}, 1)% seconds" parsed as timespan
+		set {_oldCooldown} to {_cooldown}
+		if {_compareLevel} >= 0:
+			set {_oldCooldown} to "%round(AbilityUpgradeValue({_p}, "Brother Therold", "Void Bolt", "COOLDOWN", {_compareLevel}) / {_hasteTt}, 1)% seconds" parsed as timespan
+		set {_scaling} to AbilityUpgradeValue({_p}, "Brother Therold", "Void Bolt", "DAMAGESCALING", {_level})
+		set {_damage} to round((AbilityUpgradeValue({_p}, "Brother Therold", "Void Bolt", "BASEDAMAGE", {_level}) + ({damage::%{_p}%}/{_scaling}) + (Versatility({_p})/({_scaling} * 3)) + ({primarystat::%{_p}%}/({_scaling} / 2))) * {_masteryMult}, 2)
+		set {_oldDamage} to {_damage}
+		if {_compareLevel} >= 0:
+			set {_oldScaling} to AbilityUpgradeValue({_p}, "Brother Therold", "Void Bolt", "DAMAGESCALING", {_compareLevel})
+			set {_oldDamage} to round((AbilityUpgradeValue({_p}, "Brother Therold", "Void Bolt", "BASEDAMAGE", {_compareLevel}) + ({damage::%{_p}%}/{_oldScaling}) + (Versatility({_p})/({_oldScaling} * 3)) + ({primarystat::%{_p}%}/({_oldScaling} / 2))) * {_masteryMult}, 2)
+		set {_valueNames::*} to "COOLDOWN", "DAMAGE"
+		set {_values::*} to AbilityUpgradePreviewValue({_cooldown}, {_colour}, {_oldCooldown}), AbilityUpgradePreviewValue({_damage}, {_colour}, {_oldDamage})
+		set {_description} to AbilityUpgradeDescription({_p}, "Brother Therold", "Void Bolt", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+function DelphoxAbilityUpgradePreviewLore(p: player, ability: text, level: integer, colour: text, compareLevel: integer = -1) :: text:
+	set {_customnbt} to custom nbt of {karta::%{_p}%}
+	set {_hasteTt} to Haste({_p})
+	set {_levelLine} to "&9Level %{_level}%"
+
+	if {_ability} = "Incineration":
+		set {_scaling} to AbilityUpgradeValue({_p}, "Delphox", "Incineration", "MASTERYSCALING", {_level})
+		set {_mastery} to round((2.5 + (Mastery({_p})/{_scaling})) * 100, 2)
+		set {_oldMastery} to {_mastery}
+		if {_compareLevel} >= 0:
+			set {_oldScaling} to AbilityUpgradeValue({_p}, "Delphox", "Incineration", "MASTERYSCALING", {_compareLevel})
+			set {_oldMastery} to round((2.5 + (Mastery({_p})/{_oldScaling})) * 100, 2)
+		set {_valueNames::*} to "MASTERY"
+		set {_values::*} to AbilityUpgradePreviewValue({_mastery}, {_colour}, {_oldMastery})
+		set {_description} to AbilityUpgradeDescription({_p}, "Delphox", "Incineration", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	else if {_ability} = "Blaze":
+		set {_scaling} to AbilityUpgradeValue({_p}, "Delphox", "Blaze", "DAMAGESCALING", {_level})
+		set {_damage} to round(AbilityUpgradeValue({_p}, "Delphox", "Blaze", "BASEDAMAGE", {_level}) + (Versatility({_p})/({_scaling}*3)) + ({damage::%{_p}%}/{_scaling}) + ({primarystat::%{_p}%}/({_scaling}/2)), 2)
+		set {_oldDamage} to {_damage}
+		if {_compareLevel} >= 0:
+			set {_oldScaling} to AbilityUpgradeValue({_p}, "Delphox", "Blaze", "DAMAGESCALING", {_compareLevel})
+			set {_oldDamage} to round(AbilityUpgradeValue({_p}, "Delphox", "Blaze", "BASEDAMAGE", {_compareLevel}) + (Versatility({_p})/({_oldScaling}*3)) + ({damage::%{_p}%}/{_oldScaling}) + ({primarystat::%{_p}%}/({_oldScaling}/2)), 2)
+		set {_valueNames::*} to "DAMAGE"
+		set {_values::*} to AbilityUpgradePreviewValue({_damage}, {_colour}, {_oldDamage})
+		set {_description} to AbilityUpgradeDescription({_p}, "Delphox", "Blaze", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	else if {_ability} = "Flamethrower":
+		set {_cooldown} to "%round(AbilityUpgradeValue({_p}, "Delphox", "Flamethrower", "COOLDOWN", {_level}) / {_hasteTt}, 1)% seconds" parsed as timespan
+		set {_oldCooldown} to {_cooldown}
+		set {_duration} to rounded (4 / (1/{_hasteTt}))
+		set {_tickRate} to round(1/{_hasteTt}, 2)
+		set {_scaling} to AbilityUpgradeValue({_p}, "Delphox", "Flamethrower", "DAMAGESCALING", {_level})
+		set {_damage} to round(AbilityUpgradeValue({_p}, "Delphox", "Flamethrower", "BASEDAMAGE", {_level}) + (Versatility({_p})/({_scaling}*3)) + ({damage::%{_p}%}/{_scaling}) + ({primarystat::%{_p}%}/({_scaling}/2)), 2)
+		set {_oldDamage} to {_damage}
+		if {_compareLevel} >= 0:
+			set {_oldCooldown} to "%round(AbilityUpgradeValue({_p}, "Delphox", "Flamethrower", "COOLDOWN", {_compareLevel}) / {_hasteTt}, 1)% seconds" parsed as timespan
+			set {_oldScaling} to AbilityUpgradeValue({_p}, "Delphox", "Flamethrower", "DAMAGESCALING", {_compareLevel})
+			set {_oldDamage} to round(AbilityUpgradeValue({_p}, "Delphox", "Flamethrower", "BASEDAMAGE", {_compareLevel}) + (Versatility({_p})/({_oldScaling}*3)) + ({damage::%{_p}%}/{_oldScaling}) + ({primarystat::%{_p}%}/({_oldScaling}/2)), 2)
+		set {_totalDamage} to round({_damage} * {_duration}, 2)
+		set {_oldTotalDamage} to round({_oldDamage} * {_duration}, 2)
+		set {_valueNames::*} to "COOLDOWN", "DURATION", "TICKRATE", "DAMAGE", "TOTALDAMAGE"
+		set {_values::*} to AbilityUpgradePreviewValue("%{_cooldown}%", {_colour}, "%{_oldCooldown}%"), {_duration}, {_tickRate}, AbilityUpgradePreviewValue({_damage}, {_colour}, {_oldDamage}), AbilityUpgradePreviewValue({_totalDamage}, {_colour}, {_oldTotalDamage})
+		set {_description} to AbilityUpgradeDescription({_p}, "Delphox", "Flamethrower", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	else if {_ability} = "Inferno":
+		set {_scaling} to AbilityUpgradeValue({_p}, "Delphox", "Inferno", "DAMAGESCALING", {_level})
+		set {_damage} to round(AbilityUpgradeValue({_p}, "Delphox", "Inferno", "BASEDAMAGE", {_level}) + (Versatility({_p})/({_scaling}*3)) + ({damage::%{_p}%}/{_scaling}) + ({primarystat::%{_p}%}/({_scaling}/2)), 2)
+		set {_detScaling} to AbilityUpgradeValue({_p}, "Delphox", "Inferno", "DETONATESCALING", {_level})
+		set {_detDamage} to round(AbilityUpgradeValue({_p}, "Delphox", "Inferno", "DETONATEDAMAGE", {_level}) + (Versatility({_p})/({_detScaling}*3)) + ({damage::%{_p}%}/{_detScaling}) + ({primarystat::%{_p}%}/({_detScaling}/2)), 2)
+		set {_stun} to round(AbilityUpgradeValue({_p}, "Delphox", "Inferno", "STUN", {_level}) + (CrowdControlStat({_p})/60), 2)
+		set {_oldDamage} to {_damage}
+		set {_oldDetDamage} to {_detDamage}
+		set {_oldStun} to {_stun}
+		if {_compareLevel} >= 0:
+			set {_oldScaling} to AbilityUpgradeValue({_p}, "Delphox", "Inferno", "DAMAGESCALING", {_compareLevel})
+			set {_oldDamage} to round(AbilityUpgradeValue({_p}, "Delphox", "Inferno", "BASEDAMAGE", {_compareLevel}) + (Versatility({_p})/({_oldScaling}*3)) + ({damage::%{_p}%}/{_oldScaling}) + ({primarystat::%{_p}%}/({_oldScaling}/2)), 2)
+			set {_oldDetScaling} to AbilityUpgradeValue({_p}, "Delphox", "Inferno", "DETONATESCALING", {_compareLevel})
+			set {_oldDetDamage} to round(AbilityUpgradeValue({_p}, "Delphox", "Inferno", "DETONATEDAMAGE", {_compareLevel}) + (Versatility({_p})/({_oldDetScaling}*3)) + ({damage::%{_p}%}/{_oldDetScaling}) + ({primarystat::%{_p}%}/({_oldDetScaling}/2)), 2)
+			set {_oldStun} to round(AbilityUpgradeValue({_p}, "Delphox", "Inferno", "STUN", {_compareLevel}) + (CrowdControlStat({_p})/60), 2)
+		set {_valueNames::*} to "DAMAGE", "DETONATEDAMAGE", "STUN"
+		set {_values::*} to AbilityUpgradePreviewValue({_damage}, {_colour}, {_oldDamage}), AbilityUpgradePreviewValue({_detDamage}, {_colour}, {_oldDetDamage}), AbilityUpgradePreviewValue({_stun}, {_colour}, {_oldStun})
+		set {_description} to AbilityUpgradeDescription({_p}, "Delphox", "Inferno", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	else if {_ability} = "Heat Snap":
+		if string tag "Talents;Row 5" of {_customnbt} = "Flaming Finale":
+			set {_cooldown} to "%round((AbilityUpgradeValue({_p}, "Delphox", "Heat Snap", "COOLDOWN", {_level}) + 30), 1)% seconds" parsed as timespan
+		else:
+			set {_cooldown} to "%round(AbilityUpgradeValue({_p}, "Delphox", "Heat Snap", "COOLDOWN", {_level}), 1)% seconds" parsed as timespan
+		set {_oldCooldown} to {_cooldown}
+		if {_compareLevel} >= 0:
+			if string tag "Talents;Row 5" of {_customnbt} = "Flaming Finale":
+				set {_oldCooldown} to "%round((AbilityUpgradeValue({_p}, "Delphox", "Heat Snap", "COOLDOWN", {_compareLevel}) + 30), 1)% seconds" parsed as timespan
+			else:
+				set {_oldCooldown} to "%round(AbilityUpgradeValue({_p}, "Delphox", "Heat Snap", "COOLDOWN", {_compareLevel}), 1)% seconds" parsed as timespan
+		set {_valueNames::*} to "COOLDOWN"
+		set {_values::*} to AbilityUpgradePreviewValue("%{_cooldown}%", {_colour}, "%{_oldCooldown}%")
+		set {_description} to AbilityUpgradeDescription({_p}, "Delphox", "Heat Snap", {_valueNames::*}, {_values::*})
+		if string tag "Talents;Row 5" of {_customnbt} = "Flaming Finale":
+			set {_flamingFinaleDamage} to round(4 + (Versatility({_p})/96) + ({damage::%{_p}%}/32) + ({primarystat::%{_p}%}/16), 2)
+			set {_description} to "%{_description}%%nl% %nl%&f <#eb6146>Flaming Finale%nl%<#fa4420>Deals &f%{_flamingFinaleDamage}% <#ff4d00>Fire <#fa4420>damage to all affected targets%nl%<#fa4420>and detonates all &f <#f2636a>Infernos <#fa4420>for &f160%% <#fa4420>of the%nl%<#fa4420>normal damage."
+		return "%{_levelLine}%%nl%%{_description}%"
+
+	else if {_ability} = "Flame Barrier":
+		set {_cooldown} to "%round(AbilityUpgradeValue({_p}, "Delphox", "Flame Barrier", "COOLDOWN", {_level}), 1)% seconds" parsed as timespan
+		set {_oldCooldown} to {_cooldown}
+		set {_duration} to round(AbilityUpgradeValue({_p}, "Delphox", "Flame Barrier", "DURATION", {_level}) + (Resistance({_p})/25), 2)
+		set {_oldDuration} to {_duration}
+		if {_compareLevel} >= 0:
+			set {_oldCooldown} to "%round(AbilityUpgradeValue({_p}, "Delphox", "Flame Barrier", "COOLDOWN", {_compareLevel}), 1)% seconds" parsed as timespan
+			set {_oldDuration} to round(AbilityUpgradeValue({_p}, "Delphox", "Flame Barrier", "DURATION", {_compareLevel}) + (Resistance({_p})/25), 2)
+		set {_valueNames::*} to "COOLDOWN", "DURATION"
+		set {_values::*} to AbilityUpgradePreviewValue("%{_cooldown}%", {_colour}, "%{_oldCooldown}%"), AbilityUpgradePreviewValue({_duration}, {_colour}, {_oldDuration})
+		set {_description} to AbilityUpgradeDescription({_p}, "Delphox", "Flame Barrier", {_valueNames::*}, {_values::*})
+		return "%{_levelLine}%%nl%%{_description}%"
