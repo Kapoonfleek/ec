@@ -1,2 +1,42 @@
-function getReputation(p: player):
-    broadcast "A"
+
+function getReputation(p: player, npc: text) :: number:
+    set {_reputation} to yaml value "%{_npc}%.Reputation" in "Reputation%{_p}%"
+    return {_reputation}
+
+function addReputation(p: player, npc: text, reputation: number):
+    set {_currentRepLevel} to yaml value "%{_npc}%.Reputation Level" in "Reputation%{_p}%"
+    broadcast {_currentRepLevel}
+    if {_currentRepLevel} + 1 < 11:
+        set {_nextLevel} to {_currentRepLevel} + 1
+    else:
+        set {_nextLevel} to "Paragon"
+        set {_repAboveMax} to yaml value "%{_npc}%.Reputation Above Max" in "Reputation%{_p}%"
+        set {_repAboveMax} to {_repAboveMax} + {_reputation}
+        set yaml value "%{_npc}%.Reputation Above Max" in "Reputation%{_p}%" to {_repAboveMax}
+    
+    set {_currentReputation} to yaml value "%{_npc}%.Reputation" in "Reputation%{_p}%"
+    set {_currentReputation} to {_currentReputation} + {_reputation}
+    set {_requirement} to yaml value "Reputation EXP Requirements.%{_nextLevel}%" in "ReputationRequirements"
+
+    if {_currentReputation} >= {_requirement}:
+        set {_currentReputation} to {_currentReputation} - {_requirement}
+
+        if {_nextLevel} != "Paragon":
+            set yaml value "%{_npc}%.Reputation Level" in "Reputation%{_p}%" to {_nextLevel}
+
+        reputationLevelUp({_p}, {_npc}, "%{_nextLevel}%")
+
+    set yaml value "%{_npc}%.Reputation" in "Reputation%{_p}%" to {_currentReputation}
+
+    save yaml "Reputation%{_p}%"
+
+function reputationLevelUp(p: player, npc: text, nextLevel: text):
+    #Send message
+    #Player sound
+    load yaml "plugins/Skript/npcs/%{_npc}%" as "%{_npc}%%uuid of {_p}%"
+    set {_rewardName} to yaml value "Rewards.%{_nextLevel}%.Reward" in "%{_npc}%%uuid of {_p}%"
+    set {_rewardAmount} to yaml value "Rewards.%{_nextLevel}%.Amount" in "%{_npc}%%uuid of {_p}%"
+    unload yaml "%{_npc}%%uuid of {_p}%"
+
+    broadcast {_rewardName} and {_rewardAmount}
+    send "congrats for reaching rep level with {_npc}" to {_p}

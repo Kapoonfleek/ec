@@ -1,0 +1,203 @@
+
+function prepareWorkOrders():
+    set {_WOGivers::*} to yaml node keys "Work Order Givers" in "WorkOrderList"
+    #// Delete after system is completed
+    loop {_WOGivers::*}:
+        if yaml node keys "Work Orders" in "WorkOrderList" does not contain loop-value:
+            remove loop-value from {_WOGivers::*}
+
+    set {_difficulties::*} to "Easy", "Medium", "Hard"
+    clear yaml value "Active Work Orders" in "WorkOrderList"
+    save yaml "WorkOrderList"
+    loop {@WorkOrdersPerCategory} times:
+        loop 3 times:
+            set {_difficulty} to {_difficulties::%loop-counter-2%}
+            set {_randomWOGiver} to a random element of {_WOGivers::*}
+            set {_randomWo} to a random element of (yaml node keys "Work Orders.%{_randomWOGiver}%" in "WorkOrderList")
+            set yaml value "Active Work Orders.%{_difficulty}%.%{_randomWOGiver}%" in "WorkOrderList" to {_randomWo}
+            remove {_randomWOGiver} from {_WOGivers::*}
+    save yaml "WorkOrderList"
+
+options:
+    WorkOrdersPerCategory: 3
+    
+on join:
+    wait 2 seconds
+    prepareWorkOrders()
+    loop yaml node keys "Work Order Givers" in "WorkOrderList":
+        if yaml value "%{_WOGiver}%.Reputation" in "Reputation%player%" is not set:
+            set {_WOGiver} to loop-value
+            set yaml value "%{_WOGiver}%.Reputation Level" in "Reputation%player%" to 0
+            set yaml value "%{_WOGiver}%.Reputation" in "Reputation%player%" to 0
+            set yaml value "%{_WOGiver}%.Reputation Above Max" in "Reputation%player%" to 0
+            set yaml value "%{_WOGiver}%.Paragon Rewards Earned" in "Reputation%player%" to 0
+
+            set yaml value "%{_WOGiver}%.World Quests Completed" in "Reputation%player%" to 0
+            set yaml value "%{_WOGiver}%.Work Orders Completed" in "Reputation%player%" to 0
+    save yaml "Reputation%player%"
+#1. Witch each daily resets, Work Orders are randomized for each difficulty. Easy, medium ,hard.
+#2, Players may select 1 Work Order for each difficulty.
+#3. Players may view their work orders @Magnus.
+#4.Register variables Work Orders completed etc. Achievements.
+#5. Update daily reset message
+
+on rightclick on a player:
+    if clicked player's name = "Magnus":
+        set {_workOrders} to chest inventory with 5 rows named "&0Zlecenia"
+        set {_verticalSlots::*} to (9, 17, 18, 26, 27, 35, 36 and 44)
+        set slot integers between 0 and 8 of {_workOrders} to black stained glass pane named " "
+        set slot integers between 36 and 44 of {_workOrders} to black stained glass pane named " "
+        set slots {_verticalSlots::*} of {_workOrders} to black stained glass pane named " "
+
+        set {_rowStart} to 12
+        
+        set {_difficulties::*} to "Easy", "Medium" and "Hard"
+        set {_difficultiesColours::*} to "&a", "&e" and "&c"
+        loop {_difficulties::*}:
+            set {_difficulty} to loop-value
+            loop yaml node keys "Active Work Orders.%{_difficulty}%" in "WorkOrderList":
+                set {_WOGiver} to loop-value-2
+                set {_workOrder} to yaml value "Active Work Orders.%{_difficulty}%.%{_WOGiver}%" in "WorkOrderList"
+
+                set {_CMD} to yaml value "Work Order Givers.%{_WOGiver}%.CMD" in "WorkOrderList"
+                set {_WODescription} to yaml value "Work Orders.%{_WOGiver}%.%{_workOrder}%.Description" in "WorkOrderList"
+                set {_WODescription} to join wrapText({_WODescription}, 50) by "%nl%&7"
+
+                set {_objective} to yaml value "Work Orders.%{_WOGiver}%.%{_workOrder}%.Objective Text" in "WorkOrderList"
+                set {_requirement} to yaml value "Work Orders.%{_WOGiver}%.%{_workOrder}%.%uncolored {_difficulty}%.Requirement" in "WorkOrderList"
+                set {_rewardAmount} to yaml value "Work Orders.%{_WOGiver}%.%{_workOrder}%.%uncolored {_difficulty}%.Reward Amount" in "WorkOrderList"
+                set {_rewardName} to yaml value "Work Orders.%{_WOGiver}%.%{_workOrder}%.Reward.Name" in "WorkOrderList"
+                set {_rewardType} to yaml value "Work Orders.%{_WOGiver}%.%{_workOrder}%.Reward.Type" in "WorkOrderList"
+                set {_objectve} to join wrapText({_objectve}, 50) by "%nl%&f"
+
+                if {_rewardType} = "Item":
+                    set {_rewardItem} to yaml value "%{_rewardName}%.Item" in "ItemList"
+                    set {_rewardIcon} to yaml value "%{_rewardName}%.Icon" in "ItemList"
+                    set {_color} to the first string color code of name of {_rewardItem}
+                    set {_WORewardString} to "%{_color}%%{_rewardAmount}%x %{_rewardName}%"
+                else:
+                    set {_WORewardString} to azeriteType({_rewardAmount}, "", true)
+                    replace all "[" and "]" in {_WORewardString} with ""
+                    set {_WORewardString} to "%{_WORewardString}% (%{_rewardAmount}% Azerite)"
+
+                set {_reputationReward} to yaml value "Work Order Rewards.Reputation.%uncolored {_difficulty}%" in "WorkOrderList"
+                set {_EXPReward} to yaml value "Work Order Rewards.EXP.%uncolored {_difficulty}%" in "WorkOrderList"
+
+                replace all "{REQUIREMENT}" in {_objective} with "%{_requirement}%"
+                replace all "{COMPLETED}" in {_objective} with "0" #UPDATE THIS WHEN PER PLAYER FILE IS READY
+
+                save yaml "Reputation%player%"
+
+                set {_reputationLevel} to yaml value "%{_WOGiver}%.Reputation Level" in "Reputation%player%"
+                set {_reputationCurrent} to yaml value "%{_WOGiver}%.Reputation" in "Reputation%player%"
+
+                set {_nextReputationLevel} to {_reputationLevel} + 1
+                if {_nextReputationLevel} = 11:
+                    set {_reputationLevel} to "&e👑 &fParagon"
+                    set {_nextReputationLevel} to ""
+                    set {_reputationRequired} to yaml value "Reputation EXP Requirements.10" in "ReputationRequirements"
+                    set {_reputationSquareColour} to "&6"
+                    set {_nextLevel} to "Paragon"
+                else:
+                    set {_reputationRequired} to yaml value "Reputation EXP Requirements.%{_nextReputationLevel}%" in "ReputationRequirements"
+                    set {_reputationSquareColour} to "&a"
+                    set {_nextLevel} to {_nextReputationLevel}
+                    set {_nextReputationLevel} to " %{_nextReputationLevel}%"  
+
+                set {_percentageReputation} to round(({_reputationCurrent}/{_reputationRequired})*100, 1)
+                set {_roundedReputation} to round({_percentageReputation}/10, 0)
+                set {_reputationSquares} to squaresReputation()
+                set {_text1} to first {_roundedReputation} characters of {_reputationSquares}
+                set {_text2} to last (length of {_reputationSquares}-{_roundedReputation}) characters of {_reputationSquares}
+                set {_reputationSquares} to "%{_reputationSquareColour}%%{_text1}%&7%{_text2}%"
+                
+                set {_rewardString} to "  %{_WORewardString}%%nl%  &d%{_reputationReward}% Reputation with %{_WOGiver}%%nl%  &b%{_EXPReward}% Player EXP"
+                set {_reputationString} to "&7Reputation: &8%{_reputationCurrent}%/%{_reputationRequired}%%nl%&f%{_reputationLevel}% %{_reputationSquares}%&f%{_nextReputationLevel}% &7(%{_percentageReputation}%%%)"
+                
+                replace all "ł" in {_WOGiver} with "l"
+                load yaml "plugins/Skript/npcs/%{_WOGiver}%" as "%{_WOGiver}%%uuid of player%"
+                set {_nextReward} to yaml value "Rewards.%{_nextLevel}%.Reward" in "%{_WOGiver}%%uuid of player%"
+                set {_nextRewardAmount} to yaml value "Rewards.%{_nextLevel}%.Amount" in "%{_WOGiver}%%uuid of player%"
+                unload yaml "%{_WOGiver}%%uuid of player%"
+
+                set {_rewardItemRep} to yaml value "%{_nextReward}%.Item" in "ItemList"
+                if {_rewardItemRep} is set:
+                    set {_rewardIconRep} to yaml value "%{_nextReward}%.Unicode Icon" in "ItemList"
+                    set {_colorRep} to the first string color code of name of {_rewardItemRep}
+                    set {_nextRewardString} to "%{_rewardIconRep}% %{_colorRep}%%{_nextRewardAmount}% %{_nextReward}%"
+                else:
+                    set {_nextRewardString} to (join wrapText("<##605bf5>✨ %{_nextReward}%", 50) by "%nl%  <##605bf5>")
+                
+                set {_nextRewardString} to "&7Next level reward:%nl%  &f%{_nextRewardString}%"
+
+                set {_difficultyColour} to "%{_difficultiesColours::%loop-counter-1%}%%{_difficulty}%"
+                set {_description} to "%{_difficultyColour}%%nl%&7%{_WODescription}%%nl% %nl%&7Objective:%nl%&f%{_objective}%%nl% %nl%&7Reward for completion:%nl%%{_rewardString}%%nl% %nl%%{_reputationString}%%nl% %nl%%{_nextRewardString}%"
+                set slot {_rowStart} of {_workOrders} to light gray stained glass pane named "&f%{_workOrder}%" with lore {_description} with nbt from "{""minecraft:custom_model_data"":{floats:[%{_CMD}%.0f]}}"
+                set {_rowStart} to {_rowStart} + 1
+                
+            set {_rowStart} to {_rowStart} + 6
+
+        open {_workOrders} to player
+
+        play sound "entity.item_frame.remove_item" with volume 3 and pitch 1.25 to player
+        play sound "entity.item_frame.remove_item" with volume 3 and pitch 0.7 to player
+        play sound "entity.item_frame.break" with volume 3 and pitch 1.25 to player
+        play sound "entity.villager.work_cartographer" with volume 3 and pitch 1.5 to player
+
+function squaresReputation() :: string:
+    set {_squares} to "■" repeated 10 times
+    return {_squares}
+
+function wrapText(text: string, limit: integer = 100) :: strings:
+    set {_words::*} to {_text} split at " "
+    set {_currentLine} to ""
+    loop {_words::*}:
+        if length of ("%{_currentLine}% %loop-value%") > {_limit}:
+            add {_currentLine} to {_lines::*}
+            set {_currentLine} to loop-value
+        else:
+            if {_currentLine} is "":
+                set {_currentLine} to loop-value
+            else:
+                set {_currentLine} to "%{_currentLine}% %loop-value%"
+
+    add {_currentLine} to {_lines::*}
+    return {_lines::*}
+
+function wrapTextColoured(text: string, limit: integer = 100) :: strings:
+    set {_words::*} to {_text} split at " "
+    set {_currentLine} to ""
+    loop {_words::*}:
+        if {_currentLine} is "":
+            set {_test} to "%loop-value%"
+        else:
+            set {_test} to "%{_currentLine}% %loop-value%"
+        
+        if length of (uncolored {_test}) > {_limit}:
+            add {_currentLine} to {_lines::*}
+            set {_currentLine} to loop-value
+        else:
+            set {_currentLine} to {_test}
+
+    add {_currentLine} to {_lines::*}
+    return {_lines::*}
+
+command /wo:
+    trigger:
+        if yaml "WorkOrderList" is loaded:
+            save yaml "WorkOrderList"
+            unload yaml "WorkOrderList"
+            broadcast "&cunloaded yaml"
+        else:
+            load yaml "plugins/Skript/lists/WorkOrderList" as "WorkOrderList"
+            broadcast "&bloaded yaml"
+
+command /mn:
+    trigger:
+        set {_WOGiver} to "Mała Damba"
+        load yaml "plugins/Skript/npcs/%{_WOGiver}%" as "%{_WOGiver}%%uuid of player%"
+        set {_text} to yaml value "Rewards.Paragon.Text" in "%{_WOGiver}%%uuid of player%"
+        replace all "{PLAYER}" in {_text} with ""
+        unload yaml "%{_WOGiver}%%uuid of player%"
+        broadcast {_text}
+#set block break speed attribute of player to 1
