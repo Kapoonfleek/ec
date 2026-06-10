@@ -1,0 +1,175 @@
+function openBoosterCompletionMenu(p: player):
+	set metadata tag "BoosterCompletion" of {_p} to chest inventory with 4 rows named "Booster Completion"
+	play sound "entity.villager.ambient" with volume 4 and pitch 1 to {_p}
+	play sound "block.note_block.pling" with volume 3 and pitch 2 to {_p}
+	send "&8[<##00949e>NPC&8] [<##00949e>August&8] &fHow can I be of service?" to {_p}
+	
+	set {_boosters::*} to "Secret Wonders", "Majestic Dawn", "Unseen Forces", "Plasma Freeze" and "Team Poison vs. Team Aqua"
+	set {_rewards::*} to "Espeon", "Shaymin", "Cynder", "Leafeon" and "Dustox"
+	set {_slot} to 10
+	loop {_boosters::*}:
+		set {_booster} to loop-value
+		set {_boosterName} to {_booster}
+		set {_rewardName} to {_rewards::%loop-index%}
+		if {_boosterName} = "Team Poison vs. Team Aqua":
+
+			set {_boosterName} to "TPVSTA"
+		if yaml "%{_boosterName}%-%{_p}%" is not loaded:
+			load yaml "plugins/Skript/playerdata/boosters/%{_booster}%/%uuid of {_p}%.yml" as "%{_boosterName}%-%{_p}%"
+
+		set {_times} to yaml value "Booster.CompletionClaimed" in "%{_boosterName}%-%{_p}%"
+		if {_times} is not set:
+			set {_times} to 0
+		
+		set {_displayName} to {_rewardName}
+		if {_times} = 0:
+			set {_displayName} to "???"
+			
+		set slot {_slot} of metadata tag "BoosterCompletion" of {_p} to glass pane named "&f%{_booster}%" with lore "&7Click here to exchange a full set of %{_booster}%%nl%&7Cards and obtain a reward.%nl% %nl%&7Reward:%nl%&f- %{_displayName}% Playable Card%nl%&f- 5000 Player XP%nl% %nl%&7Times Claimed: &f%{_times}%"
+		
+		set {_slot} to {_slot} + 1
+
+	open metadata tag "BoosterCompletion" of {_p} to {_p}
+
+function openBoosterConfirmMenu(p: player, booster: string):
+	play sound "ui.click_quick" with volume 1 and pitch 0.9 to {_p}
+	set metadata tag "BoosterConfirm" of {_p} to chest inventory with 3 rows named "Booster Completion - Confirm"
+	set metadata value "SelectedBooster" of {_p} to {_booster}
+	
+	set {_boosterItem} to {_booster}
+	replace all " " and "." in {_boosterItem} with ""
+	set {_boosterItem} to {_boosterItem} in lowercase
+
+	set slot 11 of metadata tag "BoosterConfirm" of {_p} to {booster%{_boosterItem}%}
+	
+	if hasBoosterSet({_p}, {_booster}) is true:
+		set slot 15 of metadata tag "BoosterConfirm" of {_p} to lime stained glass pane named "&aExchange Set" with lore "&7Click here to exchange your set of %{_booster}% Cards.%nl% %nl%&c(&4!&c) Warning: this action will remove the set of cards from%nl%&cyour inventory in exchange for the reward."
+	else:
+		set slot 15 of metadata tag "BoosterConfirm" of {_p} to red stained glass pane named "&cExchange Set" with lore "&7You do not have the complete set to exchange."
+	
+	open metadata tag "BoosterConfirm" of {_p} to {_p}
+
+on inventory click:
+	if player's current inventory = metadata tag "BoosterConfirm" of player:
+		cancel event
+		if event-inventory = metadata tag "BoosterConfirm" of player:
+			if index of event-slot = 15:
+				if event-slot is lime stained glass pane:
+					set {_booster} to metadata value "SelectedBooster" of player
+					set {_boosterName} to {_booster}
+
+					if {_boosterName} = "Team Poison vs. Team Aqua":
+						set {_boosterName} to "TPVSTA"
+
+					completeBooster(player, {_booster}, {_boosterName})
+					close player's inventory
+
+	else if player's current inventory = metadata tag "BoosterCompletion" of player:
+		cancel event
+		if event-inventory = metadata tag "BoosterCompletion" of player:
+			set {_booster} to uncolored name of event-slot
+			if {_booster} is set:
+				openBoosterConfirmMenu(player, {_booster})
+
+function hasBoosterSet(p: player, booster: string) :: boolean:
+	set {_boosterNode} to {_booster}
+	set {_boosterNBT} to {_booster}
+	if {_booster} = "Team Poison vs. Team Aqua":
+		set {_boosterNode} to "TPVSTA"
+		set {_boosterNBT} to "TPVSTA"
+	set {_keys::*} to yaml node keys "%{_boosterNode}%.Cards" in "BoosterCardList"
+	set {_size} to size of {_keys::*}
+	if {_size} = 0:
+		return false
+	loop {_size} times:
+		set {_found} to false
+		loop all items in {_p}'s inventory:
+			if int tag "Id" of (custom nbt of loop-item) = loop-counter-1:
+				if string tag "Booster" of (custom nbt of loop-item) = {_boosterNBT}:
+					set {_found} to true
+					stop loop
+		if {_found} is false:
+			return false
+	return true
+
+function removeBoosterSet(p: player, booster: string):
+	set {_boosterNode} to {_booster}
+	set {_boosterNBT} to {_booster}
+	if {_booster} = "Team Poison vs. Team Aqua":
+		set {_boosterNode} to "TPVSTA"
+		set {_boosterNBT} to "TPVSTA"
+	set {_keys::*} to yaml node keys "%{_boosterNode}%.Cards" in "BoosterCardList"
+	set {_size} to size of {_keys::*}
+	loop {_size} times:
+		loop all items in {_p}'s inventory:
+			if int tag "Id" of (custom nbt of loop-item) = loop-counter-1:
+				if string tag "Booster" of (custom nbt of loop-item) = {_boosterNBT}:
+					remove 1 of loop-item from {_p}'s inventory
+					stop loop
+
+function completeBooster(p: player, booster: string, boostreName: string):
+	if hasBoosterSet({_p}, {_booster}) is false:
+		send "&cYou no longer have the full set!" to {_p}
+		stop
+	
+	removeBoosterSet({_p}, {_booster})
+	
+	if yaml "%{_boosterName}%-%{_p}%" is not loaded:
+		load yaml "plugins/Skript/playerdata/boosters/%{_booster}%/%uuid of {_p}%.yml" as "%{_boosterName}%-%{_p}%"
+
+	set {_times} to yaml value "Booster.CompletionClaimed" in "%{_boosterName}%-%{_p}%"
+	if {_times} is not set:
+		set {_times} to 0
+	set {_times} to {_times} + 1
+	set yaml value "Booster.CompletionClaimed" in "%{_boosterName}%-%{_p}%" to {_times}
+	save yaml "%{_boosterName}%-%{_p}%"
+	
+	if {_booster} = "Secret Wonders":
+		set {_reward} to {espeonkartasw}
+	else if {_booster} = "Majestic Dawn":
+		set {_reward} to {shayminlandkartamd}
+	else if {_booster} = "Unseen Forces":
+		set {_reward} to {cynderkartauf}
+	else if {_booster} = "Plasma Freeze":
+		set {_reward} to {leafeonkartapf}
+	else if {_booster} = "Team Poison vs. Team Aqua":
+		set {_reward} to {dustoxkartatpvsta}
+	
+	set {_card} to uncolored name of {_reward}
+	set {_element} to yaml value "Cards.%{_card}%.Element" in "StellarChestList"
+	set {_primStat} to yaml value "Cards.%{_card}%.Primary Stat" in "StellarChestList"
+	set {_icon} to yaml value "%{_card}%.Classic.Icon" in "VariantList"
+
+	set {_cardReward} to newCardAssignments({_p}, {_reward}, {_element}, {_primStat}, {_icon})
+		
+	giveItem({_p}, {_cardReward})
+	set {_xpGained} to addPlayerXP({_p}, 5000, 1, "Booster Completion")
+	
+	play sound "entity.player.levelup" with volume 4 and pitch 1 to {_p}
+	play sound "ui.toast.challenge_complete" with volume 4 and pitch 1 to {_p}
+	play sound "entity.firework_rocket.blast" with volume 4 and pitch 1 to {_p}
+	
+	send "&8[<##00949e>NPC&8] [<##00949e>August&8] &fSplendid! Here is your reward for completing the %{_booster}% set." to {_p}
+	send "&8[<##00949e>NPC&8] [<##00949e>August&8] &fYou receive: %(name of {_cardReward})% &fand &e%{_xpGained}% Player XP&f!" to {_p}
+
+	set {_yamlValue} to "Achievement.Boosters.%{_booster}%"
+	achievementYaml({_p}, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, {_booster}, "Complete the %{_booster}% Booster.")
+
+	make embed:
+		set author of embed to "Booster Completion"
+		set embed color of the embed to cyan
+		set description of embed to "%{_p}% has completed the %{_booster}% set!"
+
+		set {_cardImage} to yaml value "Cards.%{_card}%.Discord Image" in "StellarChestList"
+		if {_cardImage} is set:
+			set thumbnail of embed to {_cardImage}
+		else:
+			set thumbnail of embed to "https://i.imgur.com/uL7lFjQ.png"
+
+		set {_playerIcon} to "https://mc-heads.net/avatar/%{_p}%"
+		set author icon of embed to {_playerIcon}
+
+		set {_data::*} to data() split at " "
+		set footer of embed to first element of {_data::*}
+
+	post last embed to channel with id "900397064251379752" using {_bot}
