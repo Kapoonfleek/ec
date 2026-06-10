@@ -9,16 +9,39 @@ function achievement(var: text, p: player, num: number, achiev: text, pl: text, 
 				send formatted "&f%{_p}% just earned the achievement <tooltip:&a%{_en}%%nl%&aEarned: %{_data}%>&a[%{_enName}%]" to loop-player
 			execute console command "discord broadcast ##earthcraft | %{_p}% just earned the achievement [%{_enName}%]"
 
-function achievementYaml(p: player, yamlPath: string, yamlLoad: string, yamlValue: string, achievName: string, desc: string = "", desc2: string = ""):
+function loadAchievementList():
+	if yaml "AchievementList" is not loaded:
+		load yaml "plugins/Skript/lists/AchievementList.yml" as "AchievementList"
+
+function achievementYaml(p: player, category: string, id: string, currentProgress: number = 0):
+	loadAchievementList()
 	if yaml "data-%{_p}%" is not loaded:
 		load yaml "plugins/Skript/playerdata/%uuid of {_p}%.yml" as "data-%{_p}%"
-	if yaml value "Achievements.%{_yamlValue}%" in "data-%{_p}%" is true:
+	set {_yamlPath} to "Achievements.Achievement.%{_category}%.%{_id}%"
+	if yaml value {_yamlPath} in "data-%{_p}%" is true:
 		stop
-	set yaml value "Achievements.%{_yamlValue}%" in "data-%{_p}%" to true
+	
+	set {_goal} to yaml value "%{_category}%.%{_id}%.Goal" in "AchievementList"
+	if {_goal} is set:
+		if {_currentProgress} < {_goal}:
+			stop
+
+	set yaml value {_yamlPath} in "data-%{_p}%" to true
 	save yaml "data-%{_p}%"
-	play sound "ui.toast.challenge_complete" with volume 5 and pitch 1.2 at {_p}
-	if {_desc} = "":
+
+	set {_achievName} to yaml value "%{_category}%.%{_id}%.Name" in "AchievementList"
+	set {_desc} to yaml value "%{_category}%.%{_id}%.Description" in "AchievementList"
+	if {_achievName} is not set:
+		set {_achievName} to {_id}
+	
+	replace all "+" in {_achievName} with "."
+	replace all ";" in {_achievName} with ":"
+	replace all "TPVSTA" in {_achievName} with "Team Poison vs. Team Aqua"
+	
+	if {_desc} is not set:
 		set {_desc} to {_achievName}
+
+	play sound "ui.toast.challenge_complete" with volume 5 and pitch 1.2 at {_p}
 	set {_data} to data()
 	log "%{_data}% %{_p}% just earned the achievement [%{_achievName}%]" to "logi/osiagniecia.log"
 	send formatted "&f%{_p}% just earned the achievement <tooltip:&a%{_desc}%%nl%&aEarned: %{_data}%>&a[%{_achievName}%]" to all players
