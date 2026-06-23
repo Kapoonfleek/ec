@@ -18,13 +18,13 @@ import:
     org.bukkit.Chunk
     org.bukkit.plugin.Plugin
     java.util.Optional
+    java.util.concurrent.CompletableFuture
     kr.toxicity.model.api.BetterModel
     kr.toxicity.model.api.tracker.EntityTrackerRegistry
     kr.toxicity.model.api.tracker.Tracker
     kr.toxicity.model.api.tracker.TrackerModifier
     java.lang.System
-
-
+    java.lang.Math
 
 options:
     safeworld: location(9270.5, 73.5, 1562.5, world "world")
@@ -107,6 +107,41 @@ function getIslandName(island: string) :: string:
         set {_island} to "Plunder Cove"
     return {_island}
 
+function preloadChunks(loc: location, radius: integer):
+    set {_world} to {_loc}.getWorld()
+    set {_cx} to Math.floorDiv({_loc}.getBlockX(), 16)
+    set {_cz} to Math.floorDiv({_loc}.getBlockZ(), 16)
+    loop ({_radius} * 2 + 1) times:
+        set {_dx} to loop-number - {_radius} - 1
+        set {_x} to {_cx} + {_dx}
+        loop ({_radius} * 2 + 1) times:
+            set {_dz} to loop-number-2 - ({_radius} - 1)
+            set {_z} to {_cz} + {_dz}
+            set {_futures::*} to {_futures::*} and {_world}.getChunkAtAsync({_x}, {_z}, true)
+    loop {_futures::*}:
+        loop-value.get()
+
+function pinChunksAtPoints(world: world, points: locations, buffer: integer):
+    set {_plugin} to Bukkit.getPluginManager().getPlugin("Skript")
+    loop {_points::*}:
+        set {_cx} to Math.floorDiv(loop-value.getBlockX(), 16)
+        set {_cz} to Math.floorDiv(loop-value.getBlockZ(), 16)
+        loop ({_buffer} * 2 + 1) times:
+            set {_dx} to loop-number - {_buffer} - 1
+            set {_px} to {_cx} + {_dx}
+            loop ({_buffer} * 2 + 1) times:
+                set {_dz} to loop-number-2 - ({_buffer} - 1)
+                set {_pz} to {_cz} + {_dz}
+                set {_key} to "%{_px}%_%{_pz}%"
+                if {_pinned::*} does not contain {_key}:
+                    set {_pinned::*} to {_pinned::*} and {_key}
+                    set {_loc} to location({_px} * 16 + 8, 64, {_pz} * 16 + 8, {_world})
+                    set {_chunk} to {_world}.getChunkAt({_loc})
+                    {_chunk}.addPluginChunkTicket({_plugin})
+                    set {_futures::*} to {_futures::*} and {_world}.getChunkAtAsync({_px}, {_pz}, true)
+    loop {_futures::*}:
+        loop-value.get()
+
 on rightclick:
     if player's tool is bamboo:
         if player's name = "Pehrek":
@@ -136,10 +171,12 @@ on rightclick:
             set {_instance} to createNewInstance({_island})
             set {_newInstance} to "%{_island}%-%{_instance}%"
 
-            if player is in a party:
-                set {_partyMembers::*} to party members of party of player
+            if party of player is set:
+                set {_partyMembersNames::*} to (party members of (party of player)) where [input is online]
+                loop {_partyMembersNames::*}:
+                    set {_partyMembers::%loop-counter%} to "%loop-value%" parsed as player
             else:
-                add player to {_partyMembers::*}
+                set {_partyMembers::*} to player
 
             load yaml "plugins/Skript/islandexpeditions/%{_island}%/Locations.yml" as "%{_island}%Locations"
             set {_total} to yaml value "TotalLocations.ShipAlly.%{_direction}%" in "%{_island}%Locations"
@@ -160,17 +197,6 @@ on rightclick:
             set {_highestEnemy} to max({_enemyLocations::*})
 
             set {_borderRadius} to yaml value "WorldBorderRadius" in "%{_island}%Locations"
-            set {_borderMin} to {_borderRadius}-200
-            set {_borderMax} to ({_borderRadius}*-1) + 200
-
-            set {_chunkBorder1} to location({_borderMin}, 0, {_borderMin}, world {_newInstance})
-            set {_chunkBorder2} to location({_borderMax}, 0, {_borderMax}, world {_newInstance})
-            set {_plugin} to instance of plugin "Skript"
-            
-            loop all chunks within {_chunkBorder1} and {_chunkBorder2}:
-                set {_chunkLoc} to block at 0,0,0 in loop-value
-                loop-value.addPluginChunkTicket({_plugin})
-                loop-value.getWorld().getChunkAtAsync({_chunkLoc})
 
             set worldborder of world {_newInstance} to a worldborder:
                 set worldborder radius of event-worldborder to {_borderRadius}
@@ -195,7 +221,6 @@ on rightclick:
             else if {_weather} is between ({_sunChance} + {_rainChance} + 1) and 100:
                 set {_randomWeather} to "thunder" parsed as weather type
             set weather in world {_newInstance} to {_randomWeather}
-            broadcast {_randomWeather}
 
             set {_shipStart} to a random integer between {_lowestAlly} and {_highestAlly}
             set {_enemyShipStart} to a random integer between {_lowestEnemy} and {_highestEnemy}
@@ -226,18 +251,21 @@ on rightclick:
             else:
                 set {_rotationShipEnemy} to a random element of "East" and "West"
 
-            broadcast "DEBUG: &aALLY: Start: [%{_shipStart}%]   Rotation: (%{_rotationShip}%)  &cStart: [%{_enemyShipStart}%]   Rotation: (%{_rotationShipEnemy}%)"
+            load yaml "plugins/Skript/islandexpeditions/%{_island}%/Azerite" as "%{_island}%Azerite"
 
-            while chunk at {_locShip} is not loaded:
-                wait 1 second
+            loop yaml node keys "Azerite" in "%{_island}%Azerite":
+                loop yaml node keys "Azerite.%loop-value%" in "%{_island}%Azerite":
+                    set {_azeriteLocX} to yaml value "Azerite.%loop-value-1%.%loop-value-2%.Location.X" in "%{_island}%Azerite"
+                    set {_azeriteLocY} to yaml value "Azerite.%loop-value-1%.%loop-value-2%.Location.Y" in "%{_island}%Azerite"
+                    set {_azeriteLocZ} to yaml value "Azerite.%loop-value-1%.%loop-value-2%.Location.Z" in "%{_island}%Azerite"
+                    set {_azeritePoints::*} to {_azeritePoints::*} and location({_azeriteLocX}, {_azeriteLocY}, {_azeriteLocZ}, world {_newInstance})
+
+            set {_pinPoints::*} to {_locShip} and {_locEnemyShip} and {_azeritePoints::*}
+            pinChunksAtPoints(world {_newInstance}, {_pinPoints::*}, 3)
+
             paste schematic "plugins/FastAsyncWorldEdit/schematics/IslandExpeditionsShip%{_rotationShip}%.schem" at {_locShip}
-
-            while chunk at {_locEnemyShip} is not loaded:
-                wait 1 second
             paste schematic "plugins/FastAsyncWorldEdit/schematics/IslandExpeditionsEnemyShip%{_rotationShipEnemy}%.schem" at {_locEnemyShip}
 
-            load yaml "plugins/Skript/islandexpeditions/%{_island}%/Azerite" as "%{_island}%Azerite"
-                    
             loop yaml node keys "Azerite" in "%{_island}%Azerite":
                 set {_modelName} to yaml value "Attributes.%loop-value%.ModelName" in "AzeriteAttributes"
                 loop yaml node keys "Azerite.%loop-value%" in "%{_island}%Azerite":
@@ -255,21 +283,18 @@ on rightclick:
                     spawn an armor stand at {_azeriteLocation} with nbt from "{Invulnerable:1b,NoGravity:1b,Silent:1b}"
                     set {_azeriteModel} to last spawned armor stand
                     set {_scale} to yaml value "Attributes.%{_azeriteType}%.Scale" in "AzeriteAttributes"
-                    set pitch of {_azeriteModel} to {_pitch}
-                    set yaw of {_azeriteModel} to {_yaw}
+                    set pitch of {_azeriteModel} to {_azeriteLocPitch}
+                    set yaw of {_azeriteModel} to {_azeriteLocYaw}
 
                     set int tag "AzeriteIndex" of custom nbt of {_azeriteModel} to {_azeriteIndex}
                     set int tag "AzeriteId" of custom nbt of {_azeriteModel} to {_azeriteId}
                     set string tag "AzeriteInstance" of custom nbt of {_azeriteModel} to {_instance}
                     set string tag "AzeriteVeinType" of custom nbt of {_azeriteModel} to {_azeriteType}
                     set string tag "ECModeledEntity" of custom nbt of {_azeriteModel} to {_modelName}
-                    #set string tag "AzeriteNodeName" of custom nbt of {_azeriteModel} to {_azeriteNode}
                     set float tag "AzeriteScale" of custom nbt of {_azeriteModel} to {_scale}
                     set boolean tag "AzeriteLoaded" of custom nbt of {_azeriteModel} to true
 
-                    set {_model} to BetterModel.model({_modelName}).get().getOrCreate({_azeriteModel}, TrackerModifier.builder().shadow(false).build())
-                    {_model}.scaler({_model}.scaler().multiply({_scale}))
-                    {_model}.registry().reload()
+                    modelApply({_azeriteModel}, {_modelName}, {_scale})
 
             unload yaml "%{_island}%Azerite"
 
@@ -301,7 +326,7 @@ on rightclick:
             set scale attribute of {_flynnFairwind} to 0.9
             set {_flynnFairwind}'s tool to air
 
-            entityTitle({_flynnFairwind}, "Captain")
+            entityTitle({_flynnFairwind}, "Captain", -0.5)
             flynnFairwindIdleSounds({_flynnFairwind})
 
             teleport {_partyMembers::*} to {_locFlynn}
@@ -782,17 +807,18 @@ function AzeriteOreMine(p: entity, e: entity, team: string = "Ally"):
                         add 1/{_originalCastTimeValue} to {_break}
                         if {_typeOfOre} contains "Chest":
                             play sound "entity.zombie.attack_wooden_door" with volume 2 and pitch 2 at (location of {_e})
-                            draw 10 block particle using jungle wood at location {_above} above {_e} with offset vector({_above}/5, {_above}/2, {_above}/5) with extra 0.04
+                            draw 10 of (jungle wood block particle with extra value 0.04) with offset vector({_above}/5, {_above}/2, {_above}/5)  at location {_above} above {_e}
                         else if {_typeOfOre} = "Sack":
                             play sound "block.wool.break" with volume 2 and pitch 2 at (location of {_e})
                             play sound "block.wool.place" with volume 2 and pitch 2 at (location of {_e})
                             play sound "block.wool.step" with volume 2 and pitch 2 at (location of {_e})
                             play sound "entity.llama.swag" with volume 2 and pitch 0.5 at (location of {_e})
-                            draw 10 block particle using brown wool at location {_above} above {_e} with offset vector({_above}/5, {_above}/2, {_above}/5) with extra 0.04
+                            draw 10 of (brown wool block particle with extra value 0.04) with offset vector({_above}/5, {_above}/2, {_above}/5) at location {_above} above {_e}
                         else:
                             play sound "misc.mine_ore" with volume 2 and pitch 1 at (location of {_e})
-                            draw {_particle} block particle using diamond block at location {_above} above {_e} with offset vector({_above}/5, {_above}/2, {_above}/5) with extra 0.04
-                            draw {_particle} block particle using gold block at location {_above} above {_e} with offset vector({_above}/5, {_above}/2, {_above}/5) with extra 0.04
+                            draw {_particle} of (diamond block particle with extra value 0.04) with offset vector({_above}/5, {_above}/2, {_above}/5) at location {_above} above {_e}
+                            set {_block} to gold block
+                            draw {_particle} of ({_block} block particle with extra value 0.04) with offset vector({_above}/5, {_above}/2, {_above}/5) at location {_above} above {_e}
                         
                     wait 0.1 seconds
                     remove 0.1 seconds from {_casttime}
@@ -1052,8 +1078,8 @@ command /showazerite [<string>]:
                     spawn an armor stand at {_azeriteLocation} with nbt from "{Invulnerable:1b,NoGravity:1b,Silent:1b}"
                     set {_azeriteModel} to last spawned armor stand
                     set {_scale} to yaml value "Attributes.%{_azeriteType}%.Scale" in "AzeriteAttributes"
-                    set pitch of {_azeriteModel} to {_pitch}
-                    set yaw of {_azeriteModel} to {_yaw}
+                    set pitch of {_azeriteModel} to {_azeriteLocPitch}
+                    set yaw of {_azeriteModel} to {_azeriteLocYaw}
 
                     set int tag "AzeriteIndex" of custom nbt of {_azeriteModel} to {_azeriteIndex}
                     set int tag "AzeriteId" of custom nbt of {_azeriteModel} to {_azeriteId}
@@ -1063,9 +1089,7 @@ command /showazerite [<string>]:
                     set float tag "AzeriteScale" of custom nbt of {_azeriteModel} to {_scale}
                     set boolean tag "AzeriteLoaded" of custom nbt of {_azeriteModel} to true
 
-                    set {_model} to BetterModel.model({_modelName}).get().getOrCreate({_azeriteModel}, TrackerModifier.builder().shadow(false).build())
-                    {_model}.scaler({_model}.scaler().multiply({_scale}))
-                    {_model}.registry().reload()
+                    modelApply({_azeriteModel}, {_modelName}, {_scale})
 
             unload yaml "%{_island}%Azerite"
         else:
