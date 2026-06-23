@@ -38,7 +38,10 @@ effect paste schematic %string% at %location% [(1¦(with|including) air)]:
 
         set {_loc} to BlockVector3.at(expr-2.getBlockX(), expr-2.getBlockY(), expr-2.getBlockZ())
 
-        ClipboardFormats.findByFile({_file}).load({_file}).paste({_world}, {_loc}, false, {_air}, false, null)
+        set {_clipboard} to ClipboardFormats.findByFile({_file}).load({_file})
+        set {_editSession} to {_clipboard}.paste({_world}, {_loc}, false, {_air}, false, null)
+        {_editSession}.close()
+        {_clipboard}.close()
 
 effect prepare world %string% as %string%:
     trigger:
@@ -83,6 +86,14 @@ function createNewInstance(w: string) :: string:
     prepare world {_w} as {_newInstance}
     return {_instance}
 
+function waitForWorldReady(w: string, timeout: integer = 1200) :: boolean:
+    set {_tries} to 0
+    while Bukkit.getWorld({_w}) is not set:
+        set {_tries} to {_tries} + 1
+        if {_tries} >= {_timeout}:
+            return false
+    return true
+
 function isWorldIsland(w: world) :: boolean:
     set {_worldList::*} to getIslandWorlds()
     if "%{_w}%" contains "-":
@@ -117,12 +128,14 @@ function preloadChunks(loc: location, radius: integer):
         loop ({_radius} * 2 + 1) times:
             set {_dz} to loop-number-2 - ({_radius} - 1)
             set {_z} to {_cz} + {_dz}
-            set {_futures::*} to {_futures::*} and {_world}.getChunkAtAsync({_x}, {_z}, true)
-    loop {_futures::*}:
-        loop-value.get()
+            set {_key} to "%{_x}%_%{_z}%"
+            if {_chunks::%{_key}%} is not set:
+                set {_chunks::%{_key}%} to location({_x} * 16 + 8, 64, {_z} * 16 + 8, {_world})
+    loop {_chunks::*}:
+        async load chunk at loop-value with ticket
+        wait 1 tick if loop-counter is divisible by 20
 
 function pinChunksAtPoints(world: world, points: locations, buffer: integer):
-    set {_plugin} to Bukkit.getPluginManager().getPlugin("Skript")
     loop {_points::*}:
         set {_cx} to Math.floorDiv(loop-value.getBlockX(), 16)
         set {_cz} to Math.floorDiv(loop-value.getBlockZ(), 16)
@@ -133,14 +146,15 @@ function pinChunksAtPoints(world: world, points: locations, buffer: integer):
                 set {_dz} to loop-number-2 - ({_buffer} - 1)
                 set {_pz} to {_cz} + {_dz}
                 set {_key} to "%{_px}%_%{_pz}%"
-                if {_pinned::*} does not contain {_key}:
-                    set {_pinned::*} to {_pinned::*} and {_key}
-                    set {_loc} to location({_px} * 16 + 8, 64, {_pz} * 16 + 8, {_world})
-                    set {_chunk} to {_world}.getChunkAt({_loc})
-                    {_chunk}.addPluginChunkTicket({_plugin})
-                    set {_futures::*} to {_futures::*} and {_world}.getChunkAtAsync({_px}, {_pz}, true)
-    loop {_futures::*}:
-        loop-value.get()
+                if {_chunks::%{_key}%} is not set:
+                    set {_chunks::%{_key}%} to location({_px} * 16 + 8, 64, {_pz} * 16 + 8, {_world})
+    loop {_chunks::*}:
+        async load chunk at loop-value with ticket
+        wait 1 tick if loop-counter is divisible by 20
+
+
+on skript load:
+    clear {islandExpeditionCreating}
 
 on rightclick:
     if player's tool is bamboo:
@@ -168,8 +182,17 @@ on rightclick:
             else:
                 set {_enemyRotation} to a random element of {_directionsLatitude::*}
 
+            while {islandExpeditionCreating} is true:
+                wait 5 ticks
+
+            set {islandExpeditionCreating} to true
             set {_instance} to createNewInstance({_island})
             set {_newInstance} to "%{_island}%-%{_instance}%"
+
+            if waitForWorldReady({_newInstance}) = false:
+                clear {islandExpeditionCreating}
+                send "&cFailed to create the Island Expedition world." to player
+                stop
 
             if party of player is set:
                 set {_partyMembersNames::*} to (party members of (party of player)) where [input is online]
@@ -265,6 +288,7 @@ on rightclick:
 
             paste schematic "plugins/FastAsyncWorldEdit/schematics/IslandExpeditionsShip%{_rotationShip}%.schem" at {_locShip}
             paste schematic "plugins/FastAsyncWorldEdit/schematics/IslandExpeditionsEnemyShip%{_rotationShipEnemy}%.schem" at {_locEnemyShip}
+            clear {islandExpeditionCreating}
 
             loop yaml node keys "Azerite" in "%{_island}%Azerite":
                 set {_modelName} to yaml value "Attributes.%loop-value%.ModelName" in "AzeriteAttributes"
@@ -447,8 +471,7 @@ command /islanddelete:
         loop {_islandList::*}:  
             loop all worlds where ["%input%" contains "%loop-value%"]:
                 if "%loop-value-2%" != "%loop-value-1%":
-                    teleport all players in world "%loop-value-2%" to {@safeworld}
-                    deleteworld "%loop-value-2%"
+                    deleteIslandExpeditionWorld("%loop-value-2%")
 
 function islandExpeditionCountdown(loc: location, players: players, instance: string):
     set {_radius} to 9
@@ -513,17 +536,34 @@ function islandExpeditionLeave(p: player):
     set {_instance} to metadata value "IslandExpeditionInstance" of {_p}
     set {_islandName} to metadata value "IslandName" of {_p}
 
+    if {_instance} is not set:
+        teleport {_p} to {@safeworld}
+        stop
+
+    set {_worldName} to "%{_islandName}%-%{_instance}%"
     islandExpeditionClear({_p})
+    teleport {_p} to {@safeworld}
 
-    loop 2 times:
-        execute {_p} command "Spawn"
+    set {_players::*} to all players where [metadata value "IslandExpeditionInstance" of input = {_instance}]
+    if {_players::*} is set:
+        send "&b- %{_p}% left the Island Expedition." to {_players::*}
+    else:
+        deleteIslandExpeditionWorld({_worldName}, {_instance})
 
-    set {_players::*} to all players where ["%world of input%" contains {_instance}]
-    send "&b- %{_p}% left the Island Expedition." to {_players::*}
-
-    if {_players::*} is not set:
-        teleport all players in world "%{_islandName}%-%{_instance}%" to {@safeworld}
-        deleteworld "%{_islandName}%-%{_instance}%"
+function deleteIslandExpeditionWorld(worldName: string, instance: string = ""):
+    teleport all players in world "%{_worldName}%" to {@safeworld}
+    wait 2 ticks
+    loop all players in world "%{_worldName}%":
+        teleport loop-player to {@safeworld}
+    wait 1 tick
+    if doesWorldExist({_worldName}) = true:
+        deleteworld {_worldName}
+        set {_tries} to 0
+        while doesWorldExist({_worldName}) = true:
+            wait 1 tick
+            set {_tries} to {_tries} + 1
+            stop loop if {_tries} >= 200
+    if {_instance} != "":
         clear {azeriteRequired::%{_instance}%}
         clear {azeriteCollectedAlly::%{_instance}%}
         clear {azeriteCollectedEnemy::%{_instance}%}
@@ -613,7 +653,7 @@ command /diatest:
         set yaml value "Dialogues.Arrive.3.Quote" in "IslandsDialogues" to "Ahh, the open sea. A shanty on your lips, the wind in your chest hair. Now that's freedom!"
 
         set yaml value "Dialogues.Arrive.4.Sound" in "IslandsDialogues" to "npc.flynnfairwind.island_start_arrive_opensea_wellunless"
-        set yaml value "Dialogues.Arrive.4.Quote" in "IslandsDialogues" to "Well... unless you've been pressed into service with the Navy. Or captured by pirates. And then... captured by the Navy."
+        set yaml value "Dialogues.Arrive.4.Quote" in "IslandsDialogues" to "Well... unless you've been pressed into service with the Navy. Or captured by pirates. And then... captured by the Navy...?"
 
         set yaml value "Dialogues.Arrive.5.Sound" in "IslandsDialogues" to "npc.flynnfairwind.island_start_arrive_shipsdocked"
         set yaml value "Dialogues.Arrive.5.Quote" in "IslandsDialogues" to "Ship's docked! Enjoy your adventure while we spin up the ol' Azerite detector."
@@ -864,23 +904,31 @@ function AzeriteOreMine(p: entity, e: entity, team: string = "Ally"):
         azeriteCollectedTextTransform({_id}, {_partyMembers::*})
 
         set {_modelName} to yaml value "Attributes.%{_typeOfOre}%.ModelName" in "AzeriteAttributes"
-        set {_tracker} to EntityTrackerRegistry.registry({_e}).tracker({_modelName})
+        
+        azeriteCollectRemove({_p}, {_e}, {_modelName})
+        #When aezrite detector is online, show all azerite on dynmap
+
+    else:
+        send "&cYou are not in this Island Expedition instance to take this action." to {_p}
+        play sound "block.glass.break" with volume 3 and pitch 1 to {_p}
+
+function azeriteCollectRemove(p: player, e: entity, modelName: text):
+    set {_baseEntity} to bmBaseEntity({_e})
+    set {_registry} to BetterModel.registryOrNull({_baseEntity})
+    if {_registry} is set:
+        set {_tracker} to {_registry}.tracker({_modelName})
         if {_tracker} is set:
             stop sound "azerite.chest_loop" for {_p}
             if {_typeOfOre} contains "Chest":
                 {_tracker}.animate("chestopen")
                 play sound "block.chest.open" with volume 2 and pitch 2 at (location of {_e})
                 wait {_waitTime}
-                add nbt from "{Invisible:1b,Marker:1b}" to nbt of {_e}
-                {_tracker}.despawn()
+                set {_removed} to {_registry}.remove({_modelName})
                 play sound "entity.zombie.break_wooden_door" with volume 2 and pitch 2 at (location of {_e})
             else:
-                {_tracker}.despawn()
-        #When aezrite detector is online, show all azerite on dynmap
-
-    else:
-        send "&cYou are not in this Island Expedition instance to take this action." to {_p}
-        play sound "block.glass.break" with volume 3 and pitch 1 to {_p}
+                set {_removed} to {_registry}.remove({_modelName})
+                
+            add nbt from "{Invisible:1b,Marker:1b}" to nbt of {_e}
 
 function azeriteCollectedTextTransform(id: integer, partyMembers: players):
     loop 10 times:
@@ -966,8 +1014,7 @@ on skript stop:
     loop {_islandList::*}:  
         loop all worlds where ["%input%" contains "%loop-value%"]:
             if "%loop-value-2%" != "%loop-value-1%":
-                teleport all players in world "%loop-value-2%" to {@safeworld}
-                deleteworld "%loop-value-2%"
+                deleteIslandExpeditionWorld("%loop-value-2%")
 
 
 
