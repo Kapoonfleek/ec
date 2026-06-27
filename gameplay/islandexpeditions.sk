@@ -27,6 +27,7 @@ import:
     java.lang.Math
     org.apache.commons.io.FileUtils
     org.mvplugins.multiverse.core.world.options.RemoveWorldOptions
+    org.bukkit.WorldCreator
 
 options:
     safeworld: location(9270.5, 73.5, 1562.5, world "world")
@@ -45,17 +46,22 @@ effect paste schematic %string% at %location% [(1¦(with|including) air)]:
         {_editSession}.close()
         {_clipboard}.close()
 
-effect prepare world %string% as %string%:
+effect prepare island world %string% as %string%:
     trigger:
-        set {_api} to MultiverseCoreApi.get()
-        set {_manager} to {_api}.getWorldManager()
-        
-        set {_world} to {_manager}.getLoadedWorld(expr-1).getOrNull()
-        set {_options} to CloneWorldOptions.fromTo({_world}, expr-2)
+        set {_source} to new File(Bukkit.getWorldContainer(), expr-1)
+        set {_target} to new File(Bukkit.getWorldContainer(), expr-2)
 
-        set {_result} to {_manager}.cloneWorld({_options})
-        if {_result}.isSuccess() != true:
-            send "Failed to clone world %{expr-1}% as %{expr-2}%" to console
+        FileUtils.copyDirectory({_source}, {_target})
+
+        set {_uid} to new File({_target}, "uid.dat")
+        if {_uid}.exists():
+            {_uid}.delete()
+
+        set {_session} to new File({_target}, "session.lock")
+        if {_session}.exists():
+            {_session}.delete()
+
+        Bukkit.createWorld(new WorldCreator(expr-2))
 
 effect deleteworld %string%:
     trigger:
@@ -69,27 +75,26 @@ effect deleteworld %string%:
 
 effect delete island world %string%:
     trigger:
-        set {_api} to MultiverseCoreApi.get()
-        set {_manager} to {_api}.getWorldManager()
-        set {_worldName} to expr-1
+        set {_worldName} to "%expr-1%"
 
-        set {_bukkitWorld} to Bukkit.getWorld({_worldName})
+        set {_container} to Bukkit.getWorldContainer()
+        set {_world} to Bukkit.getWorld({_worldName})
 
-        if {_bukkitWorld} is set:
-            teleport all players in {_bukkitWorld} to {@safeworld}
+        if {_world} is set:
+            teleport all players in {_world} to {@safeworld}
             wait 2 ticks
+            set {_unloaded} to Bukkit.unloadWorld({_world}, false)
 
-            Bukkit.unloadWorld({_bukkitWorld}, false)
+        wait 20 ticks
 
-        set {_mvWorld} to {_manager}.getWorld({_worldName}).getOrNull()
-        if {_mvWorld} is set:
-            set {_removeOptions} to RemoveWorldOptions.world({_mvWorld})
-            set {_result} to {_manager}.removeWorld({_removeOptions})
-            send "[IE] Removed MV world %{_worldName}%: %{_result}%" to console
+        set {_folder} to new File({_container}, {_worldName})
 
-        set {_folder} to new File(Bukkit.getWorldContainer(), {_worldName})
         if {_folder}.exists():
             FileUtils.deleteDirectory({_folder})
+
+        wait 10 ticks
+
+        send "[IE] Removed IE World: %{_folder}%" to console
 
 #function mythicMobSpawn(e: string, loc: location) :: entity:
     #set {_api} to MythicBukkit.inst().getAPIHelper()
@@ -111,7 +116,7 @@ function getNewInstance(w: string) :: string:
 function createNewInstance(w: string) :: string:
     set {_instance} to getNewInstance({_w})
     set {_newInstance} to "%{_w}%-%{_instance}%"
-    prepare world {_w} as {_newInstance}
+    prepare island world {_w} as {_newInstance}
     return {_instance}
 
 function waitForWorldReady(w: string, timeout: integer = 1200) :: boolean:
@@ -147,7 +152,7 @@ function getIslandName(island: string) :: string:
     return {_island}
 
 function preloadChunks(loc: location, radius: integer):
-    set {_world} to {_loc}.getWorld()
+    set {_world} to {_loc}.getWorld() 
     set {_cx} to Math.floorDiv({_loc}.getBlockX(), 16)
     set {_cz} to Math.floorDiv({_loc}.getBlockZ(), 16)
     loop ({_radius} * 2 + 1) times:
@@ -177,8 +182,8 @@ function pinChunksAtPoints(world: world, points: locations, buffer: integer):
                 if {_chunks::%{_key}%} is not set:
                     set {_chunks::%{_key}%} to location({_px} * 16 + 8, 64, {_pz} * 16 + 8, {_world})
     loop {_chunks::*}:
-        async load chunk at loop-value with ticket
-        wait 1 tick if loop-counter is divisible by 20
+        async load chunk at loop-value
+        wait 1 tick if loop-counter is divisible by 10
 
 on rightclick:
     if player's tool is bamboo:
@@ -302,9 +307,8 @@ on rightclick:
                     set {_azeriteLocZ} to yaml value "Azerite.%loop-value-1%.%loop-value-2%.Location.Z" in "%{_island}%Azerite"
                     set {_azeritePoints::*} to {_azeritePoints::*} and location({_azeriteLocX}, {_azeriteLocY}, {_azeriteLocZ}, world {_newInstance})
 
-            set {_enemyPoints::*} to islandExpeditionEnemyPoints({_island}, world {_newInstance})
-            set {_pinPoints::*} to {_locShip} and {_locEnemyShip} and {_azeritePoints::*} and {_enemyPoints::*}
-            pinChunksAtPoints(world {_newInstance}, {_pinPoints::*}, 3)
+            #set {_pinPoints::*} to {_locShip} and {_locEnemyShip}
+            #pinChunksAtPoints(world {_newInstance}, {_pinPoints::*}, 2)
 
             paste schematic "plugins/FastAsyncWorldEdit/schematics/IslandExpeditionsShip%{_rotationShip}%.schem" at {_locShip}
             paste schematic "plugins/FastAsyncWorldEdit/schematics/IslandExpeditionsEnemyShip%{_rotationShipEnemy}%.schem" at {_locEnemyShip}
@@ -678,7 +682,6 @@ function islandExpeditionSpawnEnemies(island: string, instance: string, w: world
             if {_loc} is set:
                 islandExpeditionSpawnEnemy({_island}, {_instance}, {_enemy}, "Rare-%{_rare}%", {_group}, {_path}, {_loc}, {_difficulty})
     unload yaml "%{_island}%Enemies"
-    unload yaml "IslandEnemyList"
 
 function islandExpeditionSpawnEnemy(island: string, instance: string, enemy: string, index: string, group: string, path: string, loc: location, difficulty: string) :: entity:
     set {_baseMob} to yaml value "%{_path}%.Base Mob" in "IslandEnemyList"
@@ -692,7 +695,6 @@ function islandExpeditionSpawnEnemy(island: string, instance: string, enemy: str
         set {_entity} to "zombie" parsed as entity type
     spawn {_entity} at {_loc}
     set {_mob} to last spawned entity
-    set display name of {_mob} to "&f%{_enemy}%"
     set boolean tag "Silent" of nbt of {_mob} to true
 
     set {_health} to yaml value "%{_path}%.Health" in "IslandEnemyList"
@@ -811,13 +813,14 @@ function deleteIslandExpeditionWorld(worldName: string, instance: string = ""):
     loop all players in world "%{_worldName}%":
         teleport loop-player to {@safeworld}
     wait 1 tick
-    if doesWorldExist({_worldName}) = true:
+
+    if Bukkit.getWorld({_worldName}) is set:
         delete island world {_worldName}
-        set {_tries} to 0
-        while doesWorldExist({_worldName}) = true:
-            wait 1 tick
-            set {_tries} to {_tries} + 1
-            stop loop if {_tries} >= 200
+    else:
+        set {_folder} to new File(Bukkit.getWorldContainer(), {_worldName})
+        if {_folder}.exists():
+            delete island world {_worldName}
+
     if {_instance} != "":
         clear {azeriteRequired::%{_instance}%}
         clear {azeriteCollectedAlly::%{_instance}%}
