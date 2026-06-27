@@ -25,6 +25,8 @@ import:
     kr.toxicity.model.api.tracker.TrackerModifier
     java.lang.System
     java.lang.Math
+    org.apache.commons.io.FileUtils
+    org.mvplugins.multiverse.core.world.options.RemoveWorldOptions
 
 options:
     safeworld: location(9270.5, 73.5, 1562.5, world "world")
@@ -51,7 +53,9 @@ effect prepare world %string% as %string%:
         set {_world} to {_manager}.getLoadedWorld(expr-1).getOrNull()
         set {_options} to CloneWorldOptions.fromTo({_world}, expr-2)
 
-        {_manager}.cloneWorld({_options})
+        set {_result} to {_manager}.cloneWorld({_options})
+        if {_result}.isSuccess() != true:
+            send "Failed to clone world %{expr-1}% as %{expr-2}%" to console
 
 effect deleteworld %string%:
     trigger:
@@ -61,7 +65,31 @@ effect deleteworld %string%:
         set {_world} to {_manager}.getWorld(expr-1).getOrNull()
         set {_options} to DeleteWorldOptions.world({_world})
 
-        {_manager}.deleteWorld({_options})
+        set {_result} to {_manager}.deleteWorld({_options})
+
+effect delete island world %string%:
+    trigger:
+        set {_api} to MultiverseCoreApi.get()
+        set {_manager} to {_api}.getWorldManager()
+        set {_worldName} to expr-1
+
+        set {_bukkitWorld} to Bukkit.getWorld({_worldName})
+
+        if {_bukkitWorld} is set:
+            teleport all players in {_bukkitWorld} to {@safeworld}
+            wait 2 ticks
+
+            Bukkit.unloadWorld({_bukkitWorld}, false)
+
+        set {_mvWorld} to {_manager}.getWorld({_worldName}).getOrNull()
+        if {_mvWorld} is set:
+            set {_removeOptions} to RemoveWorldOptions.world({_mvWorld})
+            set {_result} to {_manager}.removeWorld({_removeOptions})
+            send "[IE] Removed MV world %{_worldName}%: %{_result}%" to console
+
+        set {_folder} to new File(Bukkit.getWorldContainer(), {_worldName})
+        if {_folder}.exists():
+            FileUtils.deleteDirectory({_folder})
 
 #function mythicMobSpawn(e: string, loc: location) :: entity:
     #set {_api} to MythicBukkit.inst().getAPIHelper()
@@ -152,10 +180,6 @@ function pinChunksAtPoints(world: world, points: locations, buffer: integer):
         async load chunk at loop-value with ticket
         wait 1 tick if loop-counter is divisible by 20
 
-
-on skript load:
-    clear {islandExpeditionCreating}
-
 on rightclick:
     if player's tool is bamboo:
         if player's name = "Pehrek":
@@ -182,15 +206,10 @@ on rightclick:
             else:
                 set {_enemyRotation} to a random element of {_directionsLatitude::*}
 
-            while {islandExpeditionCreating} is true:
-                wait 5 ticks
-
-            set {islandExpeditionCreating} to true
             set {_instance} to createNewInstance({_island})
             set {_newInstance} to "%{_island}%-%{_instance}%"
 
             if waitForWorldReady({_newInstance}) = false:
-                clear {islandExpeditionCreating}
                 send "&cFailed to create the Island Expedition world." to player
                 stop
 
@@ -233,8 +252,8 @@ on rightclick:
             unload yaml "%{_island}%Properties"
 
             set {allowChangeConditions::%{_newInstance}%} to true
-            set {_randomTime} to a random integer between 0 and 24000
-            world {_newInstance}.setTime({_randomTime})
+            #set {_randomTime} to a random integer between 0 and 24000
+            #world {_newInstance}.setTime({_randomTime})
 
             set {_weather} to a random integer between 1 and 100
             if {_weather} is between 1 and {_sunChance}:
@@ -283,7 +302,8 @@ on rightclick:
                     set {_azeriteLocZ} to yaml value "Azerite.%loop-value-1%.%loop-value-2%.Location.Z" in "%{_island}%Azerite"
                     set {_azeritePoints::*} to {_azeritePoints::*} and location({_azeriteLocX}, {_azeriteLocY}, {_azeriteLocZ}, world {_newInstance})
 
-            set {_pinPoints::*} to {_locShip} and {_locEnemyShip} and {_azeritePoints::*}
+            set {_enemyPoints::*} to islandExpeditionEnemyPoints({_island}, world {_newInstance})
+            set {_pinPoints::*} to {_locShip} and {_locEnemyShip} and {_azeritePoints::*} and {_enemyPoints::*}
             pinChunksAtPoints(world {_newInstance}, {_pinPoints::*}, 3)
 
             paste schematic "plugins/FastAsyncWorldEdit/schematics/IslandExpeditionsShip%{_rotationShip}%.schem" at {_locShip}
@@ -303,7 +323,6 @@ on rightclick:
                     set {_azeriteNode} to yaml value "Azerite.%{_azeriteType}%.%loop-value-2%.Node" in "%{_island}%Azerite"
 
                     if {_azeriteType} = "Crystal":
-                        broadcast "A"
                         set {_azeriteLocY} to {_azeriteLocY} + 0.1
 
                     set {_azeriteLocation} to location({_azeriteLocX}, {_azeriteLocY}, {_azeriteLocZ}, world {_newInstance}, {_azeriteLocYaw}, {_azeriteLocPitch})
@@ -314,38 +333,42 @@ on rightclick:
                     set pitch of {_azeriteModel} to {_azeriteLocPitch}
                     set yaw of {_azeriteModel} to {_azeriteLocYaw}
 
-                    set int tag "AzeriteIndex" of custom nbt of {_azeriteModel} to {_azeriteIndex}
-                    set int tag "AzeriteId" of custom nbt of {_azeriteModel} to {_azeriteId}
-                    set string tag "AzeriteInstance" of custom nbt of {_azeriteModel} to {_instance}
-                    set string tag "AzeriteVeinType" of custom nbt of {_azeriteModel} to {_azeriteType}
-                    set string tag "ECModeledEntity" of custom nbt of {_azeriteModel} to {_modelName}
-                    set float tag "AzeriteScale" of custom nbt of {_azeriteModel} to {_scale}
-                    set boolean tag "AzeriteLoaded" of custom nbt of {_azeriteModel} to true
+                    set {_customNbt} to custom nbt of {_azeriteModel}
+
+                    set int tag "AzeriteIndex" of {_customNbt} to {_azeriteIndex}
+                    set int tag "AzeriteId" of {_customNbt} to {_azeriteId}
+                    set string tag "AzeriteInstance" of {_customNbt} to {_instance}
+                    set string tag "AzeriteVeinType" of {_customNbt} to {_azeriteType}
+                    set string tag "ECModeledEntity" of {_customNbt} to {_modelName}
+                    set float tag "AzeriteScale" of {_customNbt} to {_scale}
+                    set boolean tag "AzeriteLoaded" of {_customNbt} to true
 
                     modelApply({_azeriteModel}, {_modelName}, {_scale})
 
             unload yaml "%{_island}%Azerite"
 
+            islandExpeditionSpawnEnemies({_island}, {_instance}, world {_newInstance}, {_difficulty})
+
             if {_rotationShip} = "North" or "South":
                 if {_rotationShip} = "South":
-                    set {_z} to z-coordinate of {_locShip} + 5.85
-                    set {_x} to x-coordinate of {_locShip}
+                    set {_z} to z of {_locShip} + 5.85
+                    set {_x} to x of {_locShip}
                     set {_yaw} to 0
                 else:
-                    set {_z} to z-coordinate of {_locShip} - 5.85
-                    set {_x} to x-coordinate of {_locShip}
+                    set {_z} to z of {_locShip} - 5.85
+                    set {_x} to x of {_locShip}
                     set {_yaw} to 180
             else:
                 if {_rotationShip} = "West":
-                    set {_x} to x-coordinate of {_locShip} - 5.85
-                    set {_z} to z-coordinate of {_locShip}
+                    set {_x} to x of {_locShip} - 5.85
+                    set {_z} to z of {_locShip}
                     set {_yaw} to 90
                 else:
-                    set {_x} to x-coordinate of {_locShip} + 5.85
-                    set {_z} to z-coordinate of {_locShip}
+                    set {_x} to x of {_locShip} + 5.85
+                    set {_z} to z of {_locShip}
                     set {_yaw} to -90
 
-            set {_locFlynn} to location({_x}, y-coordinate of {_locShip} + 13.5, {_z}, world {_newInstance}, {_yaw}, -5)
+            set {_locFlynn} to location({_x}, y of {_locShip} + 13.5, {_z}, world {_newInstance}, {_yaw}, -5)
             spawn an adult zombie at {_locFlynn}
             set boolean tag "Silent" of nbt of last spawned zombie to true
             set boolean tag "NoAI" of nbt of last spawned zombie to true
@@ -388,7 +411,7 @@ on rightclick:
 
             play sound {_arriveSound} with volume 2 and pitch 1 at {_locFlynn}
             send "&eFlynn Fairwind says: %{_arriveQuote}%" to {_partyMembers::*}
-            dialogue({_arriveQuote}, (location 0.25 above {_locFlynn}), 0 seconds, 0 seconds, {_partyMembers::*})
+            dialogue({_arriveQuote}, (location 0.5 above {_locFlynn}), 0 seconds, 0 seconds, {_partyMembers::*})
 
             #Enemies
             #       Undead:
@@ -475,12 +498,13 @@ command /islanddelete:
 
 function islandExpeditionCountdown(loc: location, players: players, instance: string):
     set {_radius} to 9
-    loop all blocks in radius ({_radius} + 1) around {_loc} where [distance between {_loc} and input > {_radius}]:
-        if (y-coordinate of loop-block) >= (y-coordinate of {_loc}):
-            set {_blocks::*} to {_blocks::*} and type of loop-block
-            set block at loop-block to (blue stained glass) fast
-            set boolean tag "CountdownBlock" of custom nbt of loop-block to true
-            wait 1 tick if loop-counter is divisible by 72
+    loop all blocks in radius ({_radius} + 1) around {_loc}:
+        if distance between {_loc} and loop-block > {_radius}:
+            if (y of loop-block) >= (y of {_loc}):
+                set {_blocks::*} to {_blocks::*} and type of loop-block
+                set block at loop-block to (blue stained glass) fast
+                set boolean tag "CountdownBlock" of (custom nbt of loop-block) to true
+                wait 1 tick if loop-counter is divisible by 72
     set {_am} to 10
     set metadata value "CannotUseAbilities" of {_players::*} to true
 
@@ -502,10 +526,11 @@ function islandExpeditionCountdown(loc: location, players: players, instance: st
         wait 1 second
     clear metadata value "CannotUseAbilities" of {_players::*}
     set {_num} to 0
-    loop all blocks in radius ({_radius} + 1) around {_loc} where [boolean tag "CountdownBlock" of custom nbt of input is set]:
-        add 1 to {_num}
-        clear boolean tag "CountdownBlock" of custom nbt of loop-block
-        set block at loop-block to {_blocks::%{_num}%}
+    loop all blocks in radius ({_radius} + 1) around {_loc}:
+        if boolean tag "CountdownBlock" of (custom nbt of loop-block) is set:
+            add 1 to {_num}
+            clear boolean tag "CountdownBlock" of (custom nbt of loop-block)
+            set block at loop-block to {_blocks::%{_num}%}
 
     if size of {_players::*} > 0:
         loop {_players::*}:
@@ -532,6 +557,236 @@ function islandExpeditionStart(p: player):
     azeriteTeamMemberWorth({_p})
     islandExpeditionTimer({_p})
 
+function islandExpeditionYamlLocation(yamlName: string, path: string, w: world) :: location:
+    set {_x} to yaml value "%{_path}%.Location.X" in "%{_yamlName}%"
+    set {_y} to yaml value "%{_path}%.Location.Y" in "%{_yamlName}%"
+    set {_z} to yaml value "%{_path}%.Location.Z" in "%{_yamlName}%"
+    set {_pitch} to yaml value "%{_path}%.Location.Pitch" in "%{_yamlName}%"
+    set {_yaw} to yaml value "%{_path}%.Location.Yaw" in "%{_yamlName}%"
+    if {_x} is not set:
+        return {_return}
+    if {_pitch} is not set:
+        set {_pitch} to 0
+    if {_yaw} is not set:
+        set {_yaw} to 0
+    return location({_x}, {_y}, {_z}, {_w}, {_yaw}, {_pitch})
+
+function islandExpeditionEncounterLocation(center: location, radius: number) :: location:
+    if {_radius} is not set:
+        set {_radius} to 0
+    if {_radius} <= 0:
+        return {_center}
+    set {_negativeRadius} to 0 - {_radius}
+    set {_x} to x of {_center} + (random number between {_negativeRadius} and {_radius})
+    set {_z} to z of {_center} + (random number between {_negativeRadius} and {_radius})
+    set {_y} to y of {_center}
+    set {_world} to {_center}.getWorld()
+    return location({_x}, {_y}, {_z}, {_world}, yaw of {_center}, pitch of {_center})
+
+function islandExpeditionWeightedNode(path: string, yamlName: string) :: string:
+    set {_total} to 0
+    loop yaml node keys "%{_path}%" in "%{_yamlName}%":
+        set {_key} to loop-value
+        set {_weight} to yaml value "%{_path}%.%{_key}%.Weight" in "%{_yamlName}%"
+        if {_weight} is not set:
+            set {_weight} to yaml value "%{_path}%.%{_key}%" in "%{_yamlName}%"
+        if {_weight} is not set:
+            set {_weight} to 1
+        set {_total} to {_total} + {_weight}
+        set {_keys::*} to {_keys::*} and {_key}
+        set {_weights::%loop-counter%} to {_weight}
+    if {_total} <= 0:
+        return {_keys::1}
+    set {_roll} to random number between 0 and {_total}
+    set {_current} to 0
+    loop {_keys::*}:
+        set {_current} to {_current} + {_weights::%loop-counter%}
+        if {_roll} <= {_current}:
+            return loop-value
+    return {_keys::1}
+
+function islandExpeditionEnemyPoints(island: string, w: world) :: locations:
+    load yaml "plugins/Skript/islandexpeditions/%{_island}%/Enemies" as "%{_island}%EnemiesPoints"
+    loop yaml node keys "EncounterSpots" in "%{_island}%EnemiesPoints":
+        set {_loc} to islandExpeditionYamlLocation("%{_island}%EnemiesPoints", "EncounterSpots.%loop-value%", {_w})
+        if {_loc} is set:
+            set {_points::*} to {_points::*} and {_loc}
+    loop yaml node keys "Rares" in "%{_island}%EnemiesPoints":
+        set {_loc} to islandExpeditionYamlLocation("%{_island}%EnemiesPoints", "Rares.%loop-value%", {_w})
+        if {_loc} is set:
+            set {_points::*} to {_points::*} and {_loc}
+    unload yaml "%{_island}%EnemiesPoints"
+    return {_points::*}
+
+function islandExpeditionEnemyTemplatePath(island: string, enemy: string, group: string) :: string:
+    if yaml value "Enemies.%{_island}%.%{_group}%.%{_enemy}%.Health" in "IslandEnemyList" is set:
+        return "Enemies.%{_island}%.%{_group}%.%{_enemy}%"
+    if yaml value "Enemies.Generic.%{_enemy}%.Health" in "IslandEnemyList" is set:
+        return "Enemies.Generic.%{_enemy}%"
+    return ""
+
+function islandExpeditionDifficultyHealthModifier(difficulty: string) :: number:
+    set {_difficulty} to uncolored {_difficulty}
+    if {_difficulty} = "Heroic":
+        return 1.45
+    if {_difficulty} = "Mythic":
+        return 2
+    return 1
+
+function islandExpeditionDifficultyDamageModifier(difficulty: string) :: number:
+    set {_difficulty} to uncolored {_difficulty}
+    if {_difficulty} = "Heroic":
+        return 1.3
+    if {_difficulty} = "Mythic":
+        return 1.7
+    return 1
+
+function islandExpeditionSpawnEnemies(island: string, instance: string, w: world, difficulty: string):
+    load yaml "plugins/Skript/islandexpeditions/%{_island}%/Enemies" as "%{_island}%Enemies"
+    loop yaml node keys "EncounterSpots" in "%{_island}%Enemies":
+        set {_spot} to loop-value
+        set {_center} to islandExpeditionYamlLocation("%{_island}%Enemies", "EncounterSpots.%{_spot}%", {_w})
+        if {_center} is set:
+            set {_radius} to yaml value "EncounterSpots.%{_spot}%.Radius" in "%{_island}%Enemies"
+            set {_min} to yaml value "EncounterSpots.%{_spot}%.Count.Min" in "%{_island}%Enemies"
+            set {_max} to yaml value "EncounterSpots.%{_spot}%.Count.Max" in "%{_island}%Enemies"
+            if {_min} is not set:
+                set {_min} to 1
+            if {_max} is not set:
+                set {_max} to {_min}
+            if {_max} < {_min}:
+                set {_max} to {_min}
+            set {_amount} to random integer between {_min} and {_max}
+            set {_group} to islandExpeditionWeightedNode("EncounterSpots.%{_spot}%.Groups", "%{_island}%Enemies")
+            if {_group} is not set:
+                set {_group} to islandExpeditionWeightedNode("Groups", "%{_island}%Enemies")
+            loop {_amount} times:
+                set {_enemy} to islandExpeditionWeightedNode("Groups.%{_group}%.Enemies", "%{_island}%Enemies")
+                set {_path} to islandExpeditionEnemyTemplatePath({_island}, {_enemy}, {_group})
+                if {_path} != "":
+                    set {_loc} to islandExpeditionEncounterLocation({_center}, {_radius})
+                    islandExpeditionSpawnEnemy({_island}, {_instance}, {_enemy}, "%{_spot}%-%loop-number%", {_group}, {_path}, {_loc}, {_difficulty})
+    loop yaml node keys "Rares" in "%{_island}%Enemies":
+        set {_rare} to loop-value
+        set {_enemy} to yaml value "Rares.%{_rare}%.Enemy" in "%{_island}%Enemies"
+        if {_enemy} is not set:
+            set {_enemy} to {_rare}
+        set {_group} to yaml value "Rares.%{_rare}%.Group" in "%{_island}%Enemies"
+        set {_path} to islandExpeditionEnemyTemplatePath({_island}, {_enemy}, {_group})
+        set {_loc} to islandExpeditionYamlLocation("%{_island}%Enemies", "Rares.%{_rare}%", {_w})
+        if {_path} != "":
+            if {_loc} is set:
+                islandExpeditionSpawnEnemy({_island}, {_instance}, {_enemy}, "Rare-%{_rare}%", {_group}, {_path}, {_loc}, {_difficulty})
+    unload yaml "%{_island}%Enemies"
+    unload yaml "IslandEnemyList"
+
+function islandExpeditionSpawnEnemy(island: string, instance: string, enemy: string, index: string, group: string, path: string, loc: location, difficulty: string) :: entity:
+    set {_baseMob} to yaml value "%{_path}%.Base Mob" in "IslandEnemyList"
+    if {_baseMob} is not set:
+        set {_baseMob} to "Zombie"
+    if {_baseMob} = "Zombie":
+        set {_entity} to "adult zombie" parsed as entity type
+    else:
+        set {_entity} to {_baseMob} parsed as entity type
+    if {_entity} is not set:
+        set {_entity} to "zombie" parsed as entity type
+    spawn {_entity} at {_loc}
+    set {_mob} to last spawned entity
+    set display name of {_mob} to "&f%{_enemy}%"
+    set boolean tag "Silent" of nbt of {_mob} to true
+
+    set {_health} to yaml value "%{_path}%.Health" in "IslandEnemyList"
+    if {_health} is not set:
+        set {_health} to 20
+    set {_health} to {_health} * islandExpeditionDifficultyHealthModifier({_difficulty})
+    set {_mob}'s max health to {_health}
+    heal {_mob}
+
+    set {_rank} to yaml value "%{_path}%.Type" in "IslandEnemyList"
+    set {_movement} to yaml value "%{_path}%.Movement" in "IslandEnemyList"
+    set {_azerite} to yaml value "%{_path}%.Azerite" in "IslandEnemyList"
+    set {_model} to yaml value "%{_path}%.Model" in "IslandEnemyList"
+    set {_scale} to yaml value "%{_path}%.Scale" in "IslandEnemyList"
+    set {_disguise} to yaml value "%{_path}%.Disguise" in "IslandEnemyList"
+    set {_item} to yaml value "%{_path}%.Item" in "IslandEnemyList"
+    set {_element} to yaml value "%{_path}%.Element" in "IslandEnemyList"
+
+    if {_azerite} is not set:
+        set {_azerite} to 0
+    if {_scale} is not set:
+        set {_scale} to 1
+
+    if {_rank} is not set:
+        set {_rank} to "Normal"
+
+    if {_movement} is not set:
+        set {_movement} to "Stroll"
+
+    if {_element} is not set:
+        set {_element} to "Physical"
+
+    set {_customNbt} to (custom nbt of {_mob})
+
+    set scale attribute of {_mob} to {_scale}
+    set boolean tag "ECMob" of {_customNbt} to true
+    set int tag "ECLvl" of {_customNbt} to {maxCardLevel}
+    set boolean tag "ECIslandEnemy" of {_customNbt} to true
+    set boolean tag "RemoveOnReset" of {_customNbt} to true
+    set string tag "ECElement" of {_customNbt} to {_element}
+    set string tag "IslandExpeditionInstance" of {_customNbt} to {_instance}
+    set string tag "IslandName" of {_customNbt} to {_island}
+    set string tag "IslandEnemyName" of {_customNbt} to {_enemy}
+    set string tag "IslandEnemyGroup" of {_customNbt} to {_group}
+    set string tag "IslandEnemyCategory" of {_customNbt} to {_group}
+    set string tag "IslandEnemyRank" of {_customNbt} to {_rank}
+    set string tag "IslandEnemyMovement" of {_customNbt} to {_movement}
+    set string tag "IslandEnemyIndex" of {_customNbt} to {_index}
+    set int tag "IslandEnemyAzerite" of {_customNbt} to {_azerite}
+    set long tag "MobDamageModifier" of {_customNbt} to islandExpeditionDifficultyDamageModifier({_difficulty})
+    set metadata value "IslandExpeditionInstance" of {_mob} to {_instance}
+    set metadata value "IslandEnemy" of {_mob} to true
+    set metadata value "IslandEnemyName" of {_mob} to {_enemy}
+    set metadata value "IslandEnemyGroup" of {_mob} to {_group}
+    set metadata value "IslandEnemyCategory" of {_mob} to {_group}
+    set metadata value "IslandEnemyRank" of {_mob} to {_rank}
+    set metadata value "IslandEnemyMovement" of {_mob} to {_movement}
+    set metadata value "IslandEnemyAzerite" of {_mob} to {_azerite}
+    set metadata value "ECMobSpawnLoc" of {_mob} to {_loc}
+
+    set boolean tag "CustomNameVisible" of nbt of {_mob} to false
+
+    if {_movement} = "Static":
+        set boolean tag "NoAI" of nbt of {_mob} to true
+
+    if {_model} is set:
+        set string tag "ECModeledEntity" of {_customNbt} to {_model}
+        modelApply({_mob}, {_model}, {_scale})
+    if {_disguise} is set:
+        if {_disguise} != "":
+            disguise {_mob} as saved disguise {_disguise}
+    if {_item} is set:
+        set {_mob}'s tool to {_item}
+
+    IslandMobInfoAssignments({_mob}, {_enemy}, {_path}, {_scale})
+
+    onECMobSpawn({_mob})
+    return {_mob}
+
+on death:
+    set {_customNbt} to custom nbt of victim
+    if boolean tag "ECIslandEnemy" of {_customNbt} is set:
+        set {_attacker} to attacker
+        if {_attacker} is a projectile:
+            set {_attacker} to shooter of {_attacker}
+        if {_attacker} is a player:
+            set {_instance} to string tag "IslandExpeditionInstance" of {_customNbt}
+            if metadata value "IslandExpeditionInstance" of {_attacker} = {_instance}:
+                set {_azerite} to int tag "IslandEnemyAzerite" of {_customNbt}
+                if {_azerite} > 0:
+                    set {_enemy} to string tag "IslandEnemyName" of {_customNbt}
+                    azeriteAddIslands({_attacker}, {_instance}, "Enemy", {_enemy}, {_azerite}, "Ally", "azerite.collect_small")
+
+
 function islandExpeditionLeave(p: player):
     set {_instance} to metadata value "IslandExpeditionInstance" of {_p}
     set {_islandName} to metadata value "IslandName" of {_p}
@@ -557,7 +812,7 @@ function deleteIslandExpeditionWorld(worldName: string, instance: string = ""):
         teleport loop-player to {@safeworld}
     wait 1 tick
     if doesWorldExist({_worldName}) = true:
-        deleteworld {_worldName}
+        delete island world {_worldName}
         set {_tries} to 0
         while doesWorldExist({_worldName}) = true:
             wait 1 tick
@@ -716,9 +971,9 @@ on rightclick on an entity:
             loop 6 times:
                 add " " to lore of slot 4 of {_gui}
             set tooltip style of slot 4 of {_gui} to {_tooltip}
-            set string tag "Difficulty" of custom nbt of slot 4 of {_gui} to "Normal"
-            set string tag "Difficulty" of custom nbt of slot 5 of {_gui} to "Heroic"
-            set string tag "Difficulty" of custom nbt of slot 6 of {_gui} to "Mythic"
+            set string tag "Difficulty" of (custom nbt of slot 4 of {_gui}) to "Normal"
+            set string tag "Difficulty" of (custom nbt of slot 5 of {_gui}) to "Heroic"
+            set string tag "Difficulty" of (custom nbt of slot 6 of {_gui}) to "Mythic"
             open {_gui} to player
 
 on inventory click:
@@ -768,14 +1023,15 @@ on inventory close:
 #Send message: You are now queued for Island Expedition with (players from party)
 
 on rightclick on an armor stand:
-    if string tag "AzeriteInstance" of custom nbt of clicked entity is set:
+    if string tag "AzeriteInstance" of (custom nbt of clicked entity) is set:
         #clear metadata value "cast" of player
         AzeriteOreMine(player, event-entity)
 
 function AzeriteOreMine(p: entity, e: entity, team: string = "Ally"):
-    if metadata value "IslandExpeditionInstance" of {_p} = string tag "AzeriteInstance" of custom nbt of {_e}:
+    set {_customNbt} to custom nbt of {_e}
+    if metadata value "IslandExpeditionInstance" of {_p} = string tag "AzeriteInstance" of {_customNbt}:
         set {_instance} to metadata value "IslandExpeditionInstance" of {_p}
-        set {_typeOfOre} to string tag "AzeriteVeinType" of custom nbt of {_e}
+        set {_typeOfOre} to string tag "AzeriteVeinType" of {_customNbt}
         set {_azeriteItem} to yaml value "Models.%{_typeOfOre}%" in "AzeriteModels"
         set {_nodeName} to "Azerite %{_typeOfOre}%"
 
@@ -784,43 +1040,43 @@ function AzeriteOreMine(p: entity, e: entity, team: string = "Ally"):
             set {_casttime} to 4 seconds
             set {_above} to 2
             set {_particle} to 20
-            set {_sound} to "azerite.collect"
+            set {_sound::*} to "azerite.collect"
         else if {_typeOfOre} = "Chunk":
             set {_azerite} to 190
             set {_casttime} to 3 seconds
             set {_above} to 1
             set {_particle} to 12
-            set {_sound} to "azerite.collect_small"
+            set {_sound::*} to "azerite.collect_small"
         else if {_typeOfOre} = "Shard":
             set {_azerite} to 110
             set {_casttime} to 2 seconds
             set {_above} to 1
             set {_particle} to 8
-            set {_sound} to "azerite.collect_small"
+            set {_sound::*} to "azerite.collect_small"
         else if {_typeOfOre} = "Chest":
             set {_azerite} to 90
             set {_casttime} to 2 seconds
             set {_above} to 1
             set {_nodeName} to "Wooden Strongbox"
-            set {_sound} to "azerite.collect_small"
+            set {_sound::*} to "azerite.collect_small" and "azerite.cast"
         else if {_typeOfOre} = "ChestBig":
             set {_azerite} to 230
             set {_casttime} to 3 seconds
             set {_above} to 1
             set {_nodeName} to "Reinforced Chest"
-            set {_sound} to "azerite.collect"
+            set {_sound::*} to "azerite.collect" and "azerite.cast"
         else if {_typeOfOre} = "OldChest":
             set {_azerite} to 160
             set {_casttime} to 3 seconds
             set {_above} to 1
             set {_nodeName} to "Old Chest"
-            set {_sound} to "azerite.collect"
+            set {_sound::*} to "azerite.collect" and "azerite.cast"
         else if {_typeOfOre} = "Sack":
             set {_azerite} to 200
             set {_casttime} to 3 seconds
             set {_above} to 1
             set {_nodeName} to a random element of "Bag of Azerite" and "Azerite Sack"
-            set {_sound} to "azerite.collect"
+            set {_sound::*} to "azerite.collect"
         set {_waitTime} to {_casttime}
         set {_nonOre::*} to "Chest", "ChestBig", "Sack"
 
@@ -887,8 +1143,8 @@ function AzeriteOreMine(p: entity, e: entity, team: string = "Ally"):
             stop
         
         #set {_nodeName} to string tag "AzeriteNodeName" of custom nbt of {_e}
-        azeriteAddIslands({_p}, {_instance}, {_typeOfOre}, {_nodeName}, {_azerite}, "Ally", {_sound})
-        clear string tag "AzeriteInstance" of custom nbt of {_e}
+        azeriteAddIslands({_p}, {_instance}, {_typeOfOre}, {_nodeName}, {_azerite}, "Ally", {_sound::*})
+        clear string tag "AzeriteInstance" of {_customNbt}
 
         set {_id} to random integer between 0 and 999999
         set {_partyMembers::*} to all players in world "%{_e}'s world%"
@@ -938,11 +1194,12 @@ function azeriteCollectedTextTransform(id: integer, partyMembers: players):
         wait 1 tick
     remove fake entity with id {_id} for {_partyMembers::*}
         
-function azeriteAddIslands(p: player, instance: string, azeriteType: string, nodeName: string, azerite: integer, team: string, sound: string):
-    play sound {_sound} with volume 2 and pitch 1 at {_p}
+function azeriteAddIslands(p: player, instance: string, azeriteType: string, nodeName: string, azerite: integer, team: string, sound: strings):
+    loop {_sound::*}:
+        play sound loop-value with volume 2 and pitch 1 at {_p}
     send "<#fff200>+%{_azerite}% Azerite Collected <#e8ce81>from %{_nodeName}%" to {_p}
     if {azeriteCollected%{_team}%::%{_instance}%} + {_azerite} <= {azeriteRequired::%{_instance}%}:
-        add {_azerite} to {azeriteCollected%{_team}%::%{_instance}%}
+        set {azeriteCollected%{_team}%::%{_instance}%} to {azeriteCollected%{_team}%::%{_instance}%} + {_azerite}
     else:
         set {azeriteCollected%{_team}%::%{_instance}%} to {azeriteRequired::%{_instance}%}
     set line 7 of {_p}'s fastboard to "<#3aff17>Ally: &f%{azeriteCollectedAlly::%{_instance}%}% | <#ff1742>Enemy: &f%{azeriteCollectedEnemy::%{_instance}%}%"
@@ -1033,9 +1290,9 @@ command /ieconfig [<string>] [<string>] [<string>] [<string>] [<integer>]:
 
                             if arg-2 = "addlocation":
                                 set {_loc} to player's location
-                                set yaml value "Locations.%{_type}%.%{_direction}%.%arg-5%.x" in "%arg-1%Locations-%player%" to x-coordinate of {_loc}
-                                set yaml value "Locations.%{_type}%.%{_direction}%.%arg-5%.y" in "%arg-1%Locations-%player%" to y-coordinate of {_loc}
-                                set yaml value "Locations.%{_type}%.%{_direction}%.%arg-5%.z" in "%arg-1%Locations-%player%" to z-coordinate of {_loc}
+                                set yaml value "Locations.%{_type}%.%{_direction}%.%arg-5%.x" in "%arg-1%Locations-%player%" to x of {_loc}
+                                set yaml value "Locations.%{_type}%.%{_direction}%.%arg-5%.y" in "%arg-1%Locations-%player%" to y of {_loc}
+                                set yaml value "Locations.%{_type}%.%{_direction}%.%arg-5%.z" in "%arg-1%Locations-%player%" to z of {_loc}
                                 send "&aSet the location for &f%{_type}% &ain &f%{_direction}% &aIsland &f%arg-1% &ato &f%{_loc}%&a." to player
                             else if arg-2 = "addtotal":
                                 set yaml value "TotalLocations.%{_type}%.%{_direction}%" in "%arg-1%Locations-%player%" to arg-5
@@ -1081,9 +1338,9 @@ command /addazerite [<string>] [<string>] [<string>]:
                     load yaml "plugins/Skript/islandexpeditions/%{_island}%/Azerite" as "%{_island}%Azerite"
                     set {_size} to size of yaml node keys "Azerite.%arg-2%" in "%{_island}%Azerite" + 1
                     set {_loc} to player's location
-                    set yaml value "Azerite.%arg-2%.%{_size}%.Location.X" in "%{_island}%Azerite" to x-coordinate of {_loc}
-                    set yaml value "Azerite.%arg-2%.%{_size}%.Location.Y" in "%{_island}%Azerite" to y-coordinate of {_loc}
-                    set yaml value "Azerite.%arg-2%.%{_size}%.Location.Z" in "%{_island}%Azerite" to z-coordinate of {_loc}
+                    set yaml value "Azerite.%arg-2%.%{_size}%.Location.X" in "%{_island}%Azerite" to x of {_loc}
+                    set yaml value "Azerite.%arg-2%.%{_size}%.Location.Y" in "%{_island}%Azerite" to y of {_loc}
+                    set yaml value "Azerite.%arg-2%.%{_size}%.Location.Z" in "%{_island}%Azerite" to z of {_loc}
                     set yaml value "Azerite.%arg-2%.%{_size}%.Location.Pitch" in "%{_island}%Azerite" to pitch of {_loc}
                     set yaml value "Azerite.%arg-2%.%{_size}%.Location.Yaw" in "%{_island}%Azerite" to yaw of {_loc}
                     set yaml value "Azerite.%arg-2%.%{_size}%.Node" in "%{_island}%Azerite" to arg-3
@@ -1103,9 +1360,9 @@ command /azeriteset [<string>] [<string>] [<integer>]:
             load yaml "plugins/Skript/islandexpeditions/%{_island}%/Azerite" as "%{_island}%Azerite"
             set {_size} to arg-3
             set {_loc} to player's location
-            set yaml value "Azerite.%arg-2%.%{_size}%.Location.X" in "%{_island}%Azerite" to x-coordinate of {_loc}
-            set yaml value "Azerite.%arg-2%.%{_size}%.Location.Y" in "%{_island}%Azerite" to y-coordinate of {_loc}
-            set yaml value "Azerite.%arg-2%.%{_size}%.Location.Z" in "%{_island}%Azerite" to z-coordinate of {_loc}
+            set yaml value "Azerite.%arg-2%.%{_size}%.Location.X" in "%{_island}%Azerite" to x of {_loc}
+            set yaml value "Azerite.%arg-2%.%{_size}%.Location.Y" in "%{_island}%Azerite" to y of {_loc}
+            set yaml value "Azerite.%arg-2%.%{_size}%.Location.Z" in "%{_island}%Azerite" to z of {_loc}
             set yaml value "Azerite.%arg-2%.%{_size}%.Location.Pitch" in "%{_island}%Azerite" to pitch of {_loc}
             set yaml value "Azerite.%arg-2%.%{_size}%.Location.Yaw" in "%{_island}%Azerite" to yaw of {_loc}
             save yaml "%{_island}%Azerite"             
@@ -1139,13 +1396,15 @@ command /showazerite [<string>]:
                     set pitch of {_azeriteModel} to {_azeriteLocPitch}
                     set yaw of {_azeriteModel} to {_azeriteLocYaw}
 
-                    set int tag "AzeriteIndex" of custom nbt of {_azeriteModel} to {_azeriteIndex}
-                    set int tag "AzeriteId" of custom nbt of {_azeriteModel} to {_azeriteId}
-                    set string tag "AzeriteInstance" of custom nbt of {_azeriteModel} to {_instance}
-                    set string tag "AzeriteVeinType" of custom nbt of {_azeriteModel} to {_azeriteType}
-                    set string tag "ECModeledEntity" of custom nbt of {_azeriteModel} to {_modelName}
-                    set float tag "AzeriteScale" of custom nbt of {_azeriteModel} to {_scale}
-                    set boolean tag "AzeriteLoaded" of custom nbt of {_azeriteModel} to true
+                    set {_customNbt} to custom nbt of {_azeriteModel}
+
+                    set int tag "AzeriteIndex" of {_customNbt} to {_azeriteIndex}
+                    set int tag "AzeriteId" of {_customNbt} to {_azeriteId}
+                    set string tag "AzeriteInstance" of {_customNbt} to {_instance}
+                    set string tag "AzeriteVeinType" of {_customNbt} to {_azeriteType}
+                    set string tag "ECModeledEntity" of {_customNbt} to {_modelName}
+                    set float tag "AzeriteScale" of {_customNbt} to {_scale}
+                    set boolean tag "AzeriteLoaded" of {_customNbt} to true
 
                     modelApply({_azeriteModel}, {_modelName}, {_scale})
 
@@ -1210,9 +1469,9 @@ command /addislandenemy [<string>] [<string>] [<string>] [<string>]:
             set {_size} to size of yaml node keys "Enemies.%{_args}%" in "%{_island}%Enemies" + 1
 
             set {_loc} to player's location
-            set yaml value "Enemies.%{_args}%.%{_size}%.Location.X" in "%{_island}%Enemies" to x-coordinate of {_loc}
-            set yaml value "Enemies.%{_args}%.%{_size}%.Location.Y" in "%{_island}%Enemies" to y-coordinate of {_loc}
-            set yaml value "Enemies.%{_args}%.%{_size}%.Location.Z" in "%{_island}%Enemies" to z-coordinate of {_loc}
+            set yaml value "Enemies.%{_args}%.%{_size}%.Location.X" in "%{_island}%Enemies" to x of {_loc}
+            set yaml value "Enemies.%{_args}%.%{_size}%.Location.Y" in "%{_island}%Enemies" to y of {_loc}
+            set yaml value "Enemies.%{_args}%.%{_size}%.Location.Z" in "%{_island}%Enemies" to z of {_loc}
             set yaml value "Enemies.%{_args}%.%{_size}%.Location.Pitch" in "%{_island}%Enemies" to pitch of {_loc}
             set yaml value "Enemies.%{_args}%.%{_size}%.Location.Yaw" in "%{_island}%Enemies" to yaw of {_loc}
             set yaml value "Enemies.%{_args}%.%{_size}%.Type" in "%{_island}%Enemies" to arg-2
@@ -1221,3 +1480,48 @@ command /addislandenemy [<string>] [<string>] [<string>] [<string>]:
             send "&fAdded a new &a%{_args}% &fof the type &c%arg-2% &fat &b%{_loc}% &fwith index &d%{_size}%&f." to player
             save yaml "%{_island}%Enemies"             
             unload yaml "%{_island}%Enemies"
+
+function IslandMobInfoAssignments(mob: entity, enemy: string, path: string, scale: number):
+    set {_customNbt} to ({_customNbt})
+    set {_height} to yaml value "%{_path}%.Nameplate Height" in "IslandEnemyList"
+    if {_height} is not set:
+        if double tag "ECModelHeight" of {_customNbt} is set:
+            set {_height} to double tag "ECModelHeight" of {_customNbt}
+    if {_height} is not set:
+        set {_height} to {_mob}.getBoundingBox().getHeight() + 0.35
+
+    set double tag "ECNameplateHeight" of {_customNbt} to {_height}
+    set string tag "MobType" of {_customNbt} to {_enemy}
+
+    set {_rank} to yaml value "%{_path}%.Type" in "IslandEnemyList"
+    set {_name} to "&f%{_enemy}%"
+    if {_rank} contains "Rare":
+        set {_name} to "<#ffd447>★ &f%{_enemy}%"
+
+    set {_level} to int tag "ECLvl" of {_customNbt}
+
+    set {_nameLoc} to location of {_mob}
+    set y of {_nameLoc} to (y of {_nameLoc}) + {_height}
+
+    set {_levelLoc} to {_nameLoc}
+    set y of {_levelLoc} to (y of {_nameLoc}) + 0.25
+
+    set {_healthLoc} to {_nameLoc}
+    set y of {_healthLoc} to (y of {_nameLoc}) - 0.25
+
+    set {_nbt} to "{Marker:1b,Invulnerable:1b,Invisible:1b,CustomNameVisible:1b,NoGravity:1b}"
+
+    spawn 1 armor stand at {_healthLoc} with nbt from {_nbt}
+    set display name of last spawned armor stand to "&a|||||||||| &f(100%%)"
+    set boolean tag "RemoveOnReset" of (custom nbt of last spawned armor stand) to true
+    set string tag "ECTextAbove" of {_customNbt} to uuid of last spawned armor stand
+
+    spawn 1 armor stand at {_nameLoc} with nbt from {_nbt}
+    set display name of last spawned armor stand to {_name}
+    set boolean tag "RemoveOnReset" of (custom nbt of last spawned armor stand) to true
+    set string tag "ECCustomName" of {_customNbt} to uuid of last spawned armor stand
+
+    spawn 1 armor stand at {_levelLoc} with nbt from {_nbt}
+    set display name of last spawned armor stand to "&4Level %{_level}%"
+    set boolean tag "RemoveOnReset" of (custom nbt of last spawned armor stand) to true
+    set string tag "ECTextAboveLevel" of {_customNbt} to uuid of last spawned armor stand

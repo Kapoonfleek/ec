@@ -12,7 +12,7 @@ on player walk:
 		set {_pitch} to player's pitch
 		loop {zolnierze::%player%::*}:
 			set {_loc} to location of loop-value
-			set y-coordinate of {_loc} to (y-coordinate of {_loc} - 0.4)
+			set y of {_loc} to (y of {_loc} - 0.4)
 			teleport {zolnierz::owner::%uuid of loop-value%} to {_loc}
 			wait 1 tick
 			if {conqueringsands::%uuid of loop-value%} is not true:
@@ -26,95 +26,119 @@ on player walk:
 		wait 1 tick
 		set {_locNow} to location of player
 		loop {chatbubbles::%player%::*}:
-			set {_x} to (x-coordinate of {_locNow}) - (x-coordinate of {_locThen})
-			set {_y} to (y-coordinate of {_locNow}) - (y-coordinate of {_locThen})
-			set {_z} to (z-coordinate of {_locNow}) - (z-coordinate of {_locThen})
+			set {_x} to (x of {_locNow}) - (x of {_locThen})
+			set {_y} to (y of {_locNow}) - (y of {_locThen})
+			set {_z} to (z of {_locNow}) - (z of {_locThen})
 			move entity with id loop-value by {_x}*4096 {_y}*4096 {_z}*4096 for all players
 
 on entity move:
+	set {_customNbt} to custom nbt of event-entity
 	if metadata value "Stun" of event-entity is set:
 		cancel event
 	if metadata value "MovementFrozen" of event-entity is set:
 		cancel event
-	set {_entity} to string tag "ECTextAbove" of (custom nbt of event-entity) parsed as entity
+	set {_entity} to string tag "ECTextAbove" of ({_customNbt}) parsed as entity
 	if {_entity} is set:
-		set {_loc} to location of event-entity
-		set {_eyeLoc} to event-entity.getEyeLocation()
-
-		set {_entityType} to "%type of event-entity%"
-		set {_mobType} to string tag "MobType" of (custom nbt of event-entity)
-		
-		loop yaml node keys "Model Types" in "ModelHeights":
-			if any:
-				loop-value = {_mobType}
-				yaml list "Model Types.%loop-value%.List" in "ModelHeights" contains {_entityType}
-			then:
-				set {_hpBarOffset} to yaml value "Model Types.%loop-value%.HP" in "ModelHeights"
-				set {_levelOffset} to yaml value "Model Types.%loop-value%.Level" in "ModelHeights"
-				stop loop
-
-		increase {_eyeLoc}'s y-coordinate by {_hpBarOffset}
-		teleport {_entity} to {_eyeLoc}
-
-		if string tag "ECCustomName" of (custom nbt of event-entity) is set:
-			set {_entity} to string tag "ECCustomName" of (custom nbt of event-entity) parsed as entity
-			increase {_eyeLoc}'s y-coordinate by 0.25
-			teleport {_entity} to {_eyeLoc}
-
-		if boolean tag "ECMob" of (custom nbt of event-entity) is set:
-			if boolean tag "ECDungeonMob" of (custom nbt of event-entity) is set:
-				if metadata value "ECPulled" of event-entity is not set:
-					cancel event
-
-		if string tag "ECTextAboveLevel" of (custom nbt of event-entity) is set:
-			set {_entity} to string tag "ECTextAboveLevel" of (custom nbt of event-entity) parsed as entity
-			
-			increase {_eyeLoc}'s y-coordinate by {_levelOffset}
-			teleport {_entity} to {_eyeLoc}
-			
-		if string tag "ECTextAboveCastBar" of (custom nbt of event-entity) is set:
-			wait 1 tick
-			set {_loc} to location of event-entity
-			set {_entity} to string tag "ECTextAboveCastBar" of (custom nbt of event-entity) parsed as entity
-			if long tag "ECModelHeight" of (custom nbt of event-entity) is set:
-				set {_increase} to 1
-				if long tag "ECCastBarExtraHeight" of (custom nbt of event-entity) is set:
-					add long tag "ECCastBarExtraHeight" of (custom nbt of event-entity) to {_increase}
-				increase {_loc}'s y-coordinate by (long tag "ECModelHeight" of (custom nbt of event-entity)) + {_increase}
+		if boolean tag "ECIslandEnemy" of {_customNbt} is set:
+			if double tag "ECNameplateHeight" of {_customNbt} is set:
+				set {_height} to double tag "ECNameplateHeight" of {_customNbt}
 			else:
-				increase {_loc}'s y-coordinate by 2.05
-			teleport {_entity} to {_loc}
+				set {_height} to event-entity.getBoundingBox().getHeight() + 0.35
+
+			set {_nameLoc} to location of event-entity
+			set y of {_nameLoc} to y of {_nameLoc} + {_height}
+
+			set {_healthLoc} to {_nameLoc}
+			set y of {_healthLoc} to y of {_nameLoc} - 0.25
+			teleport {_entity} to {_healthLoc}
+
+			if string tag "ECCustomName" of {_customNbt} is set:
+				set {_entity} to string tag "ECCustomName" of {_customNbt} parsed as entity
+				teleport {_entity} to {_nameLoc}
+
+			if string tag "ECTextAboveLevel" of {_customNbt} is set:
+				set {_entity} to string tag "ECTextAboveLevel" of {_customNbt} parsed as entity
+				set {_levelLoc} to {_nameLoc}
+				set y of {_levelLoc} to y of {_nameLoc} + 0.25
+				teleport {_entity} to {_levelLoc}
+		else:
+			set {_loc} to location of event-entity
+			set {_eyeLoc} to event-entity.getEyeLocation()
+
+			set {_entityType} to "%type of event-entity%"
+			set {_mobType} to string tag "MobType" of ({_customNbt})
+			
+			loop yaml node keys "Model Types" in "ModelHeights":
+				if any:
+					loop-value = {_mobType}
+					yaml list "Model Types.%loop-value%.List" in "ModelHeights" contains {_entityType}
+				then:
+					set {_hpBarOffset} to yaml value "Model Types.%loop-value%.HP" in "ModelHeights"
+					set {_levelOffset} to yaml value "Model Types.%loop-value%.Level" in "ModelHeights"
+					stop loop
+
+			increase {_eyeLoc}'s y by {_hpBarOffset}
+			teleport {_entity} to {_eyeLoc}
+
+			if string tag "ECCustomName" of ({_customNbt}) is set:
+				set {_entity} to string tag "ECCustomName" of ({_customNbt}) parsed as entity
+				increase {_eyeLoc}'s y by 0.25
+				teleport {_entity} to {_eyeLoc}
+
+			if boolean tag "ECMob" of ({_customNbt}) is set:
+				if boolean tag "ECDungeonMob" of ({_customNbt}) is set:
+					if metadata value "ECPulled" of event-entity is not set:
+						cancel event
+
+			if string tag "ECTextAboveLevel" of ({_customNbt}) is set:
+				set {_entity} to string tag "ECTextAboveLevel" of ({_customNbt}) parsed as entity
+				
+				increase {_eyeLoc}'s y by {_levelOffset}
+				teleport {_entity} to {_eyeLoc}
+				
+			if string tag "ECTextAboveCastBar" of ({_customNbt}) is set:
+				wait 1 tick
+				set {_loc} to location of event-entity
+				set {_entity} to string tag "ECTextAboveCastBar" of ({_customNbt}) parsed as entity
+				if long tag "ECModelHeight" of ({_customNbt}) is set:
+					set {_increase} to 1
+					if long tag "ECCastBarExtraHeight" of ({_customNbt}) is set:
+						add long tag "ECCastBarExtraHeight" of ({_customNbt}) to {_increase}
+					increase {_loc}'s y by (long tag "ECModelHeight" of ({_customNbt})) + {_increase}
+				else:
+					increase {_loc}'s y by 2.05
+				teleport {_entity} to {_loc}
 	if any:
-		uuid tag "ECEntityTitle" of (custom nbt of event-entity) is set
+		uuid tag "ECEntityTitle" of ({_customNbt}) is set
 		{ECEntityTitle::%uuid of event-entity%} is set
 	then:
-		set {_title} to (uuid tag "ECEntityTitle" of (custom nbt of event-entity)) parsed as entity
-		set {_y} to (double tag "ECEntityTitleHeight" of (custom nbt of event-entity)) + y-coordinate of event-entity + 2.35
+		set {_title} to (uuid tag "ECEntityTitle" of ({_customNbt})) parsed as entity
+		set {_y} to (double tag "ECEntityTitleHeight" of ({_customNbt})) + y of event-entity + 2.35
 		if {_title} is not set:
 			set {_title} to {ECEntityTitle::%uuid of event-entity%} parsed as entity
 			set {_y} to {_y}-1.25
-		set {_loc} to location((x-coordinate of event-entity), {_y}, (z-coordinate of event-entity), world "%event-entity's world%")
+		set {_loc} to location((x of event-entity), {_y}, (z of event-entity), world "%event-entity's world%")
 		teleport {_title} to {_loc}
 	if metadata value "Rider" of event-entity is set:
 		set {_rider} to (metadata value "Rider" of event-entity) parsed as entity
 		set {_loc} to location of {_rider}
 		set {_entity} to string tag "ECTextAboveLevel" of custom nbt of {_rider} parsed as entity
 		if long tag "ECModelHeight" of custom nbt of {_rider} is set:
-			increase {_loc}'s y-coordinate by (long tag "ECModelHeight" of custom nbt of {_rider}) + 0.5
+			increase {_loc}'s y by (long tag "ECModelHeight" of custom nbt of {_rider}) + 0.5
 		else:
-			increase {_loc}'s y-coordinate by 2.05
+			increase {_loc}'s y by 2.05
 		teleport {_entity} to {_loc}
 		set {_entity} to string tag "ECTextName" of custom nbt of {_rider} parsed as entity
 		if long tag "ECModelHeight" of custom nbt of {_rider} is set:
-			increase {_loc}'s y-coordinate by (long tag "ECModelHeight" of custom nbt of {_rider}) - 0.25
+			increase {_loc}'s y by (long tag "ECModelHeight" of custom nbt of {_rider}) - 0.25
 		else:
-			increase {_loc}'s y-coordinate by 1.80
+			increase {_loc}'s y by 1.80
 		teleport {_entity} to {_loc}
 		set {_entity} to string tag "ECTextAbove" of custom nbt of {_rider} parsed as entity
 		if long tag "ECModelHeight" of custom nbt of {_rider} is set:
-			increase {_loc}'s y-coordinate by (long tag "ECModelHeight" of custom nbt of {_rider}) - 0.25
+			increase {_loc}'s y by (long tag "ECModelHeight" of custom nbt of {_rider}) - 0.25
 		else:
-			increase {_loc}'s y-coordinate by 1.55
+			increase {_loc}'s y by 1.55
 		teleport {_entity} to {_loc}
 	if boolean tag "WinterPet" of (custom nbt of event-entity) is set:
 		if cooldown "JingleSound%event-entity%" is finished:
