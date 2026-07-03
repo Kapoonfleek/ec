@@ -28,6 +28,11 @@ import:
     org.apache.commons.io.FileUtils
     org.mvplugins.multiverse.core.world.options.RemoveWorldOptions
     org.bukkit.WorldCreator
+    java.io.FileInputStream
+    com.sk89q.worldedit.WorldEdit
+    com.sk89q.worldedit.function.operation.ForwardExtentCopy
+    com.sk89q.worldedit.function.operation.Operations
+    com.sk89q.worldedit.function.mask.ExistingBlockMask
 
 options:
     safeworld: location(9270.5, 73.5, 1562.5, world "world")
@@ -48,20 +53,11 @@ effect paste schematic %string% at %location% [(1¦(with|including) air)]:
 
 effect prepare island world %string% as %string%:
     trigger:
-        set {_source} to new File(Bukkit.getWorldContainer(), expr-1)
-        set {_target} to new File(Bukkit.getWorldContainer(), expr-2)
-
-        FileUtils.copyDirectory({_source}, {_target})
-
-        set {_uid} to new File({_target}, "uid.dat")
-        if {_uid}.exists():
-            {_uid}.delete()
-
-        set {_session} to new File({_target}, "session.lock")
-        if {_session}.exists():
-            {_session}.delete()
-
-        Bukkit.createWorld(new WorldCreator(expr-2))
+        set {_api} to MultiverseCoreApi.get()
+        set {_manager} to {_api}.getWorldManager()
+        set {_world} to {_manager}.getWorld(expr-1).getOrNull()
+        set {_options} to CloneWorldOptions.fromTo({_world}, expr-2)
+        set {_result} to {_manager}.cloneWorld({_options})
 
 effect deleteworld %string%:
     trigger:
@@ -96,11 +92,6 @@ effect delete island world %string%:
 
         send "[IE] Removed IE World: %{_folder}%" to console
 
-#function mythicMobSpawn(e: string, loc: location) :: entity:
-    #set {_api} to MythicBukkit.inst().getAPIHelper()
-    #set {_mob} to {_api}.spawnMythicMob({_e}, {_loc})
-    #return {_mob}
-
 function doesWorldExist(w: string) :: boolean:
     set {_api} to MultiverseCoreApi.get()
     set {_manager} to {_api}.getWorldManager()
@@ -118,14 +109,6 @@ function createNewInstance(w: string) :: string:
     set {_newInstance} to "%{_w}%-%{_instance}%"
     prepare island world {_w} as {_newInstance}
     return {_instance}
-
-function waitForWorldReady(w: string, timeout: integer = 1200) :: boolean:
-    set {_tries} to 0
-    while Bukkit.getWorld({_w}) is not set:
-        set {_tries} to {_tries} + 1
-        if {_tries} >= {_timeout}:
-            return false
-    return true
 
 function isWorldIsland(w: world) :: boolean:
     set {_worldList::*} to getIslandWorlds()
@@ -214,9 +197,14 @@ on rightclick:
             set {_instance} to createNewInstance({_island})
             set {_newInstance} to "%{_island}%-%{_instance}%"
 
-            if waitForWorldReady({_newInstance}) = false:
-                send "&cFailed to create the Island Expedition world." to player
-                stop
+            while Bukkit.getWorld({_newInstance}) is not set:
+                set {_tries} to {_tries} + 1
+                if {_tries} >= {_timeout}:
+                    send "&cFailed to create the Island Expedition world." to player
+                    stop
+                wait 1 tick
+
+            broadcast "S"
 
             if party of player is set:
                 set {_partyMembersNames::*} to (party members of (party of player)) where [input is online]
@@ -311,8 +299,9 @@ on rightclick:
             #pinChunksAtPoints(world {_newInstance}, {_pinPoints::*}, 2)
 
             paste schematic "plugins/FastAsyncWorldEdit/schematics/IslandExpeditionsShip%{_rotationShip}%.schem" at {_locShip}
+            wait 1 tick
             paste schematic "plugins/FastAsyncWorldEdit/schematics/IslandExpeditionsEnemyShip%{_rotationShipEnemy}%.schem" at {_locEnemyShip}
-            clear {islandExpeditionCreating}
+            wait 1 tick
 
             loop yaml node keys "Azerite" in "%{_island}%Azerite":
                 set {_modelName} to yaml value "Attributes.%loop-value%.ModelName" in "AzeriteAttributes"
@@ -339,6 +328,9 @@ on rightclick:
 
                     set {_customNbt} to custom nbt of {_azeriteModel}
 
+                    if {_scale} is not set:
+                        set {_scale} to 1
+
                     set int tag "AzeriteIndex" of {_customNbt} to {_azeriteIndex}
                     set int tag "AzeriteId" of {_customNbt} to {_azeriteId}
                     set string tag "AzeriteInstance" of {_customNbt} to {_instance}
@@ -346,6 +338,7 @@ on rightclick:
                     set string tag "ECModeledEntity" of {_customNbt} to {_modelName}
                     set float tag "AzeriteScale" of {_customNbt} to {_scale}
                     set boolean tag "AzeriteLoaded" of {_customNbt} to true
+                    set boolean tag "PersistenceRequired" of (nbt of {_azeriteModel}) to true
 
                     modelApply({_azeriteModel}, {_modelName}, {_scale})
 
@@ -385,7 +378,7 @@ on rightclick:
             entityTitle({_flynnFairwind}, "Captain", -0.2)
             entityTitleName({_flynnFairwind}, "&fFlynn Fairwind", 0.05)
             flynnFairwindIdleSounds({_flynnFairwind})
-            modelApply({_flynnFairwind}, "flynnfairwind")
+            modelApply({_flynnFairwind}, "flynnfairwind", 1.0)
 
             teleport {_partyMembers::*} to {_locFlynn}
             islandExpeditionInit({_instance}, {_locFlynn}, {_island}, {_difficulty}, {_partyMembers::*})
@@ -673,6 +666,12 @@ function islandExpeditionSpawnEnemies(island: string, instance: string, w: world
                 if {_path} != "":
                     set {_loc} to islandExpeditionEncounterLocation({_center}, {_radius})
                     islandExpeditionSpawnEnemy({_island}, {_instance}, {_enemy}, "%{_spot}%-%loop-number%", {_group}, {_path}, {_loc}, {_difficulty})
+
+                set {_loopCount} to {_loopCount} + 1
+
+                if {_loopCount} is divisible by 20:
+                    wait 1 tick
+
     loop yaml node keys "Rares" in "%{_island}%Enemies":
         set {_rare} to loop-value
         set {_enemy} to yaml value "Rares.%{_rare}%.Enemy" in "%{_island}%Enemies"
@@ -696,7 +695,10 @@ function islandExpeditionSpawnEnemy(island: string, instance: string, enemy: str
         set {_entity} to {_baseMob} parsed as entity type
     if {_entity} is not set:
         set {_entity} to "zombie" parsed as entity type
+
+    set {_loc} to safeMobSpawnLocation({_loc}, 32)
     spawn {_entity} at {_loc}
+    
     set {_mob} to last spawned entity
     set boolean tag "Silent" of (nbt of {_mob}) to true
     set boolean tag "PersistenceRequired" of (nbt of {_mob}) to true
@@ -710,7 +712,7 @@ function islandExpeditionSpawnEnemy(island: string, instance: string, enemy: str
 
     set {_rank} to yaml value "%{_path}%.Type" in "IslandEnemyList"
     set {_movement} to yaml value "%{_path}%.Movement" in "IslandEnemyList"
-    set {_azerite} to yaml value "%{_path}%.Azerite" in "IslandEnemyList"
+    set {_azerite} to yaml value "Azerite Map.%{_rank}%" in "IslandEnemyList"
     set {_model} to yaml value "%{_path}%.Model" in "IslandEnemyList"
     set {_scale} to yaml value "%{_path}%.Scale" in "IslandEnemyList"
     set {_disguise} to yaml value "%{_path}%.Disguise" in "IslandEnemyList"
@@ -728,9 +730,6 @@ function islandExpeditionSpawnEnemy(island: string, instance: string, enemy: str
     if {_movement} is not set:
         set {_movement} to "Stroll"
 
-    if {_element} is not set:
-        set {_element} to "Physical"
-
     set {_customNbt} to (custom nbt of {_mob})
 
     set scale attribute of {_mob} to {_scale}
@@ -747,8 +746,9 @@ function islandExpeditionSpawnEnemy(island: string, instance: string, enemy: str
     set string tag "IslandEnemyRank" of {_customNbt} to {_rank}
     set string tag "IslandEnemyMovement" of {_customNbt} to {_movement}
     set string tag "IslandEnemyIndex" of {_customNbt} to {_index}
-    set int tag "IslandEnemyAzerite" of {_customNbt} to {_azerite}
+
     set long tag "MobDamageModifier" of {_customNbt} to islandExpeditionDifficultyDamageModifier({_difficulty})
+
     set metadata value "IslandExpeditionInstance" of {_mob} to {_instance}
     set metadata value "IslandEnemy" of {_mob} to true
     set metadata value "IslandEnemyName" of {_mob} to {_enemy}
@@ -762,7 +762,7 @@ function islandExpeditionSpawnEnemy(island: string, instance: string, enemy: str
     set boolean tag "CustomNameVisible" of nbt of {_mob} to false
 
     if {_movement} = "Static":
-        set boolean tag "NoAI" of nbt of {_mob} to true
+        set metadata value "ECPulled" of {_mob} to false
 
     if {_model} is set:
         set string tag "ECModeledEntity" of {_customNbt} to {_model}
@@ -777,21 +777,6 @@ function islandExpeditionSpawnEnemy(island: string, instance: string, enemy: str
 
     onECMobSpawn({_mob})
     return {_mob}
-
-on death:
-    set {_customNbt} to custom nbt of victim
-    if boolean tag "ECIslandEnemy" of {_customNbt} is set:
-        set {_attacker} to attacker
-        if {_attacker} is a projectile:
-            set {_attacker} to shooter of {_attacker}
-        if {_attacker} is a player:
-            set {_instance} to string tag "IslandExpeditionInstance" of {_customNbt}
-            if metadata value "IslandExpeditionInstance" of {_attacker} = {_instance}:
-                set {_azerite} to int tag "IslandEnemyAzerite" of {_customNbt}
-                if {_azerite} > 0:
-                    set {_enemy} to string tag "IslandEnemyName" of {_customNbt}
-                    azeriteAddIslands({_attacker}, {_instance}, "Enemy", {_enemy}, {_azerite}, "Ally", "azerite.collect_small")
-
 
 function islandExpeditionLeave(p: player):
     set {_instance} to metadata value "IslandExpeditionInstance" of {_p}
@@ -1400,6 +1385,10 @@ command /showazerite [<string>]:
                     spawn an armor stand at {_azeriteLocation} with nbt from "{Invulnerable:1b,NoGravity:1b,Silent:1b}"
                     set {_azeriteModel} to last spawned armor stand
                     set {_scale} to yaml value "Attributes.%{_azeriteType}%.Scale" in "AzeriteAttributes"
+
+                    if {_scale} is not set:
+                        set {_scale} to 1
+
                     set pitch of {_azeriteModel} to {_azeriteLocPitch}
                     set yaw of {_azeriteModel} to {_azeriteLocYaw}
 
@@ -1518,17 +1507,98 @@ function IslandMobInfoAssignments(mob: entity, enemy: string, path: string, scal
 
     set {_nbt} to "{Marker:1b,Invulnerable:1b,Invisible:1b,CustomNameVisible:1b,NoGravity:1b}"
 
+    push {_mob} upwards with velocity 0.01
+
     spawn 1 armor stand at {_healthLoc} with nbt from {_nbt}
     set display name of last spawned armor stand to "&a|||||||||| &f(100%%)"
     set boolean tag "RemoveOnReset" of (custom nbt of last spawned armor stand) to true
     set string tag "ECTextAbove" of {_customNbt} to uuid of last spawned armor stand
+    set boolean tag "PersistenceRequired" of (nbt of last spawned armor stand) to true
 
     spawn 1 armor stand at {_nameLoc} with nbt from {_nbt}
     set display name of last spawned armor stand to {_name}
     set boolean tag "RemoveOnReset" of (custom nbt of last spawned armor stand) to true
     set string tag "ECCustomName" of {_customNbt} to uuid of last spawned armor stand
+    set boolean tag "PersistenceRequired" of (nbt of last spawned armor stand) to true
 
     spawn 1 armor stand at {_levelLoc} with nbt from {_nbt}
     set display name of last spawned armor stand to "&4Level %{_level}%"
     set boolean tag "RemoveOnReset" of (custom nbt of last spawned armor stand) to true
     set string tag "ECTextAboveLevel" of {_customNbt} to uuid of last spawned armor stand
+    set boolean tag "PersistenceRequired" of (nbt of last spawned armor stand) to true
+
+    updateIslandMobNameplate({_mob})
+    wait 1 tick
+    updateIslandMobNameplate({_mob})
+
+function IslandExpeditionBodyMobPull(x: entity, mob: entity):
+    set {_attackerInstance} to metadata value "IslandExpeditionInstance" of {_x}
+    set {_victimInstance} to metadata value "IslandExpeditionInstance" of {_mob}
+    if {_victimInstance} is not set:
+        set {_victimInstance} to string tag "IslandExpeditionInstance" of custom nbt of {_mob}
+    if {_attackerInstance} = {_victimInstance}:
+        set target of {_mob} to {_x}
+        if metadata value "ECPulled" of {_mob} is not set:
+            set metadata value "ECPulled" of {_mob} to 1
+            clear boolean tag "NoAI" of nbt of {_mob}
+            UpdateTarget({_mob}, {_x}, "dynamic")
+
+function updateIslandMobNameplate(e: entity):
+    set {_customNbt} to custom nbt of {_e}
+
+    if string tag "ECTextAbove" of {_customNbt} is not set:
+        stop
+
+    if double tag "ECNameplateHeight" of {_customNbt} is set:
+        set {_height} to double tag "ECNameplateHeight" of {_customNbt}
+    else:
+        set {_height} to {_e}.getBoundingBox().getHeight() + 0.35
+
+    set {_baseLoc} to location of {_e}
+    set {_x} to x of {_baseLoc}
+    set {_y} to y of {_baseLoc}
+    set {_z} to z of {_baseLoc}
+    set {_w} to world of {_baseLoc}
+
+    set {_nameLoc} to location({_x}, {_y} + {_height}, {_z}, {_w})
+    set {_healthLoc} to location({_x}, {_y} + {_height} - 0.25, {_z}, {_w})
+    set {_levelLoc} to location({_x}, {_y} + {_height} + 0.25, {_z}, {_w})
+
+    set {_entity} to string tag "ECTextAbove" of {_customNbt} parsed as entity
+    if {_entity} is set:
+        teleport {_entity} to {_healthLoc}
+
+    if string tag "ECCustomName" of {_customNbt} is set:
+        set {_entity} to string tag "ECCustomName" of {_customNbt} parsed as entity
+        if {_entity} is set:
+            teleport {_entity} to {_nameLoc}
+
+    if string tag "ECTextAboveLevel" of {_customNbt} is set:
+        set {_entity} to string tag "ECTextAboveLevel" of {_customNbt} parsed as entity
+        if {_entity} is set:
+            teleport {_entity} to {_levelLoc}
+
+function safeMobSpawnLocation(loc: location, range: integer = 16) :: location:
+    set {_world} to world of {_loc}
+    set {_x} to x-coordinate of {_loc}
+    set {_z} to z-coordinate of {_loc}
+    set {_baseY} to y-coordinate of {_loc}
+
+    loop {_range} times:
+        set {_upY} to {_baseY} + loop-number
+        set {_upLoc} to location({_x}, {_upY}, {_z}, {_world}, yaw of {_loc}, pitch of {_loc})
+
+        if block below {_upLoc} is solid:
+            if block at {_upLoc} is not solid:
+                if block above {_upLoc} is not solid:
+                    return location({_x}, {_upY}, {_z}, {_world}, yaw of {_loc}, pitch of {_loc})
+
+        set {_downY} to {_baseY} - loop-number
+        set {_downLoc} to location({_x}, {_downY}, {_z}, {_world}, yaw of {_loc}, pitch of {_loc})
+
+        if block below {_downLoc} is solid:
+            if block at {_downLoc} is not solid:
+                if block above {_downLoc} is not solid:
+                    return location({_x}, {_downY}, {_z}, {_world}, yaw of {_loc}, pitch of {_loc})
+
+    return {_loc}

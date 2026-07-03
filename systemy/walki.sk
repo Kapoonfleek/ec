@@ -37,11 +37,11 @@ on death:
 			clear metadata value "From the Shadows%attacker%" of victim
 
 		if string tag "ECTextAbove" of (custom nbt of victim) is set:
-			kill (string tag "ECTextAbove" of (custom nbt of victim) parsed as entity)
+			delete (string tag "ECTextAbove" of (custom nbt of victim) parsed as entity)
 			if (string tag "ECTextAboveLevel" of (custom nbt of victim)) is set:
-				kill (string tag "ECTextAboveLevel" of (custom nbt of victim) parsed as entity)
+				delete (string tag "ECTextAboveLevel" of (custom nbt of victim) parsed as entity)
 		if (string tag "ECCustomName" of (custom nbt of victim) is set):
-			kill (string tag "ECCustomName" of (custom nbt of victim) parsed as entity)
+			delete (string tag "ECCustomName" of (custom nbt of victim) parsed as entity)
 
 	if uuid tag "ECEntityTitle" of (custom nbt of victim) is set:
 		set {_entityTitle} to (uuid tag "ECEntityTitle" of (custom nbt of victim)) parsed as entity
@@ -263,29 +263,51 @@ on death:
 					remove {_endGameCdSeconds} from cooldown "End Game%attacker%"
 				else:
 					clear metadata value "UmbreonExecutioner" of attacker
+		
+		set {_customNbt} to custom nbt of victim
 
-		if boolean tag "TowerDefenceMob" of (custom nbt of victim) is not set:
+		if boolean tag "TowerDefenceMob" of {_customNbt} is not set:
 			if victim's name is set:
-				#usuwanie hp przeciwnika z wiadomości
-				set {_name} to victim's name
-				if display name of victim contains "&c♥":
-					set {_name::*} to name of victim split at " "
-					loop {_name::*}:
-						add 1 to {_l}
-					clear {_name::%{_l}%}
-					set {_name} to join {_name::*} by " "
-					#HP MOBÓW MINECRAFTOWYCH
-					if {_name} is not set:
-						set {_name} to victim
+				if string tag "IslandEnemyName" of {_customNbt} is set:
+					set {_name} to string tag "IslandEnemyName" of {_customNbt}
+
+					if boolean tag "ECIslandEnemy" of {_customNbt} is set:
+						set {_attacker} to attacker
+						if {_attacker} is a projectile:
+							set {_attacker} to shooter of {_attacker}
+						if {_attacker} is a player:
+							set {_instance} to string tag "IslandExpeditionInstance" of {_customNbt}
+							if metadata value "IslandExpeditionInstance" of {_attacker} = {_instance}:
+								set {_azerite} to metadata value "IslandEnemyAzerite" of victim
+								if {_azerite} > 0:
+									if {_azerite} > 190:
+										set {_sound} to "azerite.collect"
+									else:
+										set {_sound} to "azerite.collect_small"
+
+									azeriteAddIslands({_attacker}, {_instance}, "Enemy", {_name}, {_azerite}, "Ally", {_sound})
+				else:
+					set {_name} to victim's name
+					if display name of victim contains "&c♥":
+						set {_name::*} to name of victim split at " "
+						loop {_name::*}:
+							add 1 to {_l}
+						clear {_name::%{_l}%}
+						set {_name} to join {_name::*} by " "
+						if {_name} is not set:
+							set {_name} to victim
 				loop all players:
 					send formatted "%{_name}% &fwas slain by %attacker's name% &fusing <tooltip:%metadata value "LastDamageCauseLore" of victim%>%metadata value "LastDamageCause" of victim%" to loop-player
 				log "%{_data}% %uncolored victim's name% was slain by %attacker's name% using %uncolored metadata value "LastDamageCause" of victim%" to "logi/combat/combat %{datatydzien}%-%{datatydzien2}%.log"
 			else:
+				set {_name} to "%victim%"
+
 				loop all players:
-					send formatted "%victim% &fwas slain by %attacker's name% using <tooltip:%metadata value "LastDamageCauseLore" of victim%>%metadata value "LastDamageCause" of victim%" to loop-player
+					send formatted "%{_name}% &fwas slain by %attacker's name% using <tooltip:%metadata value "LastDamageCauseLore" of {_name}%>%metadata value "LastDamageCause" of {_name}%" to loop-player
 				log "%{_data}% %victim% &fwas slain by %attacker's name% using %uncolored metadata value "LastDamageCause" of victim%" to "logi/combat/combat %{datatydzien}%-%{datatydzien2}%.log"
 		else:
 			clear drops
+
 	else if damage was caused by a projectile:
 		victim is player or a living entity:
 			set death message to ""
@@ -498,10 +520,18 @@ on damage:
 				setAIState(attacker, "attack")
 				playEntitySound(attacker, "Attack")
 	else:
-		if boolean tag "ECMob" of (custom nbt of victim) is set:
-			if boolean tag "ECDungeonMob" of (custom nbt of victim) is not set:
+		set {_customNbt} to custom nbt of victim
+		if boolean tag "ECMob" of {_customNbt} is set:
+			if boolean tag "ECDungeonMob" of {_customNbt} is set:
 				set metadata value "ECPulled" of victim to 1
 				UpdateTarget(victim, attacker, "dynamic")
+			else:
+				if all:
+					boolean tag "ECIslandEnemy" of {_customNbt} is set
+					string tag "IslandEnemyMovement" of {_customNbt} = "Static"
+				then:
+					set metadata value "ECPulled" of victim to 1
+					UpdateTarget(victim, attacker, "dynamic")
 		else:
 			if "%region at victim%" contains "WorldQuest_":
 				if attacker's gamemode is not creative:
@@ -1053,6 +1083,57 @@ on player interact on entity:
 			metadata value "Garrote%player%" of {_entity} is set
 			metadata value "Night Slash Vulnerability%player%" of {_entity} is set
 		then:
+			cancel event
+
+on entity target:
+	if target is a player:
+		if boolean tag "ECMob" of custom nbt of event-entity is set:
+			set {_x} to nearest player in radius 4 around event-entity
+			if {_x} is set:
+				if boolean tag "ECDungeonMob" of custom nbt of event-entity is set:
+					if metadata value "DungeonInstance" of {_x} is set:
+						set {_attackerInstance} to metadata value "DungeonInstance" of {_x}
+						set {_victimInstance} to int tag "ECDungeonInstance" of custom nbt of event-entity
+						if {_attackerInstance} = {_victimInstance}:
+							if {_x} does not have invisibility:
+								BodyMobPull({_x}, event-entity)
+								loop all entities in radius 4 around event-entity:
+									if loop-entity is not a player:
+										if loop-entity is not event-entity:
+											if boolean tag "ECMob" of custom nbt of loop-entity is set:
+												if boolean tag "ECDungeonMob" of custom nbt of loop-entity is set:
+													if metadata value "ECPulled" of loop-entity is not set:
+														BodyMobPull({_x}, loop-entity)
+							else:
+								cancel event
+
+				else if all:
+					boolean tag "ECIslandEnemy" of custom nbt of event-entity is true
+					metadata value "IslandExpeditionInstance" of {_x} is set
+				then:
+					set {_attackerInstance} to metadata value "IslandExpeditionInstance" of {_x}
+					set {_victimInstance} to metadata value "IslandExpeditionInstance" of event-entity
+					if {_victimInstance} is not set:
+						set {_victimInstance} to string tag "IslandExpeditionInstance" of custom nbt of event-entity
+					if {_attackerInstance} = {_victimInstance}:
+						if {_x} does not have invisibility:
+							IslandExpeditionBodyMobPull({_x}, event-entity)
+							loop all entities in radius 4 around event-entity:
+								if loop-entity is not a player:
+									if loop-entity is not event-entity:
+										if boolean tag "ECIslandEnemy" of custom nbt of loop-entity is true:
+											if metadata value "ECPulled" of loop-entity is not set:
+												IslandExpeditionBodyMobPull({_x}, loop-entity)
+						else:
+							cancel event
+			else:
+				cancel event
+
+		if boolean tag "ECCantTarget" of custom nbt of event-entity is set:
+			cancel event
+
+	else if event-entity is zombie or skeleton:
+		if target is a zombie or skeleton:
 			cancel event
 			
 #on heal:

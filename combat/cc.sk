@@ -40,27 +40,13 @@ on entity move:
 	set {_entity} to string tag "ECTextAbove" of ({_customNbt}) parsed as entity
 	if {_entity} is set:
 		if boolean tag "ECIslandEnemy" of {_customNbt} is set:
-			if double tag "ECNameplateHeight" of {_customNbt} is set:
-				set {_height} to double tag "ECNameplateHeight" of {_customNbt}
-			else:
-				set {_height} to event-entity.getBoundingBox().getHeight() + 0.35
-
-			set {_nameLoc} to location of event-entity
-			set y of {_nameLoc} to y of {_nameLoc} + {_height}
-
-			set {_healthLoc} to {_nameLoc}
-			set y of {_healthLoc} to y of {_nameLoc} - 0.25
-			teleport {_entity} to {_healthLoc}
-
-			if string tag "ECCustomName" of {_customNbt} is set:
-				set {_entity} to string tag "ECCustomName" of {_customNbt} parsed as entity
-				teleport {_entity} to {_nameLoc}
-
-			if string tag "ECTextAboveLevel" of {_customNbt} is set:
-				set {_entity} to string tag "ECTextAboveLevel" of {_customNbt} parsed as entity
-				set {_levelLoc} to {_nameLoc}
-				set y of {_levelLoc} to y of {_nameLoc} + 0.25
-				teleport {_entity} to {_levelLoc}
+			updateIslandMobNameplate(event-entity)
+			
+			if metadata value "ECEngaged" of event-entity is not set:
+				set {_home} to metadata value "ECMobSpawnLoc" of event-entity
+				set {_range} to metadata value "IslandEnemyRoamRange" of event-entity
+				if distance between (location of event-entity) and {_home} > {_range}:
+					teleport {_mob} to {_home}
 		else:
 			set {_loc} to location of event-entity
 			set {_eyeLoc} to event-entity.getEyeLocation()
@@ -86,9 +72,15 @@ on entity move:
 				teleport {_entity} to {_eyeLoc}
 
 			if boolean tag "ECMob" of ({_customNbt}) is set:
-				if boolean tag "ECDungeonMob" of ({_customNbt}) is set:
-					if metadata value "ECPulled" of event-entity is not set:
+				if metadata value "ECPulled" of event-entity is not set:
+					if boolean tag "ECDungeonMob" of {_customNbt} is set:
 						cancel event
+					else:
+						if all:
+							boolean tag "ECIslandEnemy" of {_customNbt} is set
+							string tag "IslandEnemyMovement" of {_customNbt} = "Static"
+						then:
+							cancel event
 
 			if string tag "ECTextAboveLevel" of ({_customNbt}) is set:
 				set {_entity} to string tag "ECTextAboveLevel" of ({_customNbt}) parsed as entity
@@ -263,12 +255,12 @@ function unfreezeMovementEntity(e: entity, wait: timespan):
 	wait {_wait}
 	clear metadata value "MovementFrozen" of {_e}
 
-on packet event play_server_animation:
-	set {_entityID} to field 0 of event-packet
-	set {_animation} to field 1 of event-packet
+#on packet event play_server_animation:
+	#set {_entityID} to field 0 of event-packet
+	#set {_animation} to field 1 of event-packet
 
-	if {_animation} = 0:
-		set {_entity} to entity from id {_entityID} in event-world
+	#if {_animation} = 0:
+		#set {_entity} to entity from id {_entityID} in event-world
 
 command /asynctest:
 	trigger:
