@@ -33,6 +33,10 @@ import:
     com.sk89q.worldedit.function.operation.ForwardExtentCopy
     com.sk89q.worldedit.function.operation.Operations
     com.sk89q.worldedit.function.mask.ExistingBlockMask
+    java.io.FileOutputStream
+    com.sk89q.worldedit.extent.clipboard.BlockArrayClipboard
+    com.sk89q.worldedit.regions.CuboidRegion
+    com.Pehrek.islandpastehelper.IslandPasteAPI
 
 options:
     safeworld: location(9270.5, 73.5, 1562.5, world "world")
@@ -48,6 +52,11 @@ effect paste schematic %string% at %location% [(1¦(with|including) air)]:
 
         set {_clipboard} to ClipboardFormats.findByFile({_file}).load({_file})
         set {_editSession} to {_clipboard}.paste({_world}, {_loc}, false, {_air}, false, null)
+
+        set {_volume} to {_clipboard}.getRegion().getVolume()
+        set {_dimensions} to {_clipboard}.getDimensions()
+        send "[IE] Pasting %expr-1% | Dimensions: %{_dimensions}% | Volume: %{_volume}% | Loc: %expr-2%" to console
+
         {_editSession}.close()
         {_clipboard}.close()
 
@@ -134,24 +143,7 @@ function getIslandName(island: string) :: string:
         set {_island} to "Plunder Cove"
     return {_island}
 
-function preloadChunks(loc: location, radius: integer):
-    set {_world} to {_loc}.getWorld() 
-    set {_cx} to Math.floorDiv({_loc}.getBlockX(), 16)
-    set {_cz} to Math.floorDiv({_loc}.getBlockZ(), 16)
-    loop ({_radius} * 2 + 1) times:
-        set {_dx} to loop-number - {_radius} - 1
-        set {_x} to {_cx} + {_dx}
-        loop ({_radius} * 2 + 1) times:
-            set {_dz} to loop-number-2 - ({_radius} - 1)
-            set {_z} to {_cz} + {_dz}
-            set {_key} to "%{_x}%_%{_z}%"
-            if {_chunks::%{_key}%} is not set:
-                set {_chunks::%{_key}%} to location({_x} * 16 + 8, 64, {_z} * 16 + 8, {_world})
-    loop {_chunks::*}:
-        async load chunk at loop-value with ticket
-        wait 1 tick if loop-counter is divisible by 20
-
-function pinChunksAtPoints(world: world, points: locations, buffer: integer):
+function preloadChunks(world: world, points: locations, buffer: integer):
     loop {_points::*}:
         set {_cx} to Math.floorDiv(loop-value.getBlockX(), 16)
         set {_cz} to Math.floorDiv(loop-value.getBlockZ(), 16)
@@ -165,7 +157,7 @@ function pinChunksAtPoints(world: world, points: locations, buffer: integer):
                 if {_chunks::%{_key}%} is not set:
                     set {_chunks::%{_key}%} to location({_px} * 16 + 8, 64, {_pz} * 16 + 8, {_world})
     loop {_chunks::*}:
-        async load chunk at loop-value
+        async load chunk at loop-value with ticket
         wait 1 tick if loop-counter is divisible by 10
 
 on rightclick:
@@ -203,8 +195,6 @@ on rightclick:
                     send "&cFailed to create the Island Expedition world." to player
                     stop
                 wait 1 tick
-
-            broadcast "S"
 
             if party of player is set:
                 set {_partyMembersNames::*} to (party members of (party of player)) where [input is online]
@@ -269,6 +259,9 @@ on rightclick:
             set {_yEnemy} to yaml value "Locations.ShipAlly.%{_enemyDirection}%.%{_enemyRotation}%.%{_enemyShipStart}%.y" in "%{_island}%Locations"
             set {_zEnemy} to yaml value "Locations.ShipAlly.%{_enemyDirection}%.%{_enemyRotation}%.%{_enemyShipStart}%.z" in "%{_island}%Locations"
 
+            broadcast "&aALLY DIR: %{_direction}% ROT: %{_rotation}% START; %{_shipStart}%"
+            broadcast "&cEnemy dir: %{_enemyDirection}% ROT: %{_enemyRotation}% START: %{_enemyShipStart}%"
+
             unload yaml "%{_island}%Locations"
             
             set {_locShip} to location({_x}, {_y}, {_z}, world {_newInstance})
@@ -295,13 +288,40 @@ on rightclick:
                     set {_azeriteLocZ} to yaml value "Azerite.%loop-value-1%.%loop-value-2%.Location.Z" in "%{_island}%Azerite"
                     set {_azeritePoints::*} to {_azeritePoints::*} and location({_azeriteLocX}, {_azeriteLocY}, {_azeriteLocZ}, world {_newInstance})
 
-            #set {_pinPoints::*} to {_locShip} and {_locEnemyShip}
-            #pinChunksAtPoints(world {_newInstance}, {_pinPoints::*}, 2)
+            set {_pinPoints::*} to {_locShip} and {_locEnemyShip}
+            preloadChunks(world {_newInstance}, {_pinPoints::*}, 8)
 
-            paste schematic "plugins/FastAsyncWorldEdit/schematics/IslandExpeditionsShip%{_rotationShip}%.schem" at {_locShip}
-            wait 1 tick
-            paste schematic "plugins/FastAsyncWorldEdit/schematics/IslandExpeditionsEnemyShip%{_rotationShipEnemy}%.schem" at {_locEnemyShip}
-            wait 1 tick
+            while chunk at {_locShip} is not loaded:
+                wait 1 tick
+            
+            set {_schemPath} to "plugins/FastAsyncWorldEdit/schematics/IslandExpeditionsShip%{_rotationShip}%.schem"
+            set {_result} to IslandPasteAPI.pasteSchematic({_schemPath}, world {_newInstance}, (x of {_locShip}), (y of {_locShip}), (z of {_locShip}))
+        
+            set {_success} to {_result}.isSuccess()
+            set {_message} to {_result}.getMessage()
+            set {_volume} to {_result}.getVolume()
+            set {_duration} to {_result}.getDurationMillis()
+            
+            if {_success} is true:
+                send "&b[Island Expeditions] &8(%{_newInstance}%) &bAlly Ship paste successful! &7(%{_volume}% blocks pasted in %{_duration}%ms)" to console
+            else:
+                send "&c[Island Expeditions] &8(%{_newInstance}%) &cAlly Ship paste failed! &7Reason: %{_message}%" to console
+
+            while chunk at {_locEnemyShip} is not loaded:
+                wait 1 tick
+            
+            set {_schemPath} to "plugins/FastAsyncWorldEdit/schematics/IslandExpeditionsEnemyShip%{_rotationShipEnemy}%.schem"
+            set {_result} to IslandPasteAPI.pasteSchematic({_schemPath}, world {_newInstance}, (x of {_locEnemyShip}), (y of {_locEnemyShip}), (z of {_locEnemyShip}))
+
+            set {_success} to {_result}.isSuccess()
+            set {_message} to {_result}.getMessage()
+            set {_volume} to {_result}.getVolume()
+            set {_duration} to {_result}.getDurationMillis()
+            
+            if {_success} is true:
+                send "&b[Island Expeditions] &8(%{_newInstance}%) &bEnemy Ship paste successful! &7(%{_volume}% blocks pasted in %{_duration}%ms)" to console
+            else:
+                send "&c[Island Expeditions] &8(%{_newInstance}%) &cEnemy Ship paste failed! &7Reason: %{_message}%" to console
 
             loop yaml node keys "Azerite" in "%{_island}%Azerite":
                 set {_modelName} to yaml value "Attributes.%loop-value%.ModelName" in "AzeriteAttributes"
@@ -319,6 +339,10 @@ on rightclick:
                         set {_azeriteLocY} to {_azeriteLocY} + 0.1
 
                     set {_azeriteLocation} to location({_azeriteLocX}, {_azeriteLocY}, {_azeriteLocZ}, world {_newInstance}, {_azeriteLocYaw}, {_azeriteLocPitch})
+                    preloadChunks(world {_newInstance}, {_azeriteLocation}, 1)
+
+                    while chunk at {_azeriteLocation} is not loaded:
+                        wait 1 tick
 
                     spawn an armor stand at {_azeriteLocation} with nbt from "{Invulnerable:1b,NoGravity:1b,Silent:1b}"
                     set {_azeriteModel} to last spawned armor stand
@@ -340,7 +364,16 @@ on rightclick:
                     set boolean tag "AzeriteLoaded" of {_customNbt} to true
                     set boolean tag "PersistenceRequired" of (nbt of {_azeriteModel}) to true
 
-                    modelApply({_azeriteModel}, {_modelName}, {_scale})
+                    if {_modelName} is set:
+                        modelApply({_azeriteModel}, {_modelName}, {_scale})
+
+                    if loop-value-1 = "Fissure":
+                        set boolean tag "Invisible" of (nbt of {_azeriteModel}) to true
+
+                    clear {_scale}
+                    clear {_azeriteType}
+
+                wait 1 tick if loop-counter is divisible by 50
 
             unload yaml "%{_island}%Azerite"
 
@@ -619,10 +652,8 @@ function islandExpeditionEnemyPoints(island: string, w: world) :: locations:
     return {_points::*}
 
 function islandExpeditionEnemyTemplatePath(island: string, enemy: string, group: string) :: string:
-    if yaml value "Enemies.%{_island}%.%{_group}%.%{_enemy}%.Health" in "IslandEnemyList" is set:
-        return "Enemies.%{_island}%.%{_group}%.%{_enemy}%"
-    if yaml value "Enemies.Generic.%{_enemy}%.Health" in "IslandEnemyList" is set:
-        return "Enemies.Generic.%{_enemy}%"
+    if yaml value "Enemies.%{_group}%.%{_enemy}%.Health" in "IslandEnemyList" is set:
+        return "Enemies.%{_group}%.%{_enemy}%"
     return ""
 
 function islandExpeditionDifficultyHealthModifier(difficulty: string) :: number:
@@ -669,8 +700,7 @@ function islandExpeditionSpawnEnemies(island: string, instance: string, w: world
 
                 set {_loopCount} to {_loopCount} + 1
 
-                if {_loopCount} is divisible by 20:
-                    wait 1 tick
+            wait 1 tick if loop-counter is divisible by 5
 
     loop yaml node keys "Rares" in "%{_island}%Enemies":
         set {_rare} to loop-value
@@ -698,7 +728,7 @@ function islandExpeditionSpawnEnemy(island: string, instance: string, enemy: str
 
     set {_loc} to safeMobSpawnLocation({_loc}, 32)
     spawn {_entity} at {_loc}
-    
+
     set {_mob} to last spawned entity
     set boolean tag "Silent" of (nbt of {_mob}) to true
     set boolean tag "PersistenceRequired" of (nbt of {_mob}) to true
@@ -712,12 +742,15 @@ function islandExpeditionSpawnEnemy(island: string, instance: string, enemy: str
 
     set {_rank} to yaml value "%{_path}%.Type" in "IslandEnemyList"
     set {_movement} to yaml value "%{_path}%.Movement" in "IslandEnemyList"
-    set {_azerite} to yaml value "Azerite Map.%{_rank}%" in "IslandEnemyList"
+    set {_azerite} to yaml value "Azerite Map.Azerite.%{_rank}%" in "IslandEnemyList"
     set {_model} to yaml value "%{_path}%.Model" in "IslandEnemyList"
     set {_scale} to yaml value "%{_path}%.Scale" in "IslandEnemyList"
-    set {_disguise} to yaml value "%{_path}%.Disguise" in "IslandEnemyList"
     set {_item} to yaml value "%{_path}%.Item" in "IslandEnemyList"
     set {_element} to yaml value "%{_path}%.Element" in "IslandEnemyList"
+    set {_roamRange} to yaml value "%{_path}%.Roam Range" in "IslandEnemyList"
+    set {_disguises::*} to yaml list "%{_path}%.Disguise" in "IslandEnemyList"
+    if {_disguises::*} is not set:
+        set {_disguises::*} to yaml value "%{_path}%.Disguise" in "IslandEnemyList"
 
     if {_azerite} is not set:
         set {_azerite} to 0
@@ -758,6 +791,7 @@ function islandExpeditionSpawnEnemy(island: string, instance: string, enemy: str
     set metadata value "IslandEnemyMovement" of {_mob} to {_movement}
     set metadata value "IslandEnemyAzerite" of {_mob} to {_azerite}
     set metadata value "ECMobSpawnLoc" of {_mob} to {_loc}
+    set metadata value "IslandEnemyRoamRange" of {_mob} to {_roamRange}
 
     set boolean tag "CustomNameVisible" of nbt of {_mob} to false
 
@@ -767,11 +801,31 @@ function islandExpeditionSpawnEnemy(island: string, instance: string, enemy: str
     if {_model} is set:
         set string tag "ECModeledEntity" of {_customNbt} to {_model}
         modelApply({_mob}, {_model}, {_scale})
-    if {_disguise} is set:
-        if {_disguise} != "":
-            disguise {_mob} as saved disguise {_disguise}
+
+    set {_mob}'s tool to air
+    set {_mob}'s helmet to air
+    set {_mob}'s boots to air
+    set {_mob}'s leggings to air
+    set {_mob}'s chestplate to air
+
     if {_item} is set:
         set {_mob}'s tool to {_item}
+
+    if {_disguises::*} is set:
+        if size of {_disguises::*} > 1:
+            set {_disguise} to a random element of {_disguises::*}
+        else:
+            set {_disguise} to {_disguises::1}
+
+        disguise {_mob} as saved disguise "%{_disguise}%"
+
+    loop all entities in radius 2 around {_mob}:
+        if metadata value "IslandEnemy" of loop-entity is not true:
+            if any:
+                loop-entity is a chicken
+                loop-entity is a spider
+            then:
+                delete loop-entity
 
     IslandMobInfoAssignments({_mob}, {_enemy}, {_path}, {_scale})
 
@@ -1153,30 +1207,28 @@ function AzeriteOreMine(p: entity, e: entity, team: string = "Ally"):
 
         set {_modelName} to yaml value "Attributes.%{_typeOfOre}%.ModelName" in "AzeriteAttributes"
         
-        azeriteCollectRemove({_p}, {_e}, {_modelName})
+        azeriteCollectRemove({_p}, {_e}, {_modelName}, {_typeOfOre}, {_waitTime})
         #When aezrite detector is online, show all azerite on dynmap
 
     else:
         send "&cYou are not in this Island Expedition instance to take this action." to {_p}
         play sound "block.glass.break" with volume 3 and pitch 1 to {_p}
 
-function azeriteCollectRemove(p: player, e: entity, modelName: text):
-    set {_baseEntity} to bmBaseEntity({_e})
-    set {_registry} to BetterModel.registryOrNull({_baseEntity})
-    if {_registry} is set:
-        set {_tracker} to {_registry}.tracker({_modelName})
-        if {_tracker} is set:
-            stop sound "azerite.chest_loop" for {_p}
-            if {_typeOfOre} contains "Chest":
-                {_tracker}.animate("chestopen")
-                play sound "block.chest.open" with volume 2 and pitch 2 at (location of {_e})
-                wait {_waitTime}
-                set {_removed} to {_registry}.remove({_modelName})
-                play sound "entity.zombie.break_wooden_door" with volume 2 and pitch 2 at (location of {_e})
-            else:
-                set {_removed} to {_registry}.remove({_modelName})
-                
-            add nbt from "{Invisible:1b,Marker:1b}" to nbt of {_e}
+function azeriteCollectRemove(p: player, e: entity, modelName: text, typeOfOre: text = "", waitTime: timespan = 0 seconds):
+    set {_tracker} to bmTracker({_e}, {_modelName})
+    if {_tracker} is set:
+        stop sound "azerite.chest_loop" for {_p}
+
+        if {_typeOfOre} contains "Chest":
+            {_tracker}.animate("chestopen")
+            play sound "block.chest.open" with volume 2 and pitch 2 at location of {_e}
+            wait {_waitTime}
+            {_tracker}.close()
+            play sound "entity.zombie.break_wooden_door" with volume 2 and pitch 2 at location of {_e}
+        else:
+            {_tracker}.close()
+
+        add nbt from "{Invisible:1b,Marker:1b}" to nbt of {_e}
 
 function azeriteCollectedTextTransform(id: integer, partyMembers: players):
     loop 10 times:
@@ -1452,31 +1504,6 @@ command /addislandproperties [<string>] [<string>] [<string>] [<number>]:
             save yaml "%{_island}%Properties"
             unload yaml "%{_island}%Properties"
 
-command /addislandenemy [<string>] [<string>] [<string>] [<string>]:
-    trigger:
-        #Island - Enemy
-        #PlunderCove Generic Earth Azerite Giant
-        if player's name = "Pehrek":
-            set {_island} to arg-1
-            set {_args} to full command
-            replace all "addislandenemy %{_island}% %arg-2% %arg-3% " in {_args} with ""
-            load yaml "plugins/Skript/islandexpeditions/%{_island}%/Enemies" as "%{_island}%Enemies"
-
-            set {_size} to size of yaml node keys "Enemies.%{_args}%" in "%{_island}%Enemies" + 1
-
-            set {_loc} to player's location
-            set yaml value "Enemies.%{_args}%.%{_size}%.Location.X" in "%{_island}%Enemies" to x of {_loc}
-            set yaml value "Enemies.%{_args}%.%{_size}%.Location.Y" in "%{_island}%Enemies" to y of {_loc}
-            set yaml value "Enemies.%{_args}%.%{_size}%.Location.Z" in "%{_island}%Enemies" to z of {_loc}
-            set yaml value "Enemies.%{_args}%.%{_size}%.Location.Pitch" in "%{_island}%Enemies" to pitch of {_loc}
-            set yaml value "Enemies.%{_args}%.%{_size}%.Location.Yaw" in "%{_island}%Enemies" to yaw of {_loc}
-            set yaml value "Enemies.%{_args}%.%{_size}%.Type" in "%{_island}%Enemies" to arg-2
-            set yaml value "Enemies.%{_args}%.%{_size}%.Element" in "%{_island}%Enemies" to arg-3
-            
-            send "&fAdded a new &a%{_args}% &fof the type &c%arg-2% &fat &b%{_loc}% &fwith index &d%{_size}%&f." to player
-            save yaml "%{_island}%Enemies"             
-            unload yaml "%{_island}%Enemies"
-
 function IslandMobInfoAssignments(mob: entity, enemy: string, path: string, scale: number):
     set {_customNbt} to (custom nbt of {_mob})
     set {_height} to yaml value "%{_path}%.Nameplate Height" in "IslandEnemyList"
@@ -1491,8 +1518,11 @@ function IslandMobInfoAssignments(mob: entity, enemy: string, path: string, scal
 
     set {_rank} to yaml value "%{_path}%.Type" in "IslandEnemyList"
     set {_name} to "&f%{_enemy}%"
-    if {_rank} contains "Rare":
-        set {_name} to "<#ffd447>★ &f%{_enemy}%"
+
+    set {_nameplate} to yaml value "Azerite Map.Azerite.%{_rank}%" in "IslandEnemyList"
+    set {_name} to "&f%{_enemy}%"
+    if {_nameplate} is set:
+        set {_name} to "<#ffd447>★ &f%{_name}%"
 
     set {_level} to int tag "ECLvl" of {_customNbt}
 
