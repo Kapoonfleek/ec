@@ -795,13 +795,10 @@ function islandExpeditionSpawnEnemy(island: string, instance: string, enemy: str
 
     set boolean tag "CustomNameVisible" of nbt of {_mob} to false
 
-    if {_movement} = "Static":
-        set metadata value "ECPulled" of {_mob} to false
-
     if {_model} is set:
         set string tag "ECModeledEntity" of {_customNbt} to {_model}
         modelApply({_mob}, {_model}, {_scale})
-
+ 
     set {_mob}'s tool to air
     set {_mob}'s helmet to air
     set {_mob}'s boots to air
@@ -1632,3 +1629,57 @@ function safeMobSpawnLocation(loc: location, range: integer = 16) :: location:
                     return location({_x}, {_downY}, {_z}, {_world}, yaw of {_loc}, pitch of {_loc})
 
     return {_loc}
+
+command /ieencounter [<string>] [<number>] [<integer>] [<integer>] [<string>]:
+    trigger:
+        if player's name != "Pehrek":
+            send "&cYou cannot use this command." to player
+            stop
+
+        if arg-1 is not set:
+            send "&cUsage: /ieencounter <IslandName> <Radius> <MinCount> <MaxCount> [SpotName]" to player
+            stop
+        if arg-2 is not set:
+            send "&cRadius must be provided." to player
+            stop
+        if arg-3 is not set:
+            send "&cMin count must be provided." to player
+            stop
+        if arg-4 is not set:
+            send "&cMax count must be provided." to player
+            stop
+
+        if arg-5 is not set:
+            send "&cName must be provided" to player
+
+        set {_island} to arg-1
+        set {_radius} to arg-2
+        set {_min} to arg-3
+        set {_max} to arg-4
+        set {_loc} to location of player
+
+        load yaml "plugins/Skript/islandexpeditions/%{_island}%/Enemies" as "%{_island}%Enemies-%player%"
+
+        set {_spot} to arg-5
+
+        set yaml value "EncounterSpots.%{_spot}%.Location.X" in "%{_island}%Enemies-%player%" to x of {_loc}
+        set yaml value "EncounterSpots.%{_spot}%.Location.Y" in "%{_island}%Enemies-%player%" to y of {_loc}
+        set yaml value "EncounterSpots.%{_spot}%.Location.Z" in "%{_island}%Enemies-%player%" to z of {_loc}
+        set yaml value "EncounterSpots.%{_spot}%.Location.Pitch" in "%{_island}%Enemies-%player%" to pitch of {_loc}
+        set yaml value "EncounterSpots.%{_spot}%.Location.Yaw" in "%{_island}%Enemies-%player%" to yaw of {_loc}
+        set yaml value "EncounterSpots.%{_spot}%.Radius" in "%{_island}%Enemies-%player%" to {_radius}
+        set yaml value "EncounterSpots.%{_spot}%.Count.Min" in "%{_island}%Enemies-%player%" to {_min}
+        set yaml value "EncounterSpots.%{_spot}%.Count.Max" in "%{_island}%Enemies-%player%" to {_max}
+
+        save yaml "%{_island}%Enemies-%player%"
+        unload yaml "%{_island}%Enemies-%player%"
+
+        send "&aSet encounter spot &f%{_spot}% &afor &f%{_island}% &aat &f%{_loc}%&a." to player
+
+on tab complete of "/ieencounter":
+    set {_islands::*} to getIslandWorlds()
+    set tab completions for position 1 to {_islands::*}
+    set tab completions for position 2 to "4", "6", "8", "10", "12", "16", "20", "24" and "32"
+    set tab completions for position 3 to "1", "2", "3", "4", "5", "6", "8" and "10"
+    set tab completions for position 4 to "3", "4", "5", "6", "8", "10", "12" and "16"
+    set tab completions for position 5 to "Town1", "Town2", "Shore1", "Shore2", "Cave1", "Camp1", "Ruins1" and "Dock1"
