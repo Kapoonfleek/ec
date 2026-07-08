@@ -1086,6 +1086,14 @@ on rightclick on an armor stand:
 
 function AzeriteOreMine(p: entity, e: entity, team: string = "Ally"):
     set {_customNbt} to custom nbt of {_e}
+
+    if {_p} is not a player:
+        if metadata value "IslandAIMining" of {_p} is set:
+            stop
+        set metadata value "IslandAIMining" of {_p} to true
+        set metadata value "IslandAIState" of {_p} to "MiningAzerite"
+        clear target of {_p}
+
     if metadata value "IslandExpeditionInstance" of {_p} = string tag "AzeriteInstance" of {_customNbt}:
         set {_instance} to metadata value "IslandExpeditionInstance" of {_p}
         set {_typeOfOre} to string tag "AzeriteVeinType" of {_customNbt}
@@ -1129,22 +1137,24 @@ function AzeriteOreMine(p: entity, e: entity, team: string = "Ally"):
                     send action bar "Mining... %{_casttime}% " to {_p}
                     if {_castTimeValue} is divisible by 1:
                         make {_p} swing their hand
-                        add 1/{_originalCastTimeValue} to {_break}
+                        set {_break} to {_break} + 1/{_originalCastTimeValue}
+                        set {_location} to location {_above} above {_e}
+
                         if {_typeOfOre} contains "Chest":
                             play sound "entity.zombie.attack_wooden_door" with volume 2 and pitch 2 at (location of {_e})
-                            draw 10 of (jungle wood block particle with extra value 0.04) with offset vector({_above}/5, {_above}/2, {_above}/5)  at location {_above} above {_e}
+                            draw 10 of (jungle wood block particle with extra value 0.04) with offset vector({_above}/5, {_above}/2, {_above}/5)  at {_location}
                         else if {_typeOfOre} = "Sack":
                             play sound "block.wool.break" with volume 2 and pitch 2 at (location of {_e})
                             play sound "block.wool.place" with volume 2 and pitch 2 at (location of {_e})
                             play sound "block.wool.step" with volume 2 and pitch 2 at (location of {_e})
                             play sound "entity.llama.swag" with volume 2 and pitch 0.5 at (location of {_e})
-                            draw 10 of (brown wool block particle with extra value 0.04) with offset vector({_above}/5, {_above}/2, {_above}/5) at location {_above} above {_e}
+                            draw 10 of (brown wool block particle with extra value 0.04) with offset vector({_above}/5, {_above}/2, {_above}/5) at {_location}
                         else:
                             play sound "misc.mine_ore" with volume 2 and pitch 1 at (location of {_e})
                             set {_block} to diamond block
-                            draw {_particle} of ({_block} block particle with extra value 0.04) with offset vector({_above}/5, {_above}/2, {_above}/5) at location {_above} above {_e}
+                            draw {_particle} of ({_block} block particle with extra value 0.04) with offset vector({_above}/5, {_above}/2, {_above}/5) at {_location}
                             set {_block} to gold block
-                            draw {_particle} of ({_block} block particle with extra value 0.04) with offset vector({_above}/5, {_above}/2, {_above}/5) at location {_above} above {_e}
+                            draw {_particle} of ({_block} block particle with extra value 0.04) with offset vector({_above}/5, {_above}/2, {_above}/5) at {_location}
                         
                     wait 0.1 seconds
                     remove 0.1 seconds from {_casttime}
@@ -1165,7 +1175,8 @@ function AzeriteOreMine(p: entity, e: entity, team: string = "Ally"):
             stop
         
         #set {_nodeName} to string tag "AzeriteNodeName" of custom nbt of {_e}
-        azeriteAddIslands({_p}, {_instance}, {_typeOfOre}, {_nodeName}, {_azerite}, "Ally", {_sound::*})
+        clear metadata value "IslandAIMining" of {_p}
+        azeriteAddIslands({_p}, {_instance}, {_typeOfOre}, {_nodeName}, {_azerite}, {_team}, {_sound::*})
         clear string tag "AzeriteInstance" of {_customNbt}
 
         set {_id} to random integer between 0 and 999999
@@ -1214,15 +1225,22 @@ function azeriteCollectedTextTransform(id: integer, partyMembers: players):
         wait 1 tick
     remove fake entity with id {_id} for {_partyMembers::*}
         
-function azeriteAddIslands(p: player, instance: string, azeriteType: string, nodeName: string, azerite: integer, team: string, sound: strings):
-    loop {_sound::*}:
-        play sound loop-value with volume 2 and pitch 1 at {_p}
-    send "<#fff200>+%{_azerite}% Azerite Collected <#e8ce81>from %{_nodeName}%" to {_p}
+function azeriteAddIslands(p: entity, instance: string, azeriteType: string, nodeName: string, azerite: integer, team: string, sound: strings):
     if {azeriteCollected%{_team}%::%{_instance}%} + {_azerite} <= {azeriteRequired::%{_instance}%}:
         set {azeriteCollected%{_team}%::%{_instance}%} to {azeriteCollected%{_team}%::%{_instance}%} + {_azerite}
     else:
         set {azeriteCollected%{_team}%::%{_instance}%} to {azeriteRequired::%{_instance}%}
-    set line 7 of {_p}'s fastboard to "<#3aff17>Ally: &f%{azeriteCollectedAlly::%{_instance}%}% | <#ff1742>Enemy: &f%{azeriteCollectedEnemy::%{_instance}%}%"
+
+    loop {_sound::*}:
+        play sound loop-value with volume 2 and pitch 1 at {_p}
+
+    if {_p} is a player:
+        send "<#fff200>+%{_azerite}% Azerite Collected <#e8ce81>from %{_nodeName}%" to {_p}
+        loop {IslandPlayers::%{_instance}%::*}:
+            if loop-value != {_p}:
+                send "<#fff200>+%{_azerite}% Azerite Collected <#e8ce81>from %{_nodeName}% (%{_p}%)" to loop-avlue
+
+            set line 7 of loop-value's fastboard to "<#3aff17>Ally: &f%{azeriteCollectedAlly::%{_instance}%}% | <#ff1742>Enemy: &f%{azeriteCollectedEnemy::%{_instance}%}%"
 
     #add to yaml here: azerite collected by player, type of azerite interacted with, enemies kileld etc
 
@@ -1799,7 +1817,7 @@ function islandAIThink(ai: entity):
             set metadata value "IslandAIState" of {_ai} to "MovingToAzerite"
             make {_ai} pathfind to {_azeriteTarget}
             if distance between {_ai} and {_azeriteTarget} <= 3:
-                islandAIMineAzerite({_ai}, {_azeriteTarget})
+                AzeriteOreMine({_ai}, {_azeriteTarget}, "Enemy")
             wait 2 seconds
             continue
         set metadata value "IslandAIState" of {_ai} to "Scouting"
@@ -1844,53 +1862,6 @@ function islandAIScout(ai: entity):
     if {_points::*} is set:
         set {_loc} to a random element of {_points::*}
         make {_ai} pathfind to {_loc}
-
-function islandAIMineAzerite(ai: entity, node: entity):
-    if metadata value "IslandAIMining" of {_ai} is set:
-        stop
-    set metadata value "IslandAIMining" of {_ai} to true
-    set metadata value "IslandAIState" of {_ai} to "MiningAzerite"
-    clear target of {_ai}
-    loop 30 times:
-        if {_ai} is not alive:
-            clear metadata value "IslandAIMining" of {_ai}
-            stop
-        if {_node} is not alive:
-            clear metadata value "IslandAIMining" of {_ai}
-            stop
-        if string tag "AzeriteInstance" of custom nbt of {_node} is not set:
-            clear metadata value "IslandAIMining" of {_ai}
-            stop
-        if distance between {_ai} and {_node} > 4:
-            clear metadata value "IslandAIMining" of {_ai}
-            stop
-        wait 1 tick
-    set {_instance} to metadata value "IslandExpeditionInstance" of {_ai}
-    set {_type} to string tag "AzeriteVeinType" of custom nbt of {_node}
-    if {_type} = "Crystal":
-        set {_azerite} to 270
-    else if {_type} = "Chunk":
-        set {_azerite} to 190
-    else if {_type} = "Shard":
-        set {_azerite} to 110
-    else if {_type} = "ChestBig":
-        set {_azerite} to 230
-    else if {_type} = "Sack":
-        set {_azerite} to 200
-    else:
-        set {_azerite} to 90
-    islandAIAddAzerite({_instance}, {_azerite})
-    clear string tag "AzeriteInstance" of custom nbt of {_node}
-    add nbt from "{Invisible:1b,Marker:1b}" to nbt of {_node}
-    clear metadata value "IslandAIMining" of {_ai}
-
-function islandAIAddAzerite(instance: string, azerite: integer):
-    if {azeriteCollectedEnemy::%{_instance}%} + {_azerite} <= {azeriteRequired::%{_instance}%}:
-        set {azeriteCollectedEnemy::%{_instance}%} to {azeriteCollectedEnemy::%{_instance}%} + {_azerite}
-    else:
-        set {azeriteCollectedEnemy::%{_instance}%} to {azeriteRequired::%{_instance}%}
-    loop all players where [metadata value "IslandExpeditionInstance" of input = {_instance}]:
-        set line 7 of loop-player's fastboard to "<#3aff17>Ally: &f%{azeriteCollectedAlly::%{_instance}%}% | <#ff1742>Enemy: &f%{azeriteCollectedEnemy::%{_instance}%}%"
 
 function islandAICombat(ai: entity, target: entity):
     if metadata value "IslandAICasting" of {_ai} is set:
