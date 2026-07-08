@@ -326,18 +326,18 @@ function MobInfoAssignments(mob: entity, loc: location, customName: string = "")
         set boolean tag "CustomNameVisible" of nbt of last spawned armor stand to true
         set boolean tag "NoGravity" of nbt of last spawned armor stand to true
 
-        set boolean tag "RemoveOnReset" of custom nbt of last spawned armor stand to true
+        set boolean tag "RemoveOnReset" of (custom nbt of last spawned armor stand) to true
 
         if loop-counter = 1:
             set display name of last spawned armor stand to "&a|||||||||| &f(100%%)"
-            set string tag "ECTextAbove" of custom nbt of {_mob} to uuid of last spawned armor stand
+            set string tag "ECTextAbove" of (custom nbt of {_mob}) to uuid of last spawned armor stand
         else if loop-counter = 2:
-            set {_mobLevel} to int tag "ECLvl" of custom nbt of {_mob}
+            set {_mobLevel} to int tag "ECLvl" of (custom nbt of {_mob})
             set display name of last spawned armor stand to "&4Level %{_mobLevel}%"
-            set string tag "ECTextAboveLevel" of custom nbt of {_mob} to uuid of last spawned armor stand
+            set string tag "ECTextAboveLevel" of (custom nbt of {_mob}) to uuid of last spawned armor stand
         else:
             set display name of last spawned armor stand to {_customName}
-            set string tag "ECCustomName" of custom nbt of {_mob} to uuid of last spawned armor stand
+            set string tag "ECCustomName" of (custom nbt of {_mob}) to uuid of last spawned armor stand
         push {_mob} upwards with velocity 0.01
     
     wait 2 ticks
@@ -612,7 +612,7 @@ on rightclick:
                                     set {_requirement} to yaml value "Tasks.%{_worldQuestType}%.%{_worldQuest}%.%loop-value-2%.Requirement" in "WorldQuestList"
                                     set {_collected} to yaml value "%{_worldQuestType}%.%{_worldQuest}%.%loop-value-2%.Completed" in "WorldQuests%player%"
                                     if {_collected} < {_requirement}:
-                                        set y-coordinate of {_loc} to (rounded down y-coordinate of {_loc})
+                                        set y of {_loc} to (rounded down y of {_loc})
                                         if yaml list "Locations.%{_element}%" in "WorldQuestLocations%{_worldQuest}%" contains {_loc}:
                                             set {_uuids::*} to yaml list "%{_worldQuestType}%.%{_worldQuest}%.%{_element}%.Completed Entities" in "WorldQuests%player%"
                                             if {_uuids::*} does not contain {_uuid}:
@@ -689,15 +689,16 @@ function updateFakeBlock(p: player, region: string, worldQuest: string, element:
     while "%regions at {_p}%" contains {_region}:
         make {_p} see block at {_loc} as {_block}
         wait 2 seconds
-        if any:
-            yaml list "Collect Things.%{_worldQuest}%.%{_element}%.Completed Locations" in "WorldQuests%{_p}%" contains {_loc}
-            {_collected} = {_requirement}
-            {_p} is not online
-        then:
-            make {_p} see block at {_loc} as (type of block at {_loc})
-            stop
-        set {_requirement} to yaml value "Tasks.Collect Things.%{_worldQuest}%.%{_element}%.Requirement" in "WorldQuestList"
-        set {_collected} to yaml value "Collect Things.%{_worldQuest}%.%{_element}%.Completed" in "WorldQuests%{_p}%"
+        if {_p} is online:
+            if any:
+                yaml list "Collect Things.%{_worldQuest}%.%{_element}%.Completed Locations" in "WorldQuests%{_p}%" contains {_loc}
+                {_collected} = {_requirement}
+                {_p} is not online
+            then:
+                make {_p} see block at {_loc} as (type of block at {_loc})
+                stop
+            set {_requirement} to yaml value "Tasks.Collect Things.%{_worldQuest}%.%{_element}%.Requirement" in "WorldQuestList"
+            set {_collected} to yaml value "Collect Things.%{_worldQuest}%.%{_element}%.Completed" in "WorldQuests%{_p}%"
 
 function completeWorldQuest(p: player, worldQuest: string, rarity: string):
     add {_worldQuest} to yaml list "Completed World Quests" in "WorldQuests%{_p}%"
@@ -941,12 +942,12 @@ function WorldQuestRegionSpawn(worldQuest: string) :: locations:
 
     set {_regionExpand} to yaml value "World Quests.%{_worldQuest}%.Region Expand" in "WorldQuestList"
 
-    increase x-coordinate of {_WQLocationMin} by -1*{_regionExpand}
-    increase y-coordinate of {_WQLocationMin} by -100
-    increase z-coordinate of {_WQLocationMin} by -1*{_regionExpand}
-    increase x-coordinate of {_WQLocationMax} by {_regionExpand}
-    increase y-coordinate of {_WQLocationMax} by 100
-    increase z-coordinate of {_WQLocationMax} by {_regionExpand}
+    increase x of {_WQLocationMin} by -1*{_regionExpand}
+    increase y of {_WQLocationMin} by -100
+    increase z of {_WQLocationMin} by -1*{_regionExpand}
+    increase x of {_WQLocationMax} by {_regionExpand}
+    increase y of {_WQLocationMax} by 100
+    increase z of {_WQLocationMax} by {_regionExpand}
 
     set {_WGName} to {_worldQuest}
     replace all " " in {_WGName} with ""
@@ -1032,7 +1033,7 @@ function CreateWorldQuest(worldQuests: integer):
         replace all "{LOCATION}" in {_html} with {_worldQuestLocation}
         replace all "{NAME}" in {_html} with {_requirementName}
         
-        set {_y} to y-coordinate of {_WQLocation}
+        set {_y} to y of {_WQLocation}
 
         add 1 to {worldQuestCount}
         addDynmapWorldQuestMarker({_html}, {worldQuestCount}, {_WQLocation})
@@ -1043,9 +1044,9 @@ function NewWorldQuests():
     CreateWorldQuest(10)
     
 function addDynmapWorldQuestMarker(label: text, id: integer, WQLocation: location):
-    set {_x} to x-coordinate of {_WQLocation}
-    set {_y} to y-coordinate of {_WQLocation}
-    set {_z} to z-coordinate of {_WQLocation}
+    set {_x} to x of {_WQLocation}
+    set {_y} to y of {_WQLocation}
+    set {_z} to z of {_WQLocation}
 
     set {_world} to "%world of {_WQLocation}%"
 
