@@ -344,7 +344,7 @@ on rightclick:
                     while chunk at {_azeriteLocation} is not loaded:
                         wait 1 tick
 
-                    spawn an armor stand at {_azeriteLocation} with nbt from "{Invulnerable:1b,NoGravity:1b,Silent:1b}"
+                    spawn an armor stand at {_azeriteLocation} with nbt from "{Invulnerable:1b,Invisible:1b,NoGravity:1b,Silent:1b}"
                     set {_azeriteModel} to last spawned armor stand
                     set {_scale} to yaml value "Attributes.%{_azeriteType}%.Scale" in "AzeriteAttributes"
                     set pitch of {_azeriteModel} to {_azeriteLocPitch}
@@ -369,6 +369,8 @@ on rightclick:
 
                     if loop-value-1 = "Fissure":
                         set boolean tag "Invisible" of (nbt of {_azeriteModel}) to true
+
+                    set {IslandAzerite::%{_instance}%::*} to {IslandAzerite::%{_instance}%::*} and {_azeriteModel}
 
                     clear {_scale}
                     clear {_azeriteType}
@@ -414,7 +416,11 @@ on rightclick:
             modelApply({_flynnFairwind}, "flynnfairwind", 1.0)
 
             teleport {_partyMembers::*} to {_locFlynn}
+
+            set {IslandPlayers::%{_instance}%::*} to {_partyMembers::*}
             islandExpeditionInit({_instance}, {_locFlynn}, {_island}, {_difficulty}, {_partyMembers::*})
+
+            islandAIScheduleArrival({_instance}, {_island}, {_difficulty}, {_locEnemyShip})
 
             load yaml "plugins/Skript/islandexpeditions/DialoguesIslands.yml" as "IslandsDialogues"
             set {_totalDialogues} to size of (yaml node keys "Dialogues.Arrive" in "IslandsDialogues")
@@ -497,6 +503,7 @@ function islandExpeditionInit(instance: string, spawnLoc: location, islandName: 
             set metadata value "IslandName" of loop-value to {_islandName}
             set metadata value "IslandExpeditionTime" of loop-value to 0 seconds
             set metadata value "IslandDifficulty" of loop-value to {_difficulty}
+            set metadata value "InstanceType" of loop-value to "n Island Expedition"
 
             clear loop-value's fastboard
             islandExpeditionFastboard(loop-value)
@@ -848,11 +855,16 @@ function islandExpeditionLeave(p: player):
         deleteIslandExpeditionWorld({_worldName}, {_instance})
 
 function deleteIslandExpeditionWorld(worldName: string, instance: string = ""):
+    clear {IslandPlayers::%{_instance}%::*}
+    clear {IslandAzerite::%{_instance}%::*}
     teleport all players in world "%{_worldName}%" to {@safeworld}
     wait 2 ticks
     loop all players in world "%{_worldName}%":
         teleport loop-player to {@safeworld}
     wait 1 tick
+
+    loop {ECMobs::%{_worldName}%::*}:
+        delete loop-value
 
     if Bukkit.getWorld({_worldName}) is set:
         delete island world {_worldName}
@@ -870,6 +882,7 @@ function deleteIslandExpeditionWorld(worldName: string, instance: string = ""):
 
 function islandExpeditionClear(p: player):
     clear metadata value "InsideInstance" of {_p}
+    clear metadata value "InstanceType" of {_p}
     clear metadata value "IslandExpeditionInstance" of {_p}
     clear metadata value "SpawnpointIslandExpedition" of {_p}
     clear metadata value "IslandName" of {_p}
@@ -879,6 +892,7 @@ function islandExpeditionClear(p: player):
     clear metadata value "mining" of {_p}
     clear metadata value "casting" of {_p}
     clear metadata value "AzeriteWorthIslands" of {_p}
+    clear metadata value "IslandAIState" of {_p}
     clear {_p}'s fastboard
     if metadata value "ECEngaged" of {_p} is not set:
         if metadata value "DungeonInstance" of {_p} is not set:
@@ -1078,48 +1092,13 @@ function AzeriteOreMine(p: entity, e: entity, team: string = "Ally"):
         set {_azeriteItem} to yaml value "Models.%{_typeOfOre}%" in "AzeriteModels"
         set {_nodeName} to "Azerite %{_typeOfOre}%"
 
-        if {_typeOfOre} = "Crystal":
-            set {_azerite} to 270
-            set {_casttime} to 4 seconds
-            set {_above} to 2
-            set {_particle} to 20
-            set {_sound::*} to "azerite.collect"
-        else if {_typeOfOre} = "Chunk":
-            set {_azerite} to 190
-            set {_casttime} to 3 seconds
-            set {_above} to 1
-            set {_particle} to 12
-            set {_sound::*} to "azerite.collect_small"
-        else if {_typeOfOre} = "Shard":
-            set {_azerite} to 110
-            set {_casttime} to 2 seconds
-            set {_above} to 1
-            set {_particle} to 8
-            set {_sound::*} to "azerite.collect_small"
-        else if {_typeOfOre} = "Chest":
-            set {_azerite} to 90
-            set {_casttime} to 2 seconds
-            set {_above} to 1
-            set {_nodeName} to "Wooden Strongbox"
-            set {_sound::*} to "azerite.collect_small" and "azerite.cast"
-        else if {_typeOfOre} = "ChestBig":
-            set {_azerite} to 230
-            set {_casttime} to 3 seconds
-            set {_above} to 1
-            set {_nodeName} to "Reinforced Chest"
-            set {_sound::*} to "azerite.collect" and "azerite.cast"
-        else if {_typeOfOre} = "OldChest":
-            set {_azerite} to 160
-            set {_casttime} to 3 seconds
-            set {_above} to 1
-            set {_nodeName} to "Old Chest"
-            set {_sound::*} to "azerite.collect" and "azerite.cast"
-        else if {_typeOfOre} = "Sack":
-            set {_azerite} to 200
-            set {_casttime} to 3 seconds
-            set {_above} to 1
-            set {_nodeName} to a random element of "Bag of Azerite" and "Azerite Sack"
-            set {_sound::*} to "azerite.collect"
+        set {_azerite} to yaml value "Attributes.%{_typeOfOre}%.Azerite" in "AzeriteAttributes"
+        set {_casttime} to yaml value "Attributes.%{_typeOfOre}%.Cast Time" in "AzeriteAttributes"
+        set {_casttime} to "%{_casttime}% seconds" parsed as timespan
+        set {_above} to yaml value "Attributes.%{_typeOfOre}%.Above" in "AzeriteAttributes"
+        set {_particle} to yaml value "Attributes.%{_typeOfOre}%.Particle" in "AzeriteAttributes"
+        set {_sound::*} to yaml list "Attributes.%{_typeOfOre}%.Sounds" in "AzeriteAttributes"
+
         set {_waitTime} to {_casttime}
         set {_nonOre::*} to "Chest", "ChestBig", "Sack"
 
@@ -1683,3 +1662,323 @@ on tab complete of "/ieencounter":
     set tab completions for position 3 to "1", "2", "3", "4", "5", "6", "8" and "10"
     set tab completions for position 4 to "3", "4", "5", "6", "8", "10", "12" and "16"
     set tab completions for position 5 to "Town1", "Town2", "Shore1", "Shore2", "Cave1", "Camp1", "Ruins1" and "Dock1"
+
+function islandAIScheduleArrival(instance: string, island: string, difficulty: string, loc: location):
+    if metadata value "IslandAISpawned" of {_loc}.getWorld() is set:
+        stop
+    set {_threshold} to random integer between 45 and 75
+    set {_pressure} to 0
+    set {_seconds} to 0
+    set {_firstAzerite} to false
+    while metadata value "IslandAISpawned" of {_loc}.getWorld() is not set:
+        if Bukkit.getWorld("%{_island}%-%{_instance}%") is not set:
+            stop
+        set {_pressure} to {_pressure} + random integer between 3 and 8
+        set {_seconds} to {_seconds} + 10
+        if {azeriteCollectedAlly::%{_instance}%} > 0:
+            if {_firstAzerite} is false:
+                set {_pressure} to {_pressure} + random integer between 15 and 25
+                set {_firstAzerite} to true
+        if {azeriteCollectedAlly::%{_instance}%} >= 500:
+            set {_pressure} to {_pressure} + random integer between 8 and 18
+        if {_seconds} >= 60:
+            set {_pressure} to {_pressure} + random integer between 10 and 20
+        if {_pressure} >= {_threshold}:
+            set metadata value "IslandAISpawned" of {_loc}.getWorld() to true
+            islandAISpawnTeam({_instance}, {_island}, {_difficulty}, {_loc}, "Ghazan")
+            stop
+        wait 10 seconds
+
+function islandAISpawnTeam(instance: string, island: string, difficulty: string, loc: location, team: string):
+    load yaml "plugins/Skript/islandexpeditions/AITeams" as "IslandAITeams"
+    send "<#ff4747>An enemy crew has landed on the island." to all players in world of {_loc}
+    loop yaml node keys "Teams.%{_team}%.Members" in "IslandAITeams":
+        set {_path} to "Teams.%{_team}%.Members.%loop-value%"
+        set {_name} to yaml value "%{_path}%.Name" in "IslandAITeams"
+        set {_class} to yaml value "%{_path}%.Class" in "IslandAITeams"
+        set {_role} to yaml value "%{_path}%.Role" in "IslandAITeams"
+        set {_baseMob} to yaml value "%{_path}%.Base Mob" in "IslandAITeams"
+        set {_model} to yaml value "%{_path}%.Model" in "IslandAITeams"
+        set {_scale} to yaml value "%{_path}%.Scale" in "IslandAITeams"
+        set {_health} to yaml value "%{_path}%.Health" in "IslandAITeams"
+        set {_item} to yaml value "%{_path}%.Item" in "IslandAITeams"
+
+        set {_model} to yaml value "%{_path}%.Model" in "IslandAITeams"
+        set {_element} to yaml value "%{_path}%.Element" in "IslandAITeams"
+        set {_disguises::*} to yaml list "%{_path}%.Disguise" in "IslandAITeams"
+        if {_disguises::*} is not set:
+            set {_disguises::*} to yaml value "%{_path}%.Disguise" in "IslandAITeams"
+
+        if {_baseMob} is not set:
+            set {_baseMob} to "Zombie"
+        if {_baseMob} = "Zombie":
+            set {_enemy} to "adult zombie" parsed as entity type
+        else:
+            set {_enemy} to {_baseMob} parsed as entity type
+
+        if {_enemy} is not set:
+            set {_enemy} to "adult zombie" parsed as entity type
+        if {_scale} is not set:
+            set {_scale} to 1
+
+        set {_spawnLoc} to location(84.5, 46.5, 128.5, world of {_loc})
+        #set {_spawnLoc} to islandAICoastSpawnLocation({_loc}, 80)
+        
+        spawn adult zombie at {_spawnLoc}
+        set boolean tag "PersistenceRequired" of (nbt of {_mob}) to true
+
+        set {_mob} to last spawned entity
+        set {_customNbt} to custom nbt of {_mob}
+        set {_mob}'s max health to {_health}
+        heal {_mob}
+
+        set boolean tag "ECMob" of {_customNbt} to true
+        set int tag "ECLvl" of {_customNbt} to {maxCardLevel}
+        set boolean tag "ECIslandEnemy" of {_customNbt} to true
+        set boolean tag "RemoveOnReset" of {_customNbt} to true
+        set string tag "ECElement" of {_customNbt} to {_element}
+        set string tag "IslandExpeditionInstance" of {_customNbt} to {_instance}
+        set string tag "IslandAIClass" of {_customNbt} to {_class}
+        set string tag "IslandAITeam" of {_customNbt} to {_team}
+        set metadata value "IslandAIEnemy" of {_mob} to true
+        set metadata value "IslandExpeditionInstance" of {_mob} to {_instance}
+        set metadata value "IslandAIState" of {_mob} to "Scouting"
+        set metadata value "IslandAIRole" of {_mob} to {_role}
+        set metadata value "IslandAIClass" of {_mob} to {_class}
+        set metadata value "IslandAITeam" of {_mob} to {_team}
+        set metadata value "IslandAIWorth" of {_mob} to 0
+        set metadata value "ECMobSpawnLoc" of {_mob} to {_spawnLoc}
+        set metadata value "IslandEnemyName" of {_mob} to {_name}
+
+        if {_disguises::*} is set:
+            if size of {_disguises::*} > 1:
+                set {_disguise} to a random element of {_disguises::*}
+            else:
+                set {_disguise} to {_disguises::1}
+
+            disguise {_mob} as saved disguise "%{_disguise}%"
+
+        if {_model} is set:
+            set string tag "ECModeledEntity" of {_customNbt} to {_model}
+            modelApply({_mob}, {_model}, {_scale})
+
+        if {_item} is set:
+            set {_mob}'s tool to {_item}
+
+        onECMobSpawn({_mob})
+        islandAIThink({_mob})
+        azeriteTeamMemberWorth({_mob})
+
+        IslandMobInfoAssignments({_mob}, {_name}, {_path}, {_scale})
+
+        broadcast {_spawnLoc}
+
+    unload yaml "IslandAITeams"
+
+function islandAIThink(ai: entity):
+    while {_ai} is alive:
+        if metadata value "IslandAIEnemy" of {_ai} is not true:
+            stop
+        set {_instance} to metadata value "IslandExpeditionInstance" of {_ai}
+        set {_playerTarget} to islandAINearestPlayer({_ai}, {_instance}, 18)
+        if {_playerTarget} is set:
+            set metadata value "IslandAIState" of {_ai} to "FightingPlayer"
+            set target of {_ai} to {_playerTarget}
+            islandAICombat({_ai}, {_playerTarget})
+            wait 2 seconds
+            continue
+        set {_mobTarget} to islandAINearestEnemyMob({_ai}, {_instance}, 16)
+        if {_mobTarget} is set:
+            set metadata value "IslandAIState" of {_ai} to "FightingMob"
+            set target of {_ai} to {_mobTarget}
+            wait 2 seconds
+            continue
+        set {_azeriteTarget} to islandAINearestAzerite({_ai}, {_instance}, 80)
+        if {_azeriteTarget} is set:
+            clear {_ai}'s target
+            set metadata value "IslandAIState" of {_ai} to "MovingToAzerite"
+            make {_ai} pathfind to {_azeriteTarget}
+            if distance between {_ai} and {_azeriteTarget} <= 3:
+                islandAIMineAzerite({_ai}, {_azeriteTarget})
+            wait 2 seconds
+            continue
+        set metadata value "IslandAIState" of {_ai} to "Scouting"
+        islandAIScout({_ai})
+        wait 2 seconds
+
+function islandAINearestPlayer(ai: entity, instance: string, radius: number) :: player:
+    loop {IslandPlayers::%{_instance}%::*}:
+        if {_radius} >= distance between loop-value and {_ai}:
+            if metadata value "IslandExpeditionInstance" of loop-value = {_instance}:
+                if loop-value's gamemode is survival:
+                    if loop-value does not have invisibility:
+                        return loop-value
+    return {_none}
+
+function islandAINearestEnemyMob(ai: entity, instance: string, radius: number) :: entity:
+    loop {ECMobs::%{_instance}%::*}:
+        if loop-value != {_ai}:
+            if {_radius} >= distance between loop-value and {_ai}:
+                if metadata value "IslandEnemy" of loop-value is true:
+                    if metadata value "IslandExpeditionInstance" of loop-value = {_instance}:
+                        if loop-value is alive:
+                            return loop-value
+    return {_none}
+
+function islandAINearestAzerite(ai: entity, instance: string, radius: number) :: entity:
+    set {_bestDistance} to 9999
+    loop {IslandAzerite::%{_instance}%::*}:
+        if {_radius} >= distance between loop-value and {_ai}:
+            if string tag "AzeriteInstance" of custom nbt of loop-value = {_instance}:
+                if boolean tag "AzeriteLoaded" of custom nbt of loop-value is true:
+                    set {_distance} to distance between {_ai} and loop-value
+                    if {_distance} < {_bestDistance}:
+                        set {_bestDistance} to {_distance}
+                        set {_best} to loop-value
+    return {_best}
+
+function islandAIScout(ai: entity):
+    set {_instance} to metadata value "IslandExpeditionInstance" of {_ai}
+    set {_world} to world of {_ai}
+    set {_points::*} to islandExpeditionEnemyPoints(metadata value "IslandName" of {_ai}, {_world})
+    if {_points::*} is set:
+        set {_loc} to a random element of {_points::*}
+        make {_ai} pathfind to {_loc}
+
+function islandAIMineAzerite(ai: entity, node: entity):
+    if metadata value "IslandAIMining" of {_ai} is set:
+        stop
+    set metadata value "IslandAIMining" of {_ai} to true
+    set metadata value "IslandAIState" of {_ai} to "MiningAzerite"
+    clear target of {_ai}
+    loop 30 times:
+        if {_ai} is not alive:
+            clear metadata value "IslandAIMining" of {_ai}
+            stop
+        if {_node} is not alive:
+            clear metadata value "IslandAIMining" of {_ai}
+            stop
+        if string tag "AzeriteInstance" of custom nbt of {_node} is not set:
+            clear metadata value "IslandAIMining" of {_ai}
+            stop
+        if distance between {_ai} and {_node} > 4:
+            clear metadata value "IslandAIMining" of {_ai}
+            stop
+        wait 1 tick
+    set {_instance} to metadata value "IslandExpeditionInstance" of {_ai}
+    set {_type} to string tag "AzeriteVeinType" of custom nbt of {_node}
+    if {_type} = "Crystal":
+        set {_azerite} to 270
+    else if {_type} = "Chunk":
+        set {_azerite} to 190
+    else if {_type} = "Shard":
+        set {_azerite} to 110
+    else if {_type} = "ChestBig":
+        set {_azerite} to 230
+    else if {_type} = "Sack":
+        set {_azerite} to 200
+    else:
+        set {_azerite} to 90
+    islandAIAddAzerite({_instance}, {_azerite})
+    clear string tag "AzeriteInstance" of custom nbt of {_node}
+    add nbt from "{Invisible:1b,Marker:1b}" to nbt of {_node}
+    clear metadata value "IslandAIMining" of {_ai}
+
+function islandAIAddAzerite(instance: string, azerite: integer):
+    if {azeriteCollectedEnemy::%{_instance}%} + {_azerite} <= {azeriteRequired::%{_instance}%}:
+        set {azeriteCollectedEnemy::%{_instance}%} to {azeriteCollectedEnemy::%{_instance}%} + {_azerite}
+    else:
+        set {azeriteCollectedEnemy::%{_instance}%} to {azeriteRequired::%{_instance}%}
+    loop all players where [metadata value "IslandExpeditionInstance" of input = {_instance}]:
+        set line 7 of loop-player's fastboard to "<#3aff17>Ally: &f%{azeriteCollectedAlly::%{_instance}%}% | <#ff1742>Enemy: &f%{azeriteCollectedEnemy::%{_instance}%}%"
+
+function islandAICombat(ai: entity, target: entity):
+    if metadata value "IslandAICasting" of {_ai} is set:
+        stop
+    set {_class} to metadata value "IslandAIClass" of {_ai}
+    if {_class} is not set:
+        stop
+    set {_ability} to islandAIChooseAbility({_ai}, {_class}, {_target})
+    if {_ability} is not set:
+        stop
+    set metadata value "IslandAICasting" of {_ai} to true
+    set metadata value "IslandAIQueuedSpell" of {_ai} to {_ability}
+    islandAIUseAbility({_ai}, {_target}, {_ability})
+    load yaml "plugins/Skript/islandexpeditions/AITeams" as "IslandAITeams"
+    set {_cooldown} to yaml value "Classes.%{_class}%.Abilities.%{_ability}%.Cooldown" in "IslandAITeams"
+    unload yaml "IslandAITeams"
+    if {_cooldown} is not set:
+        set {_cooldown} to 5
+    create cooldown "IslandAI%uuid of {_ai}%%{_ability}%" for "%{_cooldown}% seconds" parsed as timespan
+    clear metadata value "IslandAICasting" of {_ai}
+    clear metadata value "IslandAIQueuedSpell" of {_ai}
+
+function islandAIChooseAbility(ai: entity, class: string, target: entity) :: string:
+    load yaml "plugins/Skript/islandexpeditions/AITeams" as "IslandAITeams"
+    loop yaml node keys "Classes.%{_class}%.Abilities" in "IslandAITeams":
+        set {_ability} to loop-value
+        set {_range} to yaml value "Classes.%{_class}%.Abilities.%{_ability}%.Range" in "IslandAITeams"
+        if {_range} is not set:
+            set {_range} to 20
+        if distance between {_ai} and {_target} <= {_range}:
+            if cooldown "IslandAI%uuid of {_ai}%%{_ability}%" is finished:
+                set {_weight} to yaml value "Classes.%{_class}%.Abilities.%{_ability}%.Weight" in "IslandAITeams"
+                if {_weight} is not set:
+                    set {_weight} to 1
+                set {_total} to {_total} + {_weight}
+                set {_abilities::*} to {_abilities::*} and {_ability}
+                set {_weights::%size of {_abilities::*}%} to {_weight}
+    unload yaml "IslandAITeams"
+    if {_total} is not set:
+        return {_none}
+    set {_roll} to random number between 0 and {_total}
+    set {_current} to 0
+    loop {_abilities::*}:
+        set {_current} to {_current} + {_weights::%loop-counter%}
+        if {_roll} <= {_current}:
+            return loop-value
+    return {_abilities::1}
+
+function islandAIUseAbility(ai: entity, target: entity, ability: string):
+    if {_ability} = "Molten Lava":
+        GhazanAIMoltenLava({_ai}, {_target})
+    else if {_ability} = "Lava Burst":
+        GhazanAILavaBurst({_ai}, {_target})
+    else if {_ability} = "Rain of Lava":
+        GhazanAIRainOfLava({_ai}, {_target})
+
+function GhazanAIMoltenLava(ai: entity, target: entity):
+    send "[IE AI] %{_ai}% casts Molten Lava on %{_target}%" to console
+
+function GhazanAILavaBurst(ai: entity, target: entity):
+    send "[IE AI] %{_ai}% casts Lava Burst on %{_target}%" to console
+
+function GhazanAIRainOfLava(ai: entity, target: entity):
+    send "[IE AI] %{_ai}% casts Rain of Lava on %{_target}%" to console
+
+function islandAICoastSpawnLocation(shipLoc: location, maxRadius: integer = 80) :: location:
+    set {_world} to world of {_shipLoc}
+    set {_baseX} to x-coordinate of {_shipLoc}
+    set {_baseZ} to z-coordinate of {_shipLoc}
+    set {_baseY} to y-coordinate of {_shipLoc}
+
+    loop {_maxRadius} times:
+        set {_r} to loop-number
+
+        loop 16 times:
+            set {_angle} to loop-number-2 * 22.5
+            set {_x} to {_baseX} + cos({_angle}) * {_r}
+            set {_z} to {_baseZ} + sin({_angle}) * {_r}
+
+            set {_testLoc} to location({_x}, {_baseY}, {_z}, {_world}, yaw of {_shipLoc}, pitch of {_shipLoc})
+            set {_safe} to safeMobSpawnLocation({_testLoc}, 48)
+
+            if {_safe} is set:
+                if block below {_safe} is solid:
+                    if block at {_safe} is not solid:
+                        if block above {_safe} is not solid:
+                            if block below {_safe} is not water:
+                                if block at {_safe} is not water:
+                                    return {_safe}
+
+    return {_shipLoc}
