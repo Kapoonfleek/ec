@@ -755,6 +755,7 @@ function islandExpeditionSpawnEnemy(island: string, instance: string, enemy: str
     set {_model} to yaml value "%{_path}%.Model" in "IslandEnemyList"
     set {_scale} to yaml value "%{_path}%.Scale" in "IslandEnemyList"
     set {_item} to yaml value "%{_path}%.Item" in "IslandEnemyList"
+    set {_allowShoot} to yaml value "%{_path}%.Allow Shoot" in "IslandEnemyList"
     set {_element} to yaml value "%{_path}%.Element" in "IslandEnemyList"
     set {_roamRange} to yaml value "%{_path}%.Roam Range" in "IslandEnemyList"
     set {_disguises::*} to yaml list "%{_path}%.Disguise" in "IslandEnemyList"
@@ -788,6 +789,8 @@ function islandExpeditionSpawnEnemy(island: string, instance: string, enemy: str
     set string tag "IslandEnemyRank" of {_customNbt} to {_rank}
     set string tag "IslandEnemyMovement" of {_customNbt} to {_movement}
     set string tag "IslandEnemyIndex" of {_customNbt} to {_index}
+    if {_allowShoot} is true:
+        set boolean tag "IslandAllowShoot" of {_customNbt} to true
 
     set long tag "MobDamageModifier" of {_customNbt} to islandExpeditionDifficultyDamageModifier({_difficulty})
 
@@ -1264,7 +1267,21 @@ function azeriteCollectedTextTransform(id: integer, partyMembers: players):
         send packet {_packet} to {_partyMembers::*}
         wait 1 tick
     remove fake entity with id {_id} for {_partyMembers::*}
-        
+
+function islandExpeditionEnd(instance: string, winner: string, source: entity):
+    set {_world} to world of {_source}
+    if metadata value "IslandExpeditionEnded" of {_world} is set:
+        stop
+    set metadata value "IslandExpeditionEnded" of {_world} to true
+
+    if {_winner} = "Ally":
+        send "<#3aff17>Ally team wins the Island Expedition." to all players in world "%{_world}%"
+    else:
+        send "<#ff1742>Enemy team wins the Island Expedition." to all players in world "%{_world}%"
+
+    wait 5 seconds
+    deleteIslandExpeditionWorld("%{_world}%", {_instance})
+
 function azeriteAddIslands(p: entity, instance: string, azeriteType: string, nodeName: string, azerite: integer, team: string, sound: strings):
     if {azeriteCollected%{_team}%::%{_instance}%} + {_azerite} <= {azeriteRequired::%{_instance}%}:
         set {azeriteCollected%{_team}%::%{_instance}%} to {azeriteCollected%{_team}%::%{_instance}%} + {_azerite}
@@ -1277,6 +1294,9 @@ function azeriteAddIslands(p: entity, instance: string, azeriteType: string, nod
     loop {IslandPlayers::%{_instance}%::*}:
         set line 7 of loop-value's fastboard to "<#3aff17>Ally: &f%{azeriteCollectedAlly::%{_instance}%}% | <#ff1742>Enemy: &f%{azeriteCollectedEnemy::%{_instance}%}%"
 
+    if {azeriteCollected%{_team}%::%{_instance}%} >= {azeriteRequired::%{_instance}%}:
+        islandExpeditionEnd({_instance}, {_team}, {_p})
+
     if {_p} is a player:
         send "<#fff200>+%{_azerite}% Azerite Collected <#e8ce81>from %{_nodeName}%" to {_p}
         loop {IslandPlayers::%{_instance}%::*}:
@@ -1284,10 +1304,10 @@ function azeriteAddIslands(p: entity, instance: string, azeriteType: string, nod
                 send "<#fff200>+%{_azerite}% Azerite Collected <#e8ce81>from %{_nodeName}% (%{_p}%)" to loop-value
 
 function islandExpeditionMobKillAzerite(victim: entity, killer: entity):
-    if metadata value "IslandEnemy" of {_victim} is not true:
-        stop
-
     set {_customNbt} to custom nbt of {_victim}
+    if metadata value "IslandEnemy" of {_victim} is not true:
+        if boolean tag "ECIslandEnemy" of {_customNbt} is not set:
+            stop
     set {_instance} to string tag "IslandExpeditionInstance" of {_customNbt}
     if {_instance} is not set:
         set {_instance} to metadata value "IslandExpeditionInstance" of {_victim}
@@ -1295,6 +1315,8 @@ function islandExpeditionMobKillAzerite(victim: entity, killer: entity):
         stop
 
     set {_azerite} to metadata value "IslandEnemyAzerite" of {_victim}
+    if {_azerite} is not set:
+        set {_azerite} to metadata value "AzeriteWorthIslands" of {_victim}
     if {_azerite} is not set:
         stop
     if {_azerite} <= 0:
@@ -1319,10 +1341,12 @@ function islandExpeditionMobKillAzerite(victim: entity, killer: entity):
         if metadata value "IslandExpeditionInstance" of {_killerEntity} = {_instance}:
             azeriteAddIslands({_killerEntity}, {_instance}, "Enemy", {_name}, {_azerite}, "Ally", {_sound})
             clear metadata value "IslandEnemyAzerite" of {_victim}
+            clear metadata value "AzeriteWorthIslands" of {_victim}
     else if metadata value "IslandAIEnemy" of {_killerEntity} is true:
         if metadata value "IslandExpeditionInstance" of {_killerEntity} = {_instance}:
             azeriteAddIslands({_killerEntity}, {_instance}, "Enemy", {_name}, {_azerite}, "Enemy", {_sound})
             clear metadata value "IslandEnemyAzerite" of {_victim}
+            clear metadata value "AzeriteWorthIslands" of {_victim}
 
 function azeriteTeamMemberWorth(e: entity):
     set metadata value "AzeriteWorthIslands" of {_e} to 0
@@ -1352,6 +1376,12 @@ on damage:
             islandAICancelMining(victim)
         else:
             clear metadata value "mining" of victim
+
+on shoot:
+    if shooter is not a player:
+        if string tag "IslandExpeditionInstance" of custom nbt of shooter is set:
+            if boolean tag "IslandAllowShoot" of custom nbt of shooter is not true:
+                cancel event
 
 on block break:
     if isWorldIsland(player's world) = true:
@@ -1806,6 +1836,7 @@ function islandAISpawnTeam(instance: string, island: string, difficulty: string,
         set {_scale} to yaml value "%{_path}%.Scale" in "IslandAITeams"
         set {_health} to yaml value "%{_path}%.Health" in "IslandAITeams"
         set {_item} to yaml value "%{_path}%.Item" in "IslandAITeams"
+        set {_allowShoot} to yaml value "%{_path}%.Allow Shoot" in "IslandAITeams"
 
         set {_model} to yaml value "%{_path}%.Model" in "IslandAITeams"
         set {_element} to yaml value "%{_path}%.Element" in "IslandAITeams"
@@ -1843,8 +1874,11 @@ function islandAISpawnTeam(instance: string, island: string, difficulty: string,
         set string tag "ECElement" of {_customNbt} to {_element}
         set string tag "IslandExpeditionInstance" of {_customNbt} to {_instance}
         set string tag "IslandName" of {_customNbt} to {_island}
+        set string tag "IslandEnemyName" of {_customNbt} to {_name}
         set string tag "IslandAIClass" of {_customNbt} to {_class}
         set string tag "IslandAITeam" of {_customNbt} to {_team}
+        if {_allowShoot} is true:
+            set boolean tag "IslandAllowShoot" of {_customNbt} to true
         set metadata value "IslandAIEnemy" of {_mob} to true
         set metadata value "IslandExpeditionInstance" of {_mob} to {_instance}
         set metadata value "IslandName" of {_mob} to {_island}
@@ -1868,6 +1902,9 @@ function islandAISpawnTeam(instance: string, island: string, difficulty: string,
             set string tag "ECModeledEntity" of {_customNbt} to {_model}
             modelApply({_mob}, {_model}, {_scale})
 
+        if {_mob} is a skeleton:
+            set {_mob}'s tool to bow
+
         if {_item} is set:
             set {_mob}'s tool to {_item}
 
@@ -1876,6 +1913,32 @@ function islandAISpawnTeam(instance: string, island: string, difficulty: string,
         azeriteTeamMemberWorth({_mob})
 
         IslandMobInfoAssignments({_mob}, {_name}, {_path}, {_scale}, "IslandAITeams")
+
+function islandAITeleportMobToAI(ai: entity, target: entity):
+    if {_ai} is not alive:
+        stop
+    if {_target} is not alive:
+        stop
+    set {_loc} to safeMobSpawnLocation(location of {_ai}, 6)
+    teleport {_target} to {_loc}
+    set target of {_target} to {_ai}
+    set metadata value "ECPulled" of {_target} to 1
+    clear metadata value "IslandAICombatTarget" of {_ai}
+    clear metadata value "IslandAICombatTargetTime" of {_ai}
+    play sound "entity.enderman.teleport" with volume 1.5 and pitch 0.8 at {_loc}
+    draw 18 of smoke particle with extra value 0.05 with offset vector(0.6, 0.6, 0.6) at {_loc}
+
+function islandAITeleportToAzerite(ai: entity, target: entity):
+    if {_ai} is not alive:
+        stop
+    if string tag "AzeriteInstance" of custom nbt of {_target} is not set:
+        stop
+    set {_loc} to safeMobSpawnLocation(location of {_target}, 8)
+    teleport {_ai} to {_loc}
+    clear target of {_ai}
+    clear metadata value "IslandAIAzeriteTargetTime" of {_ai}
+    play sound "entity.enderman.teleport" with volume 1.5 and pitch 1.2 at {_loc}
+    draw 18 of smoke particle with extra value 0.05 with offset vector(0.6, 0.6, 0.6) at {_loc}
 
 function islandAIThink(ai: entity):
     while {_ai} is alive:
@@ -1933,7 +1996,6 @@ function islandAIThink(ai: entity):
             wait 2 seconds
             continue
             
-        set {_skipMobTarget} to false
         set {_mobTarget} to islandAINearestEnemyMob({_ai}, {_instance}, 16)
         if {_mobTarget} is set:
             set {_targetId} to uuid of {_mobTarget}
@@ -1943,22 +2005,16 @@ function islandAIThink(ai: entity):
             else:
                 set {_targetTime} to metadata value "IslandAICombatTargetTime" of {_ai}
                 if {_targetTime} is set:
-                    if difference between {_targetTime} and now > 12 seconds:
-                        if distance between {_ai} and {_mobTarget} > 7:
-                            set metadata value "IslandAISkipMobTarget" of {_ai} to {_targetId}
-                            set metadata value "IslandAISkipMobTargetTime" of {_ai} to now
-                            clear metadata value "IslandAICombatTarget" of {_ai}
-                            clear metadata value "IslandAICombatTargetTime" of {_ai}
-                            clear target of {_ai}
-                            set {_skipMobTarget} to true
+                    if difference between {_targetTime} and now > 6 seconds:
+                        if distance between {_ai} and {_mobTarget} > 4:
+                            islandAITeleportMobToAI({_ai}, {_mobTarget})
 
-            if {_skipMobTarget} is not true:
-                set metadata value "IslandAIState" of {_ai} to "FightingMob"
-                set target of {_ai} to {_mobTarget}
-                make {_ai} pathfind to {_mobTarget}
-                islandAICombat({_ai}, {_mobTarget})
-                wait 2 seconds
-                continue
+            set metadata value "IslandAIState" of {_ai} to "FightingMob"
+            set target of {_ai} to {_mobTarget}
+            make {_ai} pathfind to {_mobTarget}
+            islandAICombat({_ai}, {_mobTarget})
+            wait 2 seconds
+            continue
         else:
             clear metadata value "IslandAICombatTarget" of {_ai}
             clear metadata value "IslandAICombatTargetTime" of {_ai}
@@ -1983,7 +2039,9 @@ function islandAIThink(ai: entity):
             set {_targetTime} to metadata value "IslandAIAzeriteTargetTime" of {_ai}
             if {_targetTime} is set:
                 if difference between {_targetTime} and now > 12 seconds:
-                    AzeriteOreMine({_ai}, {_azeriteTarget}, "Enemy", true)
+                    islandAITeleportToAzerite({_ai}, {_azeriteTarget})
+                    wait 1 second
+                    AzeriteOreMine({_ai}, {_azeriteTarget}, "Enemy")
                     wait 2 seconds
                     continue
 
@@ -2010,14 +2068,6 @@ function islandAINearestPlayer(ai: entity, instance: string, radius: number) :: 
 function islandAINearestEnemyMob(ai: entity, instance: string, radius: number) :: entity:
     set {_world} to "%world of {_ai}%"
     set {_bestDistance} to 9999
-    set {_skipTarget} to metadata value "IslandAISkipMobTarget" of {_ai}
-    set {_skipTargetTime} to metadata value "IslandAISkipMobTargetTime" of {_ai}
-    if {_skipTargetTime} is set:
-        if difference between {_skipTargetTime} and now > 15 seconds:
-            clear metadata value "IslandAISkipMobTarget" of {_ai}
-            clear metadata value "IslandAISkipMobTargetTime" of {_ai}
-            clear {_skipTarget}
-
     loop {ECMobs::%{_world}%::*}:
         set {_mob} to loop-value parsed as entity
         if {_mob} is set:
@@ -2025,28 +2075,23 @@ function islandAINearestEnemyMob(ai: entity, instance: string, radius: number) :
                 if metadata value "IslandEnemy" of {_mob} is true:
                     if metadata value "IslandExpeditionInstance" of {_mob} = {_instance}:
                         if {_mob} is alive:
-                            set {_canTarget} to true
-                            if {_skipTarget} = uuid of {_mob}:
-                                set {_canTarget} to false
-                            if {_canTarget} is true:
-                                set {_distance} to distance between {_mob} and {_ai}
-                                if {_distance} <= {_radius}:
-                                    if {_distance} < {_bestDistance}:
-                                        set {_bestDistance} to {_distance}
-                                        set {_best} to {_mob}
+                            set {_distance} to distance between {_mob} and {_ai}
+                            if {_distance} <= {_radius}:
+                                if {_distance} < {_bestDistance}:
+                                    set {_bestDistance} to {_distance}
+                                    set {_best} to {_mob}
     return {_best}
 
 function islandAINearestAzerite(ai: entity, instance: string, radius: number) :: entity:
-    set {_bestDistance} to 9999
+    set {_bestDistance} to 999999
     loop {IslandAzerite::%{_instance}%::*}:
         if loop-value is set:
             if string tag "AzeriteInstance" of custom nbt of loop-value = {_instance}:
                 if boolean tag "AzeriteLoaded" of custom nbt of loop-value is true:
                     set {_distance} to distance between {_ai} and loop-value
-                    if {_distance} <= {_radius}:
-                        if {_distance} < {_bestDistance}:
-                            set {_bestDistance} to {_distance}
-                            set {_best} to loop-value
+                    if {_distance} < {_bestDistance}:
+                        set {_bestDistance} to {_distance}
+                        set {_best} to loop-value
     return {_best}
 
 function islandAIScout(ai: entity):
@@ -2115,6 +2160,13 @@ function islandAICancelCast(ai: entity):
     clear metadata value "IslandAIQueuedSpell" of {_ai}
     clear metadata value "IslandAICastingStarted" of {_ai}
 
+function islandAIAbilityNumber(ai: entity, ability: string, key: string, defaultValue: number) :: number:
+    set {_class} to metadata value "IslandAIClass" of {_ai}
+    set {_value} to yaml value "Classes.%{_class}%.Abilities.%{_ability}%.%{_key}%" in "IslandAITeams"
+    if {_value} is not set:
+        return {_defaultValue}
+    return {_value}
+
 function islandAIUseAbility(ai: entity, target: entity, ability: string, surge: boolean = false):
     if {_ai} is not alive:
         stop
@@ -2131,7 +2183,16 @@ function islandAIUseAbility(ai: entity, target: entity, ability: string, surge: 
 
     if {_surge} is not true:
         set {_castTime} to yaml value "Classes.%{_class}%.Abilities.%{_ability}%.Cast Time" in "IslandAITeams"
+        if {_castTime} is not set:
+            if {_ability} = "Lava Burst":
+                set {_castTime} to 2
+            else if {_ability} = "Lava Bolt":
+                set {_castTime} to 1.2
         if {_castTime} is set:
+            if {_ability} = "Lava Burst":
+                play sound "skill.ghazan.lava_burst_precast" with volume 2 and pitch 1 at {_ai}
+            else if {_ability} contains "Lava":
+                play sound "entity.blaze.shoot" with volume 2 and pitch 0.7 at {_ai}
             set {_castTime} to "%{_castTime}% seconds" parsed as timespan
             set {_ticks} to "%{_castTime}%"
             replace all " seconds" and " second" in {_ticks} with ""
@@ -2174,7 +2235,9 @@ function islandAIUseAbility(ai: entity, target: entity, ability: string, surge: 
     if {_surge} is not true:
         set {_cooldown} to yaml value "Classes.%{_class}%.Abilities.%{_ability}%.Cooldown" in "IslandAITeams"
         if {_cooldown} is not set:
-            if {_ability} = "Lava Bolt":
+            if {_ability} = "Lava Burst":
+                set {_cooldown} to 8
+            else if {_ability} = "Lava Bolt":
                 set {_cooldown} to 8
             else if {_ability} = "Lava Ball":
                 set {_cooldown} to 8
@@ -2207,11 +2270,13 @@ function islandAIEmberLavaBolt(ai: entity, target: entity):
         if loop-entity != {_ai}:
             if metadata value "IslandExpeditionInstance" of loop-entity = metadata value "IslandExpeditionInstance" of {_ai}:
                 if loop-entity is a player:
+                    set {_damage} to islandAIAbilityNumber({_ai}, "Lava Bolt", "Player Damage", 16)
                     set metadata value "LastDamageCause" of loop-entity to "<#b03228>Lava Bolt"
-                    make {_ai} damage loop-entity by 16
+                    make {_ai} damage loop-entity by {_damage}
                 else if metadata value "IslandEnemy" of loop-entity is true:
+                    set {_damage} to islandAIAbilityNumber({_ai}, "Lava Bolt", "Damage", 32)
                     set metadata value "LastDamageCause" of loop-entity to "<#b03228>Lava Bolt"
-                    make {_ai} damage loop-entity by 32
+                    make {_ai} damage loop-entity by {_damage}
 
 function GhazanAILavaTechnique(ai: entity, target: entity):
     set {_key} to "IslandAILavaTechnique%uuid of {_ai}%"
@@ -2246,7 +2311,7 @@ function GhazanAILavaTechniqueMultiplier(ai: entity, target: entity) :: number:
     return 1 + ({_stacks} * 0.05)
 
 function GhazanAILavaBurst(ai: entity, target: entity, surge: boolean = false):
-    set {_damage} to 55
+    set {_damage} to islandAIAbilityNumber({_ai}, "Lava Burst", "Damage", 55)
     set {_damage} to {_damage} * GhazanAILavaTechniqueMultiplier({_ai}, {_target})
 
     if metadata value "IslandAIMoltenLava%uuid of {_ai}%" of block under {_target} is set:
@@ -2276,7 +2341,7 @@ function GhazanAIRainOfLava(ai: entity, target: entity):
     set metadata value "IslandAIRainOfLava" of {_ai} to true
     play sound "entity.blaze.shoot" with volume 3 and pitch 0.7 at {_ai}
 
-    set {_damage} to 2
+    set {_damage} to islandAIAbilityNumber({_ai}, "Rain of Lava", "Damage", 2)
 
     loop 5 times:
         if {_ai} is not alive:
@@ -2335,6 +2400,16 @@ function islandAIMoltenLavaSee(ai: entity, loc: location):
         if distance between loop-player and {_loc} < 100:
             make loop-player see block at {_loc} as magma block
 
+function islandAILavaSurgeRoll(ai: entity):
+    set {_class} to metadata value "IslandAIClass" of {_ai}
+    set {_surgeChance} to yaml value "Classes.%{_class}%.Lava Surge Chance" in "IslandAITeams"
+    if {_surgeChance} is not set:
+        set {_surgeChance} to 4
+    if cooldown "IslandAILavaSurge%uuid of {_ai}%" is finished:
+        chance of {_surgeChance}%:
+            set metadata value "IslandAILavaSurge" of {_ai} to true
+            create cooldown "IslandAILavaSurge%uuid of {_ai}%" for 6 seconds
+
 function islandAIMoltenLavaTick(ai: entity, loc: location):
     while metadata value "IslandAIMoltenLava%uuid of {_ai}%" of block at {_loc} > 0 seconds:
         wait 1 second
@@ -2343,16 +2418,16 @@ function islandAIMoltenLavaTick(ai: entity, loc: location):
         loop all entities in radius 1.2 around {_loc}:
             if loop-entity is a player:
                 if metadata value "IslandExpeditionInstance" of loop-entity = metadata value "IslandExpeditionInstance" of {_ai}:
+                    set {_damage} to islandAIAbilityNumber({_ai}, "Molten Lava", "Damage", 18)
                     set metadata value "LastDamageCause" of loop-entity to "<#b03228>Molten Lava"
-                    make {_ai} damage loop-entity by 18
-                    chance of 15%:
-                        set metadata value "IslandAILavaSurge" of {_ai} to true
+                    make {_ai} damage loop-entity by {_damage}
+                    islandAILavaSurgeRoll({_ai})
             else if metadata value "IslandEnemy" of loop-entity is true:
                 if metadata value "IslandExpeditionInstance" of loop-entity = metadata value "IslandExpeditionInstance" of {_ai}:
+                    set {_damage} to islandAIAbilityNumber({_ai}, "Molten Lava", "Damage", 18)
                     set metadata value "LastDamageCause" of loop-entity to "<#b03228>Molten Lava"
-                    make {_ai} damage loop-entity by 18
-                    chance of 15%:
-                        set metadata value "IslandAILavaSurge" of {_ai} to true
+                    make {_ai} damage loop-entity by {_damage}
+                    islandAILavaSurgeRoll({_ai})
 
         draw 6 of lava particle with extra value 0.02 with offset vector(0.4, 0.15, 0.4) at {_loc}
 
