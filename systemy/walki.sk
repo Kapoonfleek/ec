@@ -21,13 +21,18 @@ on heal:
 
 on death:
 	if boolean tag "ECMob" of (custom nbt of victim) is set:
+		if attacker is set:
+			if metadata value "IslandExpeditionInstance" of attacker is set:
+				islandExpeditionMobKillAzerite(victim, attacker)
+
+		if metadata value "IslandAIEnemy" of victim is true:
+			islandAIRespawnMob(victim)
+
 		onECMobDeath(victim)
 		clear metadata value "ECPulled" of victim
 		clear drops
 
-		if attacker is set:
-			islandExpeditionMobKillAzerite(victim, attacker)
-
+		if attacker is a player:
 			if {kartaname::%attacker%} = "Umbreon":
 				set {_baseDuration} to 5
 				if string tag "Talents;Row 2" of custom nbt of {karta::%attacker%} = "Chosen of the Night":
@@ -256,8 +261,8 @@ on death:
 		if {_attackerEntity}'s name is set:
 			set {_attackerName} to {_attackerEntity}'s name
 
-		if string tag "IslandEnemyName" of custom nbt of {_attackerEntity} is set:
-			set {_attackerName} to string tag "IslandEnemyName" of custom nbt of {_attackerEntity}
+		if string tag "IslandEnemyName" of (custom nbt of {_attackerEntity}) is set:
+			set {_attackerName} to string tag "IslandEnemyName" of (custom nbt of {_attackerEntity})
 
 	if damage cause is attack:
 		set death message to ""
@@ -468,6 +473,19 @@ on damage:
 			else:
 				set damage to 0
 				cancel event
+
+	#ISLAND SECTION
+	if metadata value "IslandExpeditionEnded" of world of victim is set:
+		set damage to 0
+		cancel event
+		stop
+
+	if metadata value "mining" of victim is set:
+		if metadata value "IslandAIEnemy" of victim is true:
+			islandAICancelMining(victim)
+		else:
+			clear metadata value "mining" of victim
+
 	#DUNGEON SECTION
 	if attacker is a blaze:
 		if victim is a player:
