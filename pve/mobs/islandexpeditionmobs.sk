@@ -172,3 +172,296 @@ function islandAIMoltenLavaTick(ai: entity, loc: location):
     if metadata value "IslandAIMoltenLava" of {_block} <= 0:
         make all players in world of {_ai} see block at {_loc} as {_block}
         clear metadata value "IslandAIMoltenLava" of {_block}
+
+function MingHuaAIInit(ai: entity):
+    if metadata value "MingHuaAIStarted" of {_ai} is true:
+        stop
+    set metadata value "MingHuaAIStarted" of {_ai} to true
+    set string tag "ECElement" of (custom nbt of {_ai}) to "Water"
+    MingHuaAIWaterArms({_ai})
+    MingHuaAIPushAway({_ai})
+
+function MingHuaAIWaterArms(ai: entity):
+    while {_ai} is alive:
+        if metadata value "IslandExpeditionEnded" of world of {_ai} is set:
+            stop
+        if metadata value "MingHuaAIIceForm" of {_ai} is not set:
+            set {_loc} to location 0.5 above {_ai}
+            set {_loc1} to location 0.3 left of {_loc}
+            set {_loc2} to location 0.3 right of {_loc}
+            set {_shape} to an ellipsoid with radius 0.1, 0.7 and 0.1
+            set particle of {_shape} to falling water particle
+            draw {_shape} at {_loc1} and {_loc2}
+        wait 1 tick
+
+function MingHuaAIValidTarget(ai: entity, target: entity) :: boolean:
+    if {_target} is not alive:
+        return false
+    if metadata value "IslandExpeditionInstance" of {_target} != metadata value "IslandExpeditionInstance" of {_ai}:
+        return false
+    if {_target} is a player:
+        if {_target}'s gamemode is survival:
+            return true
+        return false
+    if metadata value "IslandEnemy" of {_target} is true:
+        return true
+    return false
+
+function MingHuaAITargetDamage(ai: entity, target: entity, ability: string, element: string):
+    if {_target} is not alive:
+        stop
+    if {_target} is a player:
+        set {_damage} to islandAIAbilityNumber({_ai}, {_ability}, "Player Damage")
+    else if metadata value "IslandEnemy" of {_target} is true:
+        set {_damage} to islandAIAbilityNumber({_ai}, {_ability}, "Damage")
+    if {_damage} is not set:
+        stop
+    set {_target}'s last damage cause to sweep attack
+    set metadata value "LastDamageCause" of {_target} to "<##54acff>%{_ability}%"
+    set metadata value "Element" of {_ai} to {_element}
+    make {_ai} damage {_target} by {_damage}
+
+function MingHuaAIPushTarget(ai: entity, target: entity):
+    if MingHuaAIValidTarget({_ai}, {_target}) is not true:
+        stop
+    if cooldown "MingHuaAIPush%uuid of {_ai}%%uuid of {_target}%" is finished:
+        create cooldown "MingHuaAIPush%uuid of {_ai}%%uuid of {_target}%" for 0.5 seconds
+        push {_target} upwards with velocity 0.03
+        push {_target} backwards with speed 1.2
+        MingHuaAITargetDamage({_ai}, {_target}, "Push Away", "Water")
+
+function MingHuaAIPushAway(ai: entity):
+    while {_ai} is alive:
+        if metadata value "IslandExpeditionEnded" of world of {_ai} is set:
+            stop
+        if metadata value "MingHuaAIIceForm" of {_ai} is not set:
+            set {_instance} to metadata value "IslandExpeditionInstance" of {_ai}
+            loop all entities in radius 4 around {_ai}:
+                if loop-entity != {_ai}:
+                    if loop-entity is alive:
+                        MingHuaAIPushTarget({_ai}, loop-entity)
+            if cooldown "MingHuaAIPushSound%uuid of {_ai}%" is finished:
+                loop all entities in radius 4 around {_ai}:
+                    if loop-entity != {_ai}:
+                        if metadata value "IslandExpeditionInstance" of loop-entity = {_instance}:
+                            play sound "arena.ice.minghua_pushaway" with volume 3 and pitch 1 at {_ai}
+                            create cooldown "MingHuaAIPushSound%uuid of {_ai}%" for 4 seconds
+                            stop loop
+        wait 8 ticks
+
+function MingHuaAIWaterTrail(e: entity):
+    while block under {_e} is air:
+        stop loop if {_e} is not alive
+        set {_shape} to an ellipsoid with radius 0.1, 0.7 and 0.1
+        set particle of {_shape} to falling water particle
+        draw {_shape} at {_e}
+        wait 1 tick
+
+function MingHuaAIWaterSpoutTarget(ai: entity, target: entity):
+    if MingHuaAIValidTarget({_ai}, {_target}) is not true:
+        stop
+    push {_target} upwards with velocity 2
+    MingHuaAIWaterTrail({_target})
+    make {_ai} look at {_target}
+
+function MingHuaAIWaterSpout(ai: entity, target: entity):
+    MingHuaAIInit({_ai})
+    if metadata value "MingHuaAIIceForm" of {_ai} is set:
+        stop
+    set sneaking of {_ai}'s disguise to true
+    play sound "entity.player.splash" with volume 3 and pitch 1.2 at {_ai}
+    play sound "arena.ice.minghua_waterspout" with volume 3 and pitch 1 at {_ai}
+    play sound "entity.player.splash" with volume 3 and pitch 0.6 at {_ai}
+    push {_ai} upwards with velocity 2
+    loop all entities in radius 30 around {_ai}:
+        if loop-entity != {_ai}:
+            if loop-entity is alive:
+                MingHuaAIWaterSpoutTarget({_ai}, loop-entity)
+    wait 1.5 seconds
+    if {_ai} is alive:
+        set sneaking of {_ai}'s disguise to false
+
+function MingHuaAIWaterWhip(ai: entity, target: entity):
+    MingHuaAIInit({_ai})
+    if metadata value "MingHuaAIIceForm" of {_ai} is set:
+        stop
+    set {_blocks::*} to blocks between {_ai} and {_target}
+    loop {_blocks::*}:
+        if loop-value is not solid:
+            make all players in world of {_ai} see block at loop-value as water
+    set sneaking of {_ai}'s disguise to true
+    make {_ai} look at {_target}
+    make {_ai} swing their hand
+    play sound "entity.player.splash" with volume 2.75 and pitch 1 at {_target}
+    play sound "entity.player.splash" with volume 2.75 and pitch 1.6 at {_target}
+    chance of 30%:
+        play sound "arena.ice.minghua_waterwhip" with volume 3 and pitch 1 at {_ai}
+    push {_target} upwards with velocity 0.02
+    push {_target} backwards with speed 0.55
+    MingHuaAITargetDamage({_ai}, {_target}, "Water Whip", "Water")
+    wait 0.45 seconds
+    if {_ai} is alive:
+        set sneaking of {_ai}'s disguise to false
+    loop {_blocks::*}:
+        make all players in world of {_ai} see block at loop-value as (type of block at loop-value)
+
+function MingHuaAIWaterGrip(ai: entity, target: entity):
+    MingHuaAIInit({_ai})
+    if metadata value "MingHuaAIIceForm" of {_ai} is set:
+        stop
+    make {_ai} look at {_target}
+    push {_ai} upwards with velocity 0.9
+    push {_ai} in {_ai}'s direction with speed 2.3
+    MingHuaAIWaterTrail({_ai})
+    set sneaking of {_ai}'s disguise to true
+    push {_ai} upwards with velocity 0.3
+    play sound "entity.player.splash" with volume 2.75 and pitch 0.46 at {_ai}
+    wait 1 second
+    if {_ai} is alive:
+        set sneaking of {_ai}'s disguise to false
+
+function MingHuaAIWaterBolt(ai: entity, target: entity):
+    set {_loc} to location 1.3 above {_ai}
+    set {_targetLoc} to location 1 above {_target}
+    set {_shape} to a line from {_loc} to {_targetLoc}
+    set particle of {_shape} to falling water particle
+    draw shape {_shape} at {_loc} ~ {_targetLoc}
+    play sound "entity.player.splash" with volume 2.5 and pitch 1.25 at {_ai}
+    wait 0.2 seconds
+    play sound "entity.player.splash" with volume 2.5 and pitch 0.8 at {_target}
+    draw 16 of falling water particle with extra value 0.02 with offset vector(0.35, 0.55, 0.35) at {_targetLoc}
+    MingHuaAITargetDamage({_ai}, {_target}, "Water Bolt", "Water")
+
+function MingHuaAIIceKnifeForm(ai: entity, loc: location, index: integer):
+    spawn 1 armor stand at location 1.25 below {_loc} with nbt from "{Invisible:1b,Marker:1b}"
+    set {_icicle} to last spawned armor stand
+    modelApply({_icicle}, "icicle", 0.6)
+    set metadata value "MingHuaAIIcicle%{_index}%" of {_ai} to {_icicle}
+
+function MingHuaAIIceKnifeHurl(ai: entity, icicle: entity, target: entity, block: location):
+    set {_loc} to location of {_icicle}
+    set yaw of {_loc} to yaw of {_ai}
+    set pitch of {_loc} to pitch of {_ai}
+    set {_targetLoc} to location 0.5 below {_target}
+    set {_rgb} to (rgb 106, 184, 230)
+    make all players in world of {_ai} see block at {_block} as air
+    loop round(distance between {_loc} and {_targetLoc}) / 0.3 times:
+        stop loop if {_ai} is not alive
+        stop loop if {_target} is not alive
+        set {_targetLoc} to location 0.5 below {_target}
+        set {_vec} to vector between {_loc} and {_targetLoc}
+        set vector length of {_vec} to loop-value * 1.6
+        teleport {_icicle} to {_loc} ~ {_vec}
+        set {_icicleLoc} to location of {_icicle}
+        set y-coordinate of {_icicleLoc} to y-coordinate of {_icicleLoc} + 2
+        draw 1 of {_rgb} dust particle at {_icicleLoc}
+        stop loop if distance between {_ai} and {_target} > 400
+        stop loop if distance between {_icicle} and {_target} < 1
+        wait 1 tick
+    kill {_icicle}
+    stop if {_target} is not alive
+    stop if distance between {_ai} and {_target} > 400
+    play sound "skill.glaceon.flurry_impact" with volume 3 and pitch 1.6 at {_target}
+    MingHuaAITargetDamage({_ai}, {_target}, "Ice Knife", "Ice")
+
+function MingHuaAIIceFormTarget(ai: entity) :: entity:
+    loop all entities in radius 30 around {_ai}:
+        if loop-entity != {_ai}:
+            if MingHuaAIValidTarget({_ai}, loop-entity) is true:
+                set {_targets::*} to {_targets::*} and loop-entity
+    if {_targets::*} is set:
+        return a random element of {_targets::*}
+
+function MingHuaAIIceForm(ai: entity, target: entity):
+    MingHuaAIInit({_ai})
+    if metadata value "MingHuaAIIceForm" of {_ai} is set:
+        stop
+    set {_randomTarget} to MingHuaAIIceFormTarget({_ai})
+    if {_randomTarget} is not set:
+        stop
+    set metadata value "MingHuaAIIceForm" of {_ai} to true
+    play sound "block.glass.break" with volume 3 and pitch 1 at {_ai}
+    set {_shape} to circle with radius 3
+    set {_vectors::*} to points of {_shape}
+    set {_bossLoc} to location of {_ai}
+    loop {_vectors::*}:
+        set {_locBlock} to block at ({_bossLoc} ~~ loop-value)
+        if {_locBlock} is not solid:
+            set {_blocks::*} to {_blocks::*} and {_locBlock}
+    loop {_blocks::*}:
+        make all players in world of {_ai} see block at loop-value as ice
+        play sound "block.glass.fall" with volume 1.75 and pitch 1 at loop-value
+    wait 3 seconds
+    set {_count} to 1
+    play sound "arena.ice.minghua_iceform" with volume 3 and pitch 1 at {_ai}
+    loop {_blocks::*}:
+        if {_ai} is alive:
+            set {_randomTarget} to MingHuaAIIceFormTarget({_ai})
+            if {_randomTarget} is set:
+                make {_ai} look at {_randomTarget}
+                MingHuaAIIceKnifeForm({_ai}, loop-value, {_count})
+                draw 8 of (ice block particle with an extra value of 0.01) with offset vector(0.25, 0.25, 0.25) at loop-value
+                play sound "skill.glaceon.icelance_hurl" with volume 2.75 and pitch 1.45 at loop-value
+                set {_iceKnife} to metadata value "MingHuaAIIcicle%{_count}%" of {_ai}
+                clear metadata value "MingHuaAIIcicle%{_count}%" of {_ai}
+                wait 1 tick
+                MingHuaAIIceKnifeHurl({_ai}, {_iceKnife}, {_randomTarget}, loop-value)
+                set sneaking of {_ai}'s disguise to true
+                make {_ai} look at loop-value
+                make {_ai} swing their hand
+                set {_ticks} to a random integer between 1 and 4
+                set {_ticks} to "%{_ticks}% ticks" parsed as timespan
+                wait {_ticks}
+        else:
+            stop loop
+        set {_count} to {_count} + 1
+    if {_ai} is alive:
+        set sneaking of {_ai}'s disguise to false
+        play sound "entity.player.splash.high_speed" with volume 3 and pitch 1 at {_ai}
+    loop {_blocks::*}:
+        make all players in world of {_ai} see block at loop-value as (type of block at loop-value)
+    clear metadata value "MingHuaAIIceForm" of {_ai}
+
+function MingHuaAIIceFormLoop(ai: entity):
+    if metadata value "MingHuaAIIceFormLoop" of {_ai} is true:
+        stop
+    set metadata value "MingHuaAIIceFormLoop" of {_ai} to true
+    while {_ai} is alive:
+        if metadata value "IslandExpeditionEnded" of world of {_ai} is set:
+            stop
+        if metadata value "MingHuaAIIceFormUnlocked" of {_ai} is not true:
+            stop
+        wait 50 seconds
+        if {_ai} is alive:
+            set {_target} to MingHuaAIIceFormTarget({_ai})
+            if {_target} is set:
+                MingHuaAIIceForm({_ai}, {_target})
+
+function MingHuaAIHPCheck(ai: entity, attacker: entity):
+    wait 1 tick
+    stop if {_ai} is not alive
+    set {_maxHealth} to max health of {_ai}
+    if metadata value "MingHuaAI50PercentTriggered" of {_ai} is not true:
+        if (0.5 * {_maxHealth}) >= health of {_ai}:
+            set metadata value "MingHuaAI50PercentTriggered" of {_ai} to true
+            set metadata value "MingHuaAIIceFormUnlocked" of {_ai} to true
+            dialogue("&f💬 This ends now!", location 1.5 above {_ai}'s head, 0 seconds, 2.5 seconds)
+            play sound "arena.ice.minghua_50trigger" with volume 4 and pitch 1 at {_ai}
+            MingHuaAIIceForm({_ai}, {_attacker})
+            MingHuaAIIceFormLoop({_ai})
+
+function MingHuaAIDeathEffects(ai: entity):
+    set {_loc} to location of {_ai}
+    set {_world} to world of {_ai}
+    play sound "arena.ice.minghua_defeat" with volume 3 and pitch 1 at {_loc}
+    play sound "block.bubble_column.whirlpool_inside" with volume 3 and pitch 0.45 at {_loc}
+    play sound "ambient.underwater.enter" with volume 3 and pitch 0 at {_loc}
+    loop all blocks in radius 4 around {_loc}:
+        if loop-block  is not solid:
+            if y-coordinate of loop-block = y-coordinate of block at {_loc}:
+                make (all players in {_world}) see block at loop-block as water
+                set {_blocks::*} to {_blocks::*} and loop-block
+    wait 5 seconds
+    play sound "ambient.underwater.exit" with volume 3 and pitch 0 at {_loc}
+    loop {_blocks::*}:
+        make (all players in {_world}) see block at loop-value as (type of block at loop-value)
