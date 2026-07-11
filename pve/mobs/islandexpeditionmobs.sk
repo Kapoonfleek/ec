@@ -1,0 +1,174 @@
+function islandAIAbilityNumber(ai: entity, ability: string, key: string) :: number:
+    set {_class} to metadata value "IslandAIClass" of {_ai}
+    set {_value} to yaml value "Classes.%{_class}%.Abilities.%{_ability}%.%{_key}%" in "IslandAITeams"
+
+    return {_value}
+    
+function islandAIEmberLavaBolt(ai: entity, target: entity):
+    if metadata value "IslandExpeditionEnded" of world of {_ai} is set:
+        stop
+    set {_impact} to location of {_target}
+    set {_sky} to location 8 above {_impact}
+    play sound "entity.blaze.shoot" with volume 3 and pitch 0.8 at {_ai}
+
+    draw 20 of (falling lava particle with extra value 0.04) with offset vector(1.2, 0.2, 1.2) at {_sky}
+    wait 0.35 seconds
+    
+    set {_shape} to a line from {_sky} to {_impact}
+    set particle of {_shape} to lava particle
+    draw shape {_shape} at {_sky} ~ {_impact}
+
+    draw 20 of (lava particle with extra value 0.03) with offset vector(0.8, 0.25, 0.8) at {_impact}
+    draw 12 of (flame particle with extra value 0.04) with offset vector(0.7, 0.35, 0.7) at {_impact}
+
+    play sound "block.lava.pop" with volume 3 and pitch 0.7 at {_impact}
+
+    set {_instance} to metadata value "IslandExpeditionInstance" of {_ai}
+
+    loop all entities in radius 2 around {_impact}:
+        if loop-entity != {_ai}:
+            if metadata value "IslandExpeditionInstance" of loop-entity = {_instance}:
+                set loop-entity's last damage cause to sweep attack
+                set metadata value "LastDamageCause" of loop-entity to "<#b03228>Lava Bolt"
+                set metadata value "Element" of {_ai} to "Lava"
+
+                if loop-entity is a player:
+                    set {_damage} to islandAIAbilityNumber({_ai}, "Lava Bolt", "Player Damage")
+
+                else if metadata value "IslandEnemy" of loop-entity is true:
+                    set {_damage} to islandAIAbilityNumber({_ai}, "Lava Bolt", "Damage")
+
+                make {_ai} damage loop-entity by {_damage}
+
+function GhazanAILavaTechnique(ai: entity, target: entity):
+    set {_key} to "IslandAILavaTechnique%uuid of {_ai}%"
+    set metadata value "%{_key}%Duration" of {_target} to 16 seconds
+
+    if metadata value "%{_key}%Stacks" of {_target} is not set:
+        set metadata value "%{_key}%Stacks" of {_target} to 0
+
+    set {_stacks} to metadata value "%{_key}%Stacks" of {_target}
+    if {_stacks} < 10:
+        set metadata value "%{_key}%Stacks" of {_target} to {_stacks} + 1
+
+    if metadata value "%{_key}%Active" of {_target} is not set:
+        set metadata value "%{_key}%Active" of {_target} to true
+        while metadata value "%{_key}%Duration" of {_target} > 0 seconds:
+            wait 1 second
+            remove 1 second from metadata value "%{_key}%Duration" of {_target}
+            if {_target} is not alive:
+                clear metadata value "%{_key}%Stacks" of {_target}
+                clear metadata value "%{_key}%Duration" of {_target}
+                clear metadata value "%{_key}%Active" of {_target}
+                stop
+        clear metadata value "%{_key}%Stacks" of {_target}
+        clear metadata value "%{_key}%Duration" of {_target}
+        clear metadata value "%{_key}%Active" of {_target}
+
+function GhazanAILavaTechniqueMultiplier(ai: entity, target: entity) :: number:
+    set {_key} to "IslandAILavaTechnique%uuid of {_ai}%"
+    set {_stacks} to metadata value "%{_key}%Stacks" of {_target}
+    if {_stacks} is not set:
+        set {_stacks} to 0
+    return 1 + ({_stacks} * 0.05)
+
+function GhazanAILavaBurst(ai: entity, target: entity, surge: boolean = false):
+    if {_target} is a player:
+        set {_damage} to islandAIAbilityNumber({_ai}, "Lava Burst", "Player Damage")
+    else:
+        set {_damage} to islandAIAbilityNumber({_ai}, "Lava Burst", "Damage")
+        
+    set {_damage} to {_damage} * GhazanAILavaTechniqueMultiplier({_ai}, {_target})
+
+    if metadata value "IslandAIMoltenLava%uuid of {_ai}%" of (block under {_target}) is set:
+        set {_damage} to {_damage} * 2
+
+    GhazanAILavaTechnique({_ai}, {_target})
+
+    set {_loc} to location 1.5 above {_ai}
+    set {_targetLoc} to location 1 above {_target}
+    set {_shape} to a line from {_loc} to {_targetLoc}
+    set particle of {_shape} to lava particle
+    draw shape {_shape} at {_loc} ~ {_targetLoc}
+
+    play sound "skill.ghazan.lava_burst_cast" with volume 3 and pitch 1 at {_ai}
+    wait 0.25 seconds
+    play sound "skill.ghazan.lava_burst_impact" with volume 3 and pitch 1 at {_target}
+
+    draw 20 of lava particle with extra value 0.02 with offset vector(0.4, 0.6, 0.4) at {_targetLoc}
+    draw 12 of flame particle with extra value 0.04 with offset vector(0.5, 0.5, 0.5) at {_targetLoc}
+
+    set {_target}'s last damage cause to sweep attack
+    set metadata value "LastDamageCause" of {_target} to "<#b03228>Lava Burst"
+    set metadata value "Element" of {_ai} to "Lava"
+    make {_ai} damage {_target} by {_damage}
+
+function GhazanAIMoltenLava(ai: entity, target: entity):
+    set {_center} to block under {_target}
+    if {_center} is not solid:
+        set {_center} to block under {_center}
+
+    play sound "block.lava.ambient" with volume 4 and pitch 1 at location of {_center}
+    play sound "block.lava.extinguish" with volume 4 and pitch 1.25 at location of {_center}
+
+    loop all blocks in radius 2 around {_center}:
+        if loop-block is solid:
+            if y of loop-block >= y of {_center}:
+                if metadata value "IslandAIMoltenLava%uuid of {_ai}%" of loop-block is not set:
+                    if metadata value "IslandAIMoltenLava" of loop-block is not set:
+                        set metadata value "IslandAIMoltenLava" of loop-block to 0
+                    set metadata value "IslandAIMoltenLava%uuid of {_ai}%" of loop-block to 30 seconds
+                    set metadata value "IslandAIMoltenLava" of loop-block to metadata value "IslandAIMoltenLava" of loop-block + 1
+                    islandAIMoltenLavaSee({_ai}, location of loop-block)
+                    islandAIMoltenLavaTick({_ai}, location of loop-block)
+        wait 1 tick if loop-counter is divisible by 4
+
+function islandAIMoltenLavaSee(ai: entity, loc: location):
+    loop all players in world of {_ai}:
+        if distance between loop-player and {_loc} < 100:
+            make loop-player see block at {_loc} as magma block
+
+function islandAILavaSurgeRoll(ai: entity):
+    set {_class} to metadata value "IslandAIClass" of {_ai}
+    set {_surgeChance} to yaml value "Classes.%{_class}%.Lava Surge Chance" in "IslandAITeams"
+    if {_surgeChance} is not set:
+        set {_surgeChance} to 4
+    if cooldown "IslandAILavaSurge%uuid of {_ai}%" is finished:
+        chance of {_surgeChance}%:
+            set metadata value "IslandAILavaSurge" of {_ai} to true
+            create cooldown "IslandAILavaSurge%uuid of {_ai}%" for 6 seconds
+
+function islandAIMoltenLavaTick(ai: entity, loc: location):
+    set {_instance} to metadata value "IslandExpeditionInstance" of {_ai}
+
+    while metadata value "IslandAIMoltenLava%uuid of {_ai}%" of (block at {_loc}) > 0 seconds:
+        if metadata value "IslandExpeditionEnded" of world of {_ai} is set:
+            stop
+        wait 1 second
+        remove 1 second from metadata value "IslandAIMoltenLava%uuid of {_ai}%" of (block at {_loc})
+
+        loop all entities in radius 1.2 around {_loc}:
+            if loop-entity is a player:
+                if metadata value "IslandExpeditionInstance" of loop-entity = {_instance}:
+                    set loop-entity's last damage cause to sweep attack
+                    set metadata value "LastDamageCause" of loop-entity to "<#b03228>Molten Lava"
+                    set metadata value "Element" of {_ai} to "Lava"
+
+                    if loop-entity is a player:
+                        set {_damage} to islandAIAbilityNumber({_ai}, "Molten Lava", "Player Damage")
+
+                    else if metadata value "IslandEnemy" of loop-entity is true:
+                        set {_damage} to islandAIAbilityNumber({_ai}, "Molten Lava", "Damage")
+
+                    make {_ai} damage loop-entity by {_damage}
+                    islandAILavaSurgeRoll({_ai})
+
+        draw 6 of ((lava particle with extra value 0.02) with offset vector(0.4, 0.15, 0.4)) at {_loc}
+
+    set {_block} to block at {_loc}
+
+    clear metadata value "IslandAIMoltenLava%uuid of {_ai}%" of {_block}
+    remove 1 from metadata value "IslandAIMoltenLava" of {_block}
+    if metadata value "IslandAIMoltenLava" of {_block} <= 0:
+        make all players in world of {_ai} see block at {_loc} as {_block}
+        clear metadata value "IslandAIMoltenLava" of {_block}
