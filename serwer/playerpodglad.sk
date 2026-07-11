@@ -522,6 +522,8 @@ function ProfileStatCategoryItem(category: text) :: item:
 		return amethyst shard named "&dStellar Chest"
 	else if {_category} = "Boosters":
 		return glass pane named "&5Boosters"
+	else if {_category} = "Island Expeditions":
+		return filled map named "&bIsland Expeditions"
 	return paper named "&f%{_category}%"
 
 function ProfileStatSummaryLines(target: player, category: text) :: texts:
@@ -587,6 +589,18 @@ function ProfileStatSummaryLines(target: player, category: text) :: texts:
 		if {_total} is not set:
 			set {_total} to 0
 		return "&7Total Opened: &f%{_total}%"
+
+	else if {_category} = "Island Expeditions":
+		set {_completed} to yaml value "Statistics.Island Expeditions.Completed" in "data-%{_target}%"
+		if {_completed} is not set:
+			set {_completed} to 0
+		set {_won} to yaml value "Statistics.Island Expeditions.Won" in "data-%{_target}%"
+		if {_won} is not set:
+			set {_won} to 0
+		set {_azerite} to yaml value "Statistics.Island Expeditions.Azerite Collected" in "data-%{_target}%"
+		if {_azerite} is not set:
+			set {_azerite} to 0
+		return "&7Completed: &f%{_completed}%", "&7Won: &f%{_won}%", "&7Azerite Collected: &f%{_azerite}%"
 
 	else if {_category} = "Miscellaneous":
 		set {_total} to yaml value "Statistics.General.Total" in "data-%{_target}%"
@@ -669,6 +683,20 @@ function ProfileStatItem(category: text, key: text) :: item:
 		return experience bottle
 	else if {_category} = "Boosters":
 		return glass pane
+	else if {_category} = "Island Expeditions":
+		if {_key} contains "Azerite":
+			return diamond
+		else if {_key} contains "Damage" or "Enemy AI":
+			return iron sword
+		else if {_key} contains "Death":
+			return skeleton skull
+		else if {_key} contains "Nodes":
+			return diamond pickaxe
+		else if {_key} contains "Won":
+			return emerald
+		else if {_key} contains "Lost":
+			return redstone
+		return filled map
 	return paper
 
 function OpenProfileStatistics(viewer: player, target: player):
@@ -679,7 +707,7 @@ function OpenProfileStatistics(viewer: player, target: player):
 	set {_slots::*} to 10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 22, 23, 24, 25
 	set {_i} to 1
 
-	set {_categories::*} to "Experience", "Professions", "Mining", "Stellar Chest", "Combat", "Chat", "Diamond Chest", "Boosters", "Miscellaneous"
+	set {_categories::*} to "Experience", "Professions", "Mining", "Stellar Chest", "Combat", "Chat", "Diamond Chest", "Boosters", "Island Expeditions", "Miscellaneous"
 	loop {_categories::*}:
 		set {_category} to loop-value
 		set {_searchCategory} to {_category}
@@ -786,6 +814,7 @@ function OpenProfileAchievements(viewer: player, target: player):
 	set slot 19 of {_gui} to diamond named "&bDiamond Chest Achievements" with lore "&7Click to view Diamond Chest achievements." with item flag hide attributes
 	set slot 20 of {_gui} to amethyst shard named "&dStellar Chest Achievements" with lore "&7Click to view Stellar Chest achievements." with item flag hide attributes
 	set slot 21 of {_gui} to book named "&fCard Collection Achievements" with lore "&7Click to view Card Collection achievements." with item flag hide attributes
+	set slot 22 of {_gui} to filled map named "&bIsland Expedition Achievements" with lore "&7Click to view Island Expedition achievements." with item flag hide attributes
 	set slot 31 of {_gui} to barrier named "&cBack" with lore "&7Click to go back." with item flag hide attributes
 
 	set metadata value "ProfileTarget" of {_viewer} to {_target}
@@ -801,13 +830,18 @@ function OpenProfileAchievementsCategory(viewer: player, target: player, categor
 
 	set {_slot} to 9
 	set {_ids::*} to yaml node keys {_category} in "AchievementList"
+	if {_category} = "Island Expeditions":
+		if {_ids::*} is not set:
+			set {_ids::*} to "Island Expedition+Normal", "Island Expedition+Heroic", "Island Expedition+Mythic", "Island Expedition+Plunder Cove", "Heroic+Plunder Cove", "Mythic+Plunder Cove", "Island Expedition+Win", "No Pickaxe", "No Deaths", "Enemy AI Slain+1", "Enemy AI Slain+10", "Completed+10", "Won+10", "Azerite+10000", "Azerite+100000"
 	loop {_ids::*}:
 		set {_id} to loop-value
-		if {_name} is not set:
-			set {_name} to {_id}
 
 		set {_name} to yaml value "%{_category}%.%{_id}%.Name" in "AchievementList"
+		if {_name} is not set:
+			set {_name} to {_id}
 		set {_desc} to yaml value "%{_category}%.%{_id}%.Description" in "AchievementList"
+		if {_desc} is not set:
+			set {_desc} to {_name}
 		
 		replace all "+" in {_name} with "."
 		replace all ";" in {_name} with ":"
@@ -1019,7 +1053,7 @@ on inventory click:
 	else if event-inventory = metadata tag "profile-achievements" of player:
 		cancel event
 		set {_target} to metadata value "ProfileTarget" of player
-		if event-slot = 22:
+		if event-slot = 31:
 			OpenProfileMain(player, {_target})
 		else if event-slot = 12:
 			OpenProfileAchievementsCategory(player, {_target}, "Mining")
@@ -1037,6 +1071,8 @@ on inventory click:
 			OpenProfileAchievementsCategory(player, {_target}, "Stellar Chest")
 		else if event-slot = 21:
 			OpenProfileAchievementsCategory(player, {_target}, "Card Collection")
+		else if event-slot = 22:
+			OpenProfileAchievementsCategory(player, {_target}, "Island Expeditions")
 
 	else if event-inventory = metadata tag "profile-achievements-category" of player:
 		cancel event
