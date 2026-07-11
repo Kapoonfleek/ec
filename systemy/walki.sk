@@ -33,6 +33,9 @@ on death:
 		if metadata value "IslandAIEnemy" of victim is true:
 			islandAIRespawnMob(victim)
 
+			if metadata value "IslandAIClass" of victim = "Ming Hua":
+				MingHuaAIDeathEffects(victim)
+
 		onECMobDeath(victim)
 		clear metadata value "ECPulled" of victim
 		clear drops
@@ -555,8 +558,7 @@ on damage:
 				stop
 
 		#///Animation section
-		if string tag "ECModelName" of custom nbt of attacker is set:
-			broadcast "ya (oppa)"
+		if string tag "ECModelName" of (custom nbt of attacker) is set:
 			setAIState(attacker, "attack")
 			playEntitySound(attacker, "Attack")
 	else:
@@ -565,13 +567,22 @@ on damage:
 			if boolean tag "ECDungeonMob" of {_customNbt} is set:
 				set metadata value "ECPulled" of victim to 1
 				UpdateTarget(victim, attacker, "dynamic")
-			else:
-				if all:
-					boolean tag "ECIslandEnemy" of {_customNbt} is set
-					string tag "IslandEnemyMovement" of {_customNbt} = "Static"
-				then:
-					set metadata value "ECPulled" of victim to 1
-					UpdateTarget(victim, attacker, "dynamic")
+				
+			else if boolean tag "ECIslandEnemy" of {_customNbt} is set:
+				set {_attacker} to attacker
+				if {_attacker} is a projectile:
+					set {_attacker} to shooter of {_attacker}
+
+				if metadata value "IslandExpeditionInstance" of {_attacker} is set:
+					if damage > 0:
+						IslandExpeditionBodyMobPull({_attacker}, victim)
+
+						loop all entities in radius 4 around victim:
+							if loop-entity is not a player:
+								if loop-entity is not victim:
+									if boolean tag "ECIslandEnemy" of custom nbt of loop-entity is true:
+										if metadata value "ECPulled" of loop-entity is not set:
+											IslandExpeditionBodyMobPull({_attacker}, loop-entity)
 		else:
 			if "%region at victim%" contains "WorldQuest_":
 				if attacker's gamemode is not creative:

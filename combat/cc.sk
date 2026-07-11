@@ -30,7 +30,14 @@ on player walk:
 			set {_y} to (y of {_locNow}) - (y of {_locThen})
 			set {_z} to (z of {_locNow}) - (z of {_locThen})
 			move entity with id loop-value by {_x}*4096 {_y}*4096 {_z}*4096 for all players
-
+on entity walk:
+	if string tag "ECModelName" of (custom nbt of event-entity) is set:
+		if boolean tag "NoAI" of nbt of event-entity != true:
+			set {_modelName} to string tag "ECModelName" of (custom nbt of event-entity)
+			if string tag "ECAIState" of (custom nbt of event-entity) is not set:
+				if 1 >= int tag "ECAnimationPriority" of (custom nbt of event-entity):
+					setAIState(event-entity, "walk")
+					
 on entity move:
 	set {_customNbt} to custom nbt of event-entity
 	if metadata value "Stun" of event-entity is set:
@@ -41,7 +48,11 @@ on entity move:
 	if {_entity} is set:
 		if boolean tag "ECIslandEnemy" of {_customNbt} is set:
 			updateIslandMobNameplate(event-entity)
-			
+
+			if metadata value "ECPulled" of event-entity is not set:
+				if string tag "IslandEnemyMovement" of {_customNbt} = "Static":
+					cancel event
+
 			if metadata value "ECEngaged" of event-entity is not set:
 				set {_home} to metadata value "ECMobSpawnLoc" of event-entity
 				set {_range} to metadata value "IslandEnemyRoamRange" of event-entity
@@ -154,13 +165,6 @@ on entity move:
 	else if string tag "MobType" of (custom nbt of event-entity) = "Azerite Elemental":
 		if cooldown "StepSound%event-entity%" is finished:
 			play sound "entity.warden.step" with volume 1.75 and pitch 1 at event-entity
-	
-	if string tag "ECModelName" of (custom nbt of event-entity) is set:
-		if boolean tag "NoAI" of nbt of event-entity != true:
-			set {_modelName} to string tag "ECModelName" of (custom nbt of event-entity)
-			if string tag "ECAIState" of (custom nbt of event-entity) is not set:
-				if 1 >= int tag "ECAnimationPriority" of (custom nbt of event-entity):
-					setAIState(event-entity, "walk")
 
 	if event-entity is a sheep:
 		if "%region at block under event-entity%" contains "DreamcatcherPlatforms":
