@@ -187,11 +187,12 @@ function MingHuaAIWaterArms(ai: entity):
             stop
         if metadata value "MingHuaAIIceForm" of {_ai} is not set:
             set {_loc} to location 0.5 above {_ai}
+            set {_loc} to location 0.2 behind {_loc}
             set {_loc1} to location 0.3 left of {_loc}
             set {_loc2} to location 0.3 right of {_loc}
             set {_shape} to an ellipsoid with radius 0.1, 0.7 and 0.1
             set particle of {_shape} to falling water particle
-            draw {_shape} at {_loc1} and {_loc2}
+            draw shape {_shape} at {_loc1} and {_loc2}
         wait 1 tick
 
 function MingHuaAIValidTarget(ai: entity, target: entity) :: boolean:
@@ -217,7 +218,7 @@ function MingHuaAITargetDamage(ai: entity, target: entity, ability: string, elem
     if {_damage} is not set:
         stop
     set {_target}'s last damage cause to sweep attack
-    set metadata value "LastDamageCause" of {_target} to "<##54acff>%{_ability}%"
+    set metadata value "LastDamageCause" of {_target} to "<#54acff>%{_ability}%"
     set metadata value "Element" of {_ai} to {_element}
     make {_ai} damage {_target} by {_damage}
 
@@ -244,9 +245,10 @@ function MingHuaAIPushAway(ai: entity):
                 loop all entities in radius 4 around {_ai}:
                     if loop-entity != {_ai}:
                         if metadata value "IslandExpeditionInstance" of loop-entity = {_instance}:
-                            play sound "arena.ice.minghua_pushaway" with volume 3 and pitch 1 at {_ai}
-                            create cooldown "MingHuaAIPushSound%uuid of {_ai}%" for 4 seconds
-                            stop loop
+                            if loop-entity is a player:
+                                play sound "arena.ice.minghua_pushaway" with volume 3 and pitch 1 at (location of {_ai})
+                                create cooldown "MingHuaAIPushSound%uuid of {_ai}%" for 4 seconds
+                                stop loop
         wait 8 ticks
 
 function MingHuaAIWaterTrail(e: entity):
@@ -254,7 +256,7 @@ function MingHuaAIWaterTrail(e: entity):
         stop loop if {_e} is not alive
         set {_shape} to an ellipsoid with radius 0.1, 0.7 and 0.1
         set particle of {_shape} to falling water particle
-        draw {_shape} at {_e}
+        draw shape {_shape} at {_e}
         wait 1 tick
 
 function MingHuaAIWaterSpoutTarget(ai: entity, target: entity):
@@ -269,9 +271,9 @@ function MingHuaAIWaterSpout(ai: entity, target: entity):
     if metadata value "MingHuaAIIceForm" of {_ai} is set:
         stop
     set sneaking of {_ai}'s disguise to true
-    play sound "entity.player.splash" with volume 3 and pitch 1.2 at {_ai}
-    play sound "arena.ice.minghua_waterspout" with volume 3 and pitch 1 at {_ai}
-    play sound "entity.player.splash" with volume 3 and pitch 0.6 at {_ai}
+    play sound "entity.player.splash" with volume 3 and pitch 1.2 at (location of {_ai})
+    play sound "arena.ice.minghua_waterspout" with volume 3 and pitch 1 at (location of {_ai})
+    play sound "entity.player.splash" with volume 3 and pitch 0.6 at (location of {_ai})
     push {_ai} upwards with velocity 2
     loop all entities in radius 30 around {_ai}:
         if loop-entity != {_ai}:
@@ -292,18 +294,23 @@ function MingHuaAIWaterWhip(ai: entity, target: entity):
     set sneaking of {_ai}'s disguise to true
     make {_ai} look at {_target}
     make {_ai} swing their hand
-    play sound "entity.player.splash" with volume 2.75 and pitch 1 at {_target}
-    play sound "entity.player.splash" with volume 2.75 and pitch 1.6 at {_target}
+    play sound "entity.player.splash" with volume 2.75 and pitch 1 at (location of {_target})
+    play sound "entity.player.splash" with volume 2.75 and pitch 1.6 at (location of {_target})
+
     chance of 30%:
-        play sound "arena.ice.minghua_waterwhip" with volume 3 and pitch 1 at {_ai}
+        play sound "arena.ice.minghua_waterwhip" with volume 3 and pitch 1 at (location of {_ai})
+
     push {_target} upwards with velocity 0.02
     push {_target} backwards with speed 0.55
     MingHuaAITargetDamage({_ai}, {_target}, "Water Whip", "Water")
-    wait 0.45 seconds
+
+    wait 0.55 seconds
+    
     if {_ai} is alive:
         set sneaking of {_ai}'s disguise to false
     loop {_blocks::*}:
         make all players in world of {_ai} see block at loop-value as (type of block at loop-value)
+
 
 function MingHuaAIWaterGrip(ai: entity, target: entity):
     MingHuaAIInit({_ai})
@@ -315,7 +322,7 @@ function MingHuaAIWaterGrip(ai: entity, target: entity):
     MingHuaAIWaterTrail({_ai})
     set sneaking of {_ai}'s disguise to true
     push {_ai} upwards with velocity 0.3
-    play sound "entity.player.splash" with volume 2.75 and pitch 0.46 at {_ai}
+    play sound "entity.player.splash" with volume 2.75 and pitch 0.46 at (location of {_ai})
     wait 1 second
     if {_ai} is alive:
         set sneaking of {_ai}'s disguise to false
@@ -326,9 +333,9 @@ function MingHuaAIWaterBolt(ai: entity, target: entity):
     set {_shape} to a line from {_loc} to {_targetLoc}
     set particle of {_shape} to falling water particle
     draw shape {_shape} at {_loc} ~ {_targetLoc}
-    play sound "entity.player.splash" with volume 2.5 and pitch 1.25 at {_ai}
+    play sound "entity.player.splash" with volume 2.5 and pitch 1.25 at (location of {_ai})
     wait 0.2 seconds
-    play sound "entity.player.splash" with volume 2.5 and pitch 0.8 at {_target}
+    play sound "entity.player.splash" with volume 2.5 and pitch 0.8 at (location of {_target})
     draw 16 of falling water particle with extra value 0.02 with offset vector(0.35, 0.55, 0.35) at {_targetLoc}
     MingHuaAITargetDamage({_ai}, {_target}, "Water Bolt", "Water")
 
@@ -361,7 +368,7 @@ function MingHuaAIIceKnifeHurl(ai: entity, icicle: entity, target: entity, block
     kill {_icicle}
     stop if {_target} is not alive
     stop if distance between {_ai} and {_target} > 400
-    play sound "skill.glaceon.flurry_impact" with volume 3 and pitch 1.6 at {_target}
+    play sound "skill.glaceon.flurry_impact" with volume 3 and pitch 1.6 at (location of {_target})
     MingHuaAITargetDamage({_ai}, {_target}, "Ice Knife", "Ice")
 
 function MingHuaAIIceFormTarget(ai: entity) :: entity:
@@ -380,7 +387,7 @@ function MingHuaAIIceForm(ai: entity, target: entity):
     if {_randomTarget} is not set:
         stop
     set metadata value "MingHuaAIIceForm" of {_ai} to true
-    play sound "block.glass.break" with volume 3 and pitch 1 at {_ai}
+    play sound "block.glass.break" with volume 3 and pitch 1 at (location of {_ai})
     set {_shape} to circle with radius 3
     set {_vectors::*} to points of {_shape}
     set {_bossLoc} to location of {_ai}
@@ -393,7 +400,7 @@ function MingHuaAIIceForm(ai: entity, target: entity):
         play sound "block.glass.fall" with volume 1.75 and pitch 1 at loop-value
     wait 3 seconds
     set {_count} to 1
-    play sound "arena.ice.minghua_iceform" with volume 3 and pitch 1 at {_ai}
+    play sound "arena.ice.minghua_iceform" with volume 3 and pitch 1 at (location of {_ai})
     loop {_blocks::*}:
         if {_ai} is alive:
             set {_randomTarget} to MingHuaAIIceFormTarget({_ai})
@@ -417,7 +424,7 @@ function MingHuaAIIceForm(ai: entity, target: entity):
         set {_count} to {_count} + 1
     if {_ai} is alive:
         set sneaking of {_ai}'s disguise to false
-        play sound "entity.player.splash.high_speed" with volume 3 and pitch 1 at {_ai}
+        play sound "entity.player.splash.high_speed" with volume 3 and pitch 1 at (location of {_ai})
     loop {_blocks::*}:
         make all players in world of {_ai} see block at loop-value as (type of block at loop-value)
     clear metadata value "MingHuaAIIceForm" of {_ai}
@@ -446,7 +453,7 @@ function MingHuaAIHPCheck(ai: entity, attacker: entity):
             set metadata value "MingHuaAI50PercentTriggered" of {_ai} to true
             set metadata value "MingHuaAIIceFormUnlocked" of {_ai} to true
             dialogue("&f💬 This ends now!", location 1.5 above {_ai}'s head, 0 seconds, 2.5 seconds)
-            play sound "arena.ice.minghua_50trigger" with volume 4 and pitch 1 at {_ai}
+            play sound "arena.ice.minghua_50trigger" with volume 4 and pitch 1 at (location of {_ai})
             MingHuaAIIceForm({_ai}, {_attacker})
             MingHuaAIIceFormLoop({_ai})
 
