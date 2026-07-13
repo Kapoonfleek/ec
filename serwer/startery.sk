@@ -24,7 +24,45 @@ on place:
 
 command /starter [<text>]:
 	trigger:
-		if arg-1 is set:
+		if arg-1 is not set:
+			if {wybranystarter::%player%} is not set:
+				if yaml value "Player.Starter" from "data-%player%" is not set:
+					set metadata tag "startery" of player to chest inventory with 3 rows named "&fSelect Starter Card"
+					set {_st} to (metadata tag "startery" of player)
+					loop "Glaceon", "Umbreon", "Vaporeon":
+						set {_c} to loop-value
+						set {_mat} to yaml value "Cards.%{_c}%.Material" from "StellarChestList"
+						set {_name} to yaml value "Cards.%{_c}%.Name" from "StellarChestList"
+						set {_cmd} to yaml value "Cards.%{_c}%.CustomModelData" from "StellarChestList"
+						set {_previewType} to yaml value "Cards.%{_c}%.Preview Type" from "StellarChestList"
+						set {_description::*} to yaml list "Cards.%{_c}%.Preview Description" from "StellarChestList"
+						set {_difficulty} to yaml value "Cards.%{_c}%.Difficulty" from "StellarChestList"
+						set {_abilities::*} to yaml list "Cards.%{_c}%.Preview Abilities" from "StellarChestList"
+						set {_itemType} to {_mat} parsed as item type
+						set {_item} to {_itemType} named (colored {_name}) with nbt from "{""minecraft:custom_model_data"":{floats:[%{_cmd}%.0f]}}"
+						set {_lore::*} to {_previewType}
+
+						loop {_description::*}:
+							set {_lore::*} to {_lore::*} and coloured "%loop-value-2%"
+							
+						set {_lore::*} to {_lore::*} and " "
+						set {_lore::*} to {_lore::*} and {_difficulty}
+						set {_lore::*} to {_lore::*} and " "
+						set {_lore::*} to {_lore::*} and "&7Abilities:"
+
+						loop {_abilities::*}:
+							set {_lore::*} to {_lore::*} and coloured "%loop-value-2%"
+
+						set lore of {_item} to {_lore::*}
+						if {_c} = "Glaceon":
+							set slot 11 of {_st} to {_item}
+						else if {_c} = "Umbreon":
+							set slot 13 of {_st} to {_item}
+						else if {_c} = "Vaporeon":
+							set slot 15 of {_st} to {_item}
+					open {_st} to player
+					stop
+		else:
 			if {wybranystarter::%player%} is not set:
 				if "%region at player%" does not contain "Glaceon" or "Umbreon" or "Vaporeon":
 					if arg-1 = "Glaceon" or "glaceon":
@@ -62,16 +100,24 @@ command /starter [<text>]:
 					set {_gl} to yaml value "Starters.Glaceon.Picked" from "serverstats"
 					set {_um} to yaml value "Starters.Umbreon.Picked" from "serverstats"
 					set {_total} to ({_picked}/({_gl} + {_um} + {_picked}))*100
-					set yaml value "Starters.%{_cardName}%.Pick %%" from "serverstats" to {_total}
+					set yaml value "Starters.%{_cardName}%.Pick" from "serverstats" to {_total}
 
 					teleport the player to location(9270.826, 73.5, 1562.6, world "world")
 					play sound "entity.enderman.teleport" with volume 3 and pitch 1 at player
-					set {_yamlValue} to "Achievement.Starter.Pick"
-					achievementYaml(player, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Starter", "Pick your Starter Card.")
+					achievementYaml(player, "General", "Starter+Pick", 1)
 
-					add 1 to {%{_cardName}%::collected::%player%}
+					set {%{_cardName}%::collected::%player%} to {%{_cardName}%::collected::%player%} + 1
 					if {%{_cardName}%::collected::%player%} = 1:
-						set {_yamlValue} to "Achievement.Card Collection.%{_cardName}%"
-						achievementYaml(player, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, {_cardName}, "Obtain the %{_cardName}% Card.")
+						achievementYaml(player, "Card Collection", {_cardName}, 1)
 
 					send "&6GLHF!" to player
+on inventory click:
+	if player's current inventory is (metadata tag "startery" of player):
+		cancel event
+		if index of event-slot = 11:
+			execute player command "/starter Glaceon"
+		else if index of event-slot = 13:
+			execute player command "/starter Umbreon"
+		else if index of event-slot = 15:
+			execute player command "/starter Vaporeon"
+		clear metadata tag "startery" of player
