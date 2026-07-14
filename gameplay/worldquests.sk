@@ -143,8 +143,6 @@ command /wq [<text>]:
 #3. Player stats: Completed world quests, completed world quests per category, xp from world quests
 #4. Emissary quests
 #5. Add rest of World Quests
-#6. set {_yamlValue} to "Achievement.Mining.Klejnot.1000"
-#achievementYaml({_p}, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Klejnot: 1000", "Find 1000 Klejnots while mining.")
 #7. Also keep track o WQs completed for a specific faction.
 #8. Display the progress of all world quests that were picked up somewhere.
 
@@ -155,11 +153,6 @@ function WorldQuestSpawn(wq: string):
         loop {_mobTypes::*}:
             set {_mobType} to loop-value
             set {_entity} to (yaml value "Mobs.%{_mobType}%.Entity" in "WorldQuestList")
-            if {_entity} = "zombie":
-                set {_entity} to "adult %{_entity}%" parsed as entity type
-            else:
-                set {_entity} to {_entity} parsed as entity type
-
             set {_health} to yaml value "Mobs.%{_mobType}%.Health" in "WorldQuestList"
             set {_level} to yaml value "Mobs.%{_mobType}%.Level" in "WorldQuestList"
             set {_element} to yaml value "Mobs.%{_mobType}%.Element" in "WorldQuestList"
@@ -278,7 +271,7 @@ function WorldQuestRespawnMob(mob: entity, loc: location):
     wait 5 minutes
     WorldQuestSpawnMob({_loc}, {_wq}, {_mobType}, {_entity}, {_health}, {_level}, {_element}, {_item})
 
-function WorldQuestMobDefeat(p: entity, v: entity):
+function WorldQuestMobDefeat(p: player, v: entity):
     set {_worldQuest} to string tag "WorldQuest" of custom nbt of {_v}
     set {_mobType} to string tag "MobType" of custom nbt of {_v}
     set {_loc} to location of {_v}
@@ -287,7 +280,7 @@ function WorldQuestMobDefeat(p: entity, v: entity):
     set {_collected} to yaml value "Slay Mobs.%{_worldQuest}%.%{_mobType}%.Completed" in "WorldQuests%{_p}%"
 
     if {_collected} < {_requirement}:
-        add 1 to {_collected}
+        set {_collected} to {_collected} + 1
         set yaml value "Slay Mobs.%{_worldQuest}%.%{_mobType}%.Completed" in "WorldQuests%{_p}%" to {_collected}
 
         set {_objectives::*} to getObjectives({_worldQuest}, "Slay Mobs")
@@ -531,21 +524,21 @@ on rightclick:
                 set {_unformattedWQ} to {_worldQuest} in lowercase
                 replace all " ", "'", "," in {_unformattedWQ} with ""
 
-                if clicked block exists:       
+                if clicked block exists:   
                     if "%regions at clicked block%" contains "WorldQuest_%{_unformattedWQ}%":
                         set {_loc} to location of clicked block
                         loop {_elements::*}:
                             set {_element} to loop-value-2
                             set {_requirement} to yaml value "Tasks.%{_worldQuestType}%.%{_worldQuest}%.%{_element}%.Requirement" in "WorldQuestList"
                             set {_collected} to yaml value "%{_worldQuestType}%.%{_worldQuest}%.%{_element}%.Completed" in "WorldQuests%player%"
-                            broadcast {_requirement} and {_collected}
                             if {_worldQuestType} = "Collect Things": 
                                 if yaml list "Locations.%{_element}%" in "WorldQuestLocations%{_worldQuest}%" contains {_loc}:
+                                    broadcast "ya"
                                     if {_collected} < {_requirement}:
                                         set {_locs::*} to yaml list "Collect Things.%{_worldQuest}%.%{_element}%.Completed Locations" in "WorldQuests%player%"
                                         if {_locs::*} does not contain {_loc}:
                                             make player see block at {_loc} as (type of block at {_loc})
-                                            add 1 to {_collected}
+                                            set {_collected} to {_collected} + 1
                                             set yaml value "Collect Things.%{_worldQuest}%.%{_element}%.Completed" in "WorldQuests%player%" to {_collected}
                                             set {_locs::*} to {_locs::*} and {_loc}
                                             set yaml list "Collect Things.%{_worldQuest}%.%{_element}%.Completed Locations" in "WorldQuests%player%" to {_locs::*}
@@ -969,7 +962,7 @@ function CreateWorldQuest(worldQuests: integer):
         stop loop if size of {_worldQuestList::*} = 0
         set {_randomWorldQuest} to a random element of {_worldQuestList::*}
         remove {_randomWorldQuest} from {_worldQuestList::*}
-        add {_randomWorldQuest} to {activeWorldQuests::*}
+        set {activeWorldQuests::*} to {activeWorldQuests::*} and {_randomWorldQuest}
 
         set {_worldQuestType} to yaml value "World Quests.%{_randomWorldQuest}%.Type" in "WorldQuestList"
         
