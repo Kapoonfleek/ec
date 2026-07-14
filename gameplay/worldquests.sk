@@ -42,7 +42,7 @@ function portraitDialogue(p: player, icon: string, name: string, text: string, f
                 set {_currentLine} to "%{_currentLine}% %loop-value%"
         else:
             set {_allLines::%{_lineCount}%} to {_currentLine}
-            add 1 to {_lineCount}
+            set {_lineCount} to {_lineCount} + 1
             set {_currentLine} to loop-value
     
     set {_allLines::%{_lineCount}%} to {_currentLine}
@@ -143,6 +143,8 @@ command /wq [<text>]:
 #3. Player stats: Completed world quests, completed world quests per category, xp from world quests
 #4. Emissary quests
 #5. Add rest of World Quests
+#6. set {_yamlValue} to "Achievement.Mining.Klejnot.1000"
+#achievementYaml({_p}, "plugins/Skript/playerdata/achievements", "Achievements", {_yamlValue}, "Klejnot: 1000", "Find 1000 Klejnots while mining.")
 #7. Also keep track o WQs completed for a specific faction.
 #8. Display the progress of all world quests that were picked up somewhere.
 
@@ -198,9 +200,9 @@ function WorldQuestSpawn(wq: string):
                     set generic movement speed attribute of {_spawnedEntity} to {_movementSpeed}
 
                 if {_entityModel} is set:
-                    set {_model} to BetterModel.model({_entityModel}).get().getOrCreate({_spawnedEntity})
-                    {_model}.scaler({_model}.scaler().multiply(2.0))
-                    {_model}.registry().reload()
+                    modelApply({_spawnedEntity}, {_entityModel}, 2.0)
+            
+            clear {_entityModel}
 
 function WorldQuestSpawnMob(loc: location, wq: string, mobType: string, entity: entity type, health: number, level: number, element: string, item: item):
     spawn {_entity} at {_loc}
@@ -271,7 +273,7 @@ function WorldQuestRespawnMob(mob: entity, loc: location):
     wait 5 minutes
     WorldQuestSpawnMob({_loc}, {_wq}, {_mobType}, {_entity}, {_health}, {_level}, {_element}, {_item})
 
-function WorldQuestMobDefeat(p: player, v: entity):
+function WorldQuestMobDefeat(p: entity, v: entity):
     set {_worldQuest} to string tag "WorldQuest" of custom nbt of {_v}
     set {_mobType} to string tag "MobType" of custom nbt of {_v}
     set {_loc} to location of {_v}
@@ -524,16 +526,15 @@ on rightclick:
                 set {_unformattedWQ} to {_worldQuest} in lowercase
                 replace all " ", "'", "," in {_unformattedWQ} with ""
 
-                if clicked block exists:   
+                if clicked block exists:       
                     if "%regions at clicked block%" contains "WorldQuest_%{_unformattedWQ}%":
                         set {_loc} to location of clicked block
                         loop {_elements::*}:
                             set {_element} to loop-value-2
                             set {_requirement} to yaml value "Tasks.%{_worldQuestType}%.%{_worldQuest}%.%{_element}%.Requirement" in "WorldQuestList"
                             set {_collected} to yaml value "%{_worldQuestType}%.%{_worldQuest}%.%{_element}%.Completed" in "WorldQuests%player%"
-                            if {_worldQuestType} = "Collect Things": 
+                            if {_worldQuestType} = "Collect Things":
                                 if yaml list "Locations.%{_element}%" in "WorldQuestLocations%{_worldQuest}%" contains {_loc}:
-                                    broadcast "ya"
                                     if {_collected} < {_requirement}:
                                         set {_locs::*} to yaml list "Collect Things.%{_worldQuest}%.%{_element}%.Completed Locations" in "WorldQuests%player%"
                                         if {_locs::*} does not contain {_loc}:
@@ -561,7 +562,7 @@ on rightclick:
                                                 clientSideItem(player, {_closestAirBlock}, {_itemDrop}, 0 seconds, 3 seconds, 1.5)
                                         else:
                                             make player see block at {_loc} as (type of block at {_loc})
-                                    else if {_collected} = {_requirement}:
+                                    if {_collected} = {_requirement}:
                                         set {_rarity} to yaml value "World Quests.%{_worldQuest}%.Rarity" in "WorldQuestList"
                                         completeWorldQuest(player, {_worldQuest}, {_rarity})
 
@@ -694,6 +695,7 @@ function updateFakeBlock(p: player, region: string, worldQuest: string, element:
             set {_collected} to yaml value "Collect Things.%{_worldQuest}%.%{_element}%.Completed" in "WorldQuests%{_p}%"
 
 function completeWorldQuest(p: player, worldQuest: string, rarity: string):
+    broadcast "yaa"
     add {_worldQuest} to yaml list "Completed World Quests" in "WorldQuests%{_p}%"
     save yaml "WorldQuests%{_p}%"
 
@@ -719,6 +721,9 @@ function completeWorldQuest(p: player, worldQuest: string, rarity: string):
         if loop-value = {_worldQuest}:
             set {_index} to loop-counter
             stop loop
+
+    broadcast "this"
+    stop
 
     set {_rewardName} to {activeWorldQuestsRewards::%{_index}%}
     set {_rewardType} to yaml value "Rewards.%{_rewardName}%.Type" in "WorldQuestList"
@@ -779,7 +784,7 @@ function completeWorldQuest(p: player, worldQuest: string, rarity: string):
     #add to player stats
 
 function WorldQuestCollectItemVisual(p: player, loc: location):
-    draw 20 of dust using dustOption(blue, 1.2) at {_loc} with extra 0.5
+    draw 20 of blue dust particle of size 1.2 with extra value 0.5 at {_loc}
     set {_y} to 0
     loop 20 times:
         add 0.012 to {_y}
@@ -791,11 +796,11 @@ function WorldQuestCollectItemVisual(p: player, loc: location):
         add {_y} to y-coord of {_loc}
         
         if loop-counter is divisible by 2:
-            draw 1 of copper_fire_flame at {_loc} with extra 0.02
+            draw 1 of copper flame particle with extra value 0.02 at {_loc}
         else:
-            draw 1 of soul_fire_flame at {_loc} with extra 0.02
+            draw 1 of soul fire flame particle with extra value 0.02 at {_loc}
         if loop-counter is divisible by 3:
-            draw 2 of dust using dustOption(cyan, 0.7) at {_loc} with extra 0
+            draw 2 of cyan dust particle of size 0.7 with extra value 0 at {_loc}
             
         wait 1 tick
 
@@ -843,11 +848,11 @@ function epicWorldQuestCompletionVisual(p: player):
         set {_v1} to vector(cos({_angle}) * {_radius}, {_y}, sin({_angle}) * {_radius})
         set {_v2} to vector(cos({_angle} + 180) * {_radius}, {_y}, sin({_angle} + 180) * {_radius})
 
-        draw 5 witch particle at {_loc} ~ {_v1} with offset vector(0.1, 0.1, 0.1) with extra 0.05
-        draw 3 of dust_color_transition using dustTransition(rgb(255, 105, 180), rgb(255, 255, 255), 1.5) at {_loc} ~ {_v2} with offset vector(0.1, 0.1, 0.1) with extra 0.02
+        draw 5 of witch particle with extra value 0.05 with offset vector(0.1, 0.1, 0.1) at {_loc} ~ {_v1}
+        draw 3 of rgb(255, 105, 180) dust particle of size 1.5 that transitions to rgb(255, 255, 255) with extra value 0.02 with offset vector(0.1, 0.1, 0.1) at {_loc} ~ {_v2}
         
         if loop-counter is divisible by 3:
-            draw 1 white flash particle at {_loc} ~ vector(0, {_y}, 0) with offset vector(0, 0, 0) with extra 0
+            draw 1 of white flash particle with extra value 0 with offset vector(0, 0, 0) at {_loc} ~ vector(0, {_y}, 0)
             play sound "block.amethyst_block.place" with volume 0.4 and pitch 2.0 at {_loc} ~ vector(0, {_y}, 0)
 
         wait 1 tick
@@ -855,14 +860,14 @@ function epicWorldQuestCompletionVisual(p: player):
     play sound "entity.warden.sonic_boom" with volume 1.5 and pitch 2 at {_p}
     play sound "entity.player.levelup" with volume 2.0 and pitch 0 at {_p}
 
-    draw 100 soul particle at {_top} with offset vector(3, 3, 3) with extra 0.2
-    draw 100 dragon_breath particle at {_top} with offset vector(2, 2, 2) with extra 0.1
-    draw 50 trial_spawner_detection_ominous particle at {_top} with offset vector(1, 1, 1) with extra 0.15
-    draw 30 white flash particle at {_top} with offset vector(0.5, 0.5, 0.5) with extra 0.1
+    draw 100 of soul particle with extra value 0.2 with offset vector(3, 3, 3) at {_top}
+    draw 100 of dragon breath particle with extra value 0.1 with offset vector(2, 2, 2) at {_top}
+    draw 50 of ominous trial spawner detection particle with extra value 0.15 with offset vector(1, 1, 1) at {_top}
+    draw 30 of white flash particle with extra value 0.1 with offset vector(0.5, 0.5, 0.5) at {_top}
 
 function rareWorldQuestCompletionVisual(p: player):
     set {_loc} to location of {_p}
-    set {_blueGlass} to Bukkit.createBlockData("blue_stained_glass")
+    #set {_blueGlass} to Bukkit.createBlockData("blue_stained_glass")
 
     play sound "block.respawn_anchor.charge" with volume 0.5 and pitch 1.5 at {_p}
     loop 6 times:
@@ -872,16 +877,16 @@ function rareWorldQuestCompletionVisual(p: player):
         
         set {_angle} to (loop-value * 60)
         set {_v} to vector(cos({_angle}) * 1.8, 1.5, sin({_angle}) * 1.8)
-        draw 5 soul_fire_flame particle at {_loc} ~ {_v} with offset vector(0.2, 0.2, 0.2) with extra 0.05
-        draw 3 of dust_color_transition using dustTransition(rgb(95, 218, 237), rgb(255, 255, 255), 1.5) at {_loc} ~ {_v} with offset vector(0.1, 0.1, 0.1) with extra 0.02
+        draw 5 of soul fire flame particle with extra value 0.05 with offset vector(0.2, 0.2, 0.2) at {_loc} ~ {_v}
+        draw 3 of rgb(95, 218, 237) dust particle of size 1.5 that transitions to rgb(255, 255, 255) with extra value 0.02 with offset vector(0.1, 0.1, 0.1)  at {_loc} ~ {_v}
         wait 3 ticks
 
     play sound "block.vault.insert_item" with volume 1.5 and pitch 0.6 at {_p}
     play sound "entity.firework_rocket.large_blast" with volume 1.0 and pitch 1.2 at {_p}
     
-    draw 40 soul_fire_flame particle at {_p} ~ vector(0, 2, 0) with offset vector(1.5, 2, 1.5) with extra 0.1
-    draw 20 of dust_color_transition using dustTransition(rgb(95, 218, 237), rgb(255, 255, 255), 1.5) at {_p} ~ vector(0, 2, 0) with offset vector(1.5, 2, 1.5) with extra 0.1
-    make 20 of block using {_blueGlass} at {_p} ~ vector(0, 3, 0) with offset vector(1, 1, 1) with extra 0.2
+    draw 40 of soul fire flame particle with extra value 0.1 with offset vector(1.5, 2, 1.5) at {_p} ~ vector(0, 2, 0)
+    draw 20 of rgb(95, 218, 237) dust particle of size 1.5 that transitions to rgb(255, 255, 255) with extra value 0.1 with offset vector(1.5, 2, 1.5) at {_p} ~ vector(0, 2, 0)
+    draw 20 of blue stained glass block particle with extra value 0.2 with offset vector(1, 1, 1) at {_p} ~ vector(0, 3, 0)
 
 function defineWGRegion(id: string, loc1: location, loc2: location):
     set {_regionContainer} to WorldGuard.getInstance().getPlatform().getRegionContainer()
@@ -962,7 +967,7 @@ function CreateWorldQuest(worldQuests: integer):
         stop loop if size of {_worldQuestList::*} = 0
         set {_randomWorldQuest} to a random element of {_worldQuestList::*}
         remove {_randomWorldQuest} from {_worldQuestList::*}
-        set {activeWorldQuests::*} to {activeWorldQuests::*} and {_randomWorldQuest}
+        add {_randomWorldQuest} to {activeWorldQuests::*}
 
         set {_worldQuestType} to yaml value "World Quests.%{_randomWorldQuest}%.Type" in "WorldQuestList"
         
@@ -1028,7 +1033,7 @@ function CreateWorldQuest(worldQuests: integer):
         
         set {_y} to y of {_WQLocation}
 
-        add 1 to {worldQuestCount}
+        set {worldQuestCount} to {worldQuestCount} + 1
         addDynmapWorldQuestMarker({_html}, {worldQuestCount}, {_WQLocation})
         clear {_objectives::*}
 
@@ -1077,7 +1082,7 @@ function clearAllYamlKeys(path: string):
         set {_writer} to new PrintWriter({_file})
         {_writer}.print("")
         {_writer}.close()
-        add 1 to {_count}
+        set {_count} to {_count} + 1
 
 function WorldQuestCombatEngage(e: entity):
     clear boolean tag "NoAI" of nbt of {_e}
@@ -1164,17 +1169,18 @@ function WorldQuestAzeriteOreMine(p: player, e: entity, typeOfOre: string, objec
 
                     if {_typeOfOre} contains "Chest":
                         play sound "entity.zombie.attack_wooden_door" with volume 2 and pitch 2 at ({_particleLoc})
-                        draw 10 block particle using jungle wood at location {_above} above {_particleLoc} with offset vector({_above}/5, {_above}/2, {_above}/5) with extra 0.04
+                        draw 10 of jungle wood block particle with extra value 0.04 with offset vector({_above}/5, {_above}/2, {_above}/5) at location {_above} above {_particleLoc}
                     else if {_typeOfOre} = "Sack":
                         play sound "block.wool.break" with volume 2 and pitch 2 at ({_particleLoc})
                         play sound "block.wool.place" with volume 2 and pitch 2 at ({_particleLoc})
                         play sound "block.wool.step" with volume 2 and pitch 2 at ({_particleLoc})
                         play sound "entity.llama.swag" with volume 2 and pitch 0.5 at ({_particleLoc})
-                        draw 10 block particle using brown wool at location {_above} above {_particleLoc} with offset vector({_above}/5, {_above}/2, {_above}/5) with extra 0.04
+                        draw 10 of brown wool block particle with extra value 0.04 with offset vector({_above}/5, {_above}/2, {_above}/5) at location {_above} above {_particleLoc}
                     else:
                         play sound "misc.mine_ore" with volume 2 and pitch 1 at ({_particleLoc})
-                        draw {_particle} block particle using diamond block at location {_above} above {_particleLoc} with offset vector({_above}/3.2, {_above}/2, {_above}/3.2) with extra 0.04
-                        draw {_particle} block particle using gold block at location {_above} above {_particleLoc} with offset vector({_above}/3.2, {_above}/2, {_above}/3.2) with extra 0.04
+                        draw {_particle} of diamond block particle with extra value 0.04 with offset vector({_above}/3.2, {_above}/2, {_above}/3.2) at location {_above} above {_particleLoc}
+                        set {_block} to gold block
+                        draw {_particle} of {_block} block particle with extra value 0.04 with offset vector({_above}/3.2, {_above}/2, {_above}/3.2) at location {_above} above {_particleLoc}
                     
                 wait 0.1 seconds
                 remove 0.1 seconds from {_casttime}
@@ -1235,8 +1241,8 @@ function WorldQuestAzeriteOreMine(p: player, e: entity, typeOfOre: string, objec
         else if {_typeOfOre} = "Crystal" or "Chunk":
             play sound "profession.gem.put_down" with volume 2 and pitch 0.5 at (location of {_e})
             play sound "block.ancient_debris.break" with volume 2 and pitch 1.5 at (location of {_e})
-            draw {_particle} block particle using ancient debris at location {_above}-1 above {_particleLoc} with offset vector({_above}/3.2, {_above}/2, {_above}/3.2) with extra 0.04
-            draw {_particle} block particle using ancient debris at location {_above}-1 above {_particleLoc} with offset vector({_above}/3.2, {_above}/2, {_above}/3.2) with extra 0.04
+            draw {_particle} of ancient debris block particle with extra value 0.04 with offset vector({_above}/3.2, {_above}/2, {_above}/3.2) at location {_above}-1 above {_particleLoc}
+            draw {_particle} of ancient debris block particle with extra value 0.04 with offset vector({_above}/3.2, {_above}/2, {_above}/3.2) at location {_above}-1 above {_particleLoc}
         
         play sound {_sound} with volume 2 and pitch 1 at (location of {_e})
 
@@ -1277,7 +1283,7 @@ on tame:
 
                     loop 3 times:
                         set {_randomOffset::%loop-counter-2%} to a random number between 0.0 and 1.0
-                        draw 8 heart particle at location 0.75 above event-entity with offset vector({_randomOffset::1}, {_randomOffset::2}, {_randomOffset::3}) with extra 0.01
+                        draw 8 of heart particle with extra value 0.01 with offset vector({_randomOffset::1}, {_randomOffset::2}, {_randomOffset::3}) at location 0.75 above event-entity
 
                     make tamer dismount
                     untame event-entity
