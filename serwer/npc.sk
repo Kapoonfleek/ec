@@ -747,11 +747,20 @@ on inventory click:
 import:
     org.bukkit.Bukkit
 
-on rightclick on entity:
+function getCitizenId(e: entity) :: integer:
     set {_citizens} to Bukkit.getPluginManager().getPlugin("Citizens")
-    set {_npc} to {_citizens}.getNPCRegistry().getById(6773).getEntity()
-    if clicked entity is {_npc}:
-        openBoosterShop(player)
+    set {_npc} to {_citizens}.getNPCRegistry().getNPC({_e})
+    return {_npc}.getId()
+
+on rightclick on entity:
+	set {_npcId} to getCitizenId(clicked entity)
+
+	if {_npcId} = 6773:
+		openBoosterShop(player)
+	else if {_npcId} = 6818:
+		openCurrencyExchange(player)
+	else if {_npcId} = 6775:
+		openPeculiarExchange(player)
 
 function openBoosterShop(p: player):
 	set metadata tag "BoosterShop" of {_p} to chest inventory with 6 rows named "Booster Shop"
@@ -806,61 +815,217 @@ function openBoosterShop(p: player):
 	play sound "entity.item.pickup" with volume 5 and pitch 0 to {_p}
 	open {_menu} to {_p}
 
+function openPeculiarExchange(p: player):
+	set metadata tag "PeculiarExchange" of {_p} to chest inventory with 6 rows named "Peculiar Items"
+	set {_menu} to metadata tag "PeculiarExchange" of {_p}
+
+	set {_klejnot} to yaml value "Klejnot.Item" in "ItemList"
+	set boolean tag "Klejnot" of custom nbt of {_klejnot} to true
+	set boolean tag "Currency" of custom nbt of {_klejnot} to true
+
+	add " " to lore of {_klejnot}
+	add "&9&oBroken and old Klejnots." to lore of {_klejnot}
+	add "&eClick to exchange." to lore of {_klejnot}
+	set slot 10 of {_menu} to {_klejnot}
+
+	play sound "entity.villager.ambient" with volume 4 and pitch 1 to {_p}
+	open {_menu} to {_p}
+
+function currencyItem(item: item) :: item:
+	set {_itemNew} to {_item} with lore ""
+	set {_lore} to size of (lore of {_item})
+
+	loop {_lore}-3 times:
+		set line loop-counter of lore of {_itemNew} to (line loop-number of lore of {_item})
+
+	set {_customNbt} to custom nbt of {_itemNew}
+
+	clear double tag "ExchangeValue" of {_customNbt}
+	clear boolean tag "SellCurrency" of {_customNbt}
+	clear boolean tag "BuyCurrency" of {_customNbt}
+
+	return {_itemNew}
+
+function openCurrencyExchange(p: player):
+	set metadata tag "CurrencyExchange" of {_p} to chest inventory with 6 rows named "Currency Exchange"
+	set {_menu} to metadata tag "CurrencyExchange" of {_p}
+
+	set {_sapphire} to yaml value "Sapphire.Item" in "ItemList"
+	set {_klejnot} to yaml value "Klejnot.Item" in "ItemList"
+	set {_ruby} to yaml value "Ruby.Item" in "ItemList"
+	set {_amethyst} to yaml value "Amethyst.Item" in "ItemList"
+	set {_topaz} to yaml value "Topaz.Item" in "ItemList"
+	set {_aquamarine} to yaml value "Aquamarine.Item" in "ItemList"
+	set {_peridot} to yaml value "Peridot.Item" in "ItemList"
+
+	set {_sellCurrencies::*} to {_sapphire}, {_ruby}, {_amethyst}, {_topaz}, {_aquamarine} and {_peridot}
+	set {_sellValues::*} to 0.5, 2, 4, 8, 16 and 32
+	set {_sellSlots::*} to 10, 11, 12, 13, 14 and 15
+
+	loop {_sellCurrencies::*}:
+		set {_currencyItem} to loop-value
+		set {_value} to {_sellValues::%loop-counter%}
+		set {_slot} to {_sellSlots::%loop-counter%}
+
+		add "&7Worth &f%{_value}% &7Klejnot." to lore of {_currencyItem}
+		add " " to lore of {_currencyItem}
+		add "&eClick to exchange." to lore of {_currencyItem}
+
+		set double tag "ExchangeValue" of custom nbt of {_currencyItem} to {_value}
+		set boolean tag "SellCurrency" of custom nbt of {_currencyItem} to true
+		set slot {_slot} of {_menu} to {_currencyItem}
+
+	set {_buyCurrencies::*} to {_sapphire}, {_ruby}, {_amethyst}, {_topaz}, {_aquamarine} and {_peridot}
+	set {_buyValues::*} to 0.5, 2, 4, 8, 16 and 32
+	set {_buySlots::*} to 28, 29, 30, 31, 32 and 33
+
+	loop {_buyCurrencies::*}:
+		set {_currencyItem} to loop-value
+		set {_value} to {_buyValues::%loop-counter%}
+		set {_slot} to {_buySlots::%loop-counter%}
+
+		add "&7Costs &f%{_value}% &7Klejnots." to lore of {_currencyItem}
+		add " " to lore of {_currencyItem}
+		add "&eClick to exchange." to lore of {_currencyItem}
+
+		set double tag "ExchangeValue" of custom nbt of {_currencyItem} to {_value}
+		set boolean tag "BuyCurrency" of custom nbt of {_currencyItem} to true
+		set slot {_slot} of {_menu} to {_currencyItem}
+
+	play sound "entity.villager.ambient" with volume 4 and pitch 1 to {_p}
+	open {_menu} to {_p}
+
 on inventory click:
-    if event-inventory = metadata tag "BoosterShop" of player:
-        if player's current inventory = metadata tag "BoosterShop" of player:
-            cancel event
-            if event-slot is not air:
-                set {_peridot} to yaml value "Peridot.Item" in "ItemList"
-                set {_klejnot} to yaml value "Klejnot.Item" in "ItemList"
-                set {_amethyst} to yaml value "Amethyst.Item" in "ItemList"
-                set {_aquamarine} to yaml value "Aquamarine.Item" in "ItemList"
+	if event-inventory = metadata tag "BoosterShop" of player:
+		if player's current inventory = metadata tag "BoosterShop" of player:
+			cancel event
+			if event-slot is not air:
+				set {_peridot} to yaml value "Peridot.Item" in "ItemList"
+				set {_klejnot} to yaml value "Klejnot.Item" in "ItemList"
+				set {_amethyst} to yaml value "Amethyst.Item" in "ItemList"
+				set {_aquamarine} to yaml value "Aquamarine.Item" in "ItemList"
 
-                if int tag "Price;Peridot" of custom nbt of event-slot is set:
-                    set {_peridotAmount} to int tag "Price;Peridot" of custom nbt of event-slot
-                    set {_checkTrue} to 0
-                    set {_currencyCount} to 1
+				if int tag "Price;Peridot" of custom nbt of event-slot is set:
+					set {_peridotAmount} to int tag "Price;Peridot" of custom nbt of event-slot
+					set {_checkTrue} to 0
+					set {_currencyCount} to 1
 
-                    if player has {_peridotAmount} of {_peridot}:
-                        set {_checkTrue} to {_checkTrue} + 1
+					if player has {_peridotAmount} of {_peridot}:
+						set {_checkTrue} to {_checkTrue} + 1
 
-                    set {_klejnotAmount} to int tag "Price;Klejnot" of custom nbt of event-slot
-                    if {_klejnotAmount} is set:
-                        set {_currencyCount} to {_currencyCount} + 1
-                        if player has {_klejnotAmount} of {_klejnot}:
-                            set {_checkTrue} to {_checkTrue} + 1
+					set {_klejnotAmount} to int tag "Price;Klejnot" of custom nbt of event-slot
+					if {_klejnotAmount} is set:
+						set {_currencyCount} to {_currencyCount} + 1
+						if player has {_klejnotAmount} of {_klejnot}:
+							set {_checkTrue} to {_checkTrue} + 1
 
-                    set {_amethystAmount} to int tag "Price;Amethyst" of custom nbt of event-slot
-                    if {_amethystAmount} is set:
-                        set {_currencyCount} to {_currencyCount} + 1
-                        if player has {_amethystAmount} of {_amethyst}:
-                            set {_checkTrue} to {_checkTrue} + 1
+					set {_amethystAmount} to int tag "Price;Amethyst" of custom nbt of event-slot
+					if {_amethystAmount} is set:
+						set {_currencyCount} to {_currencyCount} + 1
+						if player has {_amethystAmount} of {_amethyst}:
+							set {_checkTrue} to {_checkTrue} + 1
 
-                    set {_aquamarineAmount} to int tag "Price;Aquamarine" of custom nbt of event-slot
-                    if {_aquamarineAmount} is set:
-                        set {_currencyCount} to {_currencyCount} + 1
-                        if player has {_aquamarineAmount} of {_aquamarine}:
-                            set {_checkTrue} to {_checkTrue} + 1
+					set {_aquamarineAmount} to int tag "Price;Aquamarine" of custom nbt of event-slot
+					if {_aquamarineAmount} is set:
+						set {_currencyCount} to {_currencyCount} + 1
+						if player has {_aquamarineAmount} of {_aquamarine}:
+							set {_checkTrue} to {_checkTrue} + 1
 
-                    if {_checkTrue} = {_currencyCount}:
-                        if {_peridotAmount} is set:
-                            remove {_peridotAmount} of {_peridot} from player's inventory
-                        if {_klejnotAmount} is set:
-                            remove {_klejnotAmount} of {_klejnot} from player's inventory
-                        if {_amethystAmount} is set:
-                            remove {_amethystAmount} of {_amethyst} from player's inventory
-                        if {_aquamarineAmount} is set:
-                            remove {_aquamarineAmount} of {_aquamarine} from player's inventory
+					if {_checkTrue} = {_currencyCount}:
+						if {_peridotAmount} is set:
+							remove {_peridotAmount} of {_peridot} from player's inventory
+						if {_klejnotAmount} is set:
+							remove {_klejnotAmount} of {_klejnot} from player's inventory
+						if {_amethystAmount} is set:
+							remove {_amethystAmount} of {_amethyst} from player's inventory
+						if {_aquamarineAmount} is set:
+							remove {_aquamarineAmount} of {_aquamarine} from player's inventory
 
-                        set {_item} to event-slot with lore ""
-                        set {_lore} to size of (lore of event-slot)
+						set {_item} to event-slot with lore ""
+						set {_lore} to size of (lore of event-slot)
 
-                        loop {_lore}-3 times:
-                            set line loop-counter of lore of {_item} to (line loop-number of lore of event-slot)
+						loop {_lore}-3 times:
+							set line loop-counter of lore of {_item} to (line loop-number of lore of event-slot)
 
-                        giveItem(player, 1 of {_item})
-                        play sound "entity.experience_orb.pickup" with volume 1 and pitch 1 to player
-                        play sound "entity.villager.yes" with volume 3 and pitch 1 to player
-                    else:
-                        play sound "entity.villager.no" with volume 1 and pitch 1 to player
-                        send "&cYou do not have enough currency to purchase this item." to player
+						giveItem(player, 1 of {_item})
+						play sound "entity.experience_orb.pickup" with volume 1 and pitch 1 to player
+						play sound "entity.villager.yes" with volume 3 and pitch 1 to player
+					else:
+						play sound "entity.villager.no" with volume 1 and pitch 1 to player
+						send "&cYou do not have enough currency to purchase this item." to player
+	else if event-inventory = metadata tag "CurrencyExchange" of player:
+		if player's current inventory = metadata tag "CurrencyExchange" of player:
+			cancel event
+			if event-slot is not air:
+				set {_sapphire} to yaml value "Sapphire.Item" in "ItemList"
+				set {_klejnot} to yaml value "Klejnot.Item" in "ItemList"
+
+				if boolean tag "SellCurrency" of custom nbt of event-slot is true:
+					set {_value} to double tag "ExchangeValue" of custom nbt of event-slot
+
+					set {_item} to currencyItem(event-slot)
+
+					if {_value} < 1:
+						if player has 2 of {_item}:
+							remove 2 of {_item} from player's inventory
+							giveItem(player, 1 of {_klejnot})
+							play sound "entity.experience_orb.pickup" with volume 1 and pitch 1 to player
+							play sound "entity.villager.yes" with volume 3 and pitch 1 to player
+						else:
+							play sound "entity.villager.no" with volume 1 and pitch 1 to player
+							send "&cYou need at least 2 to exchange this currency." to player
+					else:
+						if player has 1 of {_item}:
+							set {_klejnotAmount} to rounded down {_value}
+							remove 1 of {_item} from player's inventory
+							giveItem(player, {_klejnotAmount} of {_klejnot})
+							play sound "entity.experience_orb.pickup" with volume 1 and pitch 1 to player
+							play sound "entity.villager.yes" with volume 3 and pitch 1 to player
+						else:
+							play sound "entity.villager.no" with volume 1 and pitch 1 to player
+							send "&cYou do not have this currency." to player
+
+				else if boolean tag "BuyCurrency" of custom nbt of event-slot is true:
+					set {_value} to double tag "ExchangeValue" of custom nbt of event-slot
+
+					set {_item} to currencyItem(event-slot)
+
+					if {_value} < 1:
+						if player has 1 of {_klejnot}:
+							remove 1 of {_klejnot} from player's inventory
+							giveItem(player, 2 of {_item})
+							play sound "entity.experience_orb.pickup" with volume 1 and pitch 1 to player
+							play sound "entity.villager.yes" with volume 3 and pitch 1 to player
+						else:
+							play sound "entity.villager.no" with volume 1 and pitch 1 to player
+							send "&cYou do not have enough Klejnots." to player
+					else:
+						set {_klejnotCost} to rounded down {_value}
+						if player has {_klejnotCost} of {_klejnot}:
+							remove {_klejnotCost} of {_klejnot} from player's inventory
+							giveItem(player, 1 of {_item})
+							play sound "entity.experience_orb.pickup" with volume 1 and pitch 1 to player
+							play sound "entity.villager.yes" with volume 3 and pitch 1 to player
+						else:
+							play sound "entity.villager.no" with volume 1 and pitch 1 to player
+							send "&cYou do not have enough Klejnots." to player
+	else if event-inventory = metadata tag "PeculiarExchange" of player:
+		if player's current inventory = metadata tag "PeculiarExchange" of player:
+			cancel event
+			if event-slot is not air:
+				set {_klejnot} to yaml value "Klejnot.Item" in "ItemList"
+				set {_klejnotOld} to {_klejnot}
+				set {_customNbt} to custom nbt of {_klejnotOld}
+
+				clear boolean tag "Klejnot" of {_customNbt}
+				clear boolean tag "Currency" of {_customNbt}
+
+				if player has 1 of {_klejnotOld}:
+					remove 1 of {_klejnotOld} from player's inventory
+					giveItem(player, {_klejnot})
+					play sound "entity.experience_orb.pickup" with volume 1 and pitch 1 to player
+					play sound "entity.villager.yes" with volume 3 and pitch 1 to player
+				else:
+					play sound "entity.villager.no" with volume 1 and pitch 1 to player
+					send "&cYou do not have this currency." to player
+
