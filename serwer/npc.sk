@@ -426,24 +426,26 @@ on inventory click:
 			send {_fail} to player
 			play sound "entity.chest.close" with volume 4 and pitch 0.8 at player
 	else if event-inventory = metadata tag "Constellation" of player:
-		cancel event
-		if index of clicked slot = 15:
-			teleport the player to player's location
-			set metadata tag "ConstellationAdd" of player to chest inventory with 3 rows named "Constellation"
-			set {_slotIndex} to 0
-			loop all items in the player's inventory:
-				if line 19 of lore of loop-item contains "&8Id: ":
-					if line 19 of lore of loop-item != line 19 of lore of player's tool:
-						if name of loop-item = name of player's tool:
-							set slot {_slotIndex} of metadata tag "ConstellationAdd" of player to loop-item
-							add "%nl%&c&l(&4&l!&c&l) &f&oClick here to exchange this item." to lore of slot {_slotIndex} of metadata tag "ConstellationAdd" of player
-							add 1 to {_slotIndex}
-			if {_slotIndex} > 0:
-				open metadata tag "ConstellationAdd" of player to player
-			else:
-				play sound "entity.villager.no" with volume 5 and pitch 0.62 to player
-				play sound "block.glass.break" with volume 5 and pitch 1.176 to player
-				send "&c&oThere are no identical cards in your inventory." to player
+		if player's current inventory = metadata tag "Constellation" of player:
+			cancel event
+			if index of clicked slot = 15:
+				teleport the player to player's location
+				set metadata tag "ConstellationAdd" of player to chest inventory with 3 rows named "Constellation"
+				set {_slotIndex} to 0
+				loop all items in the player's inventory:
+					if line 19 of lore of loop-item contains "&8Id: ":
+						if line 19 of lore of loop-item != line 19 of lore of player's tool:
+							if int tag "Version" of (custom nbt of loop-item) >= 830:
+								if name of loop-item = name of player's tool:
+									set slot {_slotIndex} of metadata tag "ConstellationAdd" of player to loop-item
+									add "%nl%&c&l(&4&l!&c&l) &f&oClick here to exchange this item." to lore of slot {_slotIndex} of metadata tag "ConstellationAdd" of player
+									add 1 to {_slotIndex}
+				if {_slotIndex} > 0:
+					open metadata tag "ConstellationAdd" of player to player
+				else:
+					play sound "entity.villager.no" with volume 5 and pitch 0.62 to player
+					play sound "block.glass.break" with volume 5 and pitch 1.176 to player
+					send "&c&oThere are no identical cards in your inventory." to player
 
 	else if event-inventory = metadata tag "ConstellationAdd" of player:
 		cancel event
@@ -458,10 +460,12 @@ on inventory click:
 		if index of clicked slot is between 0 and 26:
 			if clicked slot is not air:
 				if clicked slot is lime stained glass pane named "&aConfirm?":
+
 					loop lore of slot 11 of metadata tag "ConstellationAddConfirm" of player:
-						if uncolored loop-value does not contain "(!)":
-							add loop-value to {_loreItem::*}
-					delete {_loreItem::%size of {_loreItem::*}%}
+						if loop-value != "":
+							if uncolored loop-value does not contain "(!)":
+								add loop-value to {_loreItem::*}
+
 					set {_card} to slot 11 of metadata tag "ConstellationAddConfirm" of player with lore {_loreItem::*}
 					loop all items in player's inventory:
 						if loop-item = {_card}:
@@ -739,3 +743,124 @@ on inventory click:
 		#			send "&8[<##f2b891>NPC&8] [<##f2b891>Isabela&8] &fWitaj! Mogę pomóć ci w dodawaniu statystyk dla twojej karty za osiągnięte poziomy." to player
 		#			send "&7&o*Kliknij prawym na &o<##f2b891>Isabelę &7&otrzymając kartę w ręce, by otworzyć menu dodawania statystyk.*" to player
 		#			play sound "block.note_block.pling" with volume 4 and pitch 1.7 to player
+
+import:
+    org.bukkit.Bukkit
+
+on rightclick on entity:
+    set {_citizens} to Bukkit.getPluginManager().getPlugin("Citizens")
+    set {_npc} to {_citizens}.getNPCRegistry().getById(6773).getEntity()
+    if clicked entity is {_npc}:
+        openBoosterShop(player)
+
+function openBoosterShop(p: player):
+	set metadata tag "BoosterShop" of {_p} to chest inventory with 6 rows named "Booster Shop"
+	set {_menu} to metadata tag "BoosterShop" of {_p}
+
+	set {_peridot} to yaml value "Peridot.Item" in "ItemList"
+	set {_klejnot} to yaml value "Klejnot.Item" in "ItemList"
+	set {_amethyst} to yaml value "Amethyst.Item" in "ItemList"
+	set {_aquamarine} to yaml value "Aquamarine.Item" in "ItemList"
+
+	set {_boosters::*} to {boostersecretwonders}, {boostermajesticdawn}, {boosterunseenforces}, {boosterplasmafreeze} and {boosterteampoisonvsteamaqua}
+	set {_slot} to 10
+
+	loop {_boosters::*}:
+		set {_booster} to loop-value
+		add " " to lore of {_booster}
+		add "&7Price: &f2x %name of {_peridot}% &7& &f11x %name of {_klejnot}%" to lore of {_booster}
+		add "&eClick to purchase." to lore of {_booster}
+		set int tag "Price;Peridot" of custom nbt of {_booster} to 2
+		set int tag "Price;Klejnot" of custom nbt of {_booster} to 11
+		set slot {_slot} of {_menu} to {_booster}
+		set {_slot} to {_slot} + 1
+
+	set {_blisters::*} to {unseenforcesblister1}, {unseenforcesblister2}, {plasmafreezeblister1} and {plasmafreezeblister2}
+	set {_slot} to 19
+
+	loop {_blisters::*}:
+		set {_blister} to loop-value
+		add " " to lore of {_blister}
+		add "&7Price: &f21x %name of {_peridot}% &7& &f7x %name of {_amethyst}%" to lore of {_blister}
+		add "&eClick to purchase." to lore of {_blister}
+		set int tag "Price;Peridot" of custom nbt of {_blister} to 21
+		set int tag "Price;Amethyst" of custom nbt of {_blister} to 7
+		set slot {_slot} of {_menu} to {_blister}
+		set {_slot} to {_slot} + 1
+
+	set {_boxes::*} to {unseenforcesbox} and {plasmafreezebox}
+	set {_slot} to 28
+
+	loop {_boxes::*}:
+		set {_box} to loop-value
+		add " " to lore of {_box}
+		add "&7Price: &f62x %name of {_peridot}% &7& &f1x %name of {_aquamarine}%" to lore of {_box}
+		add "&eClick to purchase." to lore of {_box}
+		set int tag "Price;Peridot" of custom nbt of {_box} to 62
+		set int tag "Price;Aquamarine" of custom nbt of {_box} to 1
+		set slot {_slot} of {_menu} to {_box}
+		set {_slot} to {_slot} + 1
+
+	play sound "entity.villager.ambient" with volume 4 and pitch 1 to {_p}
+	play sound "block.wooden_button.click_on" with volume 5 and pitch 2 to {_p}
+	play sound "entity.item.pickup" with volume 5 and pitch 0 to {_p}
+	open {_menu} to {_p}
+
+on inventory click:
+    if event-inventory = metadata tag "BoosterShop" of player:
+        if player's current inventory = metadata tag "BoosterShop" of player:
+            cancel event
+            if event-slot is not air:
+                set {_peridot} to yaml value "Peridot.Item" in "ItemList"
+                set {_klejnot} to yaml value "Klejnot.Item" in "ItemList"
+                set {_amethyst} to yaml value "Amethyst.Item" in "ItemList"
+                set {_aquamarine} to yaml value "Aquamarine.Item" in "ItemList"
+
+                if int tag "Price;Peridot" of custom nbt of event-slot is set:
+                    set {_peridotAmount} to int tag "Price;Peridot" of custom nbt of event-slot
+                    set {_checkTrue} to 0
+                    set {_currencyCount} to 1
+
+                    if player has {_peridotAmount} of {_peridot}:
+                        set {_checkTrue} to {_checkTrue} + 1
+
+                    set {_klejnotAmount} to int tag "Price;Klejnot" of custom nbt of event-slot
+                    if {_klejnotAmount} is set:
+                        set {_currencyCount} to {_currencyCount} + 1
+                        if player has {_klejnotAmount} of {_klejnot}:
+                            set {_checkTrue} to {_checkTrue} + 1
+
+                    set {_amethystAmount} to int tag "Price;Amethyst" of custom nbt of event-slot
+                    if {_amethystAmount} is set:
+                        set {_currencyCount} to {_currencyCount} + 1
+                        if player has {_amethystAmount} of {_amethyst}:
+                            set {_checkTrue} to {_checkTrue} + 1
+
+                    set {_aquamarineAmount} to int tag "Price;Aquamarine" of custom nbt of event-slot
+                    if {_aquamarineAmount} is set:
+                        set {_currencyCount} to {_currencyCount} + 1
+                        if player has {_aquamarineAmount} of {_aquamarine}:
+                            set {_checkTrue} to {_checkTrue} + 1
+
+                    if {_checkTrue} = {_currencyCount}:
+                        if {_peridotAmount} is set:
+                            remove {_peridotAmount} of {_peridot} from player's inventory
+                        if {_klejnotAmount} is set:
+                            remove {_klejnotAmount} of {_klejnot} from player's inventory
+                        if {_amethystAmount} is set:
+                            remove {_amethystAmount} of {_amethyst} from player's inventory
+                        if {_aquamarineAmount} is set:
+                            remove {_aquamarineAmount} of {_aquamarine} from player's inventory
+
+                        set {_item} to event-slot with lore ""
+                        set {_lore} to size of (lore of event-slot)
+
+                        loop {_lore}-3 times:
+                            set line loop-counter of lore of {_item} to (line loop-number of lore of event-slot)
+
+                        giveItem(player, 1 of {_item})
+                        play sound "entity.experience_orb.pickup" with volume 1 and pitch 1 to player
+                        play sound "entity.villager.yes" with volume 3 and pitch 1 to player
+                    else:
+                        play sound "entity.villager.no" with volume 1 and pitch 1 to player
+                        send "&cYou do not have enough currency to purchase this item." to player
