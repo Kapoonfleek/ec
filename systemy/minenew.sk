@@ -204,6 +204,28 @@ function minenew(p: player, t: text, b: block):
 				drop {_item} at {_b}
 				send "&8[&6Earthcraft&8] &7Congratulations! You found a <##b5e550>Klejnot&7! %{_xpmsg}%" to {_p}
 
+		set {_chanceAzerite} to 2
+		chance of {_chanceAzerite}%:
+			set {_heart} to getHeartOfEarthcraft({_p})
+			if {_p}'s chestplate = {_heart}:
+				set {_randomAzerite} to a random integer between 1 and 15
+				addAzerite({_p}, {_randomAzerite})
+				set {_azerite} to addMiningStat({_p}, "Azerite", {_randomAzerite})
+
+				achievementYaml({_p}, "Mining", "Azerite+1000", {_randomAzerite})
+				achievementYaml({_p}, "Mining", "Azerite+100000", {_randomAzerite})
+
+				set {_otxp} to 2.5
+
+				set {_otxpAfterMultiplier} to addPlayerXP({_p}, {_otxp}, 1, "mining")
+				add {_otxpAfterMultiplier} to {expkopanie::%{_p}%}
+				addMiningXP({_p}, {_otxp})
+
+				if {_otxpAfterMultiplier} > {_otxp}:
+					set {_xpmsg} to "&7(+%{_otxpAfterMultiplier}% &7XP) (&fx%{_otxpAfterMultiplier}/{_otxp}%&7)"
+				else:
+					set {_xpmsg} to "&7(+%{_otxpAfterMultiplier}% &7XP)"
+
 		set {_chanceRuby} to 0.5
 		chance of {_chanceRuby}%:
 			set {_damount} to 1
@@ -486,15 +508,15 @@ on mine:
 			if event-block = cobblestone:
 				set {cobblestone::%player%} to {cobblestone::%player%} + 1
 				set {_xp} to addPlayerXP(player, 0.5)
-				add {_xp} to {expkopanie::%player%}
+				set {expkopanie::%player%} to {expkopanie::%player%} + {_xp}
 			else if event-block = nether gold ore:
 				set {nethergold::%player%} to {nethergold::%player%} + 1
 				set {_xp} to addPlayerXP(player, 1.75)
-				add {_xp} to {expkopanie::%player%}
+				set {expkopanie::%player%} to {expkopanie::%player%} + {_xp}
 			else if event-block = obsidian:
 				set {obsidian::%player%} to {obsidian::%player%} + 1
 				set {_xp} to addPlayerXP(player, 4)
-				add {_xp} to {expkopanie::%player%}
+				set {expkopanie::%player%} to {expkopanie::%player%} + {_xp}
 			else if event-block = dirt:
 				set {dirt::%player%} to {dirt::%player%} + 1
 				set {_xp} to addPlayerXP(player, 0.5)
@@ -502,7 +524,7 @@ on mine:
 			else if event-block = end stone:
 				set {endstone::%player%} to {endstone::%player%} + 1
 				set {_xp} to addPlayerXP(player, 1)
-				add {_xp} to {expkopanie::%player%}
+				set {expkopanie::%player%} to {expkopanie::%player%} + {_xp}
 			else if event-block = gravel:
 				set {gravel::%player%} to {gravel::%player%} + 1
 				set {_xp} to addPlayerXP(player, 0.5)
@@ -514,7 +536,7 @@ on mine:
 			else if event-block = netherrack:
 				set {netherrack::%player%} to {netherrack::%player%} + 1
 				set {_xp} to addPlayerXP(player, 0.1)
-				add {_xp} to {expkopanie::%player%}
+				set {expkopanie::%player%} to {expkopanie::%player%} + {_xp}
 			else if event-block is beetroots:
 				if age of event-block = 3:
 					set {beetroot::%player%} to {beetroot::%player%} + 1
@@ -1659,10 +1681,12 @@ function playerCheckLevelUp(p: player):
 		if {poziom::%{_p}%} = 90:
 			set {_colour} to "#aa0000"
 			
-		if {poziom::%{_p}%} < 100:
-			set {kolorek1::%{_p}%} to {_colour}
-		else:
-			set {kolorek1::%{_p}%} to "#ffffff"
+		if {_colour} is set:
+			if 100 > {poziom::%{_p}%}:
+				set {kolorek1::%{_p}%} to {_colour}
+			else:
+				if {kolorek1::%{_p}%} is not set:
+					set {kolorek1::%{_p}%} to "#ffffff"
 			
 		if {poziom::%{_p}%} is divisible by 50:
 			set {nagrodalvl::karta::%{_p}%} to {nagrodalvl::karta::%{_p}%} + 1

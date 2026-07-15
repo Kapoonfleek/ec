@@ -29,6 +29,7 @@ on death:
 						if metadata value "IslandAISlain" of attacker is not set:
 							set metadata value "IslandAISlain" of attacker to 0
 						set metadata value "IslandAISlain" of attacker to metadata value "IslandAISlain" of attacker + 1
+						islandExpeditionAIDefeatedDialogue(metadata value "IslandExpeditionInstance" of attacker)
 
 		if metadata value "IslandAIEnemy" of victim is true:
 			islandAIRespawnMob(victim)
@@ -48,7 +49,8 @@ on death:
 
 				set {_invisibilityDuration} to "%{_baseDuration}% seconds" parsed as timespan
 
-				apply invisibility 1 without particles to attacker for {_invisibilityDuration}
+				apply an ambient potion effect of invisibility of tier 1 to attacker for {_invisibilityDuration}:
+					hide the particles
 
 				clear metadata value "From the Shadows%attacker%" of victim
 
@@ -121,23 +123,46 @@ on death:
 						if boolean tag "ECBoss" of (custom nbt of victim) is set:
 							set {_xp} to {_xp}*6
 						cardLevelup({_p}, {_xp}, victim)
+
 			if {expAreaMayanMobs} - 1 >= 0:
 				set {expAreaMayanMobs} to {expAreaMayanMobs} - 1
 				if boolean tag "ECBoss" of (custom nbt of victim) is set:
 					set {_multiplier} to 10
 					set {_type} to "boss"
+					set {_randomAzerite} to a random integer between 25 and 50
+
 				else if boolean tag "ECSuperMob" of (custom nbt of victim) is set:
 					set {_multiplier} to 4
 					set {_type} to "supermob"
+					set {_randomAzerite} to a random integer between 10 and 25
 				else:
 					set {_multiplier} to 1
 					set {_type} to "mob"
+					set {_randomAzerite} to a random integer between 1 and 10
+
+				set {_heart} to getHeartOfEarthcraft(attacker)
+				if attacker's chestplate = {_heart}:
+					addAzerite(attacker, {_randomAzerite})
+					set {azeritefrommobs::%attacker%} to {azeritefrommobs::%attacker%} + {_randomAzerite}
+
+					achievementYaml(attacker, "MCombat", "Azerite+1000", {_randomAzerite})
+					achievementYaml(attacker, "Combat", "Azerite+100000", {_randomAzerite})
+
 				ExpAreaMayanMobDrop(attacker, victim, {_multiplier}, {_type})
 				loop {asyst::%uuid of victim%::*}:
 					set {_p} to loop-value parsed as a player
 					ExpAreaMayanMobDrop({_p}, victim, {_multiplier}, {_type})
 					add 1 to {weeklyMobsDefeated::%{_p}%}
 					add 1 to {totalMobsDefeated::%{_p}%}
+
+					set {_heart} to getHeartOfEarthcraft({_p})
+					if {_p}'s chestplate = {_heart}:
+						addAzerite({_p}, {_randomAzerite})
+						set {azeritefrommobs::%{_p}%} to {azeritefrommobs::%{_p}%} + {_randomAzerite}
+
+						achievementYaml({_p}, "MCombat", "Azerite+1000", {_randomAzerite})
+						achievementYaml({_p}, "Combat", "Azerite+100000", {_randomAzerite})
+
 			if boolean tag "ECBoss" of (custom nbt of victim) is set:
 				set {_id} to string tag "ECBossBossBar" of (custom nbt of victim)
 				remove all players from boss bar with id {_id}
@@ -874,10 +899,11 @@ on damage:
 		else if {_elementTypes::*} contains "Water":
 			loop {_partyMembers::*}:
 				set {_partyMember} to loop-value
-				if distance between {_partyMember} and attacker < 500:
-					if {kartaname::%{_partyMember}%} = "Vaporeon":
-						if boolean tag "Constellation;Oceanic Might" of (custom nbt of {karta::%{_partyMember}%}) is set:
-							set {_partySizeOceanicMight} to {_partySizeOceanicMight} + 1
+				if world of attacker = world of {_partyMember}:
+					if distance between {_partyMember} and attacker < 500:
+						if {kartaname::%{_partyMember}%} = "Vaporeon":
+							if boolean tag "Constellation;Oceanic Might" of (custom nbt of {karta::%{_partyMember}%}) is set:
+								set {_partySizeOceanicMight} to {_partySizeOceanicMight} + 1
 			
 			if {_partySizeOceanicMight} > 0:
 				set {_oceanicMightBonus} to 1.08
@@ -1176,6 +1202,17 @@ on entity target:
 										if boolean tag "ECIslandEnemy" of custom nbt of loop-entity is true:
 											if metadata value "ECPulled" of loop-entity is not set:
 												IslandExpeditionBodyMobPull({_x}, loop-entity)
+						else:
+							cancel event
+				else:
+					if boolean tag "ECExpAreaMob" of custom nbt of event-entity is true:
+						if {_x} does not have invisibility:
+							BodyMobPull({_x}, event-entity)
+							loop all entities in radius 4 around event-entity:
+								if loop-entity is not a player:
+									if loop-entity is not event-entity:
+										if metadata value "ECPulled" of loop-entity is not set:
+											BodyMobPull({_x}, event-entity)
 						else:
 							cancel event
 			else:

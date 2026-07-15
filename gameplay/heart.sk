@@ -98,16 +98,14 @@ on region exit:
 on region enter:
 	if "%event-region%" contains "spawn":
 		if yaml value "Player.OwnsHeart" in "data-%player%" is not set:
-			if {poziom::%player%} >= 30:
-				if player's name = "Pehrek":
-					magniDialogueVoiced(player, "ahthere", 1 second)
+			if {poziom::%player%} >= 50:
+				magniDialogueVoiced(player, "ahthere", 1 second)
 	if "%region%" contains "ChamberOfHeart":
 		wait 1 tick
 		play sound "ambient.chamber_of_heart" with volume 5 and pitch 1 to player
-		if player's name = "Pehrek":
-			if yaml value "Player.OwnsHeart" in "data-%player%" is not set:
-				if {poziom::%player%} >= 30:
-					magniDialogueVoiced(player, "introduction", 1 second)
+		if yaml value "Player.OwnsHeart" in "data-%player%" is not set:
+			if {poziom::%player%} >= 50:
+				magniDialogueVoiced(player, "introduction", 1 second)
 		set {_loc} to location(9112.5, -41, 1643.5, world "world")
 		load chunk at location(9105, -42, 1627, world "world")
 		load chunk at location(9120, -42, 1660, world "world")
@@ -125,7 +123,7 @@ on region enter:
 				play sound "ambient.chamber_of_heart" with volume 5 and pitch 1 to player
 	else if "%region%" contains "MineLower":
 		if yaml value "Player.OwnsHeart" in "data-%player%" is not set:
-			if {poziom::%player%} >= 30:
+			if {poziom::%player%} >= 50:
 				if cooldown "MagniEntranceDialogue%player%" is finished:
 					create cooldown "MagniEntranceDialogue%player%" for 1 minute
 					spawn 1 pig at player with nbt from "{Silent:1b,Invulnerable:1b}"
@@ -135,10 +133,30 @@ on region enter:
 					magniPathfind(player, {_magni})
 					set generic movement speed attribute of {_magni} to 0.4
 					set boolean tag "RemoveOnReset" of custom nbt of {_magni} to true
-					if player's name = "Pehrek":
-						magniDialogueVoiced(player, "entrance", 1 second)
+					magniDialogueVoiced(player, "entrance", 1 second)
 					wait 1 tick
 					entityTitle({_magni}, "the Speaker", -0.85)
+	else if "%region%" contains "chambercenter":
+		if metadata value "ECHeartQuestline" of player = 4:
+			if cooldown "HeartWoundSeal%player%" is finished:
+				create cooldown "HeartWoundSeal%player%" for 10 seconds
+				send " " to player
+				send "" to player
+				send " " to player
+				send "  <command:/sealazeritewound><tooltip:&fClick here to seal the wound.>&f   &a[Click here to seal the wound]" to player
+				send "             &7(Stand in the middle of the room)" to player
+				play sound "block.wooden_button.click_on" with volume 5 and pitch 2 to player
+				play sound "entity.item.pickup" with volume 5 and pitch 0 to player
+	
+command /sealazeritewound:
+	trigger:
+		if metadata value "ECHeartQuestline" of player = 4:
+			if boolean tag "HeartOfEarthcraft" of (custom nbt of player's chestplate):
+				sealWoundAzerite(player)
+			else:
+				set {_dialogue} to "Equip yer Heart of Earthcraft to seal the wound, champion."
+				magniDialogue(player, {_dialogue}, 0 seconds)
+				play sound "entity.villager.ambient" with volume 1 and pitch 0.9 to player
 				
 
 function magniPathfind(p: player, magni: entity):
@@ -161,6 +179,7 @@ function magniDialogueVoiced(p: player, text: string, wait: timespan = 0 seconds
 		set {_dialogue} to "Ah, there ye ar, %{_p}%. I must have words with ye! Meet me in the Chamber o' Heart."
 		play sound "npc.magnibronzebeard.heart_ahthere" with volume 5 and pitch 1 to {_p}
 		set {_extraSound} to true
+		send "&7(Chamber of Heart is located in the mine at spawn.)" to {_p}
 	else if {_text} = "entrance":
 		set {_dialogue} to "The entrance tae the chamber is this way. Come on!"
 		play sound "npc.magnibronzebeard.heart_theentrance" with volume 5 and pitch 1 to {_p}
@@ -182,6 +201,22 @@ function magniDialogueVoiced(p: player, text: string, wait: timespan = 0 seconds
 	else if {_text} = "infuse":
 		set {_dialogue} to "Infuse this amulet with power...it might be the only way to save her!"
 		play sound "npc.magnibronzebeard.heart_infuse" with volume 5 and pitch 1 to {_p}
+	else if {_text} = "ifyouuse":
+		set {_dialogue} to "If you use yer amulet to absorb the Azerite, it's power should mend the chamber's seal."
+		play sound "npc.magnibronzebeard.heart_ifyouuse" with volume 5 and pitch 1 to {_p}
+
+	else if {_text} = "thatsit":
+		set {_dialogue} to "That's it, I think it's working!"
+		play sound "npc.magnibronzebeard.heart_thatsit" with volume 5 and pitch 1 to {_p}
+	else if {_text} = "keepgoing":
+		set {_dialogue} to "Keep going! Just a wee bit more!"
+		play sound "npc.magnibronzebeard.heart_keepgoing" with volume 5 and pitch 1 to {_p}
+	else if {_text} = "unleash":
+		set {_dialogue} to "Now, unleash the Heart's power!"
+		play sound "npc.magnibronzebeard.heart_unleash" with volume 5 and pitch 1 to {_p}
+	else if {_text} = "youdidit":
+		set {_dialogue} to "Ye did it, champion! The chamber is secure!"
+		play sound "npc.magnibronzebeard.heart_youdidit" with volume 5 and pitch 1 to {_p}
 
 	portraitDialogue({_p}, "", "Magni Bronzebeard", {_dialogue}, "Champions of Earthcraft")
 
@@ -202,7 +237,50 @@ on rightclick on a player:
 		magniDialogue(player, {_dialogue})
 		wait 3 seconds
 		send formatted "&7(CTRL) &f&l💬 &fWhat does Earthcraft want of me, Magni? &9(Play cinematic)" to player
+		send formatted "&8(If you have sprint bound to another key, press that key instead.)" to player
 		play sound "entity.item.pickup" with volume 5 and pitch 1 to player
+
+	else if metadata value "ArmorPieceReady" of player = true:
+		set {_citizens} to Bukkit.getPluginManager().getPlugin("Citizens")
+		set {_magni} to {_citizens}.getNPCRegistry().getById(6748).getEntity()
+
+		if metadata value "MagniInteraction%player%" of {_magni} = "ArmorPiece":
+			set metadata value "MagniArmor" of player to chest inventory with 1 row named "Pick an Azerite Armor Piece"
+			set {_menu} to metadata value "MagniArmor" of player
+
+			set {_primaryStat} to string tag "PrimaryStat" of (custom nbt of {karta::%player%})
+
+			loop yaml node keys "Cards" in "StellarChestList":
+				if yaml value "Cards.%loop-value%.Primary Stat" in "StellarChestList" = {_primaryStat}:
+					if yaml value "Cards.%loop-value%.Playable" in "StellarChestList" = true:
+						if loop-value != {kartaname::%player%}:
+							set {_cardList::*} to {_cardList::*} and loop-value
+			
+			set {_card} to a random element of {_cardList::*}
+			remove {_card} from {_cardList::*}
+			set {_cards::*} to {_cards::*} and {_card}
+
+			set {_cards::*} to {_cards::*} and {kartaname::%player%}
+			
+			set slot 3 of {_menu} to azeriteArmor(player, "Intro Quest", "Helmet", 60, {_primaryStat}, {_cards::*})
+			set slot 4 of {_menu} to azeriteArmor(player, "Intro Quest", "Leggings", 60, {_primaryStat}, {_cards::*})
+			set slot 5 of {_menu} to azeriteArmor(player, "Intro Quest", "Boots", 60, {_primaryStat}, {_cards::*})
+			
+			open {_menu} to player
+
+on inventory click:
+	if player's current inventory = (metadata value "MagniArmor" of player):
+		if event-inventory = (metadata value "MagniArmor" of player):
+			cancel event
+			if index of event-slot is between 3 and 5:
+				give player event-slot
+				close player's inventory
+				play sound "azerite.collect" with volume 1 and pitch 1 to player
+				send "<#fdd002>Successfully picked your Azerite Armor Piece." to player
+				azeriteArmorContentUnlocked(player)
+				clear metadata value "MagniArmor" of player
+				clear metadata value "ArmorPieceReady" of player
+
 
 on press of sprint key:
 	if metadata value "MagniInteraction%player%" of (target entity of player) = "Ask":
@@ -211,11 +289,171 @@ on press of sprint key:
 		magniDialogueVoiced(player, "theplanet", 2.5 seconds)
 		magniDialogueVoiced(player, "thevery", 15 seconds)
 		magniDialogueVoiced(player, "infuse", 20 seconds)
+		magniDialogueVoiced(player, "ifyouuse", 26 seconds)
 
-		#Continue here with the heart.
-		#Next step after cinematic will be mining azerite ore in the chamber, change those to packets
-		#After that, give player a bit of azerite
-		#After that, sealing the wound, after sealing the wound award player a piece of azerite armor
+on rightclick:
+	if boolean tag "ECHeartQuestlineAzerite" of (custom nbt of clicked entity) = true:
+		if metadata value "ECHeartQuestlineMined%player%" of clicked entity != true:
+			if boolean tag "HeartOfEarthcraft" of (custom nbt of player's chestplate) is set:
+				if player's tool is tagged with minecraft tag "pickaxes":
+					azeriteOreMineHeartQuest(player, clicked entity)
+				else:
+					set {_dialogue} to "Use a pickaxe tae mine this Azerite!"
+					magniDialogue(player, {_dialogue}, 0 seconds)
+					play sound "entity.villager.ambient" with volume 1 and pitch 0.9 to player
+			else:
+				set {_dialogue} to "Equip yer Heart of Earthcraft to mine this Azerite, champion."
+				magniDialogue(player, {_dialogue}, 0 seconds)
+				play sound "entity.villager.ambient" with volume 1 and pitch 0.9 to player
+		else:
+			set {_dialogue} to "Ye already mined that Azerite ore, champion. Continue tae the next one!"
+			magniDialogue(player, {_dialogue}, 0 seconds)
+			play sound "entity.villager.ambient" with volume 1 and pitch 0.9 to player
+			
+function azeriteOreMineHeartQuest(p: player, e: entity):
+	set {_casttime} to 6 seconds
+	if metadata value "cast" of {_p} is not set:
+		set metadata value "mining" of {_p} to true
+		set metadata value "cast" of {_p} to {_casttime}
+		set {_break} to 0
+		set {_above} to 2
+		play sound "misc.mine_ore" with volume 2 and pitch 1 at (location of {_e})
+
+		while metadata value "mining" of {_p} = true:
+			if metadata value "channeling" of {_p} is set:
+				clear metadata value "channeling" of {_p}
+			if metadata value "cast" of {_p} is not set:
+				if {_p} is a player:
+					clear metadata value "mining" of {_p}
+					stop sound "azerite.chest_loop" for {_p}
+				stop
+			if {_force} is not true:
+				if distance between {_p} and {_e} > 5:
+					stop loop
+			if {_casttime} > 0 seconds:
+				set metadata value "casttimeleft" of {_p} to {_casttime}
+				if {_p} is a player:
+					send action bar "Mining... %{_casttime}% " to {_p}
+				if {_castTimeValue} is divisible by 1:
+					play sound "misc.mine_ore" with volume 2 and pitch 1 at (location of {_e})
+					make {_p} swing their hand
+					set {_break} to {_break} + 1/{_originalCastTimeValue}
+					set {_location} to location 3 above {_e}
+
+					set {_block} to diamond block
+					draw 20 of ({_block} block particle with extra value 0.04) with offset vector({_above}/5, {_above}/2, {_above}/5) at {_location}
+					set {_block} to gold block
+					draw 20 of ({_block} block particle with extra value 0.04) with offset vector({_above}/5, {_above}/2, {_above}/5) at {_location}
+					
+				wait 0.1 seconds
+				remove 0.1 seconds from {_casttime}
+				remove 0.1 from {_castTimeValue}
+			else:
+				if {_p} is a player:
+					clear metadata value "mining" of {_p}
+					send action bar "" to {_p}
+	else:
+		stop
+		
+	clear metadata value "mining" of {_p}
+	clear metadata value "cast" of {_p}
+	clear metadata value "casttime" of {_p}
+	clear metadata value "casttimeleft" of {_p}
+
+	play sound "azerite.collect" with volume 3 and pitch 1 at location of {_e}
+
+	if metadata value "ECHeartQuestline" of {_p} is not set:
+		set metadata value "ECHeartQuestline" of {_p} to 0
+
+	set metadata value "ECHeartQuestlineMined%{_p}%" of {_e} to true
+
+	set metadata value "ECHeartQuestline" of {_p} to (metadata value "ECHeartQuestline" of {_p} + 1)
+
+	if metadata value "ECHeartQuestline" of {_p} = 1:
+		magniDialogueVoiced({_p}, "thatsit")
+
+	else if metadata value "ECHeartQuestline" of {_p} = 3:
+		magniDialogueVoiced({_p}, "keepgoing")
+
+	else if metadata value "ECHeartQuestline" of {_p} = 4:
+		magniDialogueVoiced({_p}, "unleash")
+
+function sealWoundAzerite(p: player):
+	set {_casttime} to 10 seconds
+	if metadata value "cast" of {_p} is not set:
+		set metadata value "cast" of {_p} to {_casttime}
+		set metadata value "casting" of {_p} to true
+		play sound "azerite.loop" with volume 1 and pitch 1 to {_p}
+
+		while metadata value "casting" of {_p} = true:
+			if metadata value "channeling" of {_p} is set:
+				clear metadata value "channeling" of {_p}
+			if metadata value "cast" of {_p} is not set:
+				stop sound "azerite.loop" for {_p}
+				Interrupt({_p}, {_p})
+
+			if "%region at {_p}%" does not contain "chambercenter":
+				stop sound "azerite.loop" for {_p}
+				Interrupt({_p}, {_p})
+				stop 
+
+			if {_casttime} > 0 seconds:
+				set metadata value "casttimeleft" of {_p} to {_casttime}
+				if {_p} is a player:
+					send action bar "Sealing... %{_casttime}% " to {_p}
+				if {_castTimeValue} is divisible by 1:
+					play sound "azerite.collect_small" with volume 1 and pitch 1 at (location of {_p})
+					make {_p} swing their hand
+					set {_break} to {_break} + 1/{_originalCastTimeValue}
+					set {_location} to location 3 above {_e}
+
+					draw 10 of light blue dust particle of size 1 with extra value 0.01 with offset vector(1, 1, 1) at location above {_p}
+					draw 10 of yellow dust particle with extra value 0.01 with offset vector(1, 1, 1) at location above {_p}
+					
+				wait 0.1 seconds
+				remove 0.1 seconds from {_casttime}
+				remove 0.1 from {_castTimeValue}
+			else:
+				if {_p} is a player:
+					stop sound "azerite.loop" for {_p}
+					Interrupt({_p}, {_p})
+	else:
+		stop
+		
+	clear metadata value "mining" of {_p}
+	clear metadata value "cast" of {_p}
+	clear metadata value "casting" of {_p}
+	clear metadata value "casttime" of {_p}
+	clear metadata value "casttimeleft" of {_p}
+	set metadata value "ECHeartQuestline" of {_p} to 0
+
+	draw 60 of light blue dust particle of size 1 with extra value 0.01 with offset vector(1, 1, 1) at location above {_p}
+	draw 30 of yellow dust particle with extra value 0.01 with offset vector(1, 1, 1) at location above {_p}
+	clear metadata value "ECHeartQuestline" of {_p}
+	magniDialogueVoiced({_p}, "youdidit")
+	addAzerite({_p}, 350)
+
+	set {_dialogue} to "And now, a reward befittin' the deed. Let's see it put to work."
+	magniDialogue({_p}, {_dialogue}, 6 seconds)
+	
+	wait 6 seconds
+
+	set {_dialogue} to "I'll forge ye a piece o' armor from the chamber's own resonance. Ye pick. One piece, the rest ye'll earn."
+	magniDialogue({_p}, {_dialogue}, 6 seconds)
+
+	wait 10 seconds
+	set {_citizens} to Bukkit.getPluginManager().getPlugin("Citizens")
+	set {_magni} to {_citizens}.getNPCRegistry().getById(6748).getEntity()
+
+	loop 4 times:
+		play sound "block.anvil.place" with volume 3 and pitch 1 at location of {_magni}
+		make {_magni} swing their hand
+		wait 2 seconds
+	
+	set metadata value "ArmorPieceReady" of {_p} to true
+	set metadata value "MagniInteraction%{_p}%" of {_magni} to "ArmorPiece"
+	set {_dialogue} to "It's ready. Wear it proud, champion! Earthcraft's strength is now yer own!"
+	magniDialogue({_p}, {_dialogue})
 		
 
 function grantPlayerHeartOfEC(p: player):
@@ -255,9 +493,9 @@ function grantPlayerHeartOfEC(p: player):
 	heartContentUnlocked({_p})
 	send formatted "<##fdd002>You receive: <tooltip:%name of {_heart}%%nl%%join lore of {_heart} by nl%>&f <##e8ce81>[Heart of Earthcraft]" to {_p}
 
-	achievementYaml({_p}, "Heart of Earthcraft", "Have a Heart", 1)
+	achievementYaml({_p}, "Heart of Earthcraft", "Have+a+Heart", 1)
 	set yaml value "Player.OwnsHeart" in "data-%{_p}%" to true
-	
+
 	save yaml "data-%{_p}%"
 
 function heartOfECUpdate(p: player):
@@ -386,7 +624,7 @@ function addAzerite(p: player, azerite: integer):
 			send title {_title} with subtitle {_subtitle} to {_p} for 5 seconds with fade in 1.5 second and fade out 1.5 second
 			set {_heart} to {_p}'s chestplate
 			broadcast " "
-			broadcast formatted "<##fdd002>%{_p}% reached Level %{_heartLevel}% on their &f <tooltip:%name of {_heart}%%nl%%join lore of {_heart} by nl%><##e8ce81>[Heart of Earthcraft]<##fdd002>!"
+			broadcast "<##fdd002>%{_p}% reached Level %{_heartLevel}% on their &f <tooltip:%name of {_heart}%%nl%%join lore of {_heart} by nl%><##e8ce81>[Heart of Earthcraft]<##fdd002>!"
 		heartBackup({_p}, {_p}'s chestplate)
 	else:
 		set {azeriteStash::%uuid of {_p}%} to {azeriteStash::%uuid of {_p}%} + {_azerite}
