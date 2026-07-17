@@ -3,8 +3,7 @@
 
 on rightclick with a book:
     set {_book} to 1 of player's tool
-    set {_expBooks::*} to {noviceexpbook} and {apprenticeexpbook} and {adeptexpbook} and {sageexpbook}
-    if {_expBooks::*} contains {_book}:
+    if boolean tag "Experience Book" of (custom nbt of {_book}) = true:
         ExpBookMenu(player, {_book})
 
 
@@ -45,33 +44,37 @@ function ExpBookMenu(p: player, book: item):
     open metadata value "ExpBook" of {_p} to {_p}
 
 function ExpBookAddXP(p: player, book: item, exp: number, type: string):
-    teleport {_p} to {_p}'s location
-    if {_type} = "card":
-        set metadata value "ExpBook" of {_p} to chest inventory with 3 rows named uncolored name of {_book}
-        set {_index} to 0
-        loop all items in the inventory of {_p}:
-            if line 19 of lore of loop-item contains "&8Id: ":
-                if string tag "Id" of (custom nbt of loop-item) is set:
-                    set slot {_index} of metadata value "ExpBook" of {_p} to loop-item
-                    set long tag "XPBookExp" of custom nbt of slot {_index} of metadata value "ExpBook" of {_p} to {_exp}
-                    add 1 to {_index}
-        if {_index} > 0:
-            open metadata value "ExpBook" of {_p} to {_p}
-            play sound "entity.villager.work_librarian" with volume 3 and pitch 1 to {_p}
-            play sound "entity.villager.work_shepherd" with volume 3 and pitch 1 to {_p}
-        else:
-            send "&c&oThere are no Cards in your inventory." to {_p}
-    else if {_type} = "player":
-        remove {_book} from {_p}
-        set {_otxpAfterMultiplier} to addPlayerXP({_p}, {_exp})
-        if {_otxpAfterMultiplier} > {_exp}:
-            set {_xpmsg} to "&f%{_otxpAfterMultiplier}% <##d38adb>XP! &7(&fx%{_otxpAfterMultiplier}/{_exp}%&7)"
-        else:
-            set {_xpmsg} to "&f%{_otxpAfterMultiplier}% <##d38adb>XP!"
-        UpdateScoreboard({_p})
-        set {_message} to mini message from "<gradient:##faafdc:##d38adb>You gain %{_xpmsg}%"
-        send {_message} to {_p}
-        play sound "entity.player.levelup" with volume 3 and pitch 1.7 to {_p}
+    if {_p} has (1 of {_p}'s tool):
+        if {_type} = "card":
+            set metadata value "ExpBook" of {_p} to chest inventory with 3 rows named uncolored name of {_book}
+            set {_index} to 0
+            loop all items in the inventory of {_p}:
+                if line 19 of lore of loop-item contains "&8Id: ":
+                    if string tag "Id" of (custom nbt of loop-item) is set:
+                        set slot {_index} of metadata value "ExpBook" of {_p} to loop-item
+                        set long tag "XPBookExp" of custom nbt of slot {_index} of metadata value "ExpBook" of {_p} to {_exp}
+                        add 1 to {_index}
+            if {_index} > 0:
+                open metadata value "ExpBook" of {_p} to {_p}
+                play sound "entity.villager.work_librarian" with volume 3 and pitch 1 to {_p}
+                play sound "entity.villager.work_shepherd" with volume 3 and pitch 1 to {_p}
+            else:
+                send "&c&oThere are no Cards in your inventory." to {_p}
+        else if {_type} = "player":
+            remove {_book} from {_p}
+            set {_otxpAfterMultiplier} to addPlayerXP({_p}, {_exp}, "Exp Books")
+            if {_otxpAfterMultiplier} > {_exp}:
+                set {_xpmsg} to "&f%{_otxpAfterMultiplier}% <##d38adb>XP! &7(&fx%{_otxpAfterMultiplier}/{_exp}%&7)"
+            else:
+                set {_xpmsg} to "&f%{_otxpAfterMultiplier}% <##d38adb>XP!"
+            UpdateScoreboard({_p})
+            set {_message} to mini message from "<gradient:##faafdc:##d38adb>You gain %{_xpmsg}%"
+            send {_message} to {_p}
+            play sound "entity.player.levelup" with volume 3 and pitch 1.7 to {_p}
+    else:
+        send "&cYou do not have any more of this Experience Book in your inventory." to {_p}
+        play sound "block.glass.break" with volume 2 and pitch 1 to {_p}
+        close {_p}'s inventory
 
 on inventory click:
     if event-inventory = metadata value "ExpBook" of player:
