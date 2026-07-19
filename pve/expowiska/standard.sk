@@ -80,7 +80,7 @@ function ExpAreaMayanMobSpawn(p: player, loc: location):
         set {_color} to "&a"
     else if {_mobLevel} is between 20 and 29:
         set {_color} to "&e"
-    else if {_mobLevel} is 30:
+    else if {_mobLevel} is between 30 and 39:
         set {_color} to "&6"
     else if {_mobLevel} is between 40 and 50:
         set {_color} to "&c"
@@ -181,9 +181,9 @@ function ExpAreaMayanBossSpawn():
     set yaw of {_loc} to 180
     #Gets the player's Card Level to spawn a boss at an appropriate level
     loop all players where [input's world = "groveofimmemorialruins"]:
-        set {_id} to string tag "Id" of custom nbt of {karta::%loop-player%}
-        set {_cardLevel} to yaml value "Card.Level" in "activeCard-%loop-player%"
-        add {_cardLevel} to {_cardLevelTotal}
+        set {_id} to string tag "Id" of (custom nbt of {karta::%loop-player%})
+        set {_cardLevel} to int tag "Level" of (custom nbt of {karta::%loop-player%})
+        set {_cardLevelTotal} to {_cardLevelTotal} + {_cardLevel}
         add 1 to {_players}
         add loop-player to {_players::*}
 
@@ -194,8 +194,6 @@ function ExpAreaMayanBossSpawn():
     if {_mobLevel} is not a number:
         set {_mobLevel} to {_mobLevel} parsed as number
     set {_mobLevel} to rounded {_mobLevel}
-    if {_mobLevel} > 40:
-        set {_mobLevel} to 40
 
     if {_mobLevel} is between 1 and 9:
         set {_color} to "&2"
@@ -248,12 +246,14 @@ function ExpAreaMayanBossSpawn():
     onECMobSpawn({_mob})
 
     set {_id} to random 5 char string from charset `0-9` `a-z`
+
     clear boss bar with id {_id}
     set {_bar} to boss bar with id {_id} with title name of {_mob} with color {_colorBar}
     set bar style of {_bar} to segmented 20
+    
     loop {_players::*}:
-        add loop-value to {_bar}
         send "&e%name of {_mob}% has spawned!" to loop-value
+        add loop-value to {_bar}
 
     set string tag "MobType" of (custom nbt of {_mob}) to "Tall"
     set boolean tag "ECExpAreaMayanMob" of custom nbt of {_mob} to true
@@ -598,6 +598,11 @@ on quit:
         execute player command "spawn"
     else if "%player's world%" = "arcticbattlefield":
         execute player command "spawn"
+
+
+on block break:
+	if "%world of player%" = "groveofimmemorialruins":
+		cancel event
 
 #Have a list of blocks mobs can spawn on
 #Have a max amount of mobs that can spawn based on amount of players on the arena
