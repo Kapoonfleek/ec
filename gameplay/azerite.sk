@@ -950,3 +950,43 @@ function wrapAzeriteText(text: string, colour: string, limit: integer = 100) :: 
             add coloured {_line} to {_lines::*}
 
     return {_lines::*}
+
+function getAzeriteRequirementAK(heartLevel: integer, akWeeks: integer) :: integer:
+    set {_base} to azeriteRequirement({_heartLevel})
+    if {_heartLevel} <= 14:
+        return {_base}
+    set {_reduced} to rounded down ({_base} * (0.77 ^ {_akWeeks}))
+    if {_reduced} < 1000:
+        set {_reduced} to 1000
+    return {_reduced}
+
+function applyArtifactKnowledge(p: player):
+    if boolean tag "HeartOfEarthcraft" of custom nbt of {_p}'s chestplate is not set:
+        stop
+
+    set {_nbt} to custom nbt of {_p}'s chestplate
+    set {_akWeeksApplied} to int tag "AKWeeksApplied" of {_nbt}
+
+    if {_akWeeksApplied} is not set:
+        set {_akWeeksApplied} to 0
+
+    set {_missedWeeks} to {heartAKWeeks} - {_akWeeksApplied}
+    if {_missedWeeks} <= 0:
+        stop
+
+    set {_multiplier} to 0.77 ^ {_missedWeeks}
+
+    set {_currentAzerite} to int tag "Azerite" of {_nbt}
+    set {_totalAzerite} to int tag "AzeriteTotal" of {_nbt}
+    set {_heartLevel} to int tag "HeartLevel" of {_nbt}
+
+    set {_currentAzerite} to rounded down ({_currentAzerite} * {_multiplier})
+    set {_totalAzerite} to rounded down ({_totalAzerite} * {_multiplier})
+    set {_newRequirement} to getAzeriteRequirementAK({_heartLevel}, {heartAKWeeks})
+
+    set int tag "Azerite" of {_nbt} to {_currentAzerite}
+    set int tag "AzeriteTotalAfterKnowledgeReduction" of {_nbt} to {_totalAzerite}
+    set int tag "AzeriteRequired" of {_nbt} to {_newRequirement}
+    set int tag "AKWeeksApplied" of {_nbt} to {heartAKWeeks}
+
+    send "<#fdd002>Your &f <#e8ce81>Artifact Knowledge <#fdd002>increased to &fLevel %{heartAKWeeks}%<#fdd002>." to {_p}

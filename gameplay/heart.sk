@@ -41,38 +41,11 @@ function chamberOfHeartAmbience():
 
 #HEART LEVELUP SCREEN -> send player title "&f <##e8ce81>Heart of Earthcraft" with subtitle "     <##00ff00>Power Increased <##00ff00>to Level 95" for 4 seconds with 1 second fade in and 1 second fade out
 
-#<##a0dffa>	
-#1 - poziom 1
-#2 - poziom 6
-#3 - poziom 13
-#4 - poziom 21
-#5 - poziom 32
-#6 - poziom 45
-#7 - poziom 58
-#8 - poziom 69
-#9 - poziom 82
-#10 - poziom 101
-#11 - poziom 122
-#12 - poziom 145
-
-#1 - poziom 1
-#2 - poziom 6
-#3 - poziom 13
-#4 - poziom 21
-#5 - poziom 29
-#6 - poziom 36
-#7 - poziom 45
-#8 - poziom 54
-#9 - poziom 61
-#10 - poziom 70
-#11 - poziom 78
-#12 - poziom 86
-
 on chestplate change:
-	if boolean tag "HeartOfEarthcraft" of custom nbt of future event-item stack is set:
+	if boolean tag "HeartOfEarthcraft" of (custom nbt of future event-item stack) is set:
 		if metadata value "ECEngaged" of player is not set:
 			if player's gamemode != creative:
-				set {_Soulbound} to uuid tag "Soulbound" of custom nbt of event-item
+				set {_Soulbound} to uuid tag "Soulbound" of (custom nbt of event-item)
 				set {_Soulbound} to {_Soulbound} parsed as player
 				if {_Soulbound} = player:
 					SetPlayerStats(player)
@@ -81,10 +54,12 @@ on chestplate change:
 					if {azeriteStash::%uuid of player%} > 0:
 						addAzerite(player, {azeriteStash::%uuid of player%})
 						clear {azeriteStash::%uuid of player%}
+
+					applyArtifactKnowledge(player)
 			else:
 				send "&cEquipped Heart of Earthcraft has no effect. (Ensure that you are in survival mode when equipping the Heart of Earthcraft due to an existing bug with Paper.)" to player
 
-	else if boolean tag "HeartOfEarthcraft" of custom nbt of past event-item stack is set:
+	else if boolean tag "HeartOfEarthcraft" of (custom nbt of past event-item stack) is set:
 		if metadata value "ECEngaged" of player is not set:
 			if player's gamemode != creative:
 				SetPlayerStats(player)
@@ -290,6 +265,8 @@ on press of sprint key:
 		magniDialogueVoiced(player, "thevery", 15 seconds)
 		magniDialogueVoiced(player, "infuse", 20 seconds)
 		magniDialogueVoiced(player, "ifyouuse", 26 seconds)
+		wait 26 seconds
+		grantPlayerHeartOfEC(player)
 
 on rightclick:
 	if boolean tag "ECHeartQuestlineAzerite" of (custom nbt of clicked entity) = true:
@@ -478,6 +455,7 @@ function grantPlayerHeartOfEC(p: player):
 	set int tag "Azerite" of {_customNbt} to 0
 	set int tag "AzeriteTotal" of {_customNbt} to 0
 	set int tag "AzeriteRequired" of {_customNbt} to 350
+	set int tag "AKWeeksApplied" of {_customNbt} to {heartAKWeeks}
 
 	apply equippable component to {_heart}:
 		slot: chestplate slot
@@ -612,8 +590,13 @@ function addAzerite(p: player, azerite: integer):
 			add 1 to int tag "HeartLevel" of (custom nbt of {_p}'s chestplate)
 			add 2 to int tag "ItemLevel" of (custom nbt of {_p}'s chestplate)
 			set {_heartLevel} to int tag "HeartLevel" of (custom nbt of {_p}'s chestplate)
-			set int tag "AzeriteRequired" of (custom nbt of {_p}'s chestplate) to azeriteRequirement({_heartLevel})
-			set {_azeriteRequirement} to azeriteRequirement({_heartLevel})
+
+			set {_akWeeks} to int tag "AKWeeksApplied" of custom nbt of {_heart}
+			if {_akWeeks} is not set:
+				set {_akWeeks} to {heartAKWeeks}
+			set {_adjustedReq} to getAzeriteRequirementAK({_heartLevel}, {_akWeeks})
+			set int tag "AzeriteRequired" of custom nbt of {_p}'s chestplate to {_adjustedReq}
+			set {_azeriteRequirement} to {_adjustedReq}
 
 		if {_heartLevel} > {_heartLevelStart}:
 			play sound "azerite.cast" in jukebox category with volume 2 and pitch 2 to {_p}
@@ -622,7 +605,6 @@ function addAzerite(p: player, azerite: integer):
 			set {_subtitle} to "       <##00ff00>Power Increased <##00ff00>to Level %{_heartLevel}%"
 			send title {_title} with subtitle {_subtitle} to {_p} for 5 seconds with fade in 1.5 second and fade out 1.5 second
 			set {_heart} to {_p}'s chestplate
-			broadcast " "
 			broadcast formatted "<##fdd002>%{_p}% reached Level %{_heartLevel}% on their &f <tooltip:%name of {_heart}%%nl%%join lore of {_heart} by nl%><##e8ce81>[Heart of Earthcraft]<##fdd002>!"
 
 		heartOfECUpdate({_p})
