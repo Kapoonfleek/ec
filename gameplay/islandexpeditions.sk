@@ -435,6 +435,8 @@ on rightclick:
                     send "[IE] Cancelled %{_newInstance}% because a party member went offline." to console
                     deleteIslandExpeditionWorld({_newInstance}, {_instance})
                     stop
+                else:
+                    seagullsAmbientSounds(loop-value)
 
             teleport {_partyMembers::*} to {_locFlynn}
 
@@ -443,7 +445,6 @@ on rightclick:
 
             islandAIScheduleArrival({_instance}, {_island}, {_difficulty}, {_locEnemyShip})
 
-            load yaml "plugins/Skript/islandexpeditions/DialoguesIslands.yml" as "IslandsDialogues"
             set {_totalDialogues} to size of (yaml node keys "Dialogues.Arrive" in "IslandsDialogues")
             set {_arriveDialogue} to a random integer between 1 and {_totalDialogues}
 
@@ -457,8 +458,6 @@ on rightclick:
 
             set {_arriveSound} to yaml value "Dialogues.Arrive.%{_arriveDialogue}%.Sound" in "IslandsDialogues"
             set {_arriveQuote} to yaml value "Dialogues.Arrive.%{_arriveDialogue}%.Quote" in "IslandsDialogues"
-
-            unload yaml "IslandsDialogues"
 
             islandExpeditionCountdown({_locFlynn}, {_partyMembers::*}, {_instance})
             
@@ -737,6 +736,7 @@ function islandExpeditionSpawnEnemies(island: string, instance: string, w: world
             set {_mostCommonGroup} to loop-value
 
     if {_mostCommonGroup} is set:
+        broadcast {_mostCommonGroup}
         set metadata value "IslandMostCommonMobGroup" of {_w} to {_mostCommonGroup}
         set metadata value "IslandMostCommonMobGroupCount" of {_w} to {_mostCommonGroupCount}
 
@@ -776,6 +776,7 @@ function islandExpeditionSpawnEnemy(island: string, instance: string, enemy: str
     set {_allowShoot} to yaml value "%{_path}%.Allow Shoot" in "IslandEnemyList"
     set {_element} to yaml value "%{_path}%.Element" in "IslandEnemyList"
     set {_roamRange} to yaml value "%{_path}%.Roam Range" in "IslandEnemyList"
+    set {_encounterSound} to yaml value "%{_path}%.Sounds.Encounter" in "IslandEnemyList"
     set {_disguises::*} to yaml list "%{_path}%.Disguise" in "IslandEnemyList"
     if {_disguises::*} is not set:
         set {_disguises::*} to yaml value "%{_path}%.Disguise" in "IslandEnemyList"
@@ -814,6 +815,10 @@ function islandExpeditionSpawnEnemy(island: string, instance: string, enemy: str
 
     set long tag "MobDamageModifier" of {_customNbt} to islandExpeditionDifficultyDamageModifier({_difficulty})
 
+    if {_azerite} contains "-":
+        set {_azerite::*} to {_azerite} split at "-"
+        set {_azerite} to a random integer between {_azerite::1} and {_azerite::2}
+
     set metadata value "IslandExpeditionInstance" of {_mob} to {_instance}
     set metadata value "IslandEnemy" of {_mob} to true
     set metadata value "IslandEnemyName" of {_mob} to {_enemy}
@@ -824,6 +829,9 @@ function islandExpeditionSpawnEnemy(island: string, instance: string, enemy: str
     set metadata value "IslandEnemyAzerite" of {_mob} to {_azerite}
     set metadata value "ECMobSpawnLoc" of {_mob} to {_loc}
     set metadata value "IslandEnemyRoamRange" of {_mob} to {_roamRange}
+    if {_index} starts with "Rare-":
+        if {_encounterSound} is set:
+            set metadata value "IslandEnemyEncounterSound" of {_mob} to {_encounterSound}
 
     set boolean tag "CustomNameVisible" of nbt of {_mob} to false
 
@@ -939,7 +947,8 @@ function islandExpeditionTimer(p: player):
         set metadata value "IslandExpeditionTime" of {_p} to difference between {_start} and now
 
 function seagullsAmbientSounds(p: player):
-    while "%regions at {_p}%" contains "beachdocksship":
+    #"%regions at {_p}%" contains "beachdocksship"
+    while metadata value "IslandExpeditionInstance" of {_p} is set:
         set {_random} to a random integer between 1 and 14
         set {_sound} to yaml value "Sounds.Ambient.Seagulls.%{_random}%.Sound" in "IslandsSounds"
         set {_duration} to yaml value "Sounds.Ambient.Seagulls.%{_random}%.Duration" in "IslandsSounds"
@@ -947,7 +956,7 @@ function seagullsAmbientSounds(p: player):
         set {_w} to a random number between 1 and 6
         set {_wait} to "%{_w}% seconds" parsed as timespan
         wait {_duration} + {_wait}
-        stop loop if metadata value "AtDocks" of {_p} is not set
+        #stop loop if metadata value "AtDocks" of {_p} is not set
     stop sound {_sound} for {_p}
 
 function shoreAmbientSounds(p: player):
@@ -1650,6 +1659,7 @@ function islandExpeditionEnd(instance: string, winner: string, source: entity):
     islandExpeditionRegisterCompletion({_instance}, {_winner}, {_source})
 
     if {_winner} = "Ally":
+        islandExpeditionCompletionDialogue({_instance})
         send "<#3aff17>Ally team wins the Island Expedition." to all players in world "%{_world}%"
     else:
         send "<#ff1742>Enemy team wins the Island Expedition." to all players in world "%{_world}%"
@@ -1677,6 +1687,9 @@ function azeriteAddIslands(p: entity, instance: string, azeriteType: string, nod
         loop {IslandPlayers::%{_instance}%::*}:
             if loop-value != {_p}:
                 send "<#fff200>+%{_azerite}% Azerite Collected <#e8ce81>from %{_nodeName}% (%{_p}%)" to loop-value
+
+    if {_team} = "Ally":
+        islandExpeditionProgressDialogue({_instance}, {_p})
 
 function islandExpeditionMobKillAzerite(victim: entity, attacker: entity):
     if metadata value "IslandExpeditionEnded" of world of {_victim} is set:
@@ -2033,7 +2046,7 @@ function IslandMobInfoAssignments(mob: entity, enemy: string, path: string, scal
     set {_nameplate} to yaml value "Azerite Map.%{_rank}%.Nameplate" in "%{_yamlName}%"
     set {_name} to "&f%{_enemy}%"
     if {_nameplate} is set:
-        set {_name} to "<#ffd447>★ &f%{_name}%"
+        set {_name} to "%{_nameplate}% &f%{_name}%"
 
     set {_level} to int tag "ECLvl" of {_customNbt}
 
@@ -2670,38 +2683,41 @@ function islandAIChooseAbility(ai: entity, class: string, target: entity) :: str
             return loop-value
     return {_abilities::1}
 
-function islandAICastBar(progress: integer) :: text:
-    set {_bar} to ""
-    loop 10 times:
-        if loop-number <= {_progress}:
-            set {_bar} to "%{_bar}%<#ff7a24>|"
-        else:
-            set {_bar} to "%{_bar}%<#4a2b22>|"
-    return {_bar}
-
-function islandAICastDisplayLocation(ai: entity) :: location:
-    set {_customNbt} to (custom nbt of {_ai})
+function islandCastDisplayLocation(e: entity) :: location:
+    set {_customNbt} to (custom nbt of {_e})
     set {_height} to double tag "ECNameplateHeight" of {_customNbt}
     if {_height} is not set:
-        set {_height} to {_ai}.getBoundingBox().getHeight() + 0.35
-    set {_loc} to location of {_ai}
+        set {_height} to {_e}.getBoundingBox().getHeight() + 0.35
+    set {_loc} to location of {_e}
     set y of {_loc} to y of {_loc} + {_height} + 0.5
     return {_loc}
 
-function islandAICastDisplay(ai: entity, ability: string, progress: integer):
-    set {_oldId} to metadata value "IslandAICastDisplayId" of {_ai}
-    set {_partyMembers::*} to all players in world "%{_ai}'s world%"
+function islandCastDisplay(e: entity, ability: string, secondsLeft: number):
+    set {_partyMembers::*} to all players in world "%{_e}'s world%"
+    set {_id} to metadata value "IslandCastDisplayId" of {_e}
+    set {_loc} to islandCastDisplayLocation({_e})
 
-    if {_oldId} is set:
-        remove fake entity with id {_oldId} for {_partyMembers::*}
+    if {_id} is not set:
+        set {_id} to random integer between 0 and 999999
+        set metadata value "IslandCastDisplayId" of {_e} to {_id}
+        set metadata value "IslandCastDisplayLoc" of {_e} to {_loc}
+        spawn fake text display entity at {_loc} for {_partyMembers::*} with id {_id}
+    else:
+        set {_oldLoc} to metadata value "IslandCastDisplayLoc" of {_e}
+        if {_oldLoc} is set:
+            if distance between {_oldLoc} and {_loc} > 0.03:
+                set {_x} to x of {_loc} - x of {_oldLoc}
+                set {_y} to y of {_loc} - y of {_oldLoc}
+                set {_z} to z of {_loc} - z of {_oldLoc}
+                move entity with id {_id} by {_x}*4096 {_y}*4096 {_z}*4096 for {_partyMembers::*}
+                set metadata value "IslandCastDisplayLoc" of {_e} to {_loc}
+        else:
+            set metadata value "IslandCastDisplayLoc" of {_e} to {_loc}
 
-    set {_id} to random integer between 0 and 999999
-    set metadata value "IslandAICastDisplayId" of {_ai} to {_id}
-
-    spawn fake text display entity at islandAICastDisplayLocation({_ai}) for {_partyMembers::*} with id {_id}
-
-    set {_bar} to islandAICastBar({_progress})
-    set {_text} to mini message from "<#ffb347>%{_ability}%<newline>%{_bar}%"
+    if {_secondsLeft} < 0:
+        set {_secondsLeft} to 0
+    set {_secondsLeft} to round({_secondsLeft}, 1)
+    set {_text} to mini message from "<#ffb347>%{_ability}% <#ffffff>%{_secondsLeft}%s"
 
     set {_packet} to new metadata packet with id {_id}:
         display text: {_text}
@@ -2711,13 +2727,19 @@ function islandAICastDisplay(ai: entity, ability: string, progress: integer):
         display seethrough: true
     send packet {_packet} to {_partyMembers::*}
 
-function islandAIClearCastDisplay(ai: entity):
-    wait 1 tick
-    set {_id} to metadata value "IslandAICastDisplayId" of {_ai}
+function islandClearCastDisplay(e: entity):
+    set {_id} to metadata value "IslandCastDisplayId" of {_e}
     if {_id} is set:
-        set {_partyMembers::*} to all players in world "%{_ai}'s world%"
+        set {_partyMembers::*} to all players in world "%{_e}'s world%"
         remove fake entity with id {_id} for {_partyMembers::*}
-    clear metadata value "IslandAICastDisplayId" of {_ai}
+    clear metadata value "IslandCastDisplayId" of {_e}
+    clear metadata value "IslandCastDisplayLoc" of {_e}
+
+function islandAICastDisplay(ai: entity, ability: string, secondsLeft: number):
+    islandCastDisplay({_ai}, {_ability}, {_secondsLeft})
+
+function islandAIClearCastDisplay(ai: entity):
+    islandClearCastDisplay({_ai})
 
 function islandAICancelCast(ai: entity):
     islandAIClearCastDisplay({_ai})
@@ -2742,21 +2764,18 @@ function islandAIUseAbility(ai: entity, target: entity, ability: string, surge: 
     set metadata value "IslandAICastingStarted" of {_ai} to now
 
     if {_surge} is not true:
-        set {_castTime} to yaml value "Classes.%{_class}%.Abilities.%{_ability}%.Cast Time" in "IslandAITeams"
+        set {_castSeconds} to yaml value "Classes.%{_class}%.Abilities.%{_ability}%.Cast Time" in "IslandAITeams"
         set {_sounds::*} to yaml node keys "Classes.%{_class}%.Abilities.%{_ability}%.Sounds.Precast" in "IslandAITeams"
 
-        if {_castTime} is set:
+        if {_castSeconds} is set:
             if {_sounds::*} is set:
                 loop {_sounds::*}:
                     set {_sound} to yaml value "Classes.%{_class}%.Abilities.%{_ability}%.Sounds.Precast.%loop-value%.Name" in "IslandAITeams"
                     set {_pitch} to yaml value "Classes.%{_class}%.Abilities.%{_ability}%.Sounds.Precast.%loop-value%.Pitch" in "IslandAITeams"
                     play sound {_sound} with volume 2.25 and pitch {_pitch} at {_ai}
 
-            set {_castTime} to "%{_castTime}% seconds" parsed as timespan
-            set {_ticks} to "%{_castTime}%"
-            replace all " seconds" and " second" in {_ticks} with ""
-            set {_ticks} to ({_ticks} parsed as number) * 10
-            islandAICastDisplay({_ai}, {_ability}, 0)
+            set {_ticks} to {_castSeconds} * 10
+            islandAICastDisplay({_ai}, {_ability}, {_castSeconds})
 
             loop {_ticks} times:
                 if metadata value "IslandExpeditionEnded" of world of {_ai} is set:
@@ -2773,9 +2792,10 @@ function islandAIUseAbility(ai: entity, target: entity, ability: string, surge: 
                     stop
                 if metadata value "IslandAICasting" of {_ai} is not set:
                     stop
+
                 clear target of {_ai}
-                set {_progress} to round((loop-number / {_ticks}) * 10, 0)
-                islandAICastDisplay({_ai}, {_ability}, {_progress})
+                set {_secondsLeft} to {_castSeconds} - (loop-number / 10)
+                islandAICastDisplay({_ai}, {_ability}, {_secondsLeft})
                 draw 6 of flame particle with extra value 0.02 with offset vector(0.25, 0.45, 0.25) at location 1.5 above {_ai}
                 wait 0.1 seconds
 
@@ -2790,7 +2810,6 @@ function islandAIUseAbility(ai: entity, target: entity, ability: string, surge: 
 
     if {_surge} is not true:
         set {_cooldown} to yaml value "Classes.%{_class}%.Abilities.%{_ability}%.Cooldown" in "IslandAITeams"
-
         create cooldown "IslandAI%uuid of {_ai}%%{_ability}%" for "%{_cooldown}% seconds" parsed as timespan
 
     clear target of {_ai}
@@ -2831,3 +2850,50 @@ function islandAICoastSpawnLocation(shipLoc: location, maxRadius: integer = 80) 
 
 function islandAICancelChannel(ai: entity):
     clear metadata value "IslandAIChannelStarted" of {_ai}
+
+function islandExpeditionProgressDialogue(instance: string, source: entity):
+    set {_required} to {azeriteRequired::%{_instance}%}
+
+    set {_ally} to {azeriteCollectedAlly::%{_instance}%}
+    if {_ally} is not set:
+        set {_ally} to 0
+
+    set {_world} to world of {_source}
+
+    if {_ally} >= {_required} * 0.5:
+        if metadata value "IslandProgressHalfwayDialogue" of {_world} is not set:
+            set metadata value "IslandProgressHalfwayDialogue" of {_world} to true
+            islandExpeditionDialogue({_instance}, "Dialogues.Progress.Halfway")
+
+    if {_ally} >= {_required} * 0.8:
+        if metadata value "IslandProgressAlmostDoneDialogue" of {_world} is not set:
+            set metadata value "IslandProgressAlmostDoneDialogue" of {_world} to true
+            islandExpeditionDialogue({_instance}, "Dialogues.Progress.Almost Done")
+
+function islandExpeditionCompletionDialogue(instance: string):
+    islandExpeditionDialogue({_instance}, "Dialogues.Completion")
+
+function islandExpeditionDialogue(instance: string, path: string):
+    set {_partyMembers::*} to {IslandPlayers::%{_instance}%::*}
+    if {_partyMembers::*} is not set:
+        stop
+
+    set {_sounds::*} to yaml node keys "%{_path}%" in "IslandsDialogues"
+    set {_size} to size of {_sounds::*}
+    if {_size} <= 0:
+        unload yaml "IslandsDialogues"
+        stop
+
+    set {_int} to a random integer between 1 and {_size}
+
+    set {_sound} to yaml value "%{_path}%.%{_int}%.Sound" in "IslandsDialogues"
+    set {_quote} to yaml value "%{_path}%.%{_int}%.Quote" in "IslandsDialogues"
+
+    if {_sound} is set:
+        play sound {_sound} with volume 2 and pitch 1 to {_partyMembers::*}
+
+    if {_quote} is set:
+        send "&eFlynn Fairwind says: %{_quote}%" to {_partyMembers::*}
+
+function islandExpeditionAIDefeatedDialogue(instance: string):
+    islandExpeditionDialogue({_instance}, "Dialogues.AI Defeated")
