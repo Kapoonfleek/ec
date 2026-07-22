@@ -68,6 +68,8 @@ function newCardAssignments(p: player, card: item, ele: string, prim: string, ic
 
 	set int tag "StellarPower" of {_customNbt} to 0
 
+	set int tag "Version" of {_customNbt} to 830
+
 
 	return {_card}
 	
@@ -77,6 +79,10 @@ on rightclick:
 			set boolean tag "Card" of (custom nbt of player's tool) to true
 	else:
 		if string tag "Id" of (custom nbt of player's tool) is set:
+
+			if int tag "Version" of (custom nbt of player's tool) < 830:
+				stop
+
 			cancel event if clicked entity is not item frame
 			if target of player is a player:
 				if target of player is not online:
@@ -1564,10 +1570,10 @@ function getCardElement(card: text) :: text:
 
 function AbilityUpgradeCostLore(p: player, card: text, level: integer) :: text:
 	set {_prismCost} to AbilityUpgradePrismCost({_level})
-	set {_essenceCost} to 40 + (({_level} - 1) * 10)
+	set {_essenceCost} to 30 + (({_level} - 1) * 10)
 	set {_fluxCost} to 500 * {_level}
 	set {_peridotCost} to 30 * {_level}
-	set {_cardStoneCost} to 200 * {_level}
+	set {_cardStoneCost} to 100 * {_level}
 
 	set {_element} to getCardElement({_card})
 	set {_primCol} to getPrimaryCardColour({_p})
@@ -1579,10 +1585,10 @@ function AbilityUpgradeCostLore(p: player, card: text, level: integer) :: text:
 
 function AbilityUpgradeCanAfford(p: player, card: text, level: integer) :: boolean:
 	set {_prismCost} to AbilityUpgradePrismCost({_level})
-	set {_essenceCost} to 40 + (({_level} - 1) * 10)
+	set {_essenceCost} to 30 + (({_level} - 1) * 10)
 	set {_fluxCost} to 500 * {_level}
 	set {_peridotCost} to 30 * {_level}
-	set {_cardStoneCost} to 200 * {_level}
+	set {_cardStoneCost} to 100 * {_level}
 
 	set {_peridotItem} to yaml value "Peridot.Item" in "ItemList"
 	set {_element} to getCardElement({_card})
@@ -1601,9 +1607,10 @@ function AbilityUpgradeCanAfford(p: player, card: text, level: integer) :: boole
 
 function AbilityUpgradeTakeCost(p: player, card: text, level: integer):
 	set {_prismCost} to AbilityUpgradePrismCost({_level})
-	set {_essenceCost} to 40 + (({_level} - 1) * 10)
+	set {_essenceCost} to 30 + (({_level} - 1) * 10)
 	set {_fluxCost} to 500 * {_level}
 	set {_peridotCost} to 30 * {_level}
+	set {_cardStoneCost} to 100 * {_level}
 	set {_peridotItem} to yaml value "Peridot.Item" in "ItemList"
 	set {_element} to getCardElement({_card})
 	set {_essenceItem} to yaml value "%{_element}% Essence.Item" in "ItemList"
@@ -1611,6 +1618,12 @@ function AbilityUpgradeTakeCost(p: player, card: text, level: integer):
 	remove {_essenceCost} of {_essenceItem} from {_p}'s inventory
 	remove {_peridotCost} of {_peridotItem} from {_p}'s inventory
 	set {cosmicflux::%{_p}%} to {cosmicflux::%{_p}%} - {_fluxCost}
+	loop all items in the inventory of {_p}:
+		if boolean tag "Cardstone" of (custom nbt of loop-item) = true:
+			if string tag "Card" of (custom nbt of loop-item) = {_card}:
+				set {_cardstone} to loop-item
+				remove {_cardStoneCost} of {_cardstone} from {_p}'s inventory
+				stop loop
 
 function AbilityUpgradeApply(p: player, card: text, ability: text, level: integer):
 	loop yaml node keys "Card.%{_card}%.%{_ability}%.Upgrades.Levels.%{_level}%" in "SpellList":
