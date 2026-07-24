@@ -467,7 +467,7 @@ on inventory click:
 								add 1 to int tag "StellarPower" of custom nbt of player's tool
 
 							save yaml "activeCardConstellation-%player%"
-							unload yaml save yaml "activeCardConstellation-%player%"
+							unload yaml "activeCardConstellation-%player%"
 
 							set {_constellations} to yaml value "Player.Total Constellations" in "data-%player%"
 							set {_stellarPowerCount} to yaml value "Player.Total Stellar Power" in "data-%player%"
@@ -742,6 +742,8 @@ on rightclick on entity:
 		openEssenceVendor(player)
 	else if {_npcId} = 6796:
 		openCurioVendor(player)
+	else if {_npcId} = 6860:
+		openScrapWoodVendor(player)
 
 function openCurioVendor(p: player):
 	set metadata tag "CurioVendor" of {_p} to chest inventory with 6 rows named "Curio Vendor"
@@ -1007,7 +1009,7 @@ on inventory click:
 
 						clear compound tag "Price" of (custom nbt of {_item})
 
-						giveItem(player, 1 of {_item})
+						giveItem(player's uuid, 1 of {_item})
 						play sound "entity.experience_orb.pickup" with volume 1 and pitch 1 to player
 						play sound "entity.villager.yes" with volume 3 and pitch 1 to player
 					else:
@@ -1028,7 +1030,7 @@ on inventory click:
 					if {_value} < 1:
 						if player has 2 of {_item}:
 							remove 2 of {_item} from player's inventory
-							giveItem(player, 1 of {_klejnot})
+							giveItem(player's uuid, 1 of {_klejnot})
 							play sound "entity.experience_orb.pickup" with volume 1 and pitch 1 to player
 							play sound "entity.villager.yes" with volume 3 and pitch 1 to player
 						else:
@@ -1038,7 +1040,7 @@ on inventory click:
 						if player has 1 of {_item}:
 							set {_klejnotAmount} to rounded down {_value}
 							remove 1 of {_item} from player's inventory
-							giveItem(player, {_klejnotAmount} of {_klejnot})
+							giveItem(player's uuid, {_klejnotAmount} of {_klejnot})
 							play sound "entity.experience_orb.pickup" with volume 1 and pitch 1 to player
 							play sound "entity.villager.yes" with volume 3 and pitch 1 to player
 						else:
@@ -1053,7 +1055,7 @@ on inventory click:
 					if {_value} < 1:
 						if player has 1 of {_klejnot}:
 							remove 1 of {_klejnot} from player's inventory
-							giveItem(player, 2 of {_item})
+							giveItem(player's uuid, 2 of {_item})
 							play sound "entity.experience_orb.pickup" with volume 1 and pitch 1 to player
 							play sound "entity.villager.yes" with volume 3 and pitch 1 to player
 						else:
@@ -1063,7 +1065,7 @@ on inventory click:
 						set {_klejnotCost} to rounded down {_value}
 						if player has {_klejnotCost} of {_klejnot}:
 							remove {_klejnotCost} of {_klejnot} from player's inventory
-							giveItem(player, 1 of {_item})
+							giveItem(player's uuid, 1 of {_item})
 							play sound "entity.experience_orb.pickup" with volume 1 and pitch 1 to player
 							play sound "entity.villager.yes" with volume 3 and pitch 1 to player
 						else:
@@ -1082,7 +1084,7 @@ on inventory click:
 
 				if player has 1 of {_klejnotOld}:
 					remove 1 of {_klejnotOld} from player's inventory
-					giveItem(player, {_klejnot})
+					giveItem(player's uuid, {_klejnot})
 					play sound "entity.experience_orb.pickup" with volume 1 and pitch 1 to player
 					play sound "entity.villager.yes" with volume 3 and pitch 1 to player
 				else:
@@ -1110,7 +1112,7 @@ on inventory click:
 							clear boolean tag "EssenceVendorItem" of (custom nbt of {_item})
 							clear string tag "PriceEssenceKey" of (custom nbt of {_item})
 
-							giveItem(player, 1 of {_item})
+							giveItem(player's uuid, 1 of {_item})
 							play sound "entity.experience_orb.pickup" with volume 1 and pitch 1 to player
 							play sound "entity.villager.yes" with volume 3 and pitch 1 to player
 						else:
@@ -1137,8 +1139,8 @@ on inventory click:
 								set {_peridotAmount} to 6*{_amount}
 
 								set player's cursor slot to air
-								giveItem(player, {_peridotAmount} of {_peridot})
-								giveItem(player, {_amount} of {_topaz})
+								giveItem(player's uuid, {_peridotAmount} of {_peridot})
+								giveItem(player's uuid, {_amount} of {_topaz})
 
 								play sound "entity.experience_orb.pickup" with volume 1 and pitch 1 to player
 								play sound "entity.villager.yes" with volume 3 and pitch 1 to player
@@ -1151,3 +1153,50 @@ on inventory click:
 					else:
 						play sound "entity.villager.no" with volume 1 and pitch 1 to player
 						send "&cPlace a Curio on your cursor first." to player
+	else if event-inventory = metadata tag "ScrapWoodVendor" of player:
+		if player's current inventory = metadata tag "ScrapWoodVendor" of player:
+			cancel event
+			if event-slot is not air:
+				if boolean tag "ScrapWoodVendorChest" of (custom nbt of event-slot) is true:
+					set {_scrapWood} to acacia button named "<#855441>Scrap Wood" with lore "<#db7046>Component%nl%&7This material is found in%nl%&7empty chests.%nl%&7Exchangeable for Chests."
+					if player has 3 of {_scrapWood}:
+						remove 3 of {_scrapWood} from player's inventory
+						giveItem(player's uuid, {skrzynka})
+						play sound "entity.experience_orb.pickup" with volume 1 and pitch 1 to player
+						play sound "entity.villager.yes" with volume 3 and pitch 1 to player
+					else:
+						play sound "entity.villager.no" with volume 1 and pitch 1 to player
+						send "&cYou do not have enough Scrap Wood." to player
+				else if boolean tag "ScrapWoodVendorLuxurious" of (custom nbt of event-slot) is true:
+					set {_scrapWood} to acacia button named "<#855441>Scrap Wood" with lore "<#db7046>Component%nl%&7This material is found in%nl%&7empty Luxurious Chests.%nl%&7Exchangeable for Luxurious Chests."
+					if player has 3 of {_scrapWood}:
+						remove 3 of {_scrapWood} from player's inventory
+						giveItem(player's uuid, {skrzynkaluksusowa})
+						play sound "entity.experience_orb.pickup" with volume 1 and pitch 1 to player
+						play sound "entity.villager.yes" with volume 3 and pitch 1 to player
+					else:
+						play sound "entity.villager.no" with volume 1 and pitch 1 to player
+						send "&cYou do not have enough Scrap Wood." to player
+
+function openScrapWoodVendor(p: player):
+	set metadata tag "ScrapWoodVendor" of {_p} to chest inventory with 3 rows named "Scrap Wood Exchange"
+	set {_menu} to metadata tag "ScrapWoodVendor" of {_p}
+
+	set {_scrapWood} to acacia button named "<#855441>Scrap Wood" with lore "<#db7046>Component%nl%&7This material is found in%nl%&7empty chests.%nl%&7Exchangeable for Chests."
+
+	set slot 11 of {_menu} to {_scrapWood}
+	add " " to lore of slot 11 of {_menu}
+	add "&7Trade &f3x %name of {_scrapWood}% &7for:" to lore of slot 11 of {_menu}
+	add "&f1x %name of {skrzynka}%" to lore of slot 11 of {_menu}
+	add "&eClick to exchange." to lore of slot 11 of {_menu}
+	set boolean tag "ScrapWoodVendorChest" of (custom nbt of slot 11 of {_menu}) to true
+
+	set slot 15 of {_menu} to {_scrapWood}
+	add " " to lore of slot 15 of {_menu}
+	add "&7Trade &f3x %name of {_scrapWood}% &7for:" to lore of slot 15 of {_menu}
+	add "&f1x %name of {skrzynkaluksusowa}%" to lore of slot 15 of {_menu}
+	add "&eClick to exchange." to lore of slot 15 of {_menu}
+	set boolean tag "ScrapWoodVendorLuxurious" of (custom nbt of slot 15 of {_menu}) to true
+
+	play sound "entity.villager.ambient" with volume 4 and pitch 1 to {_p}
+	open {_menu} to {_p}
