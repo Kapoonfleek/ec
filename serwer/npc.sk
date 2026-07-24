@@ -455,20 +455,22 @@ on inventory click:
 							teleport the player to player's location
 							set {_idCard} to string tag "Id" of custom nbt of player's tool
 
-							set {_constellation} to yaml value "Card.Constellation" in "activeCard-%player%"
+							load yaml "plugins/Skript/playerdata/karty/%{_name}%/%{_idCard}%.yml" as "activeCardConstellation-%player%"
+
+							set {_constellation} to yaml value "Card.Constellation" in "activeCardConstellation-%player%"
 							if {_constellation} < 6:
 								add 1 to {_constellation}
-								set yaml value "Card.Constellation" in "activeCard-%player%" to {_constellation}
+								set yaml value "Card.Constellation" in "activeCardConstellation-%player%" to {_constellation}
 								set {_slot} to slot (9 + {_constellation}) of metadata tag "kartagui" of player
 								set boolean tag "Constellation;%uncolored name of {_slot}%" of custom nbt of player's tool to true
 							else:
 								add 1 to int tag "StellarPower" of custom nbt of player's tool
 
-							save yaml "activeCard-%player%"
+							save yaml "activeCardConstellation-%player%"
+							unload yaml save yaml "activeCardConstellation-%player%"
 
-							load yaml "plugins/Skript/playerdata/%uuid of player%.yml" as "playerDataConstellation-%player%"
-							set {_constellations} to yaml value "Player.Total Constellations" in "playerDataConstellation-%player%"
-							set {_stellarPowerCount} to yaml value "Player.Total Stellar Power" in "playerDataConstellation-%player%"
+							set {_constellations} to yaml value "Player.Total Constellations" in "data-%player%"
+							set {_stellarPowerCount} to yaml value "Player.Total Stellar Power" in "data-%player%"
 
 							if {_constellations} is not set:
 								set {_constellations} to 0
@@ -482,8 +484,7 @@ on inventory click:
 								add 1 to {_stellarPowerCount}
 								set yaml value "Player.Total Stellar Power" in "playerData-%player%" to {_stellarPowerCount}
 
-							save yaml "playerDataConstellation-%player%"
-							unload yaml "playerDataConstellation-%player%"
+							save yaml "data-%player%"
 							play sound "entity.player.levelup" with volume 3 and pitch 0.1 at player
 							play sound "entity.firework_rocket.launch" with volume 3 and pitch 0.42 at player
 							if 6 >= {_constellation}:
@@ -739,6 +740,31 @@ on rightclick on entity:
 		openPeculiarExchange(player)
 	else if {_npcId} = 6899:
 		openEssenceVendor(player)
+	else if {_npcId} = 6796:
+		openCurioVendor(player)
+
+function openCurioVendor(p: player):
+	set metadata tag "CurioVendor" of {_p} to chest inventory with 6 rows named "Curio Vendor"
+	set {_menu} to metadata tag "CurioVendor" of {_p}
+
+	set {_peridot} to yaml value "Peridot.Item" in "ItemList"
+	set {_topaz} to yaml value "Topaz.Item" in "ItemList"
+
+	set {_curioKeys::*} to yaml list "Chest.Curio.Items" in "ChestList"
+	set {_slot} to 0
+
+	loop {_curioKeys::*}:
+		set {_curio} to yaml value "%loop-value%.Item" in "ItemList"
+		add " " to lore of {_curio}
+		add "&eShowcase item." to lore of {_curio}
+		set boolean tag "CurioVendorItem" of (custom nbt of {_curio}) to true
+		set slot {_slot} of {_menu} to {_curio}
+		set {_slot} to {_slot} + 1
+
+	set slot 49 of {_menu} to gray stained glass pane named "&7Sell a Curio" with lore "&7Place a Curio in this spot and%nl%&7click here to exchange it for%nl%&7&f6x %name of {_peridot}% &7& &f1x %name of {_topaz}%&7."
+
+	play sound "entity.villager.ambient" with volume 4 and pitch 1 to {_p}
+	open {_menu} to {_p}
 
 function setEssenceVendorRotation():
     loop yaml node keys "" in "ItemList":
@@ -1093,4 +1119,35 @@ on inventory click:
 					else:
 						play sound "entity.villager.no" with volume 1 and pitch 1 to player
 						send "&cYou do not have the required essence." to player
+	else if event-inventory = metadata tag "CurioVendor" of player:
+		if player's current inventory = metadata tag "CurioVendor" of player:
+			cancel event
+			if event-slot is not air:
+				if index of event-slot = 49:
+					if player's cursor slot is not air:
+						set {_curios::*} to yaml list "Chest.Curio.Items" in "ChestList"
+						loop {_curios::*}:
+							set {_curio} to yaml value "%loop-value%.Item" in "ItemList"
+							if {_curio} = (1 of player's cursor slot):
+								set {_bool} to true
+								set {_amount} to item amount of player's cursor slot
+								set {_peridot} to yaml value "Peridot.Item" in "ItemList"
+								set {_topaz} to yaml value "Topaz.Item" in "ItemList"
 
+								set {_peridotAmount} to 6*{_amount}
+
+								set player's cursor slot to air
+								giveItem(player, {_peridotAmount} of {_peridot})
+								giveItem(player, {_amount} of {_topaz})
+
+								play sound "entity.experience_orb.pickup" with volume 1 and pitch 1 to player
+								play sound "entity.villager.yes" with volume 3 and pitch 1 to player
+
+								send "&6Amanda >> Successfulyl sold &f%{_amount}% &6of &e%loop-value% &6for &f%{_peridotAmount}% %name of {_peridot}% &6and &f%{_amount}% %name of {_topaz}%&6!" to player
+								stop loop
+						if {_bool} is not set:
+							play sound "entity.villager.no" with volume 1 and pitch 1 to player
+							send "&cThat item is not a Curio." to player
+					else:
+						play sound "entity.villager.no" with volume 1 and pitch 1 to player
+						send "&cPlace a Curio on your cursor first." to player
