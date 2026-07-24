@@ -59,37 +59,64 @@ function getDayMonth(input: string) :: number:
 		set {_return} to {_yearMonthDay::2}
 	return {_return}
 
-function ItemClaimCount(p: player, items: strings) :: integer:
-	set {_totalCount} to 0
-	loop {_items::*}:
-		set {_itemAmount} to yaml value "Player.Item Claim.%loop-value%.Amount" in "ItemClaim-%{_p}%"
-		set {_totalCount} to ({_totalCount} + {_itemAmount})
-
-	return {_totalCount}
-
-function giveItem(p: player, item: item, new: boolean = true):
+function giveItem(p: string, item: item, new: boolean = true):
 	set {_itemAmount} to (item amount of {_item})
 
-	set {_give::*} to give or return {_item} to {_p}
+	set {_player} to {_p} parsed as player
+	if {_player} is not set:
+		set {_player} to {_p} parsed as offline player
 
-	if {_give::*} is set:
-		if "ItemClaim-%{_p}%" is not loaded:
-			load yaml "plugins/Skript/playerdata/ItemClaim/%uuid of {_p}%" as "ItemClaim-%{_p}%"
-		
-		set {_items::*} to yaml node keys "Player.Item Claim" in "ItemClaim-%{_p}%"
-		set {_nextItem} to ((size of ({_items::*}) + 1))
-		
-		set {_totalCount} to ItemClaimCount({_p}, {_items::*})
-		set {_overflowAmount} to (item amount of {_give::1})
+	if {_player} is alive:
 
-		set yaml value "Player.Item Claim.%{_nextItem}%.Item" in "ItemClaim-%{_p}%" to (1 of {_item})
-		set yaml value "Player.Item Claim.%{_nextItem}%.Amount" in "ItemClaim-%{_p}%" to {_overflowAmount}
+		set {_give::*} to give or return {_item} to {_player}
 
-		if {_new} = true:
-			send "&f%{_give::1}% %uncolored (name of {_item})% &ahas been added to ItemClaim!" to {_p}
-		send "&aYou have &f%({_totalCount} + {_overflowAmount})% &aunclaimed items." to {_p}
+		set {_itemName} to name of {_item}
+		if {_itemName} is not set:
+			set {_itemName} to 1 of {_item}
 
-	save yaml "ItemClaim-%{_p}%"
+		if {_give::*} is set:
+			if "ItemClaim-%{_player}%" is not loaded:
+				load yaml "plugins/Skript/playerdata/ItemClaim/%uuid of {_player}%" as "ItemClaim-%{_player}%"
+
+			set {_items::*} to yaml node keys "Player.Item Claim" in "ItemClaim-%{_player}%"
+			set {_nextItem} to 1
+			if {_items::*} is set:
+				set {_nextItem} to (size of {_items::*}) + 1
+
+			set {_totalCount} to 0
+			if {_items::*} is set:
+				loop {_items::*}:
+					set {_count} to yaml value "Player.Item Claim.%loop-value%.Amount" in "ItemClaim-%{_player}%"
+					if {_count} is set:
+						set {_totalCount} to {_totalCount} + {_count}
+
+			set {_overflowAmount} to 0
+			loop {_give::*}:
+				set {_overflowAmount} to {_overflowAmount} + (item amount of loop-value)
+
+			set yaml value "Player.Item Claim.%{_nextItem}%.Item" in "ItemClaim-%{_player}%" to (1 of {_item})
+			set yaml value "Player.Item Claim.%{_nextItem}%.Amount" in "ItemClaim-%{_player}%" to {_overflowAmount}
+
+			if {_new} = true:
+				send "&f%{_overflowAmount}%x %{_itemName}% &ahas been added to ItemClaim!" to {_player}
+			send "&aYou have &f%({_totalCount} + {_overflowAmount})% &aunclaimed items." to {_player}
+
+		save yaml "ItemClaim-%{_player}%"
+
+	else:
+		if "ItemClaim-%{_player}%" is not loaded:
+			load yaml "plugins/Skript/playerdata/ItemClaim/%{_p}%" as "ItemClaim-%{_player}%"
+
+		set {_items::*} to yaml node keys "Player.Item Claim" in "ItemClaim-%{_player}%"
+		set {_nextItem} to 1
+		if {_items::*} is set:
+			set {_nextItem} to (size of {_items::*}) + 1
+
+		set yaml value "Player.Item Claim.%{_nextItem}%.Item" in "ItemClaim-%{_player}%" to (1 of {_item})
+		set yaml value "Player.Item Claim.%{_nextItem}%.Amount" in "ItemClaim-%{_player}%" to {_itemAmount}
+
+		save yaml "ItemClaim-%{_player}%"
+
 
 import:
 	org.bukkit.map.MinecraftFont
@@ -460,9 +487,10 @@ function cardLevelup(p: player, xp: number, e: entity):
 	if {_exp} > 0:
 		if {_dif} < 20:
 			#add 0.2/({_xp}*(1-(0.05*{_dif}))) to {exp::%{_p}%}
-			addPlayerXP({_p}, 0.2*({_exp}*(1-(0.05*{_dif}))))
+			set {_playerXp} to addPlayerXP({_p}, 0.2*({_exp}*(1-(0.05*{_dif}))))
 		else:
 			add 0 to {exp::%{_p}%}
+			set {_playerXp} to 0
 		play sound "minecraft:entity.experience_orb.pickup" with volume 2 and pitch 1 to {_p}
 		#broadcast "%{exp::%{_p}%}% xp player"
 	UpdateScoreboard({_p})
@@ -490,9 +518,9 @@ function cardLevelup(p: player, xp: number, e: entity):
 	save yaml "activeCard-%{_p}%"
 
 	if {_modifier} > 1:
-		send "&e+%{_exp}% XP from %name of {_e}% &e(&fx%{_modifier}%&e)" to {_p}
+		send "&e+%{_exp}% XP from %name of {_e}% &e(&fx%{_modifier}%&e) &7(+%{_playerXp}% Player XP)" to {_p}
 	else:
-		send "&e+%{_exp}% XP from %name of {_e}%" to {_p}
+		send "&e+%{_exp}% XP from %name of {_e}% &7(+%{_playerXp}% Player XP)" to {_p}
 
 	loop all items in the inventory of {_p}:
 		if (string tag "Id" of (custom nbt of loop-item)) = (string tag "Id" of (custom nbt of {karta::%{_p}%})):
@@ -584,8 +612,11 @@ function SetPlayerStats(p: player):
 			set {_armorHealth} to int tag "Stats;Health" of (custom nbt of loop-value)
 			set {_armorPrimary} to int tag "Stats;%{_primaryStatTypeArmor}%" of (custom nbt of loop-value)
 
-	set {primarystat::%{_p}%} to {_primarystat} + {_armorPrimary}
-	set {health::%{_p}%} to {_health} + {_healthHeart} + {_armorHealth}
+			set {_primarystat} to {_primarystat} + {_armorPrimary}
+			set {_health} to {_health} + {_armorHealth}
+
+	set {primarystat::%{_p}%} to {_primarystat}
+	set {health::%{_p}%} to {_health} + {_healthHeart}
 	set {damage::%{_p}%} to {_damage}
 	set {resistance::%{_p}%} to {_resistance}
 	set {mobility::%{_p}%} to {_mobility}

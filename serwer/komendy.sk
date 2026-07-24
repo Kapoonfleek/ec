@@ -16,10 +16,19 @@ command /nbt [<text>]:
 
 command /itemclaim [<text>]:
 	trigger:
-		set {_items::*} to yaml node keys "Player.Item Claim" in "ItemClaim-%player%"
-		set {_totalCount} to ItemClaimCount(player, {_items::*})
+		if yaml "ItemClaim-%player%" is not loaded:
+			load yaml "plugins/Skript/playerdata/ItemClaim/%uuid of player%" as "ItemClaim-%player%"
 
-		set {_uniqueItems} to size of {_items::*}
+		set {_items::*} to yaml node keys "Player.Item Claim" in "ItemClaim-%player%"
+		set {_totalCount} to 0
+		set {_uniqueItems} to 0
+
+		if {_items::*} is set:
+			loop {_items::*}:
+				set {_count} to yaml value "Player.Item Claim.%loop-value%.Amount" in "ItemClaim-%player%"
+				set {_totalCount} to {_totalCount} + {_count}
+		
+			set {_uniqueItems} to size of {_items::*}
 
 		if arg-1 is not set:
 			send "&aYou have &f%{_totalCount}% &aunclaimed items." to player
@@ -29,30 +38,31 @@ command /itemclaim [<text>]:
 				play sound "block.chest.close" with volume 5 and pitch 1 to player
 
 		if arg-1 = "claim":
-			loop {_items::*}:
-				set {_item} to yaml value "Player.Item Claim.%loop-value%.Item" in "ItemClaim-%player%"
-				set {_itemAmount} to yaml value "Player.Item Claim.%loop-value%.Amount" in "ItemClaim-%player%"
+			if {_items::*} is set:
+				loop {_items::*}:
+					set {_item} to yaml value "Player.Item Claim.%loop-value%.Item" in "ItemClaim-%player%"
+					set {_itemAmount} to yaml value "Player.Item Claim.%loop-value%.Amount" in "ItemClaim-%player%"
 
-				set {_i::*} to give or return ({_itemAmount} of {_item}) to player
-				if {_i::*} is set:
-					drop ((item amount of {_i::1}) of {_item}) at player
-				clear {_i::*}
+					set {_i::*} to give or return ({_itemAmount} of {_item}) to player
+					if {_i::*} is set:
+						loop {_i::*}:
+							drop (1 of loop-value-2) at player
+					clear {_i::*}
 
-				clear yaml value "Player.Item Claim.%loop-value%" in "ItemClaim-%player%"
+					clear yaml value "Player.Item Claim.%loop-value%" in "ItemClaim-%player%"
 
-				if (name of {_item}) is set:
-					send "&aYou claimed &f%{_itemAmount}% %name of {_item}%&a!" to player
-				else:
-					send "&aYou claimed &f%{_itemAmount}% %{_item}%&a!" to player
+					if (name of {_item}) is set:
+						send "&aYou claimed &f%{_itemAmount}%x %name of {_item}%&a!" to player
+					else:
+						send "&aYou claimed &f%{_itemAmount}%x %{_item}%&a!" to player
 
-			if {_amount} = 0:
+				send "&aYou claimed &f%{_totalCount}% &aitems!" to player
+				save yaml "ItemClaim-%player%"
+				loop {_uniqueItems} times:
+					play sound "entity.item.pickup" with volume 5 and pitch 0.7 at player
+					wait 3 ticks
+			else:
 				play sound "block.chest.close" with volume 5 and pitch 1 to player
-				
-			send "&aYou claimed &f%{_totalCount}% &aitems!" to player
-			save yaml "ItemClaim-%player%"
-			loop {_uniqueItems} times:
-				play sound "entity.item.pickup" with volume 5 and pitch 0.7 at player
-				wait 3 ticks
 
 command /pauseworldtime [<number>]:
 	trigger:
