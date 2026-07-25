@@ -1,17 +1,6 @@
 function PapitoIsStardust(item: item) :: boolean:
-    if {_item} is air:
-        return false
-    if (1 of {_item}).isSimilar(1 of {stardust}) is true:
+    if 1 of {_item} = yaml value "Stardust.Item" in "ItemList":
         return true
-    set {_name} to uncolored name of {_item}
-    set {_stardustName} to uncolored name of {stardust}
-    if {_name} contains {_stardustName}:
-        return true
-    if {_name} contains "Stardust":
-        return true
-    loop lore of {_item}:
-        if uncolored loop-value contains "Stardust":
-            return true
     return false
 
 function PapitoStardustInInventory(p: player) :: integer:
@@ -409,10 +398,11 @@ on inventory click:
             set {_slotIndex} to 0
             loop all items in the player's inventory:
                 if (item amount of loop-item) = 1:
-                    if nbt tags of (compound tag "Socket" of (custom nbt of loop-item)) is set:
-                        set slot {_slotIndex} of metadata value "papitoSocket" of player to loop-item
-                        add "%nl%&f&oClick here to socket this item." to (lore of slot {_slotIndex} of metadata value "papitoSocket" of player)
-                        add 1 to {_slotIndex}
+                    if boolean tag "GearItem" of (custom nbt of loop-item) is true:
+                        if nbt tags of (compound tag "Socket" of (custom nbt of loop-item)) is set:
+                            set slot {_slotIndex} of metadata value "papitoSocket" of player to loop-item
+                            add "%nl%&f&oClick here to socket this item." to (lore of slot {_slotIndex} of metadata value "papitoSocket" of player)
+                            add 1 to {_slotIndex}
             if {_slotIndex} > 0:
                 open metadata tag "papitoSocket" of player to player
             else:
@@ -549,7 +539,7 @@ on inventory click:
                     send "%ArtifactReforgeStatName({_oldStat})% &7-> %ArtifactReforgeStatName({_newStat})%" to player
                     clear string tag "LastReforgeOldStat" of (custom nbt of {_artifact})
                     clear string tag "LastReforgeNewStat" of (custom nbt of {_artifact})
-                giveItem(player, {_artifact})
+                giveItem(player's uuid, {_artifact})
                 clear metadata value "PapitoReforgeOriginal" of player
                 clear metadata value "PapitoReforgeMode" of player
                 clear metadata value "PapitoReforgeStat" of player
@@ -562,27 +552,28 @@ on inventory click:
             cancel event
             if event-slot is not air:
                 set {_customNbt} to custom nbt of event-slot
-                set {_sockets::*} to nbt tags of (compound tag "Socket" of ({_customNbt}))
-                if nbt tags of (compound tag "Socket" of ({_customNbt})) is set:
-                    set {_slot} to event-slot
-                    play sound "block.anvil.place" with volume 5 and pitch 1.74 to player
-                    set metadata tag "papitoChooseSocket" of player to chest inventory with 3 rows named "Papito - Choose Socket"
-                    set {_chooseSocket} to metadata tag "papitoChooseSocket" of player
+                if boolean tag "GearItem" of {_customNbt} is true:
+                    set {_sockets::*} to nbt tags of (compound tag "Socket" of ({_customNbt}))
+                    if {_sockets::*} is set:
+                        set {_slot} to event-slot
+                        play sound "block.anvil.place" with volume 5 and pitch 1.74 to player
+                        set metadata tag "papitoChooseSocket" of player to chest inventory with 3 rows named "Papito - Choose Socket"
+                        set {_chooseSocket} to metadata tag "papitoChooseSocket" of player
 
-                    set slot 4 of {_chooseSocket} to {_slot}
+                        set slot 4 of {_chooseSocket} to {_slot}
 
-                    set {_baseSlot} to 10
-                    loop {_sockets::*}:
-                        set {_socketType} to string tag "Socket;%loop-value%;Type" of {_customNbt}
-                        set {_item} to yaml value "Sockets.%{_socketType}%.Item" in "GemList"
-                        set name of {_item} to "&f%loop-counter%. %name of {_item}%"
-                        set string tag "SocketType" of (custom nbt of {_item}) to {_socketType}
-                        set int tag "SocketIndex" of (custom nbt of {_item}) to loop-counter
+                        set {_baseSlot} to 10
+                        loop {_sockets::*}:
+                            set {_socketType} to string tag "Socket;%loop-value%;Type" of {_customNbt}
+                            set {_item} to yaml value "Sockets.%{_socketType}%.Item" in "GemList"
+                            set name of {_item} to "&f%loop-counter%. %name of {_item}%"
+                            set string tag "SocketType" of (custom nbt of {_item}) to {_socketType}
+                            set int tag "SocketIndex" of (custom nbt of {_item}) to loop-counter
 
-                        set slot {_baseSlot} of {_chooseSocket} to {_item}
-                        set {_baseSlot} to {_baseSlot} + 2
+                            set slot {_baseSlot} of {_chooseSocket} to {_item}
+                            set {_baseSlot} to {_baseSlot} + 2
 
-                    open metadata tag "papitoChooseSocket" of player to player
+                        open metadata tag "papitoChooseSocket" of player to player
 
     else if event-inventory = metadata tag "papitoChooseSocket" of player:
         cancel event
@@ -669,7 +660,7 @@ on inventory click:
                         set slot 10 of metadata value "papitoSocketItem" of player to air
                         set slot 13 of metadata value "papitoSocketItem" of player to air
 
-                        giveItem(player, event-slot)
+                        giveItem(player's uuid, event-slot)
                         close player's inventory
 
                         play sound "profession.gem.pick_up" with volume 5 and pitch 1 to player
@@ -978,7 +969,7 @@ on inventory click:
                                     else if boolean tag "Relic" of (custom nbt of {_artifactUpgraded}) is set:
                                         set {_upgradedStats} to false
                     set {_artifactUpgraded} to PapitoCleanUpgradeLore({_artifactUpgraded})
-                    giveItem(player, {_artifactUpgraded})
+                    giveItem(player's uuid, {_artifactUpgraded})
                     send "&a✦ Successfully upgraded %name of {_artifactUpgraded}% &ato +%int tag "Upgraded" of (custom nbt of {_artifactUpgraded})%!" to player
                     if {_loreline} is set:
                         send "&aYour artifact gains a new attribute: &r%{_randomStat}%&a!" to player
@@ -1114,7 +1105,7 @@ on inventory click:
 on inventory close:
     if event-inventory = (metadata value "papitoSocketItem" of player):
         if boolean tag "Gem" of (custom nbt of (slot 13 of event-inventory)) is set:
-            giveItem(player, slot 13 of event-inventory)
+            giveItem(player's uuid, slot 13 of event-inventory)
             clear metadata value "papitoSocketItem" of player
 
 function PapitoFormatPercent(value: number) :: text:
@@ -1625,8 +1616,10 @@ function RecalculateStarforgedBonuses(p: player):
                 set {_count::%{_card}%::%{_tier}%} to {_count::%{_card}%::%{_tier}%} + 1
     loop yaml node keys "Card.Gear" in "activeCard-%{_p}%":
         if StarforgeEligibleGearSlot(loop-value) is true:
-            clear yaml value "Card.Gear.%loop-value%.Starforged Bonus.2Set.Active" in "activeCard-%{_p}%"
-            clear yaml value "Card.Gear.%loop-value%.Starforged Bonus.4Set.Active" in "activeCard-%{_p}%"
+            if yaml value "Card.Gear.%loop-value%.Starforged Bonus.2Set.Active" in "activeCard-%{_p}%" is set:
+                clear yaml value "Card.Gear.%loop-value%.Starforged Bonus.2Set.Active" in "activeCard-%{_p}%"
+            if yaml value "Card.Gear.%loop-value%.Starforged Bonus.4Set.Active" in "activeCard-%{_p}%" is set:
+                clear yaml value "Card.Gear.%loop-value%.Starforged Bonus.4Set.Active" in "activeCard-%{_p}%"
             if yaml value "Card.Gear.%loop-value%.Starforged.Card" in "activeCard-%{_p}%" is set:
                 set {_card} to yaml value "Card.Gear.%loop-value%.Starforged.Card" in "activeCard-%{_p}%"
                 set {_tier} to yaml value "Card.Gear.%loop-value%.Starforged.Tier" in "activeCard-%{_p}%"
@@ -1709,7 +1702,7 @@ function StarforgeConsumeAndGive(p: player, gear: item, card: text, tier: text):
                 if string tag "DiamondSourceTier" of (custom nbt of loop-item) = {_tier}:
                     remove 1 of loop-item from {_p}
                     stop loop
-    giveItem({_p}, {_gear})
+    giveItem({_p}'s uuid, {_gear})
     clear metadata value "PapitoStarforgeGear" of {_p}
     clear metadata value "PapitoStarforgeGearId" of {_p}
     clear metadata value "PapitoStarforgeSigilCard" of {_p}
