@@ -1,2 +1,396 @@
-on rightclick on shroomlight:
-    send "a"
+on rightclick:
+    if "%region at clicked block%" contains "GrandVault":
+        grandVaultOpenSound(player)
+        openGrandVault(player)
+
+function grandVaultArchiveAndReset(p: player, oldWeek: integer):
+    set {_slotsMining} to grandVaultSlotsUnlocked({_p}, "Mining")
+    set {_slotsCombat} to grandVaultSlotsUnlocked({_p}, "Combat")
+
+    set {_oldWeek} to {_oldWeek} + 1
+    if {_slotsMining} > 0:
+        set yaml value "Vault.Week%{_oldWeek}%.Mining.Slots" in "data-%{_p}%" to {_slotsMining}
+        set yaml value "Vault.Week%{_oldWeek}%.Mining.Claimed" in "data-%{_p}%" to false
+
+    if {_slotsCombat} > 0:
+        set yaml value "Vault.Week%{_oldWeek}%.Combat.Slots" in "data-%{_p}%" to {_slotsCombat}
+        set yaml value "Vault.Week%{_oldWeek}%.Combat.Claimed" in "data-%{_p}%" to false
+
+    set yaml value "VaultWeek" in "data-%{_p}%" to {vaultWeek}
+    clear yaml value "Weekly Progression" in "data-%{_p}%"
+    save yaml "data-%{_p}%"
+
+function grandVaultProgress(p: player, category: string) :: integer:
+    if {_category} = "Mining":
+        set {_stone} to yaml value "Weekly Progression.Mining.Stone" in "data-%{_p}%"
+        set {_deepslate} to yaml value "Weekly Progression.Mining.Deepslate" in "data-%{_p}%"
+        if {_stone} is not set:
+            set {_stone} to 0
+        if {_deepslate} is not set:
+            set {_deepslate} to 0
+        return {_stone} + ({_deepslate} * 2)
+
+    if {_category} = "Combat":
+        set {_kills} to yaml value "Weekly Progression.Combat.MobKills" in "data-%{_p}%"
+        if {_kills} is not set:
+            set {_kills} to 0
+        return {_kills}
+
+    return 0
+
+function grandVaultSlotsUnlocked(p: player, category: string) :: integer:
+    set {_progress} to grandVaultProgress({_p}, {_category})
+    set {_slots} to 0
+    loop 3 times:
+        set {_threshold} to yaml value "Grand Vault.Categories.%{_category}%.Thresholds.%loop-counter%" in "GrandVaultList"
+        if {_threshold} is set:
+            if {_progress} >= {_threshold}:
+                set {_slots} to loop-counter
+    return {_slots}
+
+function grandVaultEarliestUnclaimedWeek(p: player) :: integer:
+    set {_earliest} to 999999
+    loop yaml node keys "Vault" in "data-%{_p}%":
+        set {_weekStr} to loop-value
+        replace all "Week" in {_weekStr} with ""
+        set {_week} to {_weekStr} parsed as integer
+        if {_week} is set:
+            if {_week} < {_earliest}:
+                set {_vaultMiningClaimed} to yaml value "Vault.Week%{_week}%.Mining.Claimed" in "data-%{_p}%"
+                set {_vaultCombatClaimed} to yaml value "Vault.Week%{_week}%.Combat.Claimed" in "data-%{_p}%"
+                set {_vaultMiningSlots} to yaml value "Vault.Week%{_week}%.Mining.Slots" in "data-%{_p}%"
+                set {_vaultCombatSlots} to yaml value "Vault.Week%{_week}%.Combat.Slots" in "data-%{_p}%"
+                set {_miningUnclaimed} to false
+                set {_combatUnclaimed} to false
+                if {_vaultMiningClaimed} is false:
+                    if {_vaultMiningSlots} is set:
+                        if {_vaultMiningSlots} > 0:
+                            set {_miningUnclaimed} to true
+                if {_vaultCombatClaimed} is false:
+                    if {_vaultCombatSlots} is set:
+                        if {_vaultCombatSlots} > 0:
+                            set {_combatUnclaimed} to true
+                if any:
+                    {_miningUnclaimed} is true
+                    {_combatUnclaimed} is true
+                then:
+                    set {_earliest} to {_week}
+
+    if {_earliest} = 999999:
+        return -1
+    return {_earliest}
+
+function grandVaultWeekSlots(p: player, week: integer, category: string) :: integer:
+    set {_slots} to yaml value "Vault.Week%{_week}%.%{_category}%.Slots" in "data-%{_p}%"
+    if {_slots} is not set:
+        return 0
+    return {_slots}
+
+function grandVaultWeekClaimed(p: player, week: integer, category: string) :: boolean:
+    set {_claimed} to yaml value "Vault.Week%{_week}%.%{_category}%.Claimed" in "data-%{_p}%"
+    if {_claimed} is not true:
+        return false
+    return true
+
+function grandVaultMarkClaimed(p: player, week: integer, category: string):
+    set yaml value "Vault.Week%{_week}%.%{_category}%.Claimed" in "data-%{_p}%" to true
+    save yaml "data-%{_p}%"
+
+function grandVaultRollReward(p: player, category: string) :: item:
+    set {_keys::*} to yaml node keys "Grand Vault.%{_category}%" in "GrandVaultList"
+    if {_keys::*} is not set:
+        return air
+
+    set {_key} to a random element of {_keys::*}
+    set {_type} to yaml value "Grand Vault.%{_category}%.%{_key}%.Type" in "GrandVaultList"
+
+    if {_type} = "Item":
+        set {_amount} to yaml value "Grand Vault.%{_category}%.%{_key}%.Amount" in "GrandVaultList"
+        if {_amount} is not set:
+            set {_amount} to 1
+
+        if {_key} = "Random Essence":
+            loop yaml node keys "" in "ItemList":
+                if loop-value contains " Essence":
+                    set {_essences::*} to {_essences::*} and loop-value
+
+            set {_randomEssence} to a random element of {_essences::*}
+            set {_item} to yaml value "%{_randomEssence}%.Item" in "ItemList"
+        else:
+            set {_itemKey} to yaml value "Grand Vault.%{_category}%.%{_key}%.Item" in "GrandVaultList"
+            set {_item} to yaml value "%{_itemKey}%.Item" in "ItemList"
+
+        set {_item} to {_amount} of {_item}
+        if {_item} is not set:
+            return air
+        return {_item}
+
+    if {_type} = "Azerite":
+        set {_amount} to yaml value "Grand Vault.%{_category}%.%{_key}%.Amount" in "GrandVaultList"
+        if {_amount} is not set:
+            set {_amount} to 0
+        set {_reward} to diamond named "&b%{_key}%" with lore "&e%{_amount}% Azerite" with nbt from "{""minecraft:custom_model_data"":{floats:[48.0f]}}"
+        set int tag "VaultAzeriteAmount" of custom nbt of {_reward} to {_amount}
+        set boolean tag "VaultAzerite" of custom nbt of {_reward} to true
+        return {_reward}
+
+    if {_type} = "Gear":
+        set {_bossLevel} to {maxCardLevel} + 10
+
+        if {_key} = "Artifact":
+            set {_isArtifact} to true
+
+        if {_isArtifact} is true:
+            if {_category} = "Combat":
+                set {_artifactKeys::*} to yaml list "Artifacts.Marksmanship.Items" in "ArtifactList"
+                set {_artifactKeys::*} to {_artifactKeys::*} and yaml list "Artifacts.Deepfrost.Items" in "ArtifactList"
+
+            else:
+                loop yaml node keys "Artifacts" in "ArtifactList":
+                    set {_artifactKeys::*} to {_artifactKeys::*} and yaml list "Artifacts.%loop-value%.Items" in "ArtifactList"
+
+            set {_artifactName} to a random element of {_artifactKeys::*}
+            set {_ilvl} to ArtifactStarLevel(5, {_bossLevel}) + 20
+            return Artifact({_artifactName}, 5, {_ilvl})
+
+        if {_category} = "Combat":
+            set {_sources::*} to "Forest" and "Ice"
+
+        else if {_category} = "Dungeons":
+            set {_sources::*} to "Siege of Spawn" #completed dungeons for that week, update when dungeons are added, same with the solo boss endgame
+
+        set {_gearIlvl} to round(1 + ({_bossLevel} * 0.82), 0) + 20
+        set {_source} to a random element of {_sources::*}
+        set {_gearKeys::*} to yaml node keys "Gear.%{_source}%" in "GearList"
+        set {_gearName} to a random element of {_gearKeys::*}
+        set {_gearType} to yaml value "Gear.%{_source}%.%{_gearName}%.Type" in "GearList"
+        set {_primaryStat} to string tag "PrimaryStat" of (custom nbt of {karta::%{_p}%})
+        return Gear({_gearName}, {_gearType}, {_gearIlvl}, "Epic", {_primaryStat}, {_source})
+
+on inventory click:
+    if event-inventory = metadata tag "GrandVault" of player:
+        if player's current inventory = metadata tag "GrandVault" of player:
+            cancel event
+            if event-slot is not air:
+                set {_info::*} to grandVaultSlotInfo(event-inventory, index of event-slot)
+                set {_category} to {_info::1}
+                set {_tier} to {_info::2} parsed as integer
+                if {_category} is not "":
+                    set {_animStep} to metadata value "GrandVaultAnimStep" of player
+                    if {_animStep} is set:
+                        play sound "entity.villager.no" with volume 1 and pitch 1 to player
+                        send "&cThe Grand Vault is still revealing its rewards..." to player
+                        stop
+
+                    set {_activeWeek} to metadata value "GrandVaultWeek" of player
+                    set {_isPast} to metadata value "GrandVaultIsPast" of player
+
+                    set {_slots} to 0
+                    if {_isPast} is false:
+                        set {_slots} to grandVaultSlotsUnlocked(player, {_category})
+                    else:
+                        set {_slots} to grandVaultWeekSlots(player, {_activeWeek}, {_category})
+
+                    if {_slots} >= {_tier}:
+                        set {_alreadyClaimed} to false
+                        if {_isPast} is true:
+                            if grandVaultWeekClaimed(player, {_activeWeek}, {_category}) is true:
+                                set {_alreadyClaimed} to true
+                        else:
+                            if yaml value "Vault.Week%{vaultWeek}%.%{_category}%.Claimed" in "data-%player%" is true:
+                                set {_alreadyClaimed} to true
+
+                        if {_alreadyClaimed} is true:
+                            play sound "entity.villager.no" with volume 1 and pitch 1 to player
+                            send "&cYou already claimed your reward from %{_category}% this week." to player
+                            stop
+
+                        set {_reward} to metadata value "GrandVaultReward-%{_activeWeek}%-%{_category}%-%{_tier}%" of player
+                        if {_reward} is set:
+                            if boolean tag "VaultAzerite" of custom nbt of {_reward} is true:
+                                set {_azeriteAmount} to int tag "VaultAzeriteAmount" of custom nbt of {_reward}
+                                if boolean tag "HeartOfEarthcraft" of custom nbt of player's chestplate is set:
+                                    addAzerite(player, {_azeriteAmount})
+                                send formatted azeriteType({_azeriteAmount}, " <#fdd002>from the Grand Vault.") to player
+                            else:
+                                giveItem(player's uuid, {_reward})
+
+                        set {_xpTotal} to 0
+                        loop {_slots} times:
+                            set {_xpTier} to loop-counter
+                            set {_xpAmount} to yaml value "Grand Vault.XPPerSlot.%{_xpTier}%" in "GrandVaultList"
+                            set {_xpTotal} to {_xpTotal} + {_xpAmount}
+                        set {_xpGained} to addPlayerXP(player, {_xpTotal}, 1, "Grand Vault")
+                        send "&aYou claimed your Grand Vault reward! &7(+%{_xpGained}% XP)" to player
+
+                        if {_isPast} is true:
+                            grandVaultMarkClaimed(player, {_activeWeek}, {_category})
+                        else:
+                            set yaml value "Vault.Week%{vaultWeek}%.%{_category}%.Claimed" in "data-%player%" to true
+                            clear yaml value "Weekly Progression.%{_category}%" in "data-%player%"
+                            save yaml "data-%player%"
+
+                        play sound "entity.player.levelup" with volume 3 and pitch 1 to player
+                        play sound "entity.experience_orb.pickup" with volume 2 and pitch 1.5 to player
+
+                        loop 3 times:
+                            set {_loopTier} to loop-counter
+                            if {_loopTier} != {_tier}:
+                                set {_slotIndex} to (yaml value "Grand Vault.Categories.%{_category}%.BaseSlot" in "GrandVaultList") + ({_loopTier} * 2)
+                                set slot {_slotIndex} of player's current inventory to blue stained glass pane named "&9Claimed"
+
+                        close player's inventory
+                    else:
+                        play sound "entity.villager.no" with volume 1 and pitch 1 to player
+
+function grandVaultOpenSound(p: player):
+    play sound "azerite.rotate" with volume 1 and pitch 0.5 to {_p}
+    play sound "azerite.rotate_stop" with volume 1 and pitch 0.4 to {_p}
+    play sound "azerite.reforge" with volume 1 and pitch 0.2 to {_p}
+    wait 1.25 seconds
+    stop sound "azerite.rotate" for {_p}
+
+
+function openGrandVault(p: player):
+    set metadata tag "GrandVault" of {_p} to chest inventory with 6 rows named "Grand Vault"
+    set {_menu} to metadata tag "GrandVault" of {_p}
+
+    set {_earliestWeek} to grandVaultEarliestUnclaimedWeek({_p})
+    set {_activeWeek} to {vaultWeek}
+    set {_isPastWeek} to false
+    if {_earliestWeek} > 0:
+        if {_earliestWeek} < {vaultWeek}:
+            set {_activeWeek} to {_earliestWeek}
+            set {_isPastWeek} to true
+
+    set metadata value "GrandVaultWeek" of {_p} to {_activeWeek}
+    set metadata value "GrandVaultIsPast" of {_p} to {_isPastWeek}
+
+    loop yaml node keys "Grand Vault.Categories" in "GrandVaultList":
+        set {_key} to loop-value
+        set {_slots} to 0
+        if {_isPastWeek} is false:
+            set {_slots} to grandVaultSlotsUnlocked({_p}, {_key})
+        else:
+            set {_slots} to grandVaultWeekSlots({_p}, {_activeWeek}, {_key})
+
+        grandVaultSetCategoryHeader({_menu}, {_key}, {_slots}, {_p})
+
+        set {_t} to 0
+        loop 3 times:
+            set {_t} to {_t} + 1
+            set {_slotIndex} to (yaml value "Grand Vault.Categories.%{_key}%.BaseSlot" in "GrandVaultList") + ({_t} * 2)
+            set boolean tag "VaultSlot" of (custom nbt of slot {_slotIndex} of {_menu}) to true
+            set string tag "VaultCategory" of (custom nbt of slot {_slotIndex} of {_menu}) to {_key}
+            set int tag "VaultTier" of (custom nbt of slot {_slotIndex} of {_menu}) to {_tier}
+
+    loop yaml node keys "Grand Vault.Unavailable" in "GrandVaultList":
+        set {_key} to loop-value
+        set {_slot} to yaml value "Grand Vault.Unavailable.%{_key}%.BaseSlot" in "GrandVaultList"
+        set {_icon} to yaml value "Grand Vault.Unavailable.%{_key}%.Icon" in "GrandVaultList"
+        set {_icon} to {_icon} parsed as item type
+        set slot {_slot} of {_menu} to {_icon} named "&7%{_key}%"
+        add "&8&oThis category is not yet available." to lore of slot {_slot} of {_menu}
+        add "&8&oCheck back later..." to lore of slot {_slot} of {_menu}
+        set {_t} to 0
+        loop 3 times:
+            set {_t} to {_t} + 1
+            set {_lockedSlot} to {_slot} + ({_t} * 2)
+            set slot {_lockedSlot} of {_menu} to red stained glass pane named "&cLocked"
+
+    if {_isPastWeek} is true:
+        set slot 0 of {_menu} to book named "&ePast Week" with lore "&7You are viewing rewards from &fWeek %{_activeWeek}%&7.%nl%&7Claim these before your current week's rewards."
+
+    set {_preRollCheck} to metadata value "GrandVaultReward-%{_activeWeek}%-Mining-1" of {_p}
+    if {_preRollCheck} is not set:
+        grandVaultPreRollRewards({_p}, {_isPastWeek}, {_activeWeek})
+
+    grandVaultAnimation({_p})
+    open {_menu} to {_p}
+
+function grandVaultSetCategoryHeader(menu: inventory, category: string, slots: integer, p: player):
+    set {_baseSlot} to yaml value "Grand Vault.Categories.%{_category}%.BaseSlot" in "GrandVaultList"
+    set {_name} to yaml value "Grand Vault.Categories.%{_category}%.Name" in "GrandVaultList"
+    set {_desc} to yaml value "Grand Vault.Categories.%{_category}%.Description" in "GrandVaultList"
+    set {_icon} to yaml value "Grand Vault.Categories.%{_category}%.Icon" in "GrandVaultList"
+    set {_icon} to {_icon} parsed as item type
+
+    set {_progress} to grandVaultProgress({_p}, {_category})
+    set {_label} to yaml value "Grand Vault.Categories.%{_category}%.ProgressionLabel" in "GrandVaultList"
+
+    set {_lore} to "&7%{_desc}%%nl%&7Progress: &f%{_progress}% %{_label}%%nl% %nl%&7Slots Unlocked: &f%{_slots}%/3"
+
+    set slot {_baseSlot} of {_menu} to {_icon} named "&6%{_name}%" with lore {_lore} with item flag hide attributes
+
+function grandVaultAnimation(p: player):
+    set {_menu} to metadata tag "GrandVault" of {_p}
+    set {_allSlots::*} to grandVaultAnimationSlots({_p})
+
+    loop {_allSlots::*}:
+        set metadata value "GrandVaultAnimStep" of {_p} to loop-counter
+        wait 0.1 seconds
+
+        if metadata tag "GrandVault" of {_p} is not set:
+            stop
+
+        set {_slot} to loop-value
+        set {_week} to metadata value "GrandVaultWeek" of {_p}
+        set {_info::*} to grandVaultSlotInfo({_menu}, {_slot})
+        set {_category} to {_info::1}
+        set {_tier} to {_info::2} parsed as integer
+
+        set {_reward} to metadata value "GrandVaultReward-%{_week}%-%{_category}%-%{_tier}%" of {_p}
+        if {_reward} is set:
+            set slot {_slot} of {_menu} to {_reward}
+            play sound "block.note_block.pling" with volume 2 and pitch (1 + (loop-counter * 0.15)) to {_p}
+        else:
+            set {_progress} to grandVaultProgress({_p}, {_category})
+            set {_threshold} to yaml value "Grand Vault.Categories.%{_category}%.Thresholds.%{_tier}%" in "GrandVaultList"
+            set {_label} to yaml value "Grand Vault.Categories.%{_category}%.ProgressionLabel" in "GrandVaultList"
+            set slot {_slot} of {_menu} to red stained glass pane named "&c&lLocked" with lore "&7%{_label}%: &f%{_progress}%/%{_threshold}%"
+
+    clear metadata value "GrandVaultAnimStep" of {_p}
+
+function grandVaultAnimationSlots(p: player) :: integers:
+    loop yaml node keys "Grand Vault.Categories" in "GrandVaultList":
+        set {_baseSlot} to yaml value "Grand Vault.Categories.%loop-value%.BaseSlot" in "GrandVaultList"
+        set {_t} to 0
+        loop 3 times:
+            set {_t} to {_t} + 1
+            add ({_baseSlot} + ({_t} * 2)) to {_slots::*}
+    return {_slots::*}
+
+function grandVaultPreRollRewards(p: player, isPast: boolean, week: integer):
+    loop yaml node keys "Grand Vault.Categories" in "GrandVaultList":
+        set {_key} to loop-value
+        set {_preRollCheck} to metadata value "GrandVaultReward-%{_week}%-%{_key}%-1" of {_p}
+        if {_preRollCheck} is set:
+            continue
+            
+        set {_slots} to 0
+        if {_isPast} is false:
+            set {_slots} to grandVaultSlotsUnlocked({_p}, {_key})
+        else:
+            set {_slots} to grandVaultWeekSlots({_p}, {_week}, {_key})
+
+        set {_tier} to 0
+        loop {_slots} times:
+            set {_tier} to {_tier} + 1
+            set {_reward} to grandVaultRollReward({_p}, {_key})
+            set metadata value "GrandVaultReward-%{_week}%-%{_key}%-%{_tier}%" of {_p} to {_reward}
+
+function grandVaultSlotInfo(menu: inventory, slot: integer) :: strings:
+    loop yaml node keys "Grand Vault.Categories" in "GrandVaultList":
+        set {_baseSlot} to yaml value "Grand Vault.Categories.%loop-value%.BaseSlot" in "GrandVaultList"
+        set {_tier} to 0
+        loop 3 times:
+            set {_tier} to {_tier} + 1
+            if ({_baseSlot} + ({_tier} * 2)) = {_slot}:
+                return loop-value-1 and "%{_tier}%"
+    return ""
+
+on inventory close:
+    if event-inventory = metadata tag "GrandVault" of player:
+        clear metadata value "GrandVaultAnimStep" of player
+        clear metadata value "GrandVaultWeek" of player
+        clear metadata value "GrandVaultIsPast" of player
