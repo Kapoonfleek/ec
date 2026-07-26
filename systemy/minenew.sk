@@ -15,20 +15,35 @@ function getMiningStat(p: player, stat: text) :: number:
 	return {_value}
 
 function minenew(p: player, t: text, b: block):
-	set {_essences::*} to ""
 	if {_t} = "deepslate":
 		set {_blok} to 2
 		set {deepslate::%{_p}%} to {deepslate::%{_p}%} + 1
 		addMiningStat({_p}, "Deepslate Mined")
+
+		set {_deepslateCount} to yaml value "Weekly Progression.Mining.Deepslate" in "data-%{_p}%"
+		if {_deepslateCount} is not set:
+			set {_deepslateCount} to 0
+		set yaml value "Weekly Progression.Mining.Deepslate" in "data-%{_p}%" to {_deepslateCount} + 1
+		save yaml "data-%{_p}%"
+
 	else if {_t} = "stone":
 		set {_blok} to 1
 		set {stone::%{_p}%} to {stone::%{_p}%} + 1
 		addMiningStat({_p}, "Stone Mined")
-	if {event} = "Winter Delight":
-		if {winterDelightPassLEVEL::%{_p}%} >= 0:
-			getMission({_p}, "Festive Mining", "Świąteczne Kopanie", {_blok})
+
+	#if {event} = "Winter Delight":
+	#	if {winterDelightPassLEVEL::%{_p}%} >= 0:
+	#		getMission({_p}, "Festive Mining", "Świąteczne Kopanie", {_blok})
+
 	loop {_blok} times:
 		set {_stoneAndDeepslate} to ({stone::%{_p}%} + ({deepslate::%{_p}%}*2))
+
+		set {_stoneCount} to yaml value "Weekly Progression.Mining.Stone" in "data-%{_p}%"
+		if {_stoneCount} is not set:
+			set {_stoneCount} to 0
+		set yaml value "Weekly Progression.Mining.Stone" in "data-%{_p}%" to {_stoneCount} + 1
+		save yaml "data-%{_p}%"
+
 		set {_yamlValue} to "Achievement.Mining.Stone.100"
 		achievementYaml({_p}, "Mining", "Stone+100", {_stoneAndDeepslate})
 		set {_yamlValue} to "Achievement.Mining.Stone.1000"
@@ -39,7 +54,7 @@ function minenew(p: player, t: text, b: block):
 		achievementYaml({_p}, "Mining", "Stone+100000", {_stoneAndDeepslate})
 		set {_yamlValue} to "Achievement.Mining.Stone.1000000"
 		achievementYaml({_p}, "Mining", "Stone+1000000", {_stoneAndDeepslate})
-		addPlayerXP({_p}, 1)
+		addPlayerXP({_p}, 1, 1, "mining")
 		addMiningXP({_p}, 1)
 		set {expkopanie::%{_p}%} to {expkopanie::%{_p}%} + 1
 		set {weeklyStoneMined::%{_p}%} to {weeklyStoneMined::%{_p}%} + 1
@@ -702,12 +717,14 @@ function soundRankup(p:player):
 	play sound "block.note_block.harp" with volume 5 and pitch 2 at {_p}
 
 on mine of stone:
-	set {_x} to int tag "minecraft:enchantments;levels;minecraft:efficiency" of nbt of player's tool
+	set {_x} to int tag "minecraft:enchantments;levels;minecraft:efficiency" of (nbt of player's tool)
 	if {_x} > 5:
-		set int tag "minecraft:enchantments;levels;minecraft:efficiency" of nbt of player's tool to 5
+		set int tag "minecraft:enchantments;levels;minecraft:efficiency" of (nbt of player's tool) to 5
 	if player has haste:
 		remove haste from player
 	if player's gamemode is survival:
+		if metadata value "StoneDropDisabled" of player = true:
+			clear drops
 		if {umkilof::%player%} = "Instalacje Ogrzewcze":
 			clear drops
 			drop 1 stone at event-block
@@ -751,12 +768,14 @@ on mine of stone:
 				play sound "block.glass.break" with volume 3 and pitch 1.7 to player
 on mine of deepslate:
 	if region at event-location is not set:
-		set {_x} to int tag "minecraft:enchantments;levels;minecraft:efficiency" of nbt of player's tool
+		set {_x} to int tag "minecraft:enchantments;levels;minecraft:efficiency" of (nbt of player's tool)
 		if {_x} > 5:
-			set int tag "minecraft:enchantments;levels;minecraft:efficiency" of nbt of player's tool to 5
+			set int tag "minecraft:enchantments;levels;minecraft:efficiency" of (nbt of player's tool) to 5
 		if player has haste:
 			remove haste from player
 		if player's gamemode is survival:
+			if metadata value "StoneDropDisabled" of player = true:
+				clear drops
 			minenew(player, "deepslate", event-block)
 			if {gornictwo::poszumine::%player%} is true:
 				chance of 2%:
@@ -1685,16 +1704,19 @@ function playerCheckLevelUp(p: player):
 			else:
 				if {kolorek1::%{_p}%} is not set:
 					set {kolorek1::%{_p}%} to "#ffffff"
-			
-		if {poziom::%{_p}%} is divisible by 50:
-			set {nagrodalvl::karta::%{_p}%} to {nagrodalvl::karta::%{_p}%} + 1
-			send formatted "&8[&6Earthcraft&8] &7Congratulations! You may choose a new card for reaching level &6%{poziom::%{_p}%}%!" to {_p}
-			send formatted "&8[&6Earthcraft&8] &7Click <command:/reward claim><tooltip:&fClick to choose a card>&6[here]<tooltip:> &7or write &6/reward claim &7in chat to claim your reward." to {_p}
+
+		set {_starShard} to yaml value "Star Shard.Item" in "ItemList"
 		
 		set {_shardAmount} to round (({poziom::%{_p}%} / 100) + 1)
-		giveItem({_p}, {_shardAmount} of {odlamekgwiazdy})
+		giveItem({_p}'s uuid, {_shardAmount} of {_starShard})
 
-		send formatted "&8[&6Earthcraft&8] &7Congratulations! You receive &f%{_shardAmount}%x &cStar Shard &7for reaching level &6%{poziom::%{_p}%}%!" to {_p}
+		send formatted "&8[&6Earthcraft&8] &7Congratulations! You receive &f%{_shardAmount}%x &cStar Shard &7for reaching level &6%{poziom::%{_p}%}%&7!" to {_p}
+
+		if {poziom::%{_p}%} is divisible by 50:
+			set {nagrodalvl::karta::%{_p}%} to {nagrodalvl::karta::%{_p}%} + 1
+			set {_starShards} to 5 * ({poziom::%{_p}%}/50)
+			send formatted "&8[&6Earthcraft&8] &7Congratulations! You receive &f%{_starShards}%x &cStar Shard &7as a milestone reward for reaching level &6%{poziom::%{_p}%}%&7!" to {_p}
+			giveItem({_p}'s uuid, {_starShards} of {_starShard})
 
 		play sound "entity.player.levelup" with volume 3 and pitch 2 to {_p}
 		if {poziom::%{_p}%} is set:
@@ -1832,3 +1854,20 @@ function miningProfession(p: player):
 			send action bar "&a%{orbcount::%{_p}%}%" to {_p}
 			play sound "entity.experience_orb.pickup" with volume 1 and pitch 1 + {orbbudget::%{_p}%}/20 to {_p}
 
+command /stonedrop [<text>]:
+	trigger:
+		if any:
+			arg-1 = "on"
+			arg-1 = "off"
+		then:
+			if arg-1 = "on":
+				send "&aTurned &lon stone &aand deepslate drop for this session." to player
+				clear metadata value "StoneDropDisabled" of player
+			else:
+				send "&aTurned &loff &astone and deepslate drop for this session." to player
+				set metadata value "StoneDropDisabled" of player to true
+		else:
+			send "&c&oArgument must be either &fon &c&oor &foff&c&o!" to player
+
+on tab complete of "/stonedrop":
+	set tab completions for position 1 to "on" and "off"
