@@ -1,0 +1,114 @@
+import:
+    org.bukkit.util.BoundingBox
+
+on rightclick with stick:
+    if name of player's tool = "Throw":
+        set {_tool} to player's tool
+        remove {_tool} from player
+        set {_loc} to location 0.25 below player's head
+        set {_v} to normalized vector from yaw player's yaw and pitch player's pitch
+
+        set {_boomerangSpeed} to 1 * Haste(player)
+        set vector length of {_v} to {_boomerangSpeed}
+
+        set {_critModifier} to 1
+
+        spawn item display at {_loc}:
+            set display item of entity to stick with nbt from "{""minecraft:custom_model_data"":{floats:[15.0f]}}"
+            set teleport duration of entity to 2 ticks
+            set interpolation duration of entity to 1 tick
+
+        set {_ent} to last spawned item display
+        set display left rotation of {_ent} to axisAngle(90, vector(1, 0, 0))
+
+        set {_baseRange} to 20
+
+        set {_lastInAirLoops} to rounded down ({_baseRange}/{_boomerangSpeed})
+        loop {_lastInAirLoops} times:
+            add 15 to {_spin}
+            
+            set display right rotation of {_ent} to axisAngle({_spin}, vector(0, 0, 1))
+            
+            set {_loc} to {_loc} ~ {_v}
+            teleport {_ent} to {_loc}
+
+            set {_pitch} to a random number between 0.5 and 1
+
+            if loop-counter is divisible by 2:
+                play sound "skill.dinorang.boomerang_swoosh" with volume 2 and pitch {_pitch} at {_loc}
+
+            loop all entities in radius 5 around {_ent}:
+                if boolean tag "ECMob" of (custom nbt of loop-entity) is set:     
+                    set {_boxEntity} to loop-entity.getBoundingBox()
+
+                    set {_loc} to {_ent}.getLocation()
+        
+                    set {_x} to {_loc}.getX()
+                    set {_y} to {_loc}.getY()
+                    set {_z} to {_loc}.getZ()
+                
+                    set {_boxBoomerang} to new BoundingBox(({_x} - 0.5), ({_y} - 0.5), ({_z} - 0.5), ({_x} + 0.5), ({_y} + 0.5), ({_z} + 0.5))
+
+                    if {_boxBoomerang}.overlaps({_boxEntity}):
+                        DinoRangBoomerangDamage(player, loop-entity, {_ent}, "Throw")
+
+            wait 1 tick
+
+        while player is alive:
+            add 25 to {_spin}
+            set {_locPlayer} to location 0.25 below player's head
+            set {_direction} to normalized vector from {_loc} to {_locPlayer}
+            
+            set display right rotation of {_ent} to axisAngle({_spin}, vector(0, 0, 1))
+            set vector length of {_direction} to {_boomerangSpeed}
+            
+            set {_loc} to {_loc} ~ {_direction}
+            teleport {_ent} to {_loc}
+
+            loop all entities in radius 5 around {_ent}:
+                if boolean tag "ECMob" of (custom nbt of loop-entity) is set:   
+                    set {_boxEntity} to loop-entity.getBoundingBox()
+
+                    set {_loc} to {_ent}.getLocation()
+        
+                    set {_x} to {_loc}.getX()
+                    set {_y} to {_loc}.getY()
+                    set {_z} to {_loc}.getZ()
+                
+                    set {_boxBoomerang} to new BoundingBox(({_x} - 0.5), ({_y} - 0.5), ({_z} - 0.5), ({_x} + 0.5), ({_y} + 0.5), ({_z} + 0.5))
+
+                    if {_boxBoomerang}.overlaps({_boxEntity}):
+                        DinoRangBoomerangDamage(player, loop-entity, {_ent}, "Return")
+            
+            if distance between {_loc} and {_locPlayer} < 2:
+                wait 2 ticks
+                stop loop
+
+            set {_pitch} to a random number between 1 and 2
+
+            if loop-counter is divisible by 2:
+                play sound "skill.dinorang.boomerang_swoosh" with volume 2 and pitch {_pitch} at {_loc}
+
+            wait 1 tick
+
+        kill {_ent}
+        play sound "skill.dinorang.boomerang_catch" with volume 2 and pitch 1 at player
+        give player {_tool}
+
+function DinoRangBoomerangDamageWaves(p: player, entity: entity, boomerang: entity, type: string):
+    set {_uuid} to uuid of {_boomerang}
+    if cooldown "BoomerangDamagedDirection%{_uuid}%%uuid of {_entity}%%{_type}%" is finished:
+        create cooldown "BoomerangDamagedDirection%{_uuid}%%uuid of {_entity}%%{_type}%" for 5 seconds
+        set {_crit} to CriticalHit({_p})
+
+        set {_damage} to (1 + (({damage::%{_p}%}/63) + ({versatility::%{_p}%}/189) + {primarystat::%{_p}%}/31.5))
+        set {_entity}'s last damage cause to sweep attack
+        set {_lore} to "Boomerang"
+        set metadata value "Element" of {_entity} to "Earth"
+        set metadata value "LastDamageCause" of {_entity} to "<##3f9655>Throw Boomerang"
+        set metadata value "LastDamageCauseLore" of {_entity} to {_lore}
+        set {_damage} to Crit({_p}, {_entity}, {_crit}, {_damage}, {_critModifier})
+        play sound "entity.generic.hurt" with volume 1.5 and pitch 1 at location of {_entity}
+
+        if {_damage} > 0:
+            make {_p} damage {_entity} by {_damage}
