@@ -1,0 +1,197 @@
+import:
+    org.bukkit.Particle
+    org.bukkit.block.data.BlockData
+    org.bukkit.Color
+    java.lang.System
+
+#Beam
+#Diamond Storm
+
+
+
+function spawnHurtlingShards(origin: location, target: location):
+    set {_dist} to distance between {_origin} and {_target}
+    set {_steps} to rounded ({_dist} * 12) 
+    set {_block} to white stained glass
+    
+    set {_radius} to random number between 2.0 and 4.5
+    set {_rotSpeed} to random number between 35 and 65 
+    set {_angle} to random number between 0 and 360 
+    set {_dirVec} to vector from {_origin} to {_target}
+    set {_pink} to Color.fromRGB(255, 105, 180) 
+    set {_white} to Color.fromRGB(255, 255, 255) 
+
+    set {_particle} to pink dust particle of size 0.65 that transitions to white
+    draw 30 of {_particle} at {_origin}
+    
+    loop {_steps} times:
+        set {_progress} to loop-value / {_steps}
+        add {_rotSpeed} to {_angle}
+        
+        set {_swerve} to sin({_progress} * 180)
+        set {_currentRadius} to {_radius} * {_swerve}
+        
+        set {_xOff} to {_currentRadius} * cos({_angle})
+        set {_yOff} to {_currentRadius} * sin({_angle})
+        
+        set {_centerPoint} to {_origin} ~ ({_dirVec} * {_progress})
+        
+        set {_sideVec} to vector(0, 1, 0) cross {_dirVec}
+        if length of {_sideVec} is 0:
+            set {_sideVec} to vector(1, 0, 0)
+        set {_upVec} to {_dirVec} cross {_sideVec}
+        
+        set {_p} to {_centerPoint} ~ ({_sideVec}.normalize() * {_xOff}) ~ ({_upVec}.normalize() * {_yOff})
+        
+        draw 2 of {_block} block particle with extra value 0.05 with offset vector(0.05, 0.05, 0.05) at {_p}
+        
+        draw 2 of pink dust particle that transitions to white with extra value 0.02 with offset vector(0.05, 0.05, 0.05)  at {_p}
+        
+        if loop-counter is divisible by 5:
+            set {_pitch} to a random number between 1 and 1.5
+            play sound "block.amethyst_cluster.place" with volume 2 and pitch {_pitch} at {_p}
+            if loop-counter is divisible by 10:
+                wait 1 tick
+    
+    draw 60 of cherry leaves particle with extra value 0.15 with offset vector(0.6, 0.6, 0.6) at location above {_target}
+
+    set {_pitch} to a random number between 0.7 and 1.1
+    set {_pitchGlass} to a random number between 1.0 and 2.0
+    play sound "block.amethyst_block.break" with volume 1.5 and pitch {_pitch} at {_target}
+    play sound "block.glass.break" with volume 1.2 and pitch {_pitchGlass} at {_target}
+
+    loop 3 times:
+        set {_p} to 1.4 + (loop-value * 0.2)
+        play sound "block.amethyst_cluster.break" with volume 2.8 and pitch {_p} at {_target}
+        wait 1 tick
+
+    play sound "block.amethyst_block.chime" with volume 2.0 and pitch 1.0 at {_target}
+    play sound "entity.allay.item_thrown" with volume 2.5 and pitch 0.5 at {_target}
+
+command /diancie:
+    trigger:
+        set {_target} to target entity of player
+        spawnHurtlingShards(location above player's location, location of {_target})
+
+function diancieSpawnCrystal(p: player, loc: location) :: entity:
+    set {_loc} to {_loc}
+    set y of {_loc} to y of {_loc} - 0.5
+    spawn an armor stand at {_loc} with nbt from "{Invisible:1b,Invulnerable:1b,NoGravity:1b,Silent:1b}"
+    
+    set {_crystal} to last spawned armor stand
+    modelApply({_crystal}, "azeriteshard", 2.0)
+
+    set boolean tag "DiancieCrystal" of (custom nbt of {_crystal}) to true
+    set uuid tag "Owner" of (custom nbt of {_crystal}) to uuid of {_p}
+    set boolean tag "RemoveOnReset" of (custom nbt of {_crystal}) to true
+
+    set {_particle} to pink dust particle of size 0.5 that transitions to white
+    draw 15 of {_particle} with offset vector(0.3, 0.6, 0.3) at {_loc}
+    play sound "block.amethyst_cluster.place" with volume 2 and pitch 1.2 at {_loc}
+
+    return {_crystal}
+
+
+function diancieDiamondStorm(p: player):
+    set {_count} to 5
+    set {_radius} to 13
+    set {_center} to location of {_p}
+    set {_crystals::*} to air
+
+    loop {_count} times:
+        set {_angle} to random number between 0 and 360
+        set {_dist} to random number between 3 and {_radius}
+        set {_x} to (x of {_center}) + {_dist} * cos({_angle})
+        set {_z} to (z of {_center}) + {_dist} * sin({_angle})
+
+        set {_loc} to location({_x}, y of {_center}, {_z}, world of {_p})
+        set {_loc} to highest solid block at (location above {_loc})
+        set y of {_loc} to y of {_loc} + 1
+
+        set {_crystal} to diancieSpawnCrystal({_p}, {_loc})
+        set {_crystals::*} to {_crystals::*} and {_crystal}
+
+
+function diancieReflectDirections(incoming: vector) :: vectors:
+    set {_incoming} to normalized {_incoming}
+
+    set {_r1} to vector from yaw (yaw of {_incoming} + 90) and pitch 0
+    set {_r2} to vector from yaw (yaw of {_incoming} - 90) and pitch 0
+    return {_r1} and {_r2}
+
+
+function diancieFireBeam(p: player):
+    set {_origin} to location above {_p}'s head
+    set {_direction} to vector from yaw {_p}'s yaw and pitch {_p}'s pitch
+    diancieBeamTravel({_p}, {_origin}, {_direction}, 0)
+
+function diancieBeamTravel(p: player, origin: location, direction: vector, depth: integer, visitedList: strings = ""):
+    if {_depth} >= 6:
+        stop
+
+    set {_dir} to normalized {_direction}
+    set {_maxDist} to 12
+    set {_steps} to {_maxDist} * 3
+    set {_stepLen} to {_maxDist} / {_steps}
+    set {_hit} to false
+
+    set {_block} to white stained glass
+
+    draw 30 of (pink dust particle of size 0.65 that transitions to white) at {_origin}
+
+    loop {_steps} times:
+        if {_hit} is true:
+            stop loop
+
+        set {_pos} to {_origin} ~ ({_dir} * (loop-value * {_stepLen}))
+
+        loop all entities in radius 1.5 around {_pos}:
+            if boolean tag "DiancieCrystal" of (custom nbt of loop-entity) is true:
+                if uuid tag "Owner" of (custom nbt of loop-entity) = uuid of {_p}:
+                    set {_crystalUuid} to "%uuid of loop-entity%"
+                    if {_visitedList::*} does not contain {_crystalUuid}:
+                        if {_depth} = 0:
+                            set {_visitedList::*} to {_crystalUuid}
+                        else:
+                            set {_visitedList::*} to {_visitedList::*} and {_crystalUuid}
+                        diancieBeamImpact({_p}, loop-entity, {_pos}, {_dir}, {_depth}, {_visitedList::*})
+                        broadcast "%{_crystalUuid}%"
+                        set {_hit} to true
+                        stop loop
+
+        set {_swerve} to sin(loop-value * 18) * 0.15
+        set {_side} to vector from yaw (yaw of {_dir} + 90) and pitch 0
+        set {_offset} to {_side}
+        set vector length of {_offset} to {_swerve}
+        set {_position} to {_pos} ~ {_offset}
+        draw 1 of {_block} block particle with extra value 0.03 at {_position}
+        draw 1 of (pink dust particle of size 0.5 that transitions to white) with extra value 0.01 at {_position}
+
+        set {_pitch} to a random number between 1 and 1.5
+        if loop-value is divisible by 6:
+            play sound "block.amethyst_cluster.place" with volume 1.5 and pitch {_pitch} at {_position}
+
+        wait 1 tick
+
+function diancieBeamImpact(p: player, crystal: entity, hitLoc: location, incomingDir: vector, depth: integer, visitedList: strings):
+
+    draw 40 of cherry leaves particle with extra value -1 with offset vector(0.5, 0.5, 0.5) at location above {_crystal}
+
+    play sound "block.amethyst_block.break" with volume 1.5 and pitch 1.0 at location of {_crystal}
+    play sound "block.glass.break" with volume 1.2 and pitch 1.8 at location of {_crystal}
+    play sound "block.amethyst_block.chime" with volume 2.0 and pitch 1.0 at location of {_crystal}
+
+    set {_reflectDirs::*} to diancieReflectDirections({_incomingDir})
+
+    set {_newDepth} to {_depth} + 1
+    loop {_reflectDirs::*}:
+        diancieBeamTravel({_p}, location above {_crystal}, loop-value, {_newDepth}, {_visitedList::*})
+
+
+command /dianciebeam:
+    trigger:
+        diancieFireBeam(player)
+
+command /dianciestorm:
+    trigger:
+        diancieDiamondStorm(player)
