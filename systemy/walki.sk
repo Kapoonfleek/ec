@@ -108,6 +108,13 @@ on death:
 						clear {expAreaMayanBoss}
 				cardLevelup(attacker, {_xp}, victim)
 				remove uuid of attacker from {asyst::%uuid of victim%::*}
+
+				set {_kills} to yaml value "Weekly Progression.Combat.MobKills" in "data-%attacker%"
+				if {_kills} is not set:
+					set {_kills} to 0
+				set yaml value "Weekly Progression.Combat.MobKills" in "data-%attacker%" to {_kills} + 1
+				save yaml "data-%attacker%"
+
 				if size of {asyst::%uuid of victim%::*} > 0:
 					loop {asyst::%uuid of victim%::*}:
 						#if {winterDelightPassLEVEL::%loop-value%} >= 0:
@@ -123,6 +130,12 @@ on death:
 						if boolean tag "ECBoss" of (custom nbt of victim) is set:
 							set {_xp} to {_xp}*6
 						cardLevelup({_p}, {_xp}, victim)
+
+						set {_kills} to yaml value "Weekly Progression.Combat.MobKills" in "data-%{_p}%"
+						if {_kills} is not set:
+							set {_kills} to 0
+						set yaml value "Weekly Progression.Combat.MobKills" in "data-%{_p}%" to {_kills} + 1
+						save yaml "data-%{_p}%"
 
 			if {expAreaMayanMobs} - 1 >= 0:
 				set {expAreaMayanMobs} to {expAreaMayanMobs} - 1
@@ -337,15 +350,6 @@ on death:
 							set {_attacker} to shooter of {_attacker}
 						if {_attacker} is a player:
 							set {_instance} to string tag "IslandExpeditionInstance" of {_customNbt}
-							if metadata value "IslandExpeditionInstance" of {_attacker} = {_instance}:
-								set {_azerite} to metadata value "IslandEnemyAzerite" of victim
-								if {_azerite} > 0:
-									if {_azerite} > 190:
-										set {_sound} to "azerite.collect"
-									else:
-										set {_sound} to "azerite.collect_small"
-
-									azeriteAddIslands({_attacker}, {_instance}, "Enemy", {_name}, {_azerite}, "Ally", {_sound})
 				else:
 					set {_name} to victim's name
 					if display name of victim contains "&c♥":
@@ -529,7 +533,7 @@ on damage:
 	if attacker is a blaze:
 		if victim is a player:
 			if victim's last damage cause is not sweep attack:
-				if int tag "ECDungeonInstance" of custom nbt of attacker is set:
+				if int tag "ECDungeonInstance" of (custom nbt of attacker) is set:
 					if name of attacker is "Balthazar" or "Destruction Mage":
 						set damage to 0
 						cancel event	
@@ -556,20 +560,20 @@ on damage:
 	if attacker is not a player:
 		if attacker is a living entity:
 			if victim's last damage cause is not sweep attack:
-				if int tag "ECDungeonInstance" of custom nbt of attacker is set:
-					if (int tag "ECDungeonInstance" of custom nbt of attacker) = (metadata value "DungeonInstance" of victim):
-						set {_meleeDamage} to long tag "MeleeDamage" of custom nbt of attacker
+				if int tag "ECDungeonInstance" of (custom nbt of attacker) is set:
+					if (int tag "ECDungeonInstance" of (custom nbt of attacker)) = (metadata value "DungeonInstance" of victim):
+						set {_meleeDamage} to long tag "MeleeDamage" of (custom nbt of attacker)
 						DamageProperties(victim, attacker, "&7Melee", "Basic melee attack.", {_meleeDamage})
 				if damage cause is projectile:
 					if projectile is arrow:
-						if boolean tag "ECMob" of custom nbt of attacker is set:
+						if boolean tag "ECMob" of (custom nbt of attacker) is set:
 							set damage to damage*0.7
 				if victim is a player:
 					if cooldown "attack%uuid of attacker%" is finished:
 						set {_attackCooldown} to 0.75 seconds
-						if string tag "WorldQuest" of custom nbt of attacker is set:
+						if string tag "WorldQuest" of (custom nbt of attacker) is set:
 
-							set {_WQMobType} to string tag "MobType" of custom nbt of attacker
+							set {_WQMobType} to string tag "MobType" of (custom nbt of attacker)
 							set {_WQMobAttackCooldown} to yaml value "Mobs.%{_WQMobType}%.Melee Attack Cooldown" in "WorldQuestList"
 							if {_WQMobAttackCooldown} is set:
 								set {_attackCooldown} to "%{_WQMobAttackCooldown}% seconds" parsed as timespan
@@ -595,11 +599,11 @@ on damage:
 	else:
 		set {_customNbt} to custom nbt of victim
 		if boolean tag "ECMob" of {_customNbt} is set:
-			if boolean tag "ECDungeonMob" of {_customNbt} is set:
-				set metadata value "ECPulled" of victim to 1
-				UpdateTarget(victim, attacker, "dynamic")
+			#if boolean tag "ECDungeonMob" of {_customNbt} is set:
+			set metadata value "ECPulled" of victim to 1
+			UpdateTarget(victim, attacker, "dynamic")
 				
-			else if boolean tag "ECIslandEnemy" of {_customNbt} is set:
+			if boolean tag "ECIslandEnemy" of {_customNbt} is set:
 				set {_attacker} to attacker
 				if {_attacker} is a projectile:
 					set {_attacker} to shooter of {_attacker}
@@ -621,8 +625,8 @@ on damage:
 
 		if victim's last damage cause is attack:
 			if projectile does not exist:
-				if boolean tag "MeleeAbility" of custom nbt of attacker's tool is not set:
-					if boolean tag "Ability" of custom nbt of attacker's tool is not set:
+				if boolean tag "MeleeAbility" of (custom nbt of attacker's tool) is not set:
+					if boolean tag "Ability" of (custom nbt of attacker's tool) is not set:
 						if cooldown "attack%attacker%" is finished:
 							create cooldown "attack%attacker%" for 0.5 seconds
 							set damage to damage*0.75
@@ -656,7 +660,7 @@ on damage:
 
 		if victim's last damage cause is sweep attack:
 			if attacker's tool is tagged with tag "swords":
-				if boolean tag "MeleeAbility" of custom nbt of attacker's tool is not set:
+				if boolean tag "MeleeAbility" of (custom nbt of attacker's tool) is not set:
 					if cooldown "attack%attacker%" is finished:
 						create cooldown "attack%attacker%" for 0.5 seconds
 						set damage to damage*0.75
@@ -681,8 +685,8 @@ on damage:
 						cancel event
 
 
-	if long tag "MobDamageModifier" of custom nbt of attacker is set:
-		set damage to (damage * (long tag "MobDamageModifier" of custom nbt of attacker))
+	if long tag "MobDamageModifier" of (custom nbt of attacker) is set:
+		set damage to (damage * (long tag "MobDamageModifier" of (custom nbt of attacker)))
 
 	set {_idV} to string tag "Id" of custom nbt of {karta::%victim%}
 	set {_idA} to string tag "Id" of custom nbt of {karta::%attacker%}
@@ -716,8 +720,9 @@ on damage:
 				set damage to damage*{_damageAmp}
 				
 		if getArtifactSetCount(attacker, "Marksmanship", 2) = true:
-			if distance between attacker and victim >= 20:
-				set damage to damage*1.12
+			if world of attacker = world of victim:
+				if distance between attacker and victim >= 20:	
+					set damage to damage*1.12
 
 		if getArtifactSetCount(attacker, "Marksmanship", 4) = true:
 			if any:
@@ -1013,7 +1018,8 @@ on damage:
 								set {dmgdealt::%attacker%} to {dmgdealt::%attacker%} + {_health1}
 							else:
 								set {dmgdealt::%attacker%} to {dmgdealt::%attacker%} + damage
-							if boolean tag "ECTestEntity" of (custom nbt of victim) is set:
+
+							if boolean tag "ECTestEntity" of (custom nbt of victim) is not set:
 								set {_idA} to string tag "Id" of custom nbt of {karta::%attacker%}
 								if damage > {_health1}:
 									set {damage::dealt::%{kartaname::%attacker%}%::%{_idA}%} to {damage::dealt::%{kartaname::%attacker%}%::%{_idA}%} + {_health1}
@@ -1022,7 +1028,7 @@ on damage:
 								set {damagetotal::%attacker%} to {damagetotal::%attacker%} + damage
 				else:
 					if victim is a player:
-						if boolean tag "ECMob" of custom nbt of attacker is set:
+						if boolean tag "ECMob" of (custom nbt of attacker) is set:
 							combatInitiate(victim, attacker)
 							set {_damageCause} to (uncolored metadata value "LastDamageCause" of victim) in strict proper case
 							set {_damage} to damage
@@ -1030,11 +1036,11 @@ on damage:
 								set {_damage} to health of victim
 							if metadata value "DungeonInstance" of victim is set:
 								set {_instanceAttacker} to metadata value "DungeonInstance" of victim
-								set {_instanceVictim} to int tag "ECDungeonInstance" of custom nbt of attacker
+								set {_instanceVictim} to int tag "ECDungeonInstance" of (custom nbt of attacker)
 								if {_instanceAttacker} = {_instanceVictim}:
 									DungeonDamageTaken(victim, attacker, damage, {_damageCause})
 							set {_health1} to victim's health
-							if boolean tag "ECTestEntity" of (custom nbt of victim) is not set:
+							if boolean tag "ECTestEntity" of (custom nbt of attacker) is not set:
 								set {_idV} to string tag "Id" of custom nbt of {karta::%victim%}
 								if damage > health of victim:
 									set {damage::taken::%{kartaname::%victim%}%::%{_idV}%} to {damage::taken::%{kartaname::%victim%}%::%{_idV}%} + (damage - health of victim)
