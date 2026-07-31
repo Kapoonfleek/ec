@@ -176,6 +176,25 @@ function DiamondRelicItem(card: text, preview: boolean = false) :: item:
 		return DiamondMissingRelic({_card})
 
 	set {_item} to yaml value "Cards.%{_card}%.Relic.Item" in "DiamondChestList"
+	set {_customNbt} to custom nbt of {_item}
+	set boolean tag "Relic" of {_customNbt} to true
+	set int tag "ItemLevel" of {_customNbt} to 1
+	set string tag "Card" of {_customNbt} to {_card}
+	set string tag "GearSlot" of {_customNbt} to "Relic"
+	set int tag "Upgraded" of {_customNbt} to 0
+	set int tag "Enhanced" of {_customNbt} to 0
+	set long tag "Experience" of {_customNbt} to 0
+
+	set {_values::*} to yaml node keys "Cards.%{_card}%.Relic.Stats" in "DiamondChestList"
+	loop {_values::*}:
+		set {_value} to yaml value "Cards.%{_card}%.Relic.Stats.%loop-value%" in "DiamondChestList"
+		set int tag "Stats;%loop-value%" of {_customNbt} to {_value}
+		set int tag "BaseStats;%loop-value%" of {_customNbt} to {_value}
+
+	set {_effectValue} to yaml value "Cards.%{_card}%.Relic.EffectValue" in "DiamondChestList"
+
+	set long tag "EffectValue" of {_customNbt} to {_effectValue}
+
 	return {_item}
 
 	return DiamondMissingRelic({_card})
@@ -762,10 +781,7 @@ function DiamondClaimReward(p: player, reward: item):
 		clear {nagrodadiamentowa::%{_p}%}
 		stop
 	if {_reward} is set:
-		if {_p} can hold {_reward}:
-			give {_reward} to {_p}
-		else:
-			drop {_reward} at {_p}
+		giveItem({_p}, {_reward})
 	play sound "entity.experience_orb.pickup" with volume 2 and pitch 1.3 to {_p}
 	play sound "entity.player.levelup" with volume 5 and pitch 1.3 to {_p}
 	if {diamondDroppedFeatured::%{_p}%} is true:
@@ -923,6 +939,7 @@ on inventory click:
 										set {_dPD} to 0
 									set {_dPD} to {_dPD} + 1
 									set yaml value "Statistics.Diamond Chest.Relic Drops" in "data-%player%" to {_dPD}
+
 								else:
 									set {_dPD} to yaml value "Statistics.Diamond Chest.Tier Set Drops" in "data-%player%"
 									if {_dPD} is not set:
@@ -955,12 +972,14 @@ on inventory click:
 				else:
 					set {_pityDiamond} to 1
 				set yaml value "Player.Diamond Pity" in "data-%player%" to {_pityDiamond}
+
 			if {diamondDroppedFeatured::%player%} is not true:
 				set {_dND} to yaml value "Statistics.Diamond Chest.Normal Drops" in "data-%player%"
 				if {_dND} is not set:
 					set {_dND} to 0
 				set {_dND} to {_dND} + 1
 				set yaml value "Statistics.Diamond Chest.Normal Drops" in "data-%player%" to {_dND}
+
 			set {_totalDrops} to yaml value "Statistics.Diamond Chest.Total Drops" in "data-%player%"
 			if {_totalDrops} is not set:
 				set {_totalDrops} to 0
