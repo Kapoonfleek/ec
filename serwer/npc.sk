@@ -448,9 +448,6 @@ on inventory click:
 							set {_id} to string tag "Id" of custom nbt of loop-item
 							set {_name} to uncolored name of loop-item
 
-							unload yaml "plugins/Skript/playerdata/karty/%{_name}%/%{_id}%.yml"
-							delete yaml "plugins/Skript/playerdata/karty/%{_name}%/%{_id}%.yml"
-
 							remove loop-item from player
 							teleport the player to player's location
 							set {_idCard} to string tag "Id" of custom nbt of player's tool
@@ -469,6 +466,9 @@ on inventory click:
 							save yaml "activeCardConstellation-%player%"
 							unload yaml "activeCardConstellation-%player%"
 
+							unload yaml "plugins/Skript/playerdata/karty/%{_name}%/%{_id}%.yml"
+							delete yaml "plugins/Skript/playerdata/karty/%{_name}%/%{_id}%.yml"
+
 							set {_constellations} to yaml value "Player.Total Constellations" in "data-%player%"
 							set {_stellarPowerCount} to yaml value "Player.Total Stellar Power" in "data-%player%"
 
@@ -479,10 +479,10 @@ on inventory click:
 
 							if {_constellation} < 6:
 								add 1 to {_constellations}
-								set yaml value "Player.Total Constellations" in "playerData-%player%" to {_constellations}
+								set yaml value "Player.Total Constellations" in "data-%player%" to {_constellations}
 							else:
 								add 1 to {_stellarPowerCount}
-								set yaml value "Player.Total Stellar Power" in "playerData-%player%" to {_stellarPowerCount}
+								set yaml value "Player.Total Stellar Power" in "data-%player%" to {_stellarPowerCount}
 
 							save yaml "data-%player%"
 							play sound "entity.player.levelup" with volume 3 and pitch 0.1 at player
@@ -747,6 +747,8 @@ on rightclick on entity:
 		openScrapWoodVendor(player)
 	else if {_npcId} = 6901:
 		npcInteractSound(player, "Dialogues.Ve'nari.Greeting")
+	else if {_npcId} = 6812:
+		openStardustWithdrawal(player)
 
 function openCurioVendor(p: player):
 	set metadata tag "CurioVendor" of {_p} to chest inventory with 6 rows named "Curio Vendor"
@@ -1179,6 +1181,40 @@ on inventory click:
 					else:
 						play sound "entity.villager.no" with volume 1 and pitch 1 to player
 						send "&cYou do not have enough Scrap Wood." to player
+	else if event-inventory = metadata tag "StardustWithdrawalMenu" of player:
+		if player's current inventory = metadata tag "StardustWithdrawalMenu" of player:
+			cancel event
+			if event-slot is not air:
+				if boolean tag "StardustWithdrawalItem" of (custom nbt of event-slot) is true:
+					set {_currentLevel} to {poziom::%player%}
+					set {_cap} to {_currentLevel} * 3
+
+					set {_storedLevel} to metadata value "StardustWithdrawnLevel" of player
+					if {_storedLevel} is not set:
+						set {_storedLevel} to 0
+					if {_storedLevel} != {_currentLevel}:
+						set metadata value "StardustWithdrawn" of player to 0
+						set metadata value "StardustWithdrawnLevel" of player to {_currentLevel}
+
+					set {_withdrawn} to  metadata value "StardustWithdrawn" of player
+					if {_withdrawn} is not set:
+						set {_withdrawn} to 0
+
+					set {_remaining} to {_cap} - {_withdrawn}
+
+					if {_remaining} > 0:
+						set {_stardust} to yaml value "Stardust.Item" in "ItemList"
+						giveItem(player's uuid, {_remaining} of {_stardust})
+						set {stardust::%player%} to {stardust::%player%} - {_remaining}
+						set metadata value "StardustWithdrawn" of player to {_cap}
+						set metadata value "StardustWithdrawnLevel" of player to {_currentLevel}
+						play sound "entity.experience_orb.pickup" with volume 1 and pitch 1 to player
+						play sound "entity.villager.yes" with volume 3 and pitch 1 to player
+						send "&aWithdrew &f%{_remaining}%x %name of {_stardust}%&a." to player
+						close player's inventory
+					else:
+						play sound "entity.villager.no" with volume 1 and pitch 1 to player
+						send "&cYou have already withdrawn your limit for Level &f%{_currentLevel}%&c." to player
 
 function openScrapWoodVendor(p: player):
 	set metadata tag "ScrapWoodVendor" of {_p} to chest inventory with 3 rows named "Scrap Wood Exchange"
