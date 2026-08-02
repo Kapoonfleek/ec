@@ -723,6 +723,7 @@ function GhazanMoltenUpheavalDescription(p: player) :: text:
 
 function GhazanMoltenUpheaval(p: player):
 	set {_damage} to offensiveTrait({_p}, "Ghazan", "Molten Upheaval")
+
 	if {_damage} <= 0:
 		stop
 	set {_world} to world of {_p}
@@ -773,8 +774,42 @@ function LavaWaveHasteBuff(p: player, targets: integer):
 	else:
 		set metadata value "LavaWaveHasteBuff" of {_p} to 12 seconds
 
+function getGhazanRelic(p: player) :: item:
+	set {_relic} to yaml value "Gear.Relic" in "activeCard-%{_p}%"
+	if {_relic} is set:
+		if boolean tag "Relic" of (custom nbt of {_relic}) is set:
+			return {_relic}
+	return air
+
+function GhazanRelicHasEffect(p: player, effect: text) :: boolean:
+	set {_relic} to getGhazanRelic({_p})
+	if {_relic} is air:
+		return false
+	if uncolored (name of {_relic}) contains {_effect}:
+		return true
+	return false
+
+function getGhazanRelicEffectValue(p: player, effect: text) :: number:
+	if GhazanRelicHasEffect({_p}, {_effect}) is true:
+		set {_value} to double tag "EffectValue" of (custom nbt of getGhazanRelic({_p}))
+		if {_value} is set:
+			return {_value}
+	return 0
+
 function LavaSurge(p: player, target: entity):
 	clear metadata value "Lava Surge" of {_p}
+
+	set {_value} to getGhazanRelicEffectValue({_p}, "Star of the Molten Sea")
+	if {_value} > 0:
+		if metadata value "Ascendance" of {_p} is set:
+			set {_stacks} to metadata value "VolcanicAscension" of {_p}
+			if {_stacks} is not set:
+				set {_stacks} to 0
+
+			set {_stacks} to {_stacks} + 1
+			set metadata value "VolcanicAscension" of {_p} to {_stacks}
+			
+			buffRegister({_p}, "Volcan", 2, "", "Stacks", "%{_stacks}%", "-")
 	
 	if string tag "Talents;Row 2" of (custom nbt of {karta::%{_p}%}) = "Flow of Power":
 		set {_chance} to 4
@@ -1025,7 +1060,7 @@ function Ascendance(p: player, duration: timespan):
 	set {_radius} to 2 + (CrowdControl({_p})/40)
 
 	set {_world} to world of {_p}
-
+	
 	loop {ECMobs::%{_world}%::*}:
 		set {_entity} to loop-value parsed as entity
 		set {_entityLoc} to location of {_entity}
@@ -1073,6 +1108,9 @@ function Ascendance(p: player, duration: timespan):
 			stop loop
 	clear metadata value "AscendanceDuration" of {_p}
 	clear metadata value "Ascendance" of {_p}
+	clear metadata value "VolcanicAscension" of {_p}
+	buffClear({_p}, "Volcan")
+	
 	if {_furtherBeyond} is true:
 		remove 200 from {bonusHaste::%{_p}%}
 		clear {_furtherBeyond}
@@ -1089,6 +1127,7 @@ on disconnect:
 		clear metadata value "AscendanceDuration" of player
 		clear metadata value "Lavakeeper" of player
 		clear metadata value "Lavafury" of player
+		clear metadata value "VolcanicAscension" of player
 
 function MagmaCheck(p: player):
 	while metadata value "ECEngaged" of {_p} is set:
@@ -1119,6 +1158,16 @@ function LavaBurst(p: player, x: entity, multiplier: number, ability: string, re
 	set {_cdd} to GhazanLavaBurstCooldownSeconds({_p})
 
 	set {_damage} to {_damage} + {_bonusDamage}
+
+	set {_stacks} to metadata value "VolcanicAscension" of {_p}
+	if {_stacks} is set:
+		if metadata value "Ascendance" of {_p} is set:
+			set {_value} to getGhazanRelicEffectValue({_p}, "Star of the Molten Sea")
+			if {_value} > 0:
+				set {_scalingRelic} to {_scaling}*18
+				set {_scalingDamage} to ({damage::%{_p}%}/{_scalingRelic}) + (Versatility({_p})/({_scalingRelic} * 3)) + (PrimaryStat({_p})/({_scalingRelic} / 2))
+				set {_damage} to {_damage} + ({_stacks} * {_value} * {_scalingDamage})
+		
 	set {_damage} to {_damage}*{_multiplier}
 	
 	set {_damage} to {_damage} * (1 + getRunePower({_p}, "Core Intensity"))

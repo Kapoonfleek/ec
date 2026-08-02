@@ -187,6 +187,7 @@ function ArtifactEnsureRollTracking(item: item) :: item:
 
 function ArtifactReforgeCostKlejnot(item: item) :: integer:
     set {_week} to {artifactReforgeWeek}
+
     if {_week} is not set:
         set {_week} to 0
     set {_itemWeek} to int tag "ReforgeWeek" of (custom nbt of {_item})
@@ -216,6 +217,10 @@ function ArtifactReforgeAdvance(item: item) :: item:
     set {_count} to ArtifactReforgeCount({_item})
     set int tag "ReforgeWeek" of (custom nbt of {_item}) to {_week}
     set int tag "ReforgeCount" of (custom nbt of {_item}) to {_count} + 1
+
+    set {_total} to int tag "ReforgeCountTotal" of (custom nbt of {_item})
+    set int tag "ReforgeCountTotal" of (custom nbt of {_item}) to {_total} + 1
+    
     return {_item}
 
 function ArtifactReforgeFluxCost(item: item, mode: text, stat: text = "") :: integer:
@@ -1006,20 +1011,20 @@ on inventory click:
         cancel event
         if clicked slot is not air:
             if lore of clicked slot does not contain "&c&oThis item has been fully enhanced.":
-                if lore of clicked slot does not contain "&c&oTen przedmiot został w pełni wzmocniony.":
-                    set metadata value "RelicEnhanceId" of player to string tag "Id" of (custom nbt of clicked slot)
-                    play sound "block.anvil.place" with volume 5 and pitch 1.55 to player
-                    set metadata tag "papitoEnhanceItem" of player to chest inventory with 5 rows named "Papito - Enhance - %(name of clicked slot)%"
-                    set slot 13 of metadata tag "papitoEnhanceItem" of player to clicked slot
-                    set {_c} to last string color code of name of clicked slot
-                    if uncolored (name of clicked slot) contains "Xal'Atath":
-                        set {_upgrade} to long tag "EffectValue" of (custom nbt of clicked slot) + 0.5
-                        set {_upgradeText} to "%{_c}%Shadow Word: Pain and Vampiric Touch%nl%%{_c}%damage dealt increase:%nl% &f%(long tag "EffectValue" of (custom nbt of clicked slot))%%% -> %{_upgrade}%%%"
-                    set slot 22 of metadata tag "papitoEnhanceItem" of player to anvil named "&fEnhance" with lore "&fIncreases the value of the following effect(s):%nl%%{_upgradeText}%"
-                    set slot 31 of metadata tag "papitoEnhanceItem" of player to smoker named "Enhancing" with lore "&c&l(&4&l!&c&l) &cWarning: This process will destroy a%nl%&ccopy of the selected Relic.%nl%&fClick ""Enhance"" to proceed."
-                    open metadata tag "papitoEnhanceItem" of player to player
-                else:
-                    play sound "block.anvil.land" with volume 5 and pitch 0.13 to player
+                set metadata value "RelicEnhanceId" of player to string tag "Id" of (custom nbt of clicked slot)
+                play sound "block.anvil.place" with volume 5 and pitch 1.55 to player
+                set metadata tag "papitoEnhanceItem" of player to chest inventory with 5 rows named "Papito - Enhance - %(name of clicked slot)%"
+                set slot 13 of metadata tag "papitoEnhanceItem" of player to clicked slot
+                set {_c} to last string color code of name of clicked slot
+                if uncolored (name of clicked slot) contains "Xal'Atath":
+                    set {_upgrade} to double tag "EffectValue" of (custom nbt of clicked slot) + 0.5
+                    set {_upgradeText} to "%{_c}%Shadow Word: Pain and Vampiric Touch%nl%%{_c}%damage dealt increase:%nl% &f%(double tag "EffectValue" of (custom nbt of clicked slot))%%% -> %{_upgrade}%%%"
+                else if uncolored (name of clicked slot) contains "Star of the Molten Sea":
+                    set {_upgrade} to (double tag "EffectValue" of (custom nbt of clicked slot)) * 2
+                    set {_upgradeText} to "%{_c}%Lava Burst bonus damage per stack:%nl% &f%(double tag "EffectValue" of (custom nbt of clicked slot))% -> %{_upgrade}%"
+                set slot 22 of metadata tag "papitoEnhanceItem" of player to anvil named "&fEnhance" with lore "&fIncreases the value of the following effect(s):%nl%%{_upgradeText}%"
+                set slot 31 of metadata tag "papitoEnhanceItem" of player to smoker named "Enhancing" with lore "&c&l(&4&l!&c&l) &cWarning: This process will destroy a%nl%&ccopy of the selected Relic.%nl%&fClick ""Enhance"" to proceed."
+                open metadata tag "papitoEnhanceItem" of player to player
             else:
                 play sound "block.anvil.land" with volume 5 and pitch 0.13 to player
     else if event-inventory = metadata tag "papitoEnhanceItem" of player:
@@ -1062,22 +1067,18 @@ on inventory click:
                 loop all items in the inventory of player:
                     if (string tag "Id" of (custom nbt of loop-item)) = (metadata value "RelicEnhanceId" of player):
                         if uncolored name of loop-item = "Xal'Atath":
-                            loop lore of loop-item:
-                                add 1 to {_index}
-                                if loop-value-2 contains "&f%long tag "EffectValue" of (custom nbt of loop-item)%%%":
-                                    set {_lineIndex} to {_index}
-                                if loop-value-2 contains "Enhanced:":
-                                    set {_lineIndex2} to {_index}
-                                    stop loop
                             set {_enhanced} to int tag "Enhanced" of (custom nbt of loop-item)
-                            replace all "Enhanced: +%{_enhanced}%" in line {_lineindex2} of lore of loop-item with "Enhanced: +%{_enhanced} + 1%"
-                            replace all "Wzmocniono: +%{_enhanced}%" in line {_index2} of lore of loop-item with "Wzmocniono: +%{_enhanced} + 1%"
-                            set {_effectValue} to long tag "EffectValue" of (custom nbt of loop-item)
-                            replace all "%{_effectValue}%%%" in line {_lineIndex} of lore of loop-item with "%{_effectValue} + 0.5%%%"
-                            set long tag "EffectValue" of (custom nbt of loop-item) to {_effectValue} + 0.5
+                            set {_effectValue} to double tag "EffectValue" of (custom nbt of loop-item)
+                            set double tag "EffectValue" of (custom nbt of loop-item) to {_effectValue} + 0.5
                             set int tag "Enhanced" of (custom nbt of loop-item) to {_enhanced} + 1
-                            set loop-item to RelicLoreUpdate(loop-item)
-                            set loop-item to RelicLoreUpdate(loop-item)
+                            set loop-item to RelicScaledLoreUpdate(player, loop-item)
+                        else if uncolored name of loop-item contains "Star of the Molten Sea":
+                            set {_enhanced} to int tag "Enhanced" of (custom nbt of loop-item)
+                            set {_effectValue} to double tag "EffectValue" of (custom nbt of loop-item)
+                            set double tag "EffectValue" of (custom nbt of loop-item) to {_effectValue} * 2
+                            set int tag "Enhanced" of (custom nbt of loop-item) to {_enhanced} + 1
+                            set loop-item to RelicScaledLoreUpdate(player, loop-item)
+                            stop loop
                         stop loop
                 set {_relicsEnhanced} to yaml value "Player.Relics Times Enhanced" in "data-%player%"
                 if {_relicsEnhanced} is not set:

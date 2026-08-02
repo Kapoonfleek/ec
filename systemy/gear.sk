@@ -722,6 +722,8 @@ function Gear(gearItem: string, itemType: string, itemLevel: integer, rarity: st
     set {_socketColours::*} to yaml node keys "Sockets" in "GearList"
     remove "Uncommon" and "Rare" from {_socketColours::*}
 
+    set {_socketBlankAdded} to false
+
     if {_maxSockets} > 0:
         loop {_maxSockets} times:
             if yaml value "Gear.%{_source}%.%{_gearItem}%.Sockets" in "GearList" >= loop-counter:
@@ -750,10 +752,10 @@ function Gear(gearItem: string, itemType: string, itemLevel: integer, rarity: st
                 set {_socket} to "%{_socketHexColour}% &7%{_randomSocket}% Socket"
                 set string tag "Socket;%loop-counter%;Type" of (custom nbt of {_item}) to {_randomSocket}
 
-                if loop-counter = 1:
-                    set {_stats} to "%{_stats}%%nl% %nl%%{_socket}%"
-                else:
-                    set {_stats} to "%{_stats}%%nl%%{_socket}%"
+                if {_socketBlankAdded} is false:
+                    set {_stats} to "%{_stats}%%nl% "
+                    set {_socketBlankAdded} to true
+                set {_stats} to "%{_stats}%%nl%%{_socket}%"
 
                 set {_socketLoreLength::*} to {_stats} split at nl
                 set int tag "Socket;%loop-counter%;Lore Line" of (custom nbt of {_item}) to (size of {_socketLoreLength::*})
@@ -1000,6 +1002,9 @@ function RelicLoreUpdate(item: item) :: item:
     set {_itemLevel} to int tag "ItemLevel" of {_customNbt}
     set {_upgraded} to int tag "Upgraded" of {_customNbt}
     set {_enhanced} to int tag "Enhanced" of {_customNbt}
+    set {_effectValue} to long tag "EffectValue" of {_customNbt}
+    if {_effectValue} is not set:
+        set {_effectValue} to double tag "EffectValue" of {_customNbt}
     if {_itemLevel} is not set:
         set {_itemLevel} to 1
     if {_upgraded} is not set:
@@ -1025,6 +1030,9 @@ function RelicLoreUpdate(item: item) :: item:
                         set {_formattedStat} to RelicFormattedStat(loop-value-2, {_value})
                         if {_formattedStat} is not "":
                             set {_line} to {_formattedStat}
+        if {_effectValue} is set:
+            if {_line} contains "{VALUE}":
+                replace all "{VALUE}" in {_line} with "%{_effectValue}%"
         if {_skipLine} is not true:
             set {_lore::*} to {_lore::*} and {_line}
         clear {_skipLine}
@@ -1054,7 +1062,8 @@ function RelicApplyScaling(p: player, item: item) :: item:
                 set {_baseValue} to {_baseFloor}
         set {_value} to round({_baseValue} * {_multiplier}, 0)
         set int tag "Stats;%loop-value%" of (custom nbt of {_item}) to {_value}
-    return RelicLoreUpdate({_item})
+
+    return RelicScaledLoreUpdate({_p}, {_item})
 
 function ArtifactReqExp(artifact: item) :: integer:
     set {_upgradeLevel} to int tag "Upgraded" of (custom nbt of {_artifact})
@@ -1145,10 +1154,10 @@ on inventory click:
 
                             set {_returnItem} to event-slot
                             if GearIsRelic({_returnItem}) is true:
-                                set {_returnItem} to RelicLoreUpdate({_returnItem})
+                                set {_returnItem} to RelicScaledLoreUpdate(player, {_returnItem})
                             else:
                                 set lore of {_returnItem} to GearLoreUpdate({_returnItem})
-                            giveItem(player, {_returnItem})
+                            giveItem(player's uuid, {_returnItem})
 
                             loop yaml nodes with keys "Card.Gear.%{_gearSlot}%.Stats" from "activeCard-%player%":
                                 set {_loopStatAmount} to yaml value "Card.Gear.%{_gearSlot}%.Stats.%loop-value%" in "activeCard-%player%"
@@ -1359,6 +1368,18 @@ on inventory click:
             
             set {_gearId} to string tag "GearId" of (custom nbt of {_gearItem})
 
+            if {_gearId} is set:
+                loop all items in player's inventory:
+                    if string tag "GearId" of (custom nbt of loop-item) = {_gearId}:
+                        remove 1 of loop-item from player's inventory
+                        stop loop
+            else if GearIsRelic({_gearItem}) is true:
+                loop all items in player's inventory:
+                    if GearIsRelic(loop-item) is true:
+                        if uncolored name of loop-item = uncolored name of {_gearItem}:
+                            remove 1 of loop-item from player's inventory
+                            stop loop
+
             if string tag "ArtifactType" of (custom nbt of {_gearItem}) is not set:
                 if line 1 of lore of {_gearItem} contains "Flower Artifact":
                     set string tag "ArtifactType" of (custom nbt of {_gearItem}) to "Flower Artifact"
@@ -1369,11 +1390,6 @@ on inventory click:
                 else if line 1 of lore of {_gearItem} contains "Scroll Artifact":
                     set string tag "ArtifactType" of (custom nbt of {_gearItem}) to "Scroll Artifact"
             clear metadata tag "GearConfirm" of player
-            
-            loop all items in player's inventory:
-                if string tag "GearId" of (custom nbt of loop-item) = {_gearId}:
-                    remove 1 of loop-item from player's inventory
-                    stop loop
 
             clear metadata value "GearItemToEquip" of player
 
@@ -1426,10 +1442,10 @@ on inventory click:
                 if {_checkSlot} != air:
                     set {_returnItem} to {_checkSlot}
                     if GearIsRelic({_returnItem}) is true:
-                        set {_returnItem} to RelicLoreUpdate({_returnItem})
+                        set {_returnItem} to RelicScaledLoreUpdate(player, {_returnItem})
                     else:
                         set lore of {_returnItem} to GearLoreUpdate({_returnItem})
-                    giveItem(player, {_returnItem})
+                    giveItem(player's uuid, {_returnItem})
                     if boolean tag "Artifact" of (custom nbt of {_checkSlot}) is set:
                         if string tag "ArtifactSet" of (custom nbt of {_checkSlot}) is set:
                             set {_artifactSet} to string tag "ArtifactSet" of (custom nbt of {_checkSlot})
@@ -1689,7 +1705,7 @@ function EquippedGearLoreUpdate(p: player, item: item) :: text:
     set {_customNbt} to custom nbt of {_item}
 
     if GearIsRelic({_item}) is true:
-        set {_relic} to RelicLoreUpdate({_item})
+        set {_relic} to RelicScaledLoreUpdate({_p}, {_item})
         return join (lore of {_relic}) by nl
 
     if boolean tag "Artifact" of {_customNbt} is set:
@@ -1809,3 +1825,24 @@ function CardStatUpdate(p: player):
     StatBarUpdate({_p}, {_haste}, 15, "Haste", "Pośpiech", "<#19943e>")
     set {_avoidance} to int tag "Stats;Avoidance" of (custom nbt of {_p}'s tool)
     StatBarUpdate({_p}, {_avoidance}, 16, "Avoidance", "Unik", "<#2154ad>")
+
+function RelicScaledEffectValue(p: player, i: item) :: number:
+    if uncolored (name of {_i}) contains "Star of the Molten Sea":
+        set {_value} to double tag "EffectValue" of (custom nbt of {_i})
+        if {_value} is set:
+            set {_scaling} to AbilityUpgradeValue({_p}, "Ghazan", "Lava Burst", "DAMAGESCALING")
+            set {_scaling} to {_scaling}*18
+            set {_scalingDamage} to ({damage::%{_p}%}/{_scaling}) + (Versatility({_p})/({_scaling} * 3)) + (PrimaryStat({_p})/({_scaling} / 2))
+            return round({_value} * {_scalingDamage}, 1)
+    return 0
+
+function RelicScaledLoreUpdate(p: player, i: item) :: item:
+    set {_i} to RelicLoreUpdate({_i})
+    set {_scaled} to RelicScaledEffectValue({_p}, {_i})
+    loop lore of {_i}:
+        set {_line} to loop-value
+        if {_line} contains "{SCALED}":
+            replace all "{SCALED}" in {_line} with "%{_scaled}%"
+        set {_lore::*} to {_lore::*} and {_line}
+    set lore of {_i} to {_lore::*}
+    return {_i}

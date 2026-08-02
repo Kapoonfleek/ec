@@ -192,8 +192,19 @@ function DiamondRelicItem(card: text, preview: boolean = false) :: item:
 		set int tag "BaseStats;%loop-value%" of {_customNbt} to {_value}
 
 	set {_effectValue} to yaml value "Cards.%{_card}%.Relic.EffectValue" in "DiamondChestList"
+	if rounded down {_effectValue} < {_effectValue}:
+		set double tag "EffectValue" of {_customNbt} to {_effectValue}
+	else:
+		set double tag "EffectValue" of {_customNbt} to {_effectValue}
 
-	set long tag "EffectValue" of {_customNbt} to {_effectValue}
+	set string tag "Id" of {_customNbt} to "%random uuid%"
+
+	loop lore of {_item}:
+		set {_line} to loop-value
+		if {_line} contains "{VALUE}":
+			replace all "{VALUE}" in {_line} with "%{_effectValue}%"
+		set {_lore::*} to {_lore::*} and {_line}
+	set lore of {_item} to {_lore::*}
 
 	return {_item}
 
@@ -391,7 +402,7 @@ function DiamondFeaturedRewardChance(type: text) :: number:
 
 function DiamondFeaturedItem(type: text, p: player, card: text, preview: boolean = false) :: item:
 	if {_type} contains "Relic":
-		return DiamondRelicItem({_card}, {_preview})
+		return RelicScaledLoreUpdate({_p}, DiamondRelicItem({_card}, {_preview}))
 	if {_type} contains "Tier":
 		if {_preview} is true:
 			return DiamondTierSetForPlayer({_p}, {_card})
@@ -665,7 +676,7 @@ function DiamondPreviewMenu(p: player):
 	set string tag "DiamondMenuAction" of (custom nbt of {_tierPreferences}) to "TierPreferences"
 	set slot 4 of {_menu} to {_tierPreferences}
 
-	set {_weeklyRelic} to DiamondRelicItem({_weekly}, true)
+	set {_weeklyRelic} to RelicScaledLoreUpdate({_p}, DiamondRelicItem({_weekly}, true))
 	set {_relicChance} to DiamondFeaturedRewardChance("Relic")
 	set lore of {_weeklyRelic} to (colored lore of {_weeklyRelic}) and "%nl%&b✨ Weekly Featured Relic%nl%&7Drop probability: &f%{_relicChance}%%%"
 	set slot 7 of {_menu} to {_weeklyRelic}
@@ -683,7 +694,7 @@ function DiamondPreviewMenu(p: player):
 		set {_fatedSigil} to DiamondTierSetForPlayer({_p}, {_fated})
 		set lore of {_fatedSigil} to (colored lore of {_fatedSigil}) and "%nl%&b✨ Fated Starforged Sigil%nl%&7Drop probability: &f%{_sigilChance}%%%"
 		set slot 2 of {_menu} to {_fatedSigil}
-		set {_fatedRelic} to DiamondRelicItem({_fated}, true)
+		set {_fatedRelic} to RelicScaledLoreUpdate({_p}, DiamondRelicItem({_fated}, true))
 		set lore of {_fatedRelic} to (colored lore of {_fatedRelic}) and "%nl%&b✨ Fated Featured Relic%nl%&7Drop probability: &f%{_relicChance}%%%"
 		set slot 1 of {_menu} to {_fatedRelic}
 
@@ -780,8 +791,10 @@ function DiamondClaimReward(p: player, reward: item):
 		clear metadata value "DiamondFinalReward" of {_p}
 		clear {nagrodadiamentowa::%{_p}%}
 		stop
+
 	if {_reward} is set:
-		giveItem({_p}, {_reward})
+		giveItem({_p}'s uuid, {_reward})
+
 	play sound "entity.experience_orb.pickup" with volume 2 and pitch 1.3 to {_p}
 	play sound "entity.player.levelup" with volume 5 and pitch 1.3 to {_p}
 	if {diamondDroppedFeatured::%{_p}%} is true:
