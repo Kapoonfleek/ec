@@ -1219,6 +1219,9 @@ function MindFlayVisual(p: player, target: entity):
 function MindFlay(p: player, target: entity, cast: number):
     set {_totalTime} to 0 seconds
     set {_castBar} to false
+    if {_cast} is not set:
+        clear metadata value "channeling" of {_p}
+        stop
     while metadata value "channeling" of {_p} is set:
         set {_pospiech} to Haste({_p})/1.5 #Scale with haste 0.67x as effectively
         set {_crit} to CriticalHit({_p})
@@ -1310,6 +1313,8 @@ function MindFlay(p: player, target: entity, cast: number):
             if loop-counter-2 is divisible by 3:
                 MindFlayVisual({_p}, {_target})
 
+        if {_ticks} <= 0 seconds:
+            wait 1 tick
         clear {_ticks}
         set {_totalTicks} to {_totalTicks} + 1
             
@@ -1446,20 +1451,17 @@ function ShadowyApparitionSpawn(p: player, target: entity, effectiveness: number
                             ShadowyApparitionSpawn({_p}, {_target}, 0.5)
 
 function ShadowyApparitionFloat(p: player, apparition: entity, target: entity, effectiveness: number = 1):
+    wait 1 tick
     while {_apparition} is alive:
         if {_target} is not alive:
-            stop loop
-
-        if chunk at {_apparition} is not loaded:
-            kill {_apparition}
             stop loop
 
         if (distance between {_apparition} and {_target}) <= 2:
             stop loop
 
-        make {_apparition} pathfind to {_target}
+        make {_apparition} pathfind to {_target}'s location
 
-        {_apparition}.setFlower(location of {_target})
+        {_apparition}.setFlower(null)
 
         wait 5 ticks
 
@@ -1743,7 +1745,7 @@ function getTheroldRelicEffectValue(p: player) :: number:
     set {_relic} to getTheroldRelic({_p})
     if {_relic} is air:
         return 0
-    set {_value} to long tag "EffectValue" of (custom nbt of {_relic})
+    set {_value} to double tag "EffectValue" of (custom nbt of {_relic})
     if {_value} is not set:
         return 0
     return {_value}
