@@ -510,7 +510,9 @@ function islandExpeditionSpawnEnemy(island: string, instance: string, enemy: str
 
     if {_azerite} contains "-":
         set {_azerite::*} to {_azerite} split at "-"
-        set {_azerite} to a random integer between {_azerite::1} and {_azerite::2}
+        loop {_azerite::*}:
+            set {_azeriteInt::*} to {_azeriteInt::*} and ("%loop-value%" parsed as integer)
+        set {_azerite} to a random integer between {_azeriteInt::1} and {_azeriteInt::2}
 
     set metadata value "IslandExpeditionInstance" of {_mob} to {_instance}
     set metadata value "IslandEnemy" of {_mob} to true
@@ -811,7 +813,7 @@ on inventory click:
 function islandExpeditionQueueStart(p: player, difficulty: string, partymembers: players):
     set {_loadingMessages::*} to "&bClimbing the crow's nest...", "&bUnfurling the sails...", "&bCharting a course for adventure...", "&bWeighing anchor...", "&bCharting a course for Azerite..." and "&bReadying Flynn for departure..."
     set {_loadingMessages::*} to {_loadingMessages::*} and "&bSpinning up the Azerite detector...", "&bInitializing island generation...", "&bSpawning Azerite ore nodes...", "&bPopulating island dwellers..."
-    
+
     set {_islandList::*} to getIslandWorlds()
     set {_island} to a random element of {_islandList::*}
 
@@ -871,7 +873,7 @@ function islandExpeditionQueueStart(p: player, difficulty: string, partymembers:
     set {_enemyDirection} to a random element of "Longitude" and "Latitude"
     set {_directionsLongitude::*} to "North" and "South"
     set {_directionsLatitude::*} to "East" and "West"
-    
+
     if {_direction} = "Longitude":
         set {_rotation} to a random element of "North" and "South"
         remove {_rotation} from {_directionsLongitude::*}
@@ -891,7 +893,7 @@ function islandExpeditionQueueStart(p: player, difficulty: string, partymembers:
 
     load yaml "plugins/Skript/islandexpeditions/%{_island}%/Locations.yml" as "%{_island}%Locations"
     set {_total} to yaml value "TotalLocations.ShipAlly.%{_direction}%" in "%{_island}%Locations"
-    
+
 
     loop yaml node keys "Locations.ShipAlly.%{_direction}%.%{_rotation}%" in "%{_island}%Locations":
         set {_integer} to (loop-value parsed as integer)
@@ -946,10 +948,10 @@ function islandExpeditionQueueStart(p: player, difficulty: string, partymembers:
     set {_zEnemy} to yaml value "Locations.ShipAlly.%{_enemyDirection}%.%{_enemyRotation}%.%{_enemyShipStart}%.z" in "%{_island}%Locations"
 
     unload yaml "%{_island}%Locations"
-    
+
     set {_locShip} to location({_x}, {_y}, {_z}, world {_newInstance})
     set {_locEnemyShip} to location({_xEnemy}, {_yEnemy}, {_zEnemy}, world {_newInstance})
-    
+
     if {_direction} = "Longitude":
         set {_rotationShip} to a random element of "North" and "South"
         
@@ -976,7 +978,7 @@ function islandExpeditionQueueStart(p: player, difficulty: string, partymembers:
 
     while chunk at {_locShip} is not loaded:
         wait 1 tick
-    
+
     set {_schemPath} to "plugins/FastAsyncWorldEdit/schematics/IslandExpeditionsShip%{_rotationShip}%.schem"
     set {_result} to IslandPasteAPI.pasteSchematic({_schemPath}, world {_newInstance}, (x of {_locShip}), (y of {_locShip}), (z of {_locShip}))
 
@@ -984,7 +986,7 @@ function islandExpeditionQueueStart(p: player, difficulty: string, partymembers:
     set {_message} to {_result}.getMessage()
     set {_volume} to {_result}.getVolume()
     set {_duration} to {_result}.getDurationMillis()
-    
+
     if {_success} is true:
         send "&b[Island Expeditions] &8(%{_newInstance}%) &bAlly Ship paste successful! &7(%{_volume}% blocks pasted in %{_duration}%ms)" to console
     else:
@@ -992,7 +994,7 @@ function islandExpeditionQueueStart(p: player, difficulty: string, partymembers:
 
     while chunk at {_locEnemyShip} is not loaded:
         wait 1 tick
-    
+
     set {_schemPath} to "plugins/FastAsyncWorldEdit/schematics/IslandExpeditionsEnemyShip%{_rotationShipEnemy}%.schem"
     set {_result} to IslandPasteAPI.pasteSchematic({_schemPath}, world {_newInstance}, (x of {_locEnemyShip}), (y of {_locEnemyShip}), (z of {_locEnemyShip}))
 
@@ -1000,7 +1002,7 @@ function islandExpeditionQueueStart(p: player, difficulty: string, partymembers:
     set {_message} to {_result}.getMessage()
     set {_volume} to {_result}.getVolume()
     set {_duration} to {_result}.getDurationMillis()
-    
+
     if {_success} is true:
         send "&b[Island Expeditions] &8(%{_newInstance}%) &bEnemy Ship paste successful! &7(%{_volume}% blocks pasted in %{_duration}%ms)" to console
     else:
@@ -1109,14 +1111,15 @@ function islandExpeditionQueueStart(p: player, difficulty: string, partymembers:
             send "[IE] Cancelled %{_newInstance}% because a party member went offline." to console
             deleteIslandExpeditionWorld({_newInstance}, {_instance})
             stop
-        else:
-            seagullsAmbientSounds(loop-value)
-            islandExpeditionPlayMusic(loop-value, {_island})
 
     teleport {_partyMembers::*} to {_locFlynn}
 
     set {IslandPlayers::%{_instance}%::*} to {_partyMembers::*}
     islandExpeditionInit({_instance}, {_locFlynn}, {_island}, {_difficulty}, {_partyMembers::*})
+
+    loop {_partyMembers::*}:
+        seagullsAmbientSounds(loop-value)
+        islandExpeditionPlayMusic(loop-value, getIslandName({_island}))
 
     islandAIScheduleArrival({_instance}, {_island}, {_difficulty}, {_locEnemyShip})
 
@@ -1135,7 +1138,7 @@ function islandExpeditionQueueStart(p: player, difficulty: string, partymembers:
     set {_arriveQuote} to yaml value "Dialogues.Arrive.%{_arriveDialogue}%.Quote" in "IslandsDialogues"
 
     islandExpeditionCountdown({_locFlynn}, {_partyMembers::*}, {_instance})
-    
+
     wait 1 second
 
     while {_partyMembers::*} are not in world {_newInstance}:
@@ -1154,33 +1157,19 @@ function islandExpeditionQueueStart(p: player, difficulty: string, partymembers:
 function islandExpeditionPlayMusic(p: player, island: string):
     wait 5 seconds
     set {_world} to world of {_p}
-
-    set {_sounds} to size of (yaml node keys "Sounds.Music.Island Expeditions.%{_island}%" in "IslandsSounds")
-    set {_randomInt} to a random integer between 1 and {_sounds}
-    set {_sound} to yaml value "Sounds.Music.Island Expeditions.%{_island}%.%{_randomInt}%.Sound" in "IslandsSounds"
-    set {_duration} to yaml value "Sounds.Music.Island Expeditions.%{_island}%.%{_randomInt}%.Duration" in "IslandsSounds"
-
-    set metadata value "CurrentIslandMusic" of {_world} to {_randomInt}
-
-    set {_wait} to 5 seconds
-
-    play sound {_sound} with volume 5 and pitch 1 to {_p}
-
     while metadata value "IslandExpeditionInstance" of {_p} is set:
-        if {_wait} >= {_duration} + 5 seconds:
-            clear {_wait}
-            set {_sounds} to size of (yaml node keys "Sounds.Music.Island Expeditions.%{_island}%" in "IslandsSounds")
+        set {_sounds} to size of (yaml node keys "Sounds.Music.Island Expeditions.%{_island}%" in "IslandsSounds")
+        if {_sounds} > 0:
             set {_randomInt} to a random integer between 1 and {_sounds}
-
-            while metadata value "CurrentIslandMusic" of {_world} = {_randomInt}:
-                set {_randomInt} to a random integer between 1 and {_sounds}
-
+            if {_sounds} > 1:
+                while metadata value "CurrentIslandMusic" of {_world} = {_randomInt}:
+                    set {_randomInt} to a random integer between 1 and {_sounds}
+            set metadata value "CurrentIslandMusic" of {_world} to {_randomInt}
             set {_sound} to yaml value "Sounds.Music.Island Expeditions.%{_island}%.%{_randomInt}%.Sound" in "IslandsSounds"
             set {_duration} to yaml value "Sounds.Music.Island Expeditions.%{_island}%.%{_randomInt}%.Duration" in "IslandsSounds"
             play sound {_sound} with volume 5 and pitch 1 to {_p}
-        
-        wait 5 seconds
-        set {_wait} to {_wait} + 5 seconds
+            wait {_duration} + 5 seconds
+    stop sound {_sound} for {_p}
 
 on inventory close:
     if player's current inventory = metadata tag "islandExpeditions" of player:
@@ -1855,6 +1844,7 @@ function islandExpeditionEnd(instance: string, winner: string, source: entity):
 function azeriteAddIslands(p: entity, instance: string, azeriteType: string, nodeName: string, azerite: integer, team: string, sound: strings):
     if {_team} = "Ally":
         set {_azerite} to {_azerite} * ( 1 - ((size of {IslandPlayers::%{_instance}%::*}-1) * 0.15))
+        set {_azerite} to round({_azerite}, 0)
         islandExpeditionProgressDialogue({_instance}, {_p})
 
     if {azeriteCollected%{_team}%::%{_instance}%} + {_azerite} <= {azeriteRequired::%{_instance}%}:
@@ -1883,8 +1873,10 @@ function islandExpeditionMobKillAzerite(victim: entity, attacker: entity):
 
     set {_customNbt} to (custom nbt of {_victim})
     set {_instance} to string tag "IslandExpeditionInstance" of {_customNbt}
+
     if {_instance} is not set:
         set {_instance} to metadata value "IslandExpeditionInstance" of {_victim}
+
     if {_instance} is not set:
         stop
 
@@ -2252,7 +2244,7 @@ function IslandMobInfoAssignments(mob: entity, enemy: string, path: string, scal
     set {_nameplate} to yaml value "Azerite Map.%{_rank}%.Nameplate" in "%{_yamlName}%"
     set {_name} to "&f%{_enemy}%"
     if {_nameplate} is set:
-        set {_name} to "%{_nameplate}% &f%{_name}%"
+        set {_name} to formatted "%{_nameplate}% &f%{_name}%"
 
     set {_level} to int tag "ECLvl" of {_customNbt}
 
