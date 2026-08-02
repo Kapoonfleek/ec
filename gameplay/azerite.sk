@@ -4,39 +4,6 @@ import:
     java.lang.System
 
 
-
-command /azgear:
-    trigger:
-        #<#0070dd>
-        
-        set {_cards::*} to "Brother Therold", "Cresselia", "Vaporeon"
-        azeriteArmor(player, "Intro Quest", "Helmet", 60, "Intellect", {_cards::*})
-        azeriteArmor(player, "Intro Quest", "Leggings", 60, "Intellect", {_cards::*})
-        azeriteArmor(player, "Dungeons.Siege of Spawn", "Boots", 90, "Intellect", {_cards::*})
-        stop
-        set {_health} to round(healthFormula({_itemLevel}), 0)
-        set {_primaryStat} to round(primaryStatFormula({_itemLevel}), 0)
-        set {_item} to diamond named "<#fffd9c>Crown of the Champion" with lore "<#0070dd>Rare Azerite Helmet%nl%<#fdd002>Item Level %{_itemLevel}%%nl%&fSoulbound to %player%%nl%<#59c1e3> +%{_primaryStat}% Intellect%nl%<#c0ff02> +%{_health}% Health%nl% %nl%<#fdd002>Active Brother Therold Azerite Powers (3/4):%nl% &f-  &fChorus of Insanity%nl%  <#00ff00>When Voidform ends, gain 14 Critical Hit,%nl%  <#00ff00>stacking 20 times. This effect decays%nl%  <#00ff00>every 1 sec.%nl% &f-  &fSpiteful Apparitions%nl%  <#00ff00>Shadowy Apparitions deal an additional%nl%  <#00ff00>2 damage to enemies suffering from%nl%<#00ff00>  your Vampiric Touch.%nl% &f-  &fWhispers of the Damned%nl%  <#00ff00>Mind Blast deals an additional 3 damage%nl%  <#00ff00>and generates 20 additional Insanity on%nl%  <#00ff00>critical strikes.%nl% &f- Azerite Empowered is available.%nl% %nl%<#fdd002><Shift + RMB to view Azerite Powers>"
-        set {_item} to {_item} with nbt from "{""minecraft:attribute_modifiers"":{modifiers:[],show_in_tooltip:0}}"
-        set boolean tag "AzeriteArmor" of (custom nbt of {_item}) to true
-        set string tag "EquipmentSlot" of (custom nbt of {_item}) to "helmet slot"
-        set tooltip style of {_item} to "azerite"   
-        set int tag "Stats;Health" of (custom nbt of {_item}) to {_health}
-        set int tag "Stats;Intellect" of (custom nbt of {_item}) to {_primaryStat}
-        set string tag "PrimaryStat" of (custom nbt of {_item}) to "Intellect"
-        set int tag "ItemLevel" of (custom nbt of {_item}) to {_itemLevel}
-        set int tag "Rings" of (custom nbt of {_item}) to 4
-        set string tag "Rarity" of (custom nbt of {_item}) to "Rare"
-
-        apply equippable component to {_item}:
-            slot: helmet slot
-            equip_sound: "item.armor.equip_gold"
-            asset_id: "invisible"
-            dispensable: true
-            swappable: true
-            damage_on_hurt: false
-        give {_item} to player
-
 on inventory click:
     set {_slot} to event-item stack
     if boolean tag "AzeriteArmor" of (custom nbt of {_slot}) = true:
@@ -58,8 +25,12 @@ on inventory click:
                 set player's boots to player's boots
                 set player's helmet to player's helmet
                 set player's leggings to player's leggings
+
                 set {_Soulbound} to uuid tag "Soulbound" of (custom nbt of event-item stack)
                 set {_Soulbound} to {_Soulbound} parsed as player
+                if {_Soulbound} is not set:
+                    set {_Soulbound} to player
+                    
                 if {_Soulbound} != player:
                     send "&cThis item is Soulbound to &f%{_Soulbound}%&c." to player
                     play sound "block.glass.break" with volume 1 and pitch 2 to player
@@ -490,7 +461,7 @@ on inventory close:
         clear metadata tag "AzeriteArmor" of player
         clear metadata value "AzeriteGearMenuOpen" of player
 
-function azeriteArmor(p: player, source: string, slot: string, itemLevel: integer, primaryStat: string, cardList: strings = "") :: item:
+function azeriteArmor(p: player, source: string, slot: string, itemLevel: integer, primaryStat: string, bindsOnEquip: boolean, cardList: strings = "") :: item:
     set {_id} to random 8 char string from charset `0-9` `a-z`
     set {_name} to yaml value "Azerite Armor.Sources.%{_source}%.%{_slot}%.Name" in "AzeriteArmorSources"
     set {_rarity} to yaml value "Azerite Armor.Sources.%{_source}%.%{_slot}%.Rarity" in "AzeriteArmorSources"
@@ -573,8 +544,15 @@ function azeriteArmor(p: player, source: string, slot: string, itemLevel: intege
 
     set {_health} to round(healthFormula({_itemLevel}), 0)
     set {_primaryStatAmount} to round(primaryStatFormula({_itemLevel}), 0)
-    set {_itemLore} to "%{_rarityDesc}% Azerite %{_slot}%%nl%<#fdd002>Item Level %{_itemLevel}%%nl%&fSoulbound to %{_p}%%nl%%{_primaryStatColour}%%{_primaryStatIcon}% +%{_primaryStatAmount}% %{_primaryStat}%%nl%<#c0ff02> +%{_health}% Health"
+
+    if {_bindOnEquip} = true:
+        set {_soulboundDesc} to "&fBinds when equipped"
+    else:
+        set {_soulboundDesc} to "&fSoulbound to %{_p}%"
+    set {_itemLore} to "%{_rarityDesc}% Azerite %{_slot}%%nl%<#fdd002>Item Level %{_itemLevel}%%nl%%{_soulboundDesc}%%nl%%{_primaryStatColour}%%{_primaryStatIcon}% +%{_primaryStatAmount}% %{_primaryStat}%%nl%<#c0ff02> +%{_health}% Health"
+    
     set {_item} to {_baseItem} named "%{_colour}%%{_name}%" with lore "%{_itemLore}%%nl% %nl%%{_activeColour}%Active Azerite Powers (0/%{_rings}%):"
+
     loop {_azeritePowerDesc::*}:
         add loop-value to lore of {_item}
     add "%nl%<#fdd002><Shift + RMB to view Azerite Powers>" to lore of {_item}
@@ -583,7 +561,12 @@ function azeriteArmor(p: player, source: string, slot: string, itemLevel: intege
     set tooltip style of {_item} to "azerite"
 
     set boolean tag "AzeriteArmor" of (custom nbt of {_item}) to true
-    set uuid tag "Soulbound" of (custom nbt of {_item}) to {_p}'s uuid
+
+    if {_bindOnEquip} = true:
+        set boolean tag "BindsOnEquip" of (custom nbt of {_item}) to true
+    else:
+        set uuid tag "Soulbound" of (custom nbt of {_item}) to {_p}'s uuid
+
     set string tag "EquipmentSlot" of (custom nbt of {_item}) to {_slot}
 
     set int tag "Stats;Health" of (custom nbt of {_item}) to {_health}
@@ -632,6 +615,11 @@ function updateAzeriteArmorLore(p: player):
             set {_healthDescription} to string tag "HealthDescription" of (custom nbt of loop-item) 
             set {_rings} to int tag "Rings" of (custom nbt of loop-item)
             set {_itemLevel} to int tag "ItemLevel" of (custom nbt of loop-item)
+
+            if boolean tag "BindsOnEquip" of (custom nbt of loop-item) = true:
+                set (uuid tag "Soulbound" of (custom nbt of loop-item)) to uuid of player
+                clear boolean tag "BindsOnEquip" of (custom nbt of loop-item)
+
             set {_soulbound} to (uuid tag "Soulbound" of (custom nbt of loop-item)) parsed as player
             set {_slot} to string tag "EquipmentSlot" of (custom nbt of loop-item)
             replace all " slot" in {_slot} with ""
@@ -651,7 +639,13 @@ function updateAzeriteArmorLore(p: player):
                 set {_activePowers} to "Fully upgraded"
             else:
                 set {_activePowers} to "Active Azerite Powers (%{_traitsActive}%/%{_rings}%):"
-            set lore of loop-item to "%{_rarityDesc}%%nl%<#fdd002>Item Level %{_itemLevel}%%nl%&fSoulbound to %{_soulbound}%%nl%%{_primaryStatDescription}%%nl%%{_healthDescription}%%nl%"
+
+            if {_soulbound} is set:
+                set {_soulboundDesc} to "&fSoulbound to %{_soulbound}%"
+            else:
+                set {_soulboundDesc} to "&fBinds when equipped"
+
+            set lore of loop-item to "%{_rarityDesc}%%nl%<#fdd002>Item Level %{_itemLevel}%%nl%%{_soulboundDesc}%%nl%%{_primaryStatDescription}%%nl%%{_healthDescription}%%nl%"
             
             if {_p}'s chestplate = {_heart}:
                 add " %nl%<#fdd002>%{_activePowers}%" to lore of loop-item
@@ -829,7 +823,10 @@ on armor change:
                 if metadata value "ECEngaged" of player is not set:
                     set {_Soulbound} to uuid tag "Soulbound" of (custom nbt of event-item)
                     set {_Soulbound} to {_Soulbound} parsed as player
-                    if {_Soulbound} = player:
+                    if any:
+                        {_Soulbound} = player
+                        boolean tag "BindsOnEquip" of (custom nbt of event-item) = true
+                    then:
                         SetPlayerStats(player)
                         updateAzeriteArmorLore(player)
                     if event-equipment slot = helmet slot:
