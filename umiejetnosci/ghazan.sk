@@ -70,6 +70,7 @@ on rightclick:
 									if metadata value "Lava Wave" of player is set:
 										clear metadata value "Lava Wave" of player
 										LavaWave(player, {_target})
+
 									if metadata value "Master Heritage Lava Spread" of player > 0:
 										MasterHeritageLavaSpread(player, {_target})
 									stop
@@ -114,7 +115,7 @@ on rightclick:
 						LoreUpdate(player, "Rain of Lava", {_lore})
 								
 						if boolean tag "Constellation;Unstoppable Heat" of (custom nbt of {karta::%player%}) is set:
-							set {_shield} to 10 + {primarystat::%player%}/8 + {utility::%player%}/16 + {versatility::%player%}/48
+							set {_shield} to 10 + PrimaryStat(player)/8 + {utility::%player%}/16 + Versatility(player)/48
 
 							set {_loreShield} to "&f <#d14d43>Rain of Lava <#b03228>can no longer be interrupted.%nl%<#b03228>You gain a &f%{_shield}% HP <#d14d43> Shield <#b03228>for the duration%nl%<#b03228>of &f <#d14d43>Rain of Lava<#b03228>."
 							
@@ -153,12 +154,13 @@ on rightclick:
 								set {_entityLoc} to location of {_entity}
 
 								if chunk at {_entityLoc} is loaded:
-									if metadata value "ECPulled" of {_entity} is set:
-										set {_enemyPulled::*} to {_enemyPulled::*} and {_entity}
-										if metadata value "MoltenLava%player%" of (block under {_entity}) is set:
-											set {_enemyMoltenLava::*} to {_enemyMoltenLava::*} and {_entity}
-									else:
-										set {_enemyNotInCombat::*} to {_enemyNotInCombat::*} and {_entity}
+									if distance between player and {_entity} < 200:
+										if metadata value "ECPulled" of {_entity} is set:
+											set {_enemyPulled::*} to {_enemyPulled::*} and {_entity}
+											if metadata value "MoltenLava%player%" of (block under {_entity}) is set:
+												set {_enemyMoltenLava::*} to {_enemyMoltenLava::*} and {_entity}
+										else:
+											set {_enemyNotInCombat::*} to {_enemyNotInCombat::*} and {_entity}
 
 							if size of {_enemyMoltenLava::*} >= 1:
 								set {_target} to a random element of {_enemyMoltenLava::*}
@@ -309,19 +311,21 @@ on rightclick:
 									play sound "block.lava.pop" with volume 1.2 and pitch 1 at {_l} ~ {_v}
 									wait 1 tick
 								set metadata value "Lava Wave" of player to true
+
 								if HasStarforgedBonus(player, "Ghazan", "Tier I", "2Set") is true:
 									GhazanLavaflow(player)
-									if boolean tag "Constellation;Master Heritage" of (custom nbt of {karta::%player%}) is set:
-										set metadata value "Master Heritage Lava Spread" of player to 2
-									set {_pospiech} to Haste(player)
-									set {_cd} to "%GhazanMoltenLavaCooldownSeconds(player)% seconds" parsed as timespan
-									set {_cdd} to GhazanMoltenLavaCooldownSeconds(player)
+								if boolean tag "Constellation;Master Heritage" of (custom nbt of {karta::%player%}) is set:
+									set metadata value "Master Heritage Lava Spread" of player to 2
+								set {_pospiech} to Haste(player)
+								set {_cd} to "%GhazanMoltenLavaCooldownSeconds(player)% seconds" parsed as timespan
+								set {_cdd} to GhazanMoltenLavaCooldownSeconds(player)
+								
 								set {_radius} to 2 + (CrowdControl(player)/40)
 								MoltenLava(player, {_radius}, {_cdd}, {_pospiech}, true, {_target})
 								set {_crit} to CriticalHit(player)
 								set {_baseDamage} to AbilityUpgradeValue(player, "Ghazan", "Lava Wave", "BASEDAMAGE")
 								set {_damageScaling} to AbilityUpgradeValue(player, "Ghazan", "Lava Wave", "DAMAGESCALING")
-								set {_damage} to {_baseDamage} + ({damage::%player%}/35) + ({versatility::%player%}/105) + ({primarystat::%player%}/{_damageScaling})
+								set {_damage} to {_baseDamage} + ({damage::%player%}/35) + (Versatility(player)/105) + (PrimaryStat(player)/{_damageScaling})
 
 								set {_lore} to GhazanLavaWaveDescription(player)
 								loop all items in player's inventory:
@@ -480,7 +484,7 @@ on rightclick:
 							set {_crit} to CriticalHit(player)
 							set {_baseDamage} to AbilityUpgradeValue(player, "Ghazan", "Lavafury", "BASEDAMAGE")
 							set {_damageScaling} to AbilityUpgradeValue(player, "Ghazan", "Lavafury", "DAMAGESCALING")
-							set {_damage} to {_baseDamage} + ({damage::%player%}/18) + ({versatility::%player%}/36) + ({primarystat::%player%}/{_damageScaling})
+							set {_damage} to {_baseDamage} + ({damage::%player%}/18) + (Versatility(player)/36) + (PrimaryStat(player)/{_damageScaling})
 							if boolean tag "Constellation;Master Heritage" of (custom nbt of {karta::%player%}) is set:
 								set metadata value "Master Heritage Lava Spread" of player to 2
 
@@ -852,6 +856,7 @@ function LavaSurge(p: player, target: entity):
 	if metadata value "Lava Wave" of {_p} is set:
 		clear metadata value "Lava Wave" of {_p}
 		LavaWave({_p}, {_target})
+
 	if metadata value "Master Heritage Lava Spread" of {_p} > 0:
 		MasterHeritageLavaSpread({_p}, {_target})
 #AREA RELOADER PLUGIN OGARNĄĆ
@@ -865,6 +870,7 @@ on damage:
 		cancel event
 
 function MoltenLava(p: player, radius: number, cdd: number, pospiech: number, wave: boolean, target: entity, refresh: timespan = 0 seconds):
+	set {_now} to now
 	set {_scaling} to AbilityUpgradeValue({_p}, "Ghazan", "Molten Lava", "DAMAGESCALING")
 	set {_damage} to AbilityUpgradeValue({_p}, "Ghazan", "Molten Lava", "BASEDAMAGE") + ({damage::%{_p}%}/{_scaling}) + (Versatility({_p})/({_scaling} * 3)) + (PrimaryStat({_p})/({_scaling} / 2)) + {_bonusdmg}
 
@@ -898,8 +904,8 @@ function MoltenLava(p: player, radius: number, cdd: number, pospiech: number, wa
 			else:
 				set {_sound} to false
 			if (y of loop-block) >= (y of {_Eventblock}):
-				if "%regions at loop-block%" does not contain "spawn":
-					if metadata value "MoltenLava%{_p}%" of loop-block is not set:
+				if metadata value "MoltenLava%{_p}%" of loop-block is not set:
+					if "%regions at loop-block%" does not contain "spawn":
 						if {_refresh} = 0 seconds:
 							moltenLavaSee({_p}, location of loop-block)
 							set {magmaarea::%{_p}%} to {magmaarea::%{_p}%} + 1
@@ -1016,14 +1022,17 @@ function Magma(p: player):
 	set {_radius} to 2 + (CrowdControl({_p})/40)
 	set {_lore} to GhazanMoltenLavaDescription({_p})
 	set {_world} to world of {_p}
-
+	
+	set {_now} to now
 	loop {ECMobs::%{_world}%::*}:
 		set {_entity} to loop-value parsed as entity
 		set {_entityLoc} to location of {_entity}
 
 		if chunk at {_entityLoc} is loaded:
-			if metadata value "MoltenLava%{_p}%" of (block under {_entity}) is set:
+			set {_block} to block under {_entity}
+			if metadata value "MoltenLava%{_p}%" of {_block} is set:
 				if boolean tag "ECMob" of (custom nbt of {_entity}) is set:
+
 					set metadata value "Element" of {_p} to "Lava"
 					set {_entity}'s last damage cause to sweep attack
 					set metadata value "LastDamageCause" of {_entity} to "<#b03228>Molten Lava"
@@ -1043,13 +1052,14 @@ function Magma(p: player):
 							send title " " with subtitle "                    " to {_p} for 1 minute with fade in 0.25 second and fade out 0.0 second
 						if metadata value "Lavafury" of {_p} = 0:
 							clear metadata value "Lavafury" of {_p}
-					
+
 					set {_damage} to Crit({_p}, {_entity}, {_crit}, {_damage})
 					make {_p} damage {_entity} by {_damage}
 					GhazanApplyMoltenUpheaval({_p}, {_entity})
 					play sound "block.lava.pop" with volume 1.5 and pitch 0.75 at (location of {_entity})
 					chance of {_chance}%:
 						GhazanGainLavaSurge({_p})
+
 
 function Ascendance(p: player, duration: timespan):
 	play sound "skill.ghazan.ascendance_activate" with volume 3 and pitch 0 at (location of {_p})
@@ -1061,6 +1071,7 @@ function Ascendance(p: player, duration: timespan):
 
 	set {_world} to world of {_p}
 	
+	set {_now} to now
 	loop {ECMobs::%{_world}%::*}:
 		set {_entity} to loop-value parsed as entity
 		set {_entityLoc} to location of {_entity}
@@ -1229,13 +1240,7 @@ function LavaBurst(p: player, x: entity, multiplier: number, ability: string, re
 		set particle of {_shape} to lava particle
 		draw shape {_shape} at {_locEffect} ~ {_x}
 	play sound "skill.ghazan.lava_burst_cast" with volume 4 and pitch 1 at (location of {_p})
-	loop all items in the inventory of {_p}:
-		if boolean tag "Lava Burst" of (custom nbt of loop-item) = true:
-			set lore of loop-item to {_lore}
-		else if boolean tag "Lava Surge" of (custom nbt of loop-item) = true:
-			set lore of loop-item to {_lore2}
-		else if boolean tag "Mastery: Lava Technique" of (custom nbt of loop-item) = true:
-			set lore of loop-item to {_loreMastery}
+	
 	wait 0.4 seconds
 	set {_d} to distance between {_p} and {_x}
 	if {_d} > 3:
@@ -1255,6 +1260,15 @@ function LavaBurst(p: player, x: entity, multiplier: number, ability: string, re
 	else if {_ability} = "Lava Burst":
 		if {_replicated} is not true:
 			set metadata value "LastDamageCause" of {_x} to "<#b03228>Lava Burst"
+			loop all items in the inventory of {_p}:
+				set {_customNbt} to custom nbt of loop-item
+
+				if boolean tag "Lava Burst" of {_customNbt} = true:
+					set lore of loop-item to {_lore}
+				else if boolean tag "Lava Surge" of {_customNbt} = true:
+					set lore of loop-item to {_lore2}
+				else if boolean tag "Mastery: Lava Technique" of {_customNbt} = true:
+					set lore of loop-item to {_loreMastery}
 		else:
 			set metadata value "LastDamageCause" of {_x} to "<#b03228>Lava Burst (Echo)"
 	set metadata value "LastDamageCauseLore" of {_x} to {_lore}
@@ -1350,6 +1364,9 @@ function WildfireSpin(p: player):
 	set metadata value "Rain of Lava-Camera" of {_p} to {_id}
 	WildfirePush({_id})
 
+	set {_entityFromId} to {_world}.getEntity({_id})
+	teleport {_p} to {_entityFromId}
+
 	set {_wait} to 12
 	if string tag "Talents;Row 1" of (custom nbt of {karta::%{_p}%}) = "Unrivaled Finesse":
 		set {_wait} to {_wait} + 1.5
@@ -1403,7 +1420,7 @@ function MasterHeritage(p: player, target: entity, damageLava: number):
 		stop if {_target} is not alive
 
 function MasterHeritageLavaSpread(p: player, target: entity):
-	if metadata value "Lava Wave" of {_p} is not true:
+	if metadata value "Lava Wave" of {_p} is not set:
 		set {_lavaSpread} to metadata value "Master Heritage Lava Spread" of {_p}
 		remove 1 from {_lavaSpread}
 		set metadata value "Master Heritage Lava Spread" of {_p} to {_lavaSpread}
@@ -1411,7 +1428,7 @@ function MasterHeritageLavaSpread(p: player, target: entity):
 			clear metadata value "Master Heritage Lava Spread" of {_p}
 		
 		set {_world} to world of {_p}
-
+		set {_now} to now
 		loop {ECMobs::%{_world}%::*}:
 			set {_entity} to loop-value parsed as entity
 			if {_entity} != {_target}:
@@ -1446,7 +1463,11 @@ function PerpetualBurn(p: player):
 		set metadata value "PerpetualBurn" of {_p} to 20 seconds
 
 function MoltenBlast(p: player, stat: number):
-	add {_stat} to metadata value "MoltenBlast" of {_p}
+	if metadata value "MoltenBlast" of {_p} is not set:
+		set metadata value "MoltenBlast" of {_p} to 0
+
+	set metadata value "MoltenBlast" of {_p} to metadata value "MoltenBlast" of {_p} + {_stat}
+
 	if metadata value "MoltenBlastDuration" of {_p} is not set:
 		set metadata value "MoltenBlastDuration" of {_p} to 5 seconds
 		while metadata value "MoltenBlastDuration" of {_p} > 0 seconds:

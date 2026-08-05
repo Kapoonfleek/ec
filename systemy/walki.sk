@@ -9,7 +9,8 @@ function CardCombatYamlAdd(p: player, yamlNode: text, amount: number):
 		set yaml value "%{_yamlNode}%" in "activeCard-%{_p}%" to {_current}
 		save yaml "activeCard-%{_p}%"
 
-
+import:
+    java.lang.System
 
 on heal:
 	if event-entity is player:
@@ -437,19 +438,26 @@ on damage:
 	if attacker is a player:
 		if victim is a living entity:
 			victim.setMaximumNoDamageTicks(0)
+
+	set {_customNbtVictim} to custom nbt of victim
+	set {_customNbtAttacker} to custom nbt of attacker
+
 	if "%victim's last damage cause%" is "unknown":
 		set victim's last damage cause to attack
+
 	if region at victim is set:
 		if damage cause is fall:
 			set damage to 0
 			cancel event
-	if boolean tag "ECMob" of (custom nbt of victim) is set:
+
+	if boolean tag "ECMob" of {_customNbtVictim} is set:
 		if damage cause is not attack:
 			if damage cause is not sweep attack:
 				if attacker is not a player:
 					if attacker is not a projectile:
 						set damage to 0
 						cancel event
+
 	if damage cause is fall:
 		cancel event
 	else if damage cause is suffocation:
@@ -457,7 +465,7 @@ on damage:
 	else if damage cause is entity explosion:
 		cancel event
 	else if damage cause is drown:
-		if boolean tag "ECMob" of (custom nbt of victim) is set:
+		if boolean tag "ECMob" of {_customNbtVictim} is set:
 			set damage to 0
 			cancel event
 		else if "%region at victim%" contains "NewPlayerArea":
@@ -498,11 +506,11 @@ on damage:
 		set damage to 0
 		cancel event
 	else if damage cause is fire:
-		if boolean tag "ECMob" of (custom nbt of victim) is set:
+		if boolean tag "ECMob" of {_customNbtVictim} is set:
 			set damage to 0
 			cancel event
 	else if damage cause is burn:
-		if boolean tag "ECMob" of (custom nbt of victim) is set:
+		if boolean tag "ECMob" of {_customNbtVictim} is set:
 			set damage to 0
 			cancel event
 	else if damage cause is lava:
@@ -533,7 +541,7 @@ on damage:
 	if attacker is a blaze:
 		if victim is a player:
 			if victim's last damage cause is not sweep attack:
-				if int tag "ECDungeonInstance" of (custom nbt of attacker) is set:
+				if int tag "ECDungeonInstance" of {_customNbtAttacker} is set:
 					if name of attacker is "Balthazar" or "Destruction Mage":
 						set damage to 0
 						cancel event	
@@ -543,7 +551,7 @@ on damage:
 	if victim is a player:
 		set scaled health of victim to 20
 	else:
-		if boolean tag "ECMob" of (custom nbt of victim) is set:
+		if boolean tag "ECMob" of {_customNbtVictim} is set:
 			if attacker is a player:
 				if {asyst::%uuid of victim%::*} does not contain (uuid of attacker):
 					add (uuid of attacker) to {asyst::%uuid of victim%::*}
@@ -560,20 +568,20 @@ on damage:
 	if attacker is not a player:
 		if attacker is a living entity:
 			if victim's last damage cause is not sweep attack:
-				if int tag "ECDungeonInstance" of (custom nbt of attacker) is set:
-					if (int tag "ECDungeonInstance" of (custom nbt of attacker)) = (metadata value "DungeonInstance" of victim):
-						set {_meleeDamage} to long tag "MeleeDamage" of (custom nbt of attacker)
+				if int tag "ECDungeonInstance" of {_customNbtAttacker} is set:
+					if (int tag "ECDungeonInstance" of {_customNbtAttacker}) = (metadata value "DungeonInstance" of victim):
+						set {_meleeDamage} to long tag "MeleeDamage" of {_customNbtAttacker}
 						DamageProperties(victim, attacker, "&7Melee", "Basic melee attack.", {_meleeDamage})
 				if damage cause is projectile:
 					if projectile is arrow:
-						if boolean tag "ECMob" of (custom nbt of attacker) is set:
+						if boolean tag "ECMob" of {_customNbtAttacker} is set:
 							set damage to damage*0.7
 				if victim is a player:
 					if cooldown "attack%uuid of attacker%" is finished:
 						set {_attackCooldown} to 0.75 seconds
-						if string tag "WorldQuest" of (custom nbt of attacker) is set:
+						if string tag "WorldQuest" of {_customNbtAttacker} is set:
 
-							set {_WQMobType} to string tag "MobType" of (custom nbt of attacker)
+							set {_WQMobType} to string tag "MobType" of {_customNbtAttacker}
 							set {_WQMobAttackCooldown} to yaml value "Mobs.%{_WQMobType}%.Melee Attack Cooldown" in "WorldQuestList"
 							if {_WQMobAttackCooldown} is set:
 								set {_attackCooldown} to "%{_WQMobAttackCooldown}% seconds" parsed as timespan
@@ -593,7 +601,7 @@ on damage:
 				stop
 
 		#///Animation section
-		if string tag "ECModelName" of (custom nbt of attacker) is set:
+		if string tag "ECModelName" of {_customNbtAttacker} is set:
 			setAIState(attacker, "attack")
 			playEntitySound(attacker, "Attack")
 	else:
@@ -684,9 +692,8 @@ on damage:
 						set damage to 0
 						cancel event
 
-
-	if long tag "MobDamageModifier" of (custom nbt of attacker) is set:
-		set damage to (damage * (long tag "MobDamageModifier" of (custom nbt of attacker)))
+	if long tag "MobDamageModifier" of {_customNbtAttacker} is set:
+		set damage to (damage * (long tag "MobDamageModifier" of {_customNbtAttacker}))
 
 	set {_idV} to string tag "Id" of custom nbt of {karta::%victim%}
 	set {_idA} to string tag "Id" of custom nbt of {karta::%attacker%}
@@ -696,10 +703,10 @@ on damage:
 	# This list contains all individual elements in fusions
 	set {_elementTypes::*} to getElement(attacker)
 
-	if string tag "ECElement" of (custom nbt of victim) is set:
+	if string tag "ECElement" of {_customNbtVictim} is set:
 		if metadata value "Element" of attacker is set:
 			set {_attackerElement} to metadata value "Element" of attacker
-			set {_elementVictim} to string tag "ECElement" of (custom nbt of victim)
+			set {_elementVictim} to string tag "ECElement" of {_customNbtVictim}
 			
 			set {_element::*} to Zywiol(attacker, victim)
 			set {_elementModifier} to ({_elementModifier} + {_element::1})
@@ -764,7 +771,7 @@ on damage:
 				set damage to damage*1.1
 
 			if boolean tag "Constellation;On the Prowl" of custom nbt of {karta::%attacker%} is set:
-				if string tag "ECElement" of (custom nbt of victim) = "Beast":
+				if string tag "ECElement" of {_customNbtVictim} = "Beast":
 					set damage to damage*1.2
 
 			if attacker has invisibility:
@@ -859,11 +866,7 @@ on damage:
 
 		set damage to damage * {_elementModifier}
 		
-		if attacker is a player:
-			if party of attacker is set:
-				set {_partyMembersNames::*} to (party members of (party of attacker)) where [input is online]
-				loop {_partyMembersNames::*}:
-					set {_partyMembers::%loop-counter%} to "%loop-value%" parsed as player
+		set {_partyMembers::*} to {PartyMembers::%attacker%}
 		
 		set {_effectiveDamage::*} to "super strong", "strong", "moderately strong"
 		set {_ineffectiveDamage::*} to "super weak", "weak", "mildly weak"
@@ -952,14 +955,14 @@ on damage:
 
 			damageText(attacker, victim, damage, {_crit}, {_elementEffect}, {_elementModifier})
 
-			if boolean tag "ECMob" of (custom nbt of victim) is set:
+			if boolean tag "ECMob" of {_customNbtVictim} is set:
 				set metadata value "MostRecentlyDamagedEnemy" of attacker to victim
 
 			if {kartaname::%attacker%} = "Umbreon":
 				if metadata value "ShadowMark%attacker%" of victim is set:
 					add damage to metadata value "ShadowMark%attacker%" of victim
 
-			if boolean tag "TargetableByAllies" of (custom nbt of victim) is true:
+			if boolean tag "TargetableByAllies" of {_customNbtVictim} is true:
 				cancel event
 
 		if victim is a player:
@@ -980,38 +983,26 @@ on damage:
 			
 			if attacker is not victim:
 				if attacker is a player:
-					if boolean tag "ECMob" of (custom nbt of victim) is set:
+					if boolean tag "ECMob" of {_customNbtVictim} is set:
 						combatInitiate(attacker, victim)
-						if boolean tag "EC5PercentTriggered" of (custom nbt of victim) is not set:
+						if boolean tag "EC5PercentTriggered" of {_customNbtVictim} is not set:
 							set {_damageCause} to (uncolored metadata value "LastDamageCause" of victim) in strict proper case
 							set {_damage} to damage
 							if {_damage} > health of victim:
 								set {_damage} to health of victim
+							set {_cardName} to {kartaname::%attacker%}
 							DamageBreakdown(attacker, victim, {_damage})
 							if damage > {highestDamage::%attacker%}:
 								set {highestDamage::%attacker%} to damage
+							if damage > {highestDamage::%attacker%::%{_cardName}%}:
+								set {highestDamage::%attacker%::%{_cardName}%} to damage
 							if metadata value "DungeonInstance" of attacker is set:
 								set {_instanceAttacker} to metadata value "DungeonInstance" of attacker
-								set {_instanceVictim} to int tag "ECDungeonInstance" of (custom nbt of victim)
+								set {_instanceVictim} to int tag "ECDungeonInstance" of {_customNbtVictim}
 								if {_instanceAttacker} = {_instanceVictim}:
 									DungeonPullDamage(attacker, victim, damage, {_damageCause})
-							if yaml "activeCard-%attacker%" is loaded:
-								set {_totalDamageDealt} to yaml value "Combat Data.Total Damage Dealt" in "activeCard-%attacker%"
-								add damage to {_totalDamageDealt}
-								set yaml value "Combat Data.Total Damage Dealt" in "activeCard-%attacker%" to {_totalDamageDealt}
 
-								set {_damageDealtSource} to yaml value "Combat Data.By Source.%{_damageCause}%.Damage Dealt" in "activeCard-%attacker%"
-								add damage to {_damageDealtSource}
-								set yaml value "Combat Data.By Source.%{_damageCause}%.Damage Dealt" in "activeCard-%attacker%" to {_damageDealtSource}
-								if {_crit} = true:
-									set {_totalCrits} to yaml value "Combat Data.Total Critical Hits" in "activeCard-%attacker%"
-									add 1 to {_totalCrits}
-									set yaml value "Combat Data.Total Critical Hits" in "activeCard-%attacker%" to {_totalCrits}
-
-									set {_critsSource} to yaml value "Combat Data.By Source.%{_damageCause}%.Critical Hits" in "activeCard-%attacker%"
-									add 1 to {_critsSource}
-									set yaml value "Combat Data.By Source.%{_damageCause}%.Critical Hits" in "activeCard-%attacker%" to {_critsSource}
-								save yaml "activeCard-%attacker%"
+							updateCombatYaml(attacker, damage)
 								
 							set {_health1} to victim's health
 							if damage > {_health1}:
@@ -1019,16 +1010,20 @@ on damage:
 							else:
 								set {dmgdealt::%attacker%} to {dmgdealt::%attacker%} + damage
 
-							if boolean tag "ECTestEntity" of (custom nbt of victim) is not set:
+							if all:
+								boolean tag "ECTestEntity" of {_customNbtVictim} is not set
+								boolean tag "ECEventEntity" of {_customNbtVictim} is not set
+							then:
 								set {_idA} to string tag "Id" of custom nbt of {karta::%attacker%}
 								if damage > {_health1}:
 									set {damage::dealt::%{kartaname::%attacker%}%::%{_idA}%} to {damage::dealt::%{kartaname::%attacker%}%::%{_idA}%} + {_health1}
 								else:
 									set {damage::dealt::%{kartaname::%attacker%}%::%{_idA}%} to {damage::dealt::%{kartaname::%attacker%}%::%{_idA}%} + damage
 								set {damagetotal::%attacker%} to {damagetotal::%attacker%} + damage
+
 				else:
 					if victim is a player:
-						if boolean tag "ECMob" of (custom nbt of attacker) is set:
+						if boolean tag "ECMob" of {_customNbtAttacker} is set:
 							combatInitiate(victim, attacker)
 							set {_damageCause} to (uncolored metadata value "LastDamageCause" of victim) in strict proper case
 							set {_damage} to damage
@@ -1036,21 +1031,24 @@ on damage:
 								set {_damage} to health of victim
 							if metadata value "DungeonInstance" of victim is set:
 								set {_instanceAttacker} to metadata value "DungeonInstance" of victim
-								set {_instanceVictim} to int tag "ECDungeonInstance" of (custom nbt of attacker)
+								set {_instanceVictim} to int tag "ECDungeonInstance" of {_customNbtAttacker}
 								if {_instanceAttacker} = {_instanceVictim}:
 									DungeonDamageTaken(victim, attacker, damage, {_damageCause})
 							set {_health1} to victim's health
-							if boolean tag "ECTestEntity" of (custom nbt of attacker) is not set:
+							if all:
+								boolean tag "ECTestEntity" of {_customNbtAttacker} is not set
+								boolean tag "ECEventEntity" of {_customNbtAttacker} is not set
+							then:
 								set {_idV} to string tag "Id" of custom nbt of {karta::%victim%}
 								if damage > health of victim:
 									set {damage::taken::%{kartaname::%victim%}%::%{_idV}%} to {damage::taken::%{kartaname::%victim%}%::%{_idV}%} + (damage - health of victim)
 								else:
 									set {damage::taken::%{kartaname::%victim%}%::%{_idV}%} to {damage::taken::%{kartaname::%victim%}%::%{_idV}%} + damage
 
-		if string tag "ECTextAbove" of (custom nbt of victim) is set:
-			if int tag "ECDungeonInstance" of (custom nbt of victim) is not set:
+		if string tag "ECTextAbove" of {_customNbtVictim} is set:
+			if int tag "ECDungeonInstance" of {_customNbtVictim} is not set:
 				UpdateMobHealthBar(victim)
-				if boolean tag "ECBoss" of (custom nbt of victim) is set:
+				if boolean tag "ECBoss" of {_customNbtVictim} is set:
 					MobHealthBar(victim)
 
 	#if victim's name contains "<##ffa229>Dyniowy Zombie":
@@ -1315,3 +1313,23 @@ on entity target:
 	#				add damage to {popfizzzadanydmg::%attacker%}
 	#			if {karta::%attacker%} = "Spotlight":
 	#				add damage to {spotlightzadanydmg::%attacker%}
+
+function updateCombatYaml(p: player, damage: number):
+	wait 1 tick
+	if yaml "activeCard-%{_p}%" is loaded:
+		set {_totalDamageDealt} to yaml value "Combat Data.Total Damage Dealt" in "activeCard-%{_p}%"
+		set {_totalDamageDealt} to {_totalDamageDealt} + {_damage}
+		set yaml value "Combat Data.Total Damage Dealt" in "activeCard-%{_p}%" to {_totalDamageDealt}
+
+		set {_damageDealtSource} to yaml value "Combat Data.By Source.%{_damageCause}%.Damage Dealt" in "activeCard-%{_p}%"
+		set {_damageDealtSource} to {_damageDealtSource} + {_damage}
+		set yaml value "Combat Data.By Source.%{_damageCause}%.Damage Dealt" in "activeCard-%{_p}%" to {_damageDealtSource}
+		if {_crit} = true:
+			set {_totalCrits} to yaml value "Combat Data.Total Critical Hits" in "activeCard-%{_p}%"
+			set {_totalCrits} to {_totalCrits} + 1
+			set yaml value "Combat Data.Total Critical Hits" in "activeCard-%{_p}%" to {_totalCrits}
+
+			set {_critsSource} to yaml value "Combat Data.By Source.%{_damageCause}%.Critical Hits" in "activeCard-%{_p}%"
+			set {_critsSource} to {_critsSource} + 1
+			set yaml value "Combat Data.By Source.%{_damageCause}%.Critical Hits" in "activeCard-%{_p}%" to {_critsSource}
+		save yaml "activeCard-%{_p}%"
